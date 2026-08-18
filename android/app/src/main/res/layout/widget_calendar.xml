@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background">
+
+    <!-- Teal Header -->
+    <RelativeLayout
+        android:id="@+id/widget_calendar_header"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:background="@drawable/widget_calendar_header_bg"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:gravity="center_vertical"
+        android:layout_alignParentTop="true">
+
+        <TextView
+            android:id="@+id/widget_calendar_day_num"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="25"
+            android:textColor="#FFFFFF"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_toEndOf="@id/widget_calendar_day_num"
+            android:layout_marginStart="12dp"
+            android:layout_centerVertical="true">
+
+            <TextView
+                android:id="@+id/widget_calendar_day_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MON"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_calendar_month_year"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="May 2026"
+                android:textColor="#E0F2F1"
+                android:textSize="11sp" />
+
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/widget_calendar_add_btn"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/ic_plus"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:contentDescription="Add event" />
+
+    </RelativeLayout>
+
+    <!-- Events list -->
+    <ListView
+        android:id="@+id/widget_calendar_events_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/widget_calendar_header"
+        android:layout_alignParentBottom="true"
+        android:divider="@null"
+        android:dividerHeight="0dp"
+        android:scrollbars="vertical"
+        android:padding="8dp"
+        android:layout_marginBottom="12dp"
+        android:clipToPadding="false" />
+
+    <!-- Empty state -->
+    <TextView
+        android:id="@+id/widget_calendar_empty"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/widget_calendar_header"
+        android:layout_alignParentBottom="true"
+        android:text="No hay eventos en los próximos 15 días"
+        android:textColor="@color/widget_text_secondary"
+        android:gravity="center"
+        android:padding="16dp"
+        android:visibility="gone" />
+
+</RelativeLayout>

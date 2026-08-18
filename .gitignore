@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# build outputs and temp
+*.apk
+*.log
+*port3000*
+scratch/
+
+

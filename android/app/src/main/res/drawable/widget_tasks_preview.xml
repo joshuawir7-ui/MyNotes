@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="110dp"
+    android:viewportWidth="200"
+    android:viewportHeight="110">
+    
+    <!-- Background Card -->
+    <path
+        android:fillColor="#EEF2F6"
+        android:strokeColor="#CBD5E1"
+        android:strokeWidth="2"
+        android:pathData="M 12 10 C 6.48 10 2 14.48 2 20 L 2 90 C 2 95.52 6.48 100 12 100 L 188 100 C 193.52 100 198 95.52 198 90 L 198 20 C 198 14.48 193.52 10 188 10 Z" />
+    
+    <!-- Top Stripe (Indigo/Purple) -->
+    <path
+        android:fillColor="#6366F1"
+        android:pathData="M 12 10 L 188 10 C 193.52 10 198 14.48 198 20 L 198 25 L 2 25 L 2 20 C 2 14.48 6.48 10 12 10 Z" />
+        
+    <!-- Checklist Item 1 -->
+    <!-- Checked Checkbox -->
+    <path
+        android:fillColor="#6366F1"
+        android:pathData="M 25 38 H 39 V 52 H 25 Z" />
+    <!-- Checkmark -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 28 45 L 32 49 L 36 41" />
+    <path
+        android:strokeColor="#6366F1"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M 49 45 H 170" />
+        
+    <!-- Checklist Item 2 -->
+    <!-- Unchecked Checkbox -->
+    <path
+        android:strokeColor="#64748B"
+        android:strokeWidth="2"
+        android:fillColor="#FFFFFF"
+        android:pathData="M 26 62 H 38 V 74 H 26 Z" />
+    <path
+        android:strokeColor="#475569"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M 49 68 H 150" />
+</vector>

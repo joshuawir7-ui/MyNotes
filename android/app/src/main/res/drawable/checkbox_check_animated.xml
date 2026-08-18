@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AnimatedVectorDrawable — checkbox_check_animated.xml
+  Plays when assigned via setImageViewResource() + notify() on API 24+.
+
+  Timeline (total ~400ms):
+    0ms   → green fill starts flooding in (fill.trimPathEnd 0→1, 250ms)
+    180ms → white check stroke starts drawing (check.trimPathEnd 0→1, 220ms)
+    400ms → animation fully complete, stays on final frame
+
+  Usage in RemoteViews:
+    remoteViews.setImageViewResource(btnId, R.drawable.checkbox_check_animated);
+    notificationManager.notify(NOTIFICATION_ID, notification);
+    // Android automatically starts the AVD when the notification is rendered.
+
+  IMPORTANT: AnimatedVectorDrawable in RemoteViews requires API 24+.
+  For API < 24, fall back to the static ic_checkbox_filled_green drawable
+  (see HabitActionReceiver.java for the version check).
+-->
+<animated-vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_checkbox_animated_base">
+
+    <!-- Drive the green fill path -->
+    <target
+        android:name="fill"
+        android:animation="@animator/checkbox_fill_anim" />
+
+    <!-- Drive the white check stroke -->
+    <target
+        android:name="check"
+        android:animation="@animator/checkbox_check_anim" />
+
+</animated-vector>

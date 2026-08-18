@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="110dp"
+    android:viewportWidth="200"
+    android:viewportHeight="110">
+    
+    <!-- Background Card -->
+    <path
+        android:fillColor="#ECFDF5"
+        android:strokeColor="#A7F3D0"
+        android:strokeWidth="2"
+        android:pathData="M 12 10 C 6.48 10 2 14.48 2 20 L 2 90 C 2 95.52 6.48 100 12 100 L 188 100 C 193.52 100 198 95.52 198 90 L 198 20 C 198 14.48 193.52 10 188 10 Z" />
+    
+    <!-- Top Stripe (Green) -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M 12 10 L 188 10 C 193.52 10 198 14.48 198 20 L 198 25 L 2 25 L 2 20 C 2 14.48 6.48 10 12 10 Z" />
+        
+    <!-- Target Flag Icon -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M 25 35 H 48 L 42 45 L 48 55 H 28 V 70 H 25 Z" />
+        
+    <!-- Goal Title -->
+    <path
+        android:strokeColor="#065F46"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M 58 45 H 170" />
+        
+    <!-- Progress Bar Track -->
+    <path
+        android:strokeColor="#D1FAE5"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:pathData="M 28 65 H 170" />
+    <!-- Progress Bar Fill -->
+    <path
+        android:strokeColor="#10B981"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:pathData="M 28 65 H 125" />
+</vector>

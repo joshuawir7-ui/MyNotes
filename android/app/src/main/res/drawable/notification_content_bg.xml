@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Background for the custom notification content view.
+  IMPORTANT: Keep this transparent — DecoratedCustomViewStyle already provides
+  the correct system surface color (adapts to light/dark mode and OEM themes).
+  A hardcoded solid color here causes a visible tone mismatch with the system
+  notification header ("MyNotes • 1m") which we do NOT control.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <corners android:radius="0dp" />
+    <solid android:color="@android:color/transparent" />
+</shape>

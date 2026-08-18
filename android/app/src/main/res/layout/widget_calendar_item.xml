@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <!-- Date Header (e.g. FRI, MAY 29) -->
+    <TextView
+        android:id="@+id/widget_event_date_header"
+        android:layout_width="match_parent"
+        android:layout_height="24dp"
+        android:background="@color/widget_calendar_date_bg"
+        android:textColor="@color/widget_text_secondary"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:text="FRI, MAY 29"
+        android:visibility="visible" />
+
+    <!-- Event details row -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_toStartOf="@id/widget_event_color_dot"
+            android:layout_marginEnd="16dp"
+            android:layout_alignParentStart="true">
+
+            <TextView
+                android:id="@+id/widget_event_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="FINALIZAN LOS EXÁMENES"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:maxLines="2"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/widget_event_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2:05 - 3:05 PM"
+                android:textColor="@color/widget_text_secondary"
+                android:textSize="10sp"
+                android:layout_marginTop="4dp" />
+
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/widget_event_color_dot"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:src="@drawable/ic_circle_dot"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:contentDescription="Color indicator" />
+
+    </RelativeLayout>
+
+    <!-- Subtle separator -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/widget_divider" />
+
+</LinearLayout>

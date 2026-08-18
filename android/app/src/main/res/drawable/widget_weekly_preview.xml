@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="110dp"
+    android:viewportWidth="200"
+    android:viewportHeight="110">
+    
+    <!-- Background Card -->
+    <path
+        android:fillColor="#F0FDFA"
+        android:strokeColor="#CCFBF1"
+        android:strokeWidth="2"
+        android:pathData="M 12 10 C 6.48 10 2 14.48 2 20 L 2 90 C 2 95.52 6.48 100 12 100 L 188 100 C 193.52 100 198 95.52 198 90 L 198 20 C 198 14.48 193.52 10 188 10 Z" />
+    
+    <!-- Top Stripe (Teal) -->
+    <path
+        android:fillColor="#0D9488"
+        android:pathData="M 12 10 L 188 10 C 193.52 10 198 14.48 198 20 L 198 25 L 2 25 L 2 20 C 2 14.48 6.48 10 12 10 Z" />
+        
+    <!-- Chart Title -->
+    <path
+        android:strokeColor="#115E59"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M 28 45 H 170" />
+        
+    <!-- Bar Chart Visual Axis -->
+    <path
+        android:strokeColor="#99F6E4"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M 30 80 H 170" />
+        
+    <!-- Bar Charts (different heights) -->
+    <path
+        android:strokeColor="#0D9488"
+        android:strokeWidth="8"
+        android:strokeLineCap="round"
+        android:pathData="M 40 80 V 60 M 65 80 V 40 M 90 80 V 70 M 115 80 V 50 M 140 80 V 35 M 165 80 V 65" />
+</vector>

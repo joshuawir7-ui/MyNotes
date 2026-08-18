@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/notification_content_bg"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="12dp">
+
+    <!--
+      Logo: ic_notification_logo.png — la "n" en Dancing Script renderizada como PNG.
+      Se usa ImageView (no TextView+fontFamily) porque RemoteViews no puede aplicar
+      fuentes personalizadas de res/font/ de forma fiable en todos los dispositivos y
+      OEM skins.
+    -->
+    <ImageView
+        android:id="@+id/notification_logo"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:src="@drawable/ic_notification_logo"
+        android:scaleType="fitCenter"
+        android:layout_marginRight="12dp"
+        android:contentDescription="MyNotes logo" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="MyNotes"
+            android:textColor="@color/notification_text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Hoy es un nuevo día. Toca para ver tus tareas."
+            android:textColor="@color/notification_text_secondary"
+            android:textSize="13sp"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1" />
+    </LinearLayout>
+
+</LinearLayout>

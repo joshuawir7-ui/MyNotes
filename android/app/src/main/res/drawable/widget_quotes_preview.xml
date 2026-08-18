@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="110dp"
+    android:viewportWidth="200"
+    android:viewportHeight="110">
+    
+    <!-- Background Card -->
+    <path
+        android:fillColor="#FFF1F2"
+        android:strokeColor="#FFE4E6"
+        android:strokeWidth="2"
+        android:pathData="M 12 10 C 6.48 10 2 14.48 2 20 L 2 90 C 2 95.52 6.48 100 12 100 L 188 100 C 193.52 100 198 95.52 198 90 L 198 20 C 198 14.48 193.52 10 188 10 Z" />
+    
+    <!-- Top Stripe (Rose) -->
+    <path
+        android:fillColor="#F43F5E"
+        android:pathData="M 12 10 L 188 10 C 193.52 10 198 14.48 198 20 L 198 25 L 2 25 L 2 20 C 2 14.48 6.48 10 12 10 Z" />
+        
+    <!-- Quote Mark Icon -->
+    <path
+        android:fillColor="#FDA4AF"
+        android:pathData="M 20 35 C 20 40 23 45 26 48 L 22 55 H 30 L 34 45 V 35 Z M 38 35 C 38 40 41 45 44 48 L 40 55 H 48 L 52 45 V 35 Z" />
+        
+    <!-- Quote Lines -->
+    <path
+        android:strokeColor="#9F1239"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M 60 42 H 170" />
+    <path
+        android:strokeColor="#E11D48"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M 25 60 H 170 M 25 72 H 130" />
+</vector>

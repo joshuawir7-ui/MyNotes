@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Checkbox "empty" state — rounded square with gray border, transparent fill.
+  Used in RemoteViews via setImageViewResource() for habits that are NOT completed today.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="5dp" />
+    <solid android:color="@android:color/transparent" />
+    <stroke
+        android:width="2dp"
+        android:color="#8E8E93" />
+</shape>

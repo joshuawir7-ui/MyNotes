@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="notification_bg">#FFFFFF</color>
+    <color name="notification_logo_bg">#F2F2F7</color>
+    <color name="notification_text_primary">#000000</color>
+    <color name="notification_text_secondary">#8E8E93</color>
+    <color name="task_checked_bg">#4ADE80</color>
+    <color name="widget_bg">#FFFFFF</color>
+    <color name="widget_text_primary">#111827</color>
+    <color name="widget_text_secondary">#6B7280</color>
+    <color name="widget_divider">#E5E7EB</color>
+    <color name="widget_calendar_date_bg">#F3F4F6</color>
+    <color name="widget_calendar_header_color">#000000</color>
+    <color name="widget_border">#E5E7EB</color>
+</resources>

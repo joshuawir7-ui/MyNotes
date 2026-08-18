@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="110dp"
+    android:viewportWidth="200"
+    android:viewportHeight="110">
+    
+    <!-- Background Card -->
+    <path
+        android:fillColor="#FAF5FF"
+        android:strokeColor="#E9D5FF"
+        android:strokeWidth="2"
+        android:pathData="M 12 10 C 6.48 10 2 14.48 2 20 L 2 90 C 2 95.52 6.48 100 12 100 L 188 100 C 193.52 100 198 95.52 198 90 L 198 20 C 198 14.48 193.52 10 188 10 Z" />
+    
+    <!-- Top Stripe (Purple) -->
+    <path
+        android:fillColor="#8B5CF6"
+        android:pathData="M 12 10 L 188 10 C 193.52 10 198 14.48 198 20 L 198 25 L 2 25 L 2 20 C 2 14.48 6.48 10 12 10 Z" />
+        
+    <!-- Sticky Note Icon -->
+    <path
+        android:fillColor="#8B5CF6"
+        android:pathData="M 25 35 H 55 V 65 H 25 Z" />
+    <path
+        android:fillColor="#FAF5FF"
+        android:pathData="M 28 38 H 52 V 54 L 44 62 H 28 Z" />
+    <!-- Folded Corner -->
+    <path
+        android:fillColor="#C084FC"
+        android:pathData="M 44 54 H 52 L 44 62 Z" />
+        
+    <!-- Text Lines -->
+    <path
+        android:strokeColor="#5B21B6"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M 70 45 H 170" />
+    <path
+        android:strokeColor="#A78BFA"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M 70 58 H 160 M 70 70 H 140" />
+</vector>

@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Expanded notification layout — 2 columns × 3 rows = up to 6 daily habits.
+  Column 1 IDs: habit_c1r1, habit_c1r2, habit_c1r3
+  Column 2 IDs: habit_c2r1, habit_c2r2, habit_c2r3
+  Checkbox IDs: habit_c1r1_btn ... habit_c2r3_btn
+  Label    IDs: habit_c1r1_lbl ... habit_c2r3_lbl
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/notification_content_bg"
+    android:orientation="vertical"
+    android:padding="14dp">
+
+    <!-- ── Header row: logo + description ───────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="12dp">
+
+        <!--
+          Logo: ic_notification_logo.png — la "n" en Dancing Script renderizada como PNG.
+          Se usa PNG en vez de TextView+fontFamily porque RemoteViews no puede aplicar
+          fuentes de res/font/ de forma fiable en todos los dispositivos y OEM skins.
+        -->
+        <ImageView
+            android:id="@+id/notification_logo"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@drawable/ic_notification_logo"
+            android:scaleType="fitCenter"
+            android:layout_marginRight="12dp"
+            android:contentDescription="MyNotes logo" />
+
+        <TextView
+            android:id="@+id/notification_description"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Hoy es un nuevo día, la lista de tareas y hábitos diarios ha sido actualizada."
+            android:textColor="@color/notification_text_secondary"
+            android:textSize="13sp"
+            android:lineSpacingMultiplier="1.1" />
+    </LinearLayout>
+
+    <!-- ── Thin divider ─────────────────────────────────────────────── -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#15000000"
+        android:layout_marginBottom="10dp" />
+
+    <!-- ── 2-column habits grid ──────────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <!-- ── Column 1 (habits 1-3) ────────────────────────────────── -->
+        <LinearLayout
+            android:id="@+id/habits_column_1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <!-- Row C1R1 -->
+            <LinearLayout
+                android:id="@+id/habit_c1r1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:paddingRight="4dp">
+
+                <ImageButton
+                    android:id="@+id/habit_c1r1_btn"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@null"
+                    android:src="@drawable/ic_check_box_outline"
+                    android:scaleType="fitCenter"
+                    android:layout_marginRight="8dp" />
+
+                <TextView
+                    android:id="@+id/habit_c1r1_lbl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Hábito 1"
+                    android:textColor="@color/notification_text_primary"
+                    android:textSize="14sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
+
+            <!-- Row C1R2 -->
+            <LinearLayout
+                android:id="@+id/habit_c1r2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:paddingRight="4dp">
+
+                <ImageButton
+                    android:id="@+id/habit_c1r2_btn"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@null"
+                    android:src="@drawable/ic_check_box_outline"
+                    android:scaleType="fitCenter"
+                    android:layout_marginRight="8dp" />
+
+                <TextView
+                    android:id="@+id/habit_c1r2_lbl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Hábito 2"
+                    android:textColor="@color/notification_text_primary"
+                    android:textSize="14sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
+
+            <!-- Row C1R3 -->
+            <LinearLayout
+                android:id="@+id/habit_c1r3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:paddingRight="4dp">
+
+                <ImageButton
+                    android:id="@+id/habit_c1r3_btn"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@null"
+                    android:src="@drawable/ic_check_box_outline"
+                    android:scaleType="fitCenter"
+                    android:layout_marginRight="8dp" />
+
+                <TextView
+                    android:id="@+id/habit_c1r3_lbl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Hábito 3"
+                    android:textColor="@color/notification_text_primary"
+                    android:textSize="14sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- ── Thin vertical divider between columns ─────────────────── -->
+        <FrameLayout
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#15000000"
+            android:layout_marginLeft="4dp"
+            android:layout_marginRight="4dp" />
+
+        <!-- ── Column 2 (habits 4-6) ────────────────────────────────── -->
+        <LinearLayout
+            android:id="@+id/habits_column_2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <!-- Row C2R1 -->
+            <LinearLayout
+                android:id="@+id/habit_c2r1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:paddingLeft="4dp">
+
+                <ImageButton
+                    android:id="@+id/habit_c2r1_btn"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@null"
+                    android:src="@drawable/ic_check_box_outline"
+                    android:scaleType="fitCenter"
+                    android:layout_marginRight="8dp" />
+
+                <TextView
+                    android:id="@+id/habit_c2r1_lbl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Hábito 4"
+                    android:textColor="@color/notification_text_primary"
+                    android:textSize="14sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
+
+            <!-- Row C2R2 -->
+            <LinearLayout
+                android:id="@+id/habit_c2r2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:paddingLeft="4dp">
+
+                <ImageButton
+                    android:id="@+id/habit_c2r2_btn"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@null"
+                    android:src="@drawable/ic_check_box_outline"
+                    android:scaleType="fitCenter"
+                    android:layout_marginRight="8dp" />
+
+                <TextView
+                    android:id="@+id/habit_c2r2_lbl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Hábito 5"
+                    android:textColor="@color/notification_text_primary"
+                    android:textSize="14sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
+
+            <!-- Row C2R3 -->
+            <LinearLayout
+                android:id="@+id/habit_c2r3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:paddingLeft="4dp">
+
+                <ImageButton
+                    android:id="@+id/habit_c2r3_btn"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@null"
+                    android:src="@drawable/ic_check_box_outline"
+                    android:scaleType="fitCenter"
+                    android:layout_marginRight="8dp" />
+
+                <TextView
+                    android:id="@+id/habit_c2r3_lbl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Hábito 6"
+                    android:textColor="@color/notification_text_primary"
+                    android:textSize="14sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

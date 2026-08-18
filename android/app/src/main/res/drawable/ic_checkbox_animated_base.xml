@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Base vector for the animated checkbox.
+  - path "box":   the rounded-square border (stroke only, transparent fill)
+  - path "fill":  the solid green fill, initially clipped to 0% via trimPathEnd=0
+  - path "check": the check stroke, initially trimmed to 0% via trimPathEnd=0
+
+  The AnimatedVectorDrawable (checkbox_check_animated.xml) drives:
+    fill.trimPathEnd   0 → 1  (green flood-fill appearing)
+    check.trimPathEnd  0 → 1  (check stroke drawing itself left-to-right)
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Rounded-square box border (always visible, gray) -->
+    <path
+        android:name="box"
+        android:pathData="M4,4 L20,4 Q20,4 20,4 L20,20 Q20,20 20,20 L4,20 Q4,20 4,20 L4,4 Z"
+        android:fillColor="#00000000"
+        android:strokeColor="#8E8E93"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Green fill that floods in (trimPathEnd animated 0→1) -->
+    <path
+        android:name="fill"
+        android:pathData="M4,4 L20,4 L20,20 L4,20 Z"
+        android:fillColor="#22C55E"
+        android:trimPathEnd="0" />
+
+    <!-- White check stroke (trimPathEnd animated 0→1, delayed) -->
+    <path
+        android:name="check"
+        android:pathData="M7,12 L10.5,15.5 L17,8.5"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:trimPathEnd="0" />
+
+</vector>

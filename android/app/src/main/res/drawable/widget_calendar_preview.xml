@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="110dp"
+    android:viewportWidth="200"
+    android:viewportHeight="110">
+    
+    <!-- Background Card -->
+    <path
+        android:fillColor="#F8FAFC"
+        android:strokeColor="#E2E8F0"
+        android:strokeWidth="2"
+        android:pathData="M 12 10 C 6.48 10 2 14.48 2 20 L 2 90 C 2 95.52 6.48 100 12 100 L 188 100 C 193.52 100 198 95.52 198 90 L 198 20 C 198 14.48 193.52 10 188 10 Z" />
+    
+    <!-- Top Stripe (Blue) -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M 12 10 L 188 10 C 193.52 10 198 14.48 198 20 L 198 25 L 2 25 L 2 20 C 2 14.48 6.48 10 12 10 Z" />
+        
+    <!-- Calendar Icon -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M 25 35 H 55 V 65 H 25 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 28 42 H 52 V 62 H 28 Z" />
+    <!-- Calendar Grid / Dots -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M 32 46 H 36 V 50 H 32 Z M 40 46 H 44 V 50 H 40 Z M 48 46 H 52 V 50 H 48 Z M 32 54 H 36 V 58 H 32 Z M 40 54 H 44 V 58 H 40 Z" />
+    
+    <!-- Hooks -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M 30 31 H 34 V 37 H 30 Z M 46 31 H 50 V 37 H 46 Z" />
+        
+    <!-- Text Lines -->
+    <path
+        android:strokeColor="#475569"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M 70 45 H 170" />
+    <path
+        android:strokeColor="#94A3B8"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M 70 58 H 150 M 70 70 H 130" />
+</vector>

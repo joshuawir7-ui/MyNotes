@@ -1,0 +1,1775 @@
+"use client"
+
+import { getLocalImageSrc } from "@/lib/image-utils"
+import React, { useState, useRef, useEffect, useCallback } from "react"
+import { useStore, Note, NoteBlock, BlockType } from "@/lib/store"
+import { translations } from "@/lib/translations"
+import { motion, AnimatePresence } from "framer-motion"
+import { App as CapacitorApp } from "@capacitor/app"
+import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle } from "lucide-react"
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
+
+const isNoteEmpty = (titleStr: string, blocksList: NoteBlock[]) => {
+    if (titleStr.trim() !== '') return false;
+    for (const block of blocksList) {
+        if (!block) continue;
+        if (block.type === 'text') {
+            const textContent = typeof block.content === 'string' ? block.content : '';
+            const cleanText = textContent.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+            if (cleanText !== '') return false;
+        } else if (block.type === 'task-list') {
+            let listTitle = '';
+            let items: any[] = [];
+            if (block.content && typeof block.content === 'object' && !Array.isArray(block.content)) {
+                listTitle = block.content.title || '';
+                items = Array.isArray(block.content.items) ? block.content.items : [];
+            } else {
+                items = Array.isArray(block.content) ? block.content : [];
+            }
+            if (listTitle.trim() !== '') return false;
+            for (const item of items) {
+                if (item && typeof item === 'object' && typeof item.text === 'string' && item.text.trim() !== '') {
+                    return false;
+                }
+            }
+        } else if (block.type === 'table') {
+            const content = block.content || { headers: [], rows: [] };
+            const headers = Array.isArray(content.headers) ? content.headers : [];
+            const rows = Array.isArray(content.rows) ? content.rows : [];
+            for (const h of headers) {
+                if (typeof h === 'string' && h.trim() !== '') return false;
+            }
+            for (const r of rows) {
+                if (Array.isArray(r)) {
+                    for (const c of r) {
+                        if (typeof c === 'string' && c.trim() !== '') return false;
+                    }
+                }
+            }
+        } else if (block.type === 'image') {
+            if (typeof block.content === 'string' && block.content.trim() !== '') return false;
+        } else if (block.type === 'drawing') {
+            if (typeof block.content === 'string' && block.content.trim() !== '') return false;
+        }
+    }
+    return true;
+};
+
+interface NoteEditorProps {
+    note: Note
+    onClose: () => void
+}
+
+export function NoteEditor({ note, onClose }: NoteEditorProps) {
+    const updateNote = useStore(state => state.updateNote)
+    const deleteNote = useStore(state => state.deleteNote)
+    const language = useStore(state => state.language)
+    const showToast = useStore(state => state.showToast)
+    const storeNote = useStore(state => state.notes.find(n => n.id === note.id))
+    const [title, setTitle] = useState(note.title)
+    const [blocks, setBlocks] = useState<NoteBlock[]>(note.blocks || [])
+
+    useEffect(() => {
+        if (storeNote) {
+            setBlocks(storeNote.blocks || []);
+            setTitle(storeNote.title || '');
+        }
+    }, [storeNote?.lastUpdated])
+    const [isSaving, setIsSaving] = useState(false)
+    const [lastSaved, setLastSaved] = useState<string | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [isKeyboardToolbarVisible, setIsKeyboardToolbarVisible] = useState(false)
+    const [activeBlockId, setActiveBlockId] = useState<string | null>(null)
+    const [viewportOffset, setViewportOffset] = useState(0)
+    const [fullscreenImageUrl, setFullscreenImageUrl] = useState<string | null>(null)
+
+    const [isLandscape, setIsLandscape] = useState(false)
+    const [showHeader, setShowHeader] = useState(true)
+    const lastScrollTop = useRef(0)
+    const contentContainerRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const checkOrientation = () => {
+            setIsLandscape(window.innerWidth > window.innerHeight)
+        }
+        checkOrientation()
+        window.addEventListener('resize', checkOrientation)
+        return () => window.removeEventListener('resize', checkOrientation)
+    }, [])
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const scrollTop = e.currentTarget.scrollTop
+        lastScrollTop.current = scrollTop
+    }
+
+    useEffect(() => {
+        let backListener: any;
+        const setupBackListener = async () => {
+            try {
+                backListener = await CapacitorApp.addListener('backButton', () => {
+                    handleCloseRef.current?.();
+                });
+            } catch (e) {
+                console.error("Back button listener failed", e);
+            }
+        };
+        setupBackListener();
+
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') handleCloseRef.current?.();
+        }
+        window.addEventListener('keydown', handleEscape)
+
+        if (typeof window === 'undefined' || !window.visualViewport) return
+
+        const handleResize = () => {
+            const vv = window.visualViewport
+            if (vv) {
+                const offset = window.innerHeight - vv.height
+                setViewportOffset(offset > 0 ? offset : 0)
+            }
+        }
+
+        window.visualViewport.addEventListener('resize', handleResize)
+        handleResize()
+
+        return () => {
+            window.visualViewport?.removeEventListener('resize', handleResize)
+        }
+    }, [])
+
+    const [formatStates, setFormatStates] = useState({
+        bold: false,
+        italic: false,
+        underline: false,
+        justifyLeft: false,
+        justifyCenter: false,
+        justifyRight: false,
+        insertUnorderedList: false,
+        insertOrderedList: false,
+        h1: false,
+        h2: false,
+        h3: false,
+    })
+
+    const formatStatesRef = useRef(formatStates)
+    useEffect(() => {
+        formatStatesRef.current = formatStates
+    }, [formatStates])
+
+    const updateFormatStates = useCallback(() => {
+        if (typeof document === 'undefined') return
+
+        let isH1 = false;
+        let isH2 = false;
+        let isH3 = false;
+
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+            let node = selection.getRangeAt(0).startContainer;
+            while (node && node !== document.body) {
+                const nodeName = node.nodeName.toLowerCase();
+                if (nodeName === 'h1') isH1 = true;
+                if (nodeName === 'h2') isH2 = true;
+                if (nodeName === 'h3') isH3 = true;
+                node = node.parentNode as Node;
+            }
+        }
+
+        const nextStates = {
+            bold: document.queryCommandState('bold'),
+            italic: document.queryCommandState('italic'),
+            underline: document.queryCommandState('underline'),
+            justifyLeft: document.queryCommandState('justifyLeft'),
+            justifyCenter: document.queryCommandState('justifyCenter'),
+            justifyRight: document.queryCommandState('justifyRight'),
+            insertUnorderedList: document.queryCommandState('insertUnorderedList'),
+            insertOrderedList: document.queryCommandState('insertOrderedList'),
+            h1: isH1,
+            h2: isH2,
+            h3: isH3,
+        };
+
+        const currentStates = formatStatesRef.current;
+        const hasChanged =
+            nextStates.bold !== currentStates.bold ||
+            nextStates.italic !== currentStates.italic ||
+            nextStates.underline !== currentStates.underline ||
+            nextStates.justifyLeft !== currentStates.justifyLeft ||
+            nextStates.justifyCenter !== currentStates.justifyCenter ||
+            nextStates.justifyRight !== currentStates.justifyRight ||
+            nextStates.insertUnorderedList !== currentStates.insertUnorderedList ||
+            nextStates.insertOrderedList !== currentStates.insertOrderedList ||
+            nextStates.h1 !== currentStates.h1 ||
+            nextStates.h2 !== currentStates.h2 ||
+            nextStates.h3 !== currentStates.h3;
+
+        if (hasChanged) {
+            setFormatStates(nextStates);
+        }
+    }, [])
+
+    const applyHeading = (tag: 'h1' | 'h2' | 'h3') => {
+        if (typeof document === 'undefined') return
+        const selection = window.getSelection()
+        if (!selection || selection.rangeCount === 0) return
+
+        let isCurrentHeadingActive = false
+        let node = selection.getRangeAt(0).startContainer
+        while (node && node !== document.body) {
+            if (node.nodeName.toLowerCase() === tag) {
+                isCurrentHeadingActive = true
+                break
+            }
+            node = node.parentNode as Node
+        }
+
+        if (isCurrentHeadingActive) {
+            document.execCommand('formatBlock', false, '<p>')
+        } else {
+            document.execCommand('formatBlock', false, `<${tag}>`)
+        }
+        updateFormatStates()
+    }
+
+    const applyFormat = (command: string, value: string = '') => {
+        document.execCommand(command, false, value)
+        updateFormatStates()
+    }
+
+    // Register selection change listener to update format toolbar buttons state
+    useEffect(() => {
+        let frameId: number;
+        const handler = () => {
+            if (!isKeyboardToolbarVisible) return;
+            cancelAnimationFrame(frameId);
+            frameId = requestAnimationFrame(() => {
+                updateFormatStates();
+            });
+        }
+        document.addEventListener('selectionchange', handler)
+        return () => {
+            cancelAnimationFrame(frameId);
+            document.removeEventListener('selectionchange', handler);
+        }
+    }, [isKeyboardToolbarVisible, updateFormatStates])
+
+    const moveBlock = useCallback((index: number, direction: 'up' | 'down') => {
+        setBlocks(prev => {
+            const newIndex = direction === 'up' ? index - 1 : index + 1
+            if (newIndex < 0 || newIndex >= prev.length) return prev
+
+            const newBlocks = [...prev]
+            const temp = newBlocks[index]
+            newBlocks[index] = newBlocks[newIndex]
+            newBlocks[newIndex] = temp
+            return newBlocks
+        })
+    }, [])
+
+    // Safety check for translations
+    const langSection = translations[language] || translations.en
+    const t = langSection.common || translations.en.common
+    const noteTranslations = langSection.pages?.notes || translations.en.pages.notes
+
+    const titleInputRef = useRef<HTMLInputElement>(null)
+
+    useEffect(() => {
+        // We will autofocus the text body instead of the title based on the user's request.
+        // The title auto-focus effect has been removed.
+    }, [])
+
+    useEffect(() => {
+        console.log("NoteEditor mounted for note:", note.id)
+    }, [note.id])
+
+    const titleRef = useRef(title)
+    const blocksRef = useRef(blocks)
+    titleRef.current = title
+    blocksRef.current = blocks
+    const skipSaveRef = useRef(false)
+    const lastSavedValuesRef = useRef({ title: note.title, blocks: note.blocks || [] })
+
+    const handleCloseRef = useRef<() => void>(undefined)
+    handleCloseRef.current = () => {
+        const initialHadContent = (note.blocks && note.blocks.length > 0) || (typeof note.title === 'string' && note.title.trim() !== '');
+        if (isNoteEmpty(titleRef.current, blocksRef.current) && !initialHadContent) {
+            skipSaveRef.current = true
+            deleteNote(note.id)
+            showToast(language === 'es' ? "Nota vacía eliminada" : "Empty note deleted", "info")
+        }
+        onClose()
+    }
+
+    // Save on unmount or when the window/app is closed (unload/beforeunload)
+    useEffect(() => {
+        const hasUnsavedChanges = () => {
+            return titleRef.current !== lastSavedValuesRef.current.title ||
+                JSON.stringify(blocksRef.current) !== JSON.stringify(lastSavedValuesRef.current.blocks)
+        }
+
+        const handleUnload = () => {
+            if (skipSaveRef.current) return
+            if (hasUnsavedChanges()) {
+                const initialHadContent = (note.blocks && note.blocks.length > 0) || (typeof note.title === 'string' && note.title.trim() !== '');
+                if (isNoteEmpty(titleRef.current, blocksRef.current) && !initialHadContent) {
+                    deleteNote(note.id)
+                } else {
+                    updateNote(note.id, titleRef.current, blocksRef.current)
+                }
+                lastSavedValuesRef.current = { title: titleRef.current, blocks: blocksRef.current }
+            }
+        }
+
+        window.addEventListener('beforeunload', handleUnload)
+        window.addEventListener('pagehide', handleUnload)
+
+        return () => {
+            handleUnload()
+            window.removeEventListener('beforeunload', handleUnload)
+            window.removeEventListener('pagehide', handleUnload)
+        }
+    }, [note.id])
+
+    // Debounce save (Auto-save) after 5 seconds of inactivity
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            handleSave(true)
+        }, 5000)
+        return () => clearTimeout(timeout)
+    }, [blocks, title, note.id])
+
+    const handleSave = async (isAuto = false) => {
+        if (!isAuto) setIsSaving(true)
+
+        updateNote(note.id, title, blocks)
+        lastSavedValuesRef.current = { title, blocks }
+
+        if (!isAuto) {
+            // Artificial delay for feedback if manual
+            await new Promise(r => setTimeout(r, 500))
+            setIsSaving(false)
+            setLastSaved(new Date().toLocaleTimeString())
+            showToast(language === 'es' ? "Nota guardada" : "Note saved", "success")
+
+            // Clear "Saved" feedback after 3s
+            setTimeout(() => setLastSaved(null), 3000)
+        }
+    }
+
+    const scrollToBlock = (blockId: string) => {
+        setTimeout(() => {
+            const element = document.getElementById(`block-${blockId}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 150);
+    }
+
+    const addBlock = (type: BlockType, afterBlockId?: string | null) => {
+        const newBlock: NoteBlock = {
+            id: Math.random().toString(36).substring(7),
+            type,
+            content: getDefaultContent(type)
+        }
+
+        const currentActiveId = afterBlockId || activeBlockId
+        if (currentActiveId) {
+            const index = blocks.findIndex(b => b.id === currentActiveId)
+            if (index !== -1) {
+                const newBlocks = [...blocks]
+                const insertIndex = type === 'separator' ? index : index + 1
+                newBlocks.splice(insertIndex, 0, newBlock)
+                setBlocks(newBlocks)
+                scrollToBlock(newBlock.id)
+                return
+            }
+        }
+
+        setBlocks([...blocks, newBlock])
+        scrollToBlock(newBlock.id)
+    }
+
+    const updateBlock = useCallback((id: string, content: any) => {
+        setBlocks(prev => prev.map(b => b.id === id ? { ...b, content } : b))
+    }, [])
+
+    const removeBlock = useCallback((id: string) => {
+        setBlocks(prev => prev.filter(b => b.id !== id))
+    }, [])
+
+    const handleWrapperFocus = useCallback((id: string, type: BlockType) => {
+        setActiveBlockId(id);
+        if (type === 'text' || type === 'task-list' || type === 'table') {
+            setIsKeyboardToolbarVisible(true);
+            setTimeout(updateFormatStates, 50);
+        } else {
+            setIsKeyboardToolbarVisible(false);
+        }
+    }, [updateFormatStates]);
+
+    const handleWrapperBlur = useCallback((_currentTarget: HTMLElement) => {
+        // Mobile soft keyboards (Gboard/Samsung), autocorrect suggestion taps, and scroll gestures
+        // trigger transient blur events. We keep the toolbar visible while editing to prevent it from disappearing.
+    }, []);
+
+    const handleImageClick = useCallback((url: string) => {
+        setFullscreenImageUrl(url);
+    }, [])
+
+    const getDefaultContent = (type: BlockType) => {
+        switch (type) {
+            case 'text': return ''
+            case 'task-list': return [{ id: '1', text: 'New Item', checked: false }]
+            case 'table': return { headers: ['Col 1', 'Col 2'], rows: [['', '']] }
+            case 'image': return '' // URL
+            case 'drawing': return '' // Data URL
+            default: return ''
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="w-full max-w-4xl h-[90vh] bg-white dark:bg-[#0c0c0e] border border-zinc-200 dark:border-white/10 rounded-2xl flex flex-col relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+
+                {/* PREMIUM HEADER - Collapse and adapt on landscape/portrait */}
+                <div className={`transition-all duration-300 ease-in-out overflow-hidden shrink-0 ${showHeader
+                        ? (isLandscape ? 'max-h-16 opacity-100 py-2 px-4 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent' : 'max-h-48 opacity-100 p-4 md:p-6 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent')
+                        : 'max-h-0 opacity-0 py-0 border-none pointer-events-none'
+                    }`}>
+                    {isLandscape ? (
+                        /* Landscape Combined Header */
+                        <div className="flex items-center justify-between gap-3 h-10">
+                            <div className="flex items-center gap-2 overflow-hidden flex-1">
+                                <StickyNote className="w-5 h-5 text-primary shrink-0" />
+                                <span className="hidden sm:inline text-[10px] md:text-xs font-bold uppercase tracking-widest text-muted-foreground shrink-0">{language === 'es' ? 'Nota:' : 'Note:'}</span>
+                                <input
+                                    ref={titleInputRef}
+                                    className="text-base md:text-lg font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground/30 dark:placeholder:text-white/40 flex-1 min-w-[85px] tracking-tight text-foreground"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder={noteTranslations.untitled || "Untitled Note"}
+                                />
+                            </div>
+
+                            {/* Toolbar Buttons Embedded in Landscape Header */}
+                            <div className="flex items-center gap-1 px-2 bg-white/5 rounded-full border border-white/5 py-0.5">
+                                <button onClick={() => addBlock('text')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Texto" : "Text"}>
+                                    <Type className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => addBlock('task-list')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Lista" : "Task List"}>
+                                    <CheckSquare className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => addBlock('table')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Tabla" : "Table"}>
+                                    <TableIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => addBlock('image')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Imagen" : "Image"}>
+                                    <ImageIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => addBlock('drawing')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Dibujo" : "Drawing"}>
+                                    <PenTool className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => addBlock('separator')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Separador" : "Separator"}>
+                                    <SeparatorHorizontal className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                    onClick={() => handleSave()}
+                                    disabled={isSaving}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all text-xs font-bold shadow-lg ${lastSaved
+                                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                        : 'bg-purple-600 text-white hover:bg-purple-700 active:scale-95 shadow-purple-500/20'
+                                        }`}
+                                >
+                                    <span>{isSaving ? '...' : lastSaved ? (language === 'es' ? 'Guardado' : 'Saved') : (language === 'es' ? 'Guardar' : 'Save')}</span>
+                                </button>
+                                <button className="p-1.5 rounded-full bg-white/5 text-muted-foreground hover:bg-white/10 transition-all border border-white/10 active:scale-95">
+                                    <Share2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    onClick={() => setIsDeleting(true)}
+                                    className="p-1.5 hover:bg-red-500/10 text-muted-foreground hover:text-red-400 rounded-full transition-colors active:scale-95"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => handleCloseRef.current?.()} className="p-1.5 hover:bg-white/10 rounded-full transition-colors active:scale-95">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        /* Portrait Standard Header */
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center justify-between gap-2 w-full">
+                                <div className="flex items-center gap-2 md:gap-3 text-muted-foreground overflow-hidden flex-1 mr-2">
+                                    <StickyNote className="w-5 h-5 text-primary shrink-0" />
+                                    <input
+                                        ref={titleInputRef}
+                                        className="text-base md:text-xl font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground/30 dark:placeholder:text-white/40 flex-1 min-w-0 tracking-tight text-foreground"
+                                        value={title}
+                                        onChange={(e) => setTitle(e.target.value)}
+                                        placeholder={noteTranslations.untitled || "Untitled Note"}
+                                    />
+                                </div>
+                                <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
+                                    <button
+                                        onClick={() => handleSave()}
+                                        disabled={isSaving}
+                                        className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-6 py-1.5 md:py-2 rounded-full transition-all text-xs md:text-sm font-bold shadow-lg ${lastSaved
+                                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                            : 'bg-purple-600 text-white hover:bg-purple-700 active:scale-95 shadow-purple-500/20'
+                                            }`}
+                                    >
+                                        <span className="hidden xs:inline">{isSaving ? langSection.common.saving : lastSaved ? langSection.common.saved : langSection.common.save}</span>
+                                        <span className="xs:hidden inline">{isSaving ? '...' : langSection.common.save}</span>
+                                    </button>
+                                    <button className="p-1.5 md:p-2.5 rounded-full bg-white/5 text-muted-foreground hover:bg-white/10 transition-all border border-white/10 active:scale-95">
+                                        <Share2 className="w-4 h-4 md:w-5 md:h-5" />
+                                    </button>
+                                    <button
+                                        onClick={() => setIsDeleting(true)}
+                                        className="p-1.5 md:p-2.5 hover:bg-red-500/10 text-muted-foreground hover:text-red-400 rounded-full transition-colors active:scale-95"
+                                    >
+                                        <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
+                                    </button>
+                                    <button onClick={() => handleCloseRef.current?.()} className="p-1.5 md:p-2.5 hover:bg-white/10 rounded-full transition-colors active:scale-95 ml-0.5 md:ml-2">
+                                        <X className="w-5 h-5 md:w-6 md:h-6" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Mobile Toolbar (Options) moved to the top of standard portrait header */}
+                            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-1.5 border-t border-white/5 mt-1">
+                                <ToolbarButton icon={Type} label={language === 'es' ? "Texto" : "Text"} onClick={() => addBlock('text')} />
+                                <ToolbarButton icon={CheckSquare} label={language === 'es' ? "Lista" : "Task List"} onClick={() => addBlock('task-list')} />
+                                <ToolbarButton icon={TableIcon} label={language === 'es' ? "Tabla" : "Table"} onClick={() => addBlock('table')} />
+                                <ToolbarButton icon={ImageIcon} label={language === 'es' ? "Imagen" : "Image"} onClick={() => addBlock('image')} />
+                                <ToolbarButton icon={PenTool} label={language === 'es' ? "Dibujo" : "Drawing"} onClick={() => addBlock('drawing')} />
+                                <ToolbarButton icon={SeparatorHorizontal} label={language === 'es' ? "Separador" : "Separator"} onClick={() => addBlock('separator')} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+
+                {/* Content */}
+                <div
+                    ref={contentContainerRef}
+                    onScroll={handleScroll}
+                    className="flex-1 overflow-y-auto p-5 md:p-8 space-y-2"
+                >
+
+                    {blocks.length === 0 && (
+                        <div className="text-center text-muted-foreground mt-20 italic">
+                            {language === 'es' ? "Comienza añadiendo un bloque desde la barra superior." : "Start by adding a block from the toolbar above."}
+                        </div>
+                    )}
+                    <AnimatePresence initial={false} mode="popLayout">
+                        {blocks.filter(b => b && typeof b === 'object' && b.id).map((block, idx) => (
+                            <BlockWrapper
+                                key={block.id}
+                                block={block}
+                                idx={idx}
+                                isFirst={idx === 0}
+                                isLast={idx === blocks.length - 1}
+                                language={language}
+                                moveBlock={moveBlock}
+                                removeBlock={removeBlock}
+                                updateBlock={updateBlock}
+                                handleImageClick={handleImageClick}
+                                handleWrapperFocus={handleWrapperFocus}
+                                handleWrapperBlur={handleWrapperBlur}
+                                autoFocus={idx === 0 && note.title === ''}
+                            />
+                        ))}
+                    </AnimatePresence>
+                </div>
+            </div>
+            <ConfirmationDialog
+                isOpen={isDeleting}
+                onClose={() => setIsDeleting(false)}
+                onConfirm={() => {
+                    skipSaveRef.current = true
+                    deleteNote(note.id)
+                    showToast(language === 'es' ? "Nota eliminada" : "Note deleted", "info")
+                    onClose()
+                }}
+                title={language === 'es' ? '¿Eliminar esta nota?' : 'Delete this note?'}
+                message={language === 'es' ? 'Esta nota se eliminará permanentemente.' : 'This note will be permanently deleted.'}
+            />
+
+            {/* Keyboard Floating Toolbar */}
+            <AnimatePresence>
+                {isKeyboardToolbarVisible && (
+                    <motion.div
+                        initial={{ y: "100%", opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: "100%", opacity: 0 }}
+                        transition={{ type: "spring", damping: 26, stiffness: 320 }}
+                        style={{ bottom: `${viewportOffset}px` }}
+                        className="fixed left-0 right-0 z-50 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-t border-zinc-200 dark:border-white/10 p-2 flex items-center justify-between shadow-2xl"
+                    >
+                        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-0.5 pr-2">
+                            {/* Block Management Group */}
+                            {activeBlockId && (
+                                <>
+                                    <button
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            const idx = blocks.findIndex(b => b.id === activeBlockId);
+                                            if (idx > 0) moveBlock(idx, 'up');
+                                        }}
+                                        disabled={blocks.findIndex(b => b.id === activeBlockId) === 0}
+                                        className="p-1.5 rounded-md text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shrink-0"
+                                        title={language === 'es' ? "Subir Bloque" : "Move Block Up"}
+                                    >
+                                        <ChevronUp className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            const idx = blocks.findIndex(b => b.id === activeBlockId);
+                                            if (idx !== -1 && idx < blocks.length - 1) moveBlock(idx, 'down');
+                                        }}
+                                        disabled={blocks.findIndex(b => b.id === activeBlockId) === blocks.length - 1}
+                                        className="p-1.5 rounded-md text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shrink-0"
+                                        title={language === 'es' ? "Bajar Bloque" : "Move Block Down"}
+                                    >
+                                        <ChevronDown className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            if (activeBlockId) {
+                                                removeBlock(activeBlockId);
+                                                setActiveBlockId(null);
+                                                setIsKeyboardToolbarVisible(false);
+                                            }
+                                        }}
+                                        className="p-1.5 rounded-md text-red-500 hover:bg-red-500/10 transition-all active:scale-95 shrink-0"
+                                        title={language === 'es' ? "Eliminar Bloque" : "Delete Block"}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                    <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+                                </>
+                            )}
+
+                            {/* Headings Group */}
+                            <button
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    applyHeading('h1');
+                                }}
+                                className={`px-3 py-1.5 rounded-md text-xs font-extrabold transition-all active:scale-95 shrink-0 ${formatStates.h1
+                                        ? "bg-purple-600/20 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/30"
+                                        : "text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10"
+                                    }`}
+                                title="H1"
+                            >
+                                H1
+                            </button>
+                            <button
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    applyHeading('h2');
+                                }}
+                                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all active:scale-95 shrink-0 ${formatStates.h2
+                                        ? "bg-purple-600/20 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/30"
+                                        : "text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10"
+                                    }`}
+                                title="H2"
+                            >
+                                H2
+                            </button>
+                            <button
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    applyHeading('h3');
+                                }}
+                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all active:scale-95 shrink-0 ${formatStates.h3
+                                        ? "bg-purple-600/20 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/30"
+                                        : "text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10"
+                                    }`}
+                                title="H3"
+                            >
+                                H3
+                            </button>
+
+                            <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
+                            {/* Formatting Group */}
+                            <FormatButton icon={Bold} label="Negrita" onClick={() => applyFormat('bold')} active={formatStates.bold} />
+                            <FormatButton icon={Italic} label="Cursiva" onClick={() => applyFormat('italic')} active={formatStates.italic} />
+                            <FormatButton icon={Underline} label="Subrayado" onClick={() => applyFormat('underline')} active={formatStates.underline} />
+
+                            <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
+                            {/* Alignment Group */}
+                            <FormatButton icon={AlignLeft} label="Alinear Izquierda" onClick={() => applyFormat('justifyLeft')} active={formatStates.justifyLeft} />
+                            <FormatButton icon={AlignCenter} label="Centrar" onClick={() => applyFormat('justifyCenter')} active={formatStates.justifyCenter} />
+                            <FormatButton icon={AlignRight} label="Alinear Derecha" onClick={() => applyFormat('justifyRight')} active={formatStates.justifyRight} />
+
+                            <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
+                            {/* Lists Group */}
+                            <FormatButton icon={List} label="Viñetas" onClick={() => applyFormat('insertUnorderedList')} active={formatStates.insertUnorderedList} />
+                            <FormatButton icon={ListOrdered} label="Numeración" onClick={() => applyFormat('insertOrderedList')} active={formatStates.insertOrderedList} />
+
+                            <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
+                            {/* Highlighters Group */}
+                            <span className="text-[9px] uppercase font-bold text-zinc-500 dark:text-white/40 tracking-wider shrink-0 mr-1">{language === 'es' ? "Resaltar:" : "Highlight:"}</span>
+                            <HighlightButton color="#fef08a" label={language === 'es' ? "Amarillo" : "Yellow"} onClick={() => applyFormat('backColor', '#fef08a')} />
+                            <HighlightButton color="#bbf7d0" label={language === 'es' ? "Verde" : "Green"} onClick={() => applyFormat('backColor', '#bbf7d0')} />
+                            <HighlightButton color="#bfdbfe" label={language === 'es' ? "Azul" : "Blue"} onClick={() => applyFormat('backColor', '#bfdbfe')} />
+                            <HighlightButton color="#fecaca" label={language === 'es' ? "Rojo" : "Red"} onClick={() => applyFormat('backColor', '#fecaca')} />
+                            <HighlightButton color="#e9d5ff" label={language === 'es' ? "Morado" : "Purple"} onClick={() => applyFormat('backColor', '#e9d5ff')} />
+                            <FormatButton icon={Eraser} label={language === 'es' ? "Borrar" : "Clear"} onClick={() => applyFormat('backColor', 'transparent')} />
+                        </div>
+
+                        {/* Close Button */}
+                        <button
+                            onClick={() => {
+                                (document.activeElement as HTMLElement)?.blur();
+                                setIsKeyboardToolbarVisible(false);
+                            }}
+                            className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-white/10 text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white transition-all active:scale-95 shrink-0 ml-1 border-l border-zinc-200 dark:border-white/10 pl-2.5"
+                            title="Cerrar"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            {fullscreenImageUrl && (
+                <div
+                    className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setFullscreenImageUrl(null)}
+                >
+                    <button
+                        className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white transition-colors"
+                        onClick={() => setFullscreenImageUrl(null)}
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                    <img
+                        src={getLocalImageSrc(fullscreenImageUrl || '')}
+                        alt="Fullscreen attachment"
+                        className="max-w-full max-h-[90vh] object-contain rounded-xl animate-in zoom-in-95 duration-200"
+                    />
+                </div>
+            )}
+        </div>
+    )
+}
+
+function ToolbarButton({ icon: Icon, label, onClick }: { icon: any, label: string, onClick: () => void }) {
+    return (
+        <button
+            onClick={onClick}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-white/10 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+        >
+            <Icon className="w-4 h-4" />
+            {label}
+        </button>
+    )
+}
+
+// Sub-components for blocks (Inline for simplicity now, could separate)
+
+function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange, onImageClick }: any) {
+    const [showControls, setShowControls] = useState(true);
+    const hasImage = typeof block.content === 'string' && block.content;
+    const isDownloading = block.isDownloading;
+    const isSynced = !!(block.driveFileId && hasImage && !isDownloading);
+    const lastTapRef = useRef(0);
+
+    // Memoize the converted src so convertFileSrc doesn't run on every render
+    const imageSrc = React.useMemo(
+        () => hasImage ? getLocalImageSrc(block.content) : '',
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [block.content]
+    );
+
+    const handleImageTap = (e: React.MouseEvent | React.TouchEvent) => {
+        if (!isDownloading) {
+            onImageClick?.(block.content);
+        }
+    };
+
+    useEffect(() => {
+        if (hasImage && !isDownloading) {
+            setShowControls(true);
+            const timer = setTimeout(() => {
+                setShowControls(false);
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [hasImage, block.content, isDownloading]);
+
+    return (
+        <>
+            <div
+                className={`relative group rounded-xl flex flex-col items-center justify-center transition-all ${hasImage || isDownloading
+                        ? 'p-0 bg-transparent border-none min-h-[200px]'
+                        : 'border-2 border-dashed border-white/10 p-4 min-h-[200px] bg-black/20'
+                    }`}
+                onContextMenu={(e) => {
+                    if (hasImage && !isDownloading) {
+                        e.preventDefault();
+                        setShowControls(true);
+                        setTimeout(() => setShowControls(false), 3000);
+                    }
+                }}
+            >
+                {/* Compact floating overlay for mobile image */}
+                {showControls && (hasImage || isDownloading) && (
+                    <div className="absolute top-2 right-2 flex gap-1 md:hidden bg-white/90 dark:bg-zinc-950/80 backdrop-blur rounded-lg p-0.5 border border-zinc-200 dark:border-white/10 z-10 animate-in fade-in duration-200">
+                        <button
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!isFirst) moveBlock(idx, 'up');
+                            }}
+                            disabled={isFirst}
+                            className="p-1 text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white disabled:opacity-30"
+                            title="Subir"
+                        >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!isLast) moveBlock(idx, 'down');
+                            }}
+                            disabled={isLast}
+                            className="p-1 text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white disabled:opacity-30"
+                            title="Bajar"
+                        >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                removeBlock(block.id);
+                            }}
+                            className="p-1 text-red-500 hover:text-red-400"
+                            title="Eliminar"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                )}
+
+                {isDownloading ? (
+                    <div className="flex flex-col items-center justify-center w-full min-h-[200px] bg-black/20 rounded-2xl animate-pulse">
+                        <ImageIcon className="w-12 h-12 text-white/20 mb-3 animate-bounce" />
+                        <span className="text-white/40 text-sm font-medium">Downloading image...</span>
+                    </div>
+                ) : hasImage ? (
+                    <div className="relative flex justify-center w-full">
+                        <img
+                            src={imageSrc}
+                            alt="Note attachment"
+                            className="max-h-[600px] max-w-full rounded-2xl cursor-pointer shadow-sm"
+                            onClick={handleImageTap}
+                        />
+                        {/* Sync status badge */}
+                        {isSynced && (
+                            <div
+                                className="absolute top-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-2 py-0.5 pointer-events-none"
+                                title="Synced with Drive"
+                            >
+                                <Cloud className="w-3 h-3 text-emerald-400" />
+                                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="text-center">
+                        <ImageIcon className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground mb-4">Upload an image</p>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            id={`file-${block.id}`}
+                            onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) {
+                                    const reader = new FileReader()
+                                    reader.onloadend = async () => {
+                                        const base64 = reader.result as string;
+                                        const { saveBase64ImageToFile } = await import('@/lib/image-utils');
+                                        const uri = await saveBase64ImageToFile(base64);
+                                        const finalContent = uri || base64;
+                                        
+                                        // [DEBUG] Log the block exactly as requested by the user
+                                        console.log('[DEBUG] Bloque de imagen insertado. Content:', finalContent, 'URI original:', uri);
+                                        
+                                        onChange(finalContent);
+                                    }
+                                    reader.readAsDataURL(file)
+                                }
+                            }}
+                        />
+                        <label htmlFor={`file-${block.id}`} className="px-4 py-2 bg-primary/20 text-primary rounded-lg cursor-pointer hover:bg-primary/30 transition-colors">
+                            Choose File
+                        </label>
+                    </div>
+                )}
+            </div>
+        </>
+    )
+}
+
+const BlockRenderer = React.memo(function BlockRenderer({
+    block,
+    idx,
+    isFirst,
+    isLast,
+    moveBlock,
+    removeBlock,
+    onChange,
+    autoFocus,
+    onFocus,
+    onBlur,
+    language,
+    onImageClick
+}: {
+    block: NoteBlock,
+    idx: number,
+    isFirst: boolean,
+    isLast: boolean,
+    moveBlock: (idx: number, direction: 'up' | 'down') => void,
+    removeBlock: (id: string) => void,
+    onChange: (c: any) => void,
+    autoFocus?: boolean,
+    onFocus?: () => void,
+    onBlur?: () => void,
+    language: string,
+    onImageClick?: (url: string) => void
+}) {
+    try {
+        if (!block || typeof block !== 'object' || !block.id) return <div className="p-2 border border-red-500/20 bg-red-500/5 rounded text-red-400 text-xs">Invalid Block Structure</div>
+
+        if (block.type === 'text') {
+            return (
+                <RichTextEditor
+                    content={typeof block.content === 'string' ? block.content : ''}
+                    onChange={onChange}
+                    activeBlockId={block.id}
+                    onFocus={onFocus}
+                    onBlur={onBlur}
+                />
+            )
+        }
+
+        if (block.type === 'task-list') {
+            let title = ''
+            let items: any[] = []
+            if (block.content && typeof block.content === 'object' && !Array.isArray(block.content)) {
+                title = block.content.title || ''
+                items = Array.isArray(block.content.items) ? block.content.items : []
+            } else {
+                items = Array.isArray(block.content) ? block.content : []
+            }
+
+            const toggle = (id: string) => {
+                const newItems = items.map((i: any) => (i && typeof i === 'object') ? (i.id === id ? { ...i, checked: !i.checked } : i) : i)
+                onChange({ title, items: newItems })
+            }
+            const updateText = (id: string, text: string) => {
+                const newItems = items.map((i: any) => (i && typeof i === 'object') ? (i.id === id ? { ...i, text } : i) : i)
+                onChange({ title, items: newItems })
+            }
+            const updateTitle = (newTitle: string) => {
+                onChange({ title: newTitle, items })
+            }
+            const addItem = () => {
+                const cleanItems = items.filter(i => i && typeof i === 'object')
+                const newItems = [...cleanItems, { id: Math.random().toString(), text: '', checked: false }]
+                onChange({ title, items: newItems })
+            }
+            const insertItemAfter = (id: string) => {
+                const cleanItems = items.filter(i => i && typeof i === 'object')
+                const index = cleanItems.findIndex(i => i.id === id)
+                if (index !== -1) {
+                    const newItems = [...cleanItems]
+                    newItems.splice(index + 1, 0, { id: Math.random().toString(), text: '', checked: false })
+                    onChange({ title, items: newItems })
+                    // Focus logic could be added, but react handles focus loss so user just taps or we can use ref
+                }
+            }
+            const removeItem = (id: string) => {
+                const newItems = items.filter((i: any) => i && typeof i === 'object' && i.id !== id)
+                onChange({ title, items: newItems })
+            }
+
+            return (
+                <div className="space-y-2">
+                    {/* Optional Title Input (RichText compatible) */}
+                    <RichTaskTitle
+                        content={title}
+                        onChange={updateTitle}
+                        placeholder={language === 'es' ? "Título de la lista (opcional)..." : "List title (optional)..."}
+                        onFocus={onFocus}
+                        onBlur={onBlur}
+                    />
+
+                    {items.map((item: any, itemIdx: number) => {
+                        if (!item || typeof item !== 'object') return null;
+                        return (
+                            <div key={item.id || itemIdx} className="flex items-center gap-3">
+                                <button
+                                    onClick={() => toggle(item.id)}
+                                    className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${item.checked ? 'bg-primary text-black' : 'border border-muted-foreground bg-transparent'}`}
+                                >
+                                    {item.checked && <Check className="w-3.5 h-3.5" />}
+                                </button>
+                                <RichTaskItem
+                                    content={typeof item.text === 'string' ? item.text : ''}
+                                    onChange={(newText) => updateText(item.id, newText)}
+                                    onEnter={() => insertItemAfter(item.id)}
+                                    placeholder={language === 'es' ? "Elemento de tarea..." : "To-do item..."}
+                                    checked={item.checked}
+                                    onFocus={onFocus}
+                                    onBlur={onBlur}
+                                />
+                                <button onClick={() => insertItemAfter(item.id)} className="text-primary hover:text-primary/70 transition-colors mr-1" title={language === 'es' ? "Añadir debajo" : "Add item below"}>
+                                    <Plus className="w-5 h-5" />
+                                </button>
+                                <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-red-500">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        );
+                    })}
+                    <button onClick={addItem} className="text-sm text-primary hover:underline pl-8">
+                        {language === 'es' ? "+ Añadir elemento" : "+ Add Item"}
+                    </button>
+                </div>
+            )
+        }
+
+        if (block.type === 'table') {
+            const content = block.content || { headers: [], rows: [] }
+            const headers = Array.isArray(content.headers) ? content.headers : []
+            const rows = Array.isArray(content.rows) ? content.rows : []
+
+            const updateHeader = (idx: number, val: string) => {
+                const newHeaders = [...headers]
+                newHeaders[idx] = val
+                onChange({ headers: newHeaders, rows })
+            }
+            const updateCell = (rIdx: number, cIdx: number, val: string) => {
+                const newRows = [...rows]
+                newRows[rIdx] = [...(newRows[rIdx] || [])]
+                newRows[rIdx][cIdx] = val
+                onChange({ headers, rows: newRows })
+            }
+            const addRow = () => {
+                onChange({ headers, rows: [...rows, new Array(headers.length).fill('')] })
+            }
+            const addColumn = () => {
+                const newHeaders = [...headers, `Col ${headers.length + 1}`]
+                const newRows = rows.map((r: string[]) => [...r, ''])
+                onChange({ headers: newHeaders, rows: newRows })
+            }
+            const removeRow = () => {
+                if (rows.length > 1) {
+                    onChange({ headers, rows: rows.slice(0, -1) })
+                }
+            }
+            const removeColumn = () => {
+                if (headers.length > 1) {
+                    const newHeaders = headers.slice(0, -1)
+                    const newRows = rows.map((r: string[]) => r.slice(0, -1))
+                    onChange({ headers: newHeaders, rows: newRows })
+                }
+            }
+
+            return (
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse border border-black/20 dark:border-white/10">
+                        <thead>
+                            <tr>
+                                {headers.map((h: string, i: number) => (
+                                    <th key={i} className="border border-black/20 dark:border-white/10 p-2 bg-black/5 dark:bg-white/5">
+                                        <input
+                                            className="bg-transparent text-center font-bold w-full outline-none"
+                                            value={typeof h === 'string' ? h : ''}
+                                            onChange={(e) => updateHeader(i, e.target.value)}
+                                            onFocus={onFocus}
+                                            onBlur={onBlur}
+                                        />
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((row: string[], rIdx: number) => (
+                                <tr key={rIdx}>
+                                    {(Array.isArray(row) ? row : []).map((cell: string, cIdx: number) => (
+                                        <td key={cIdx} className="border border-black/20 dark:border-white/10 p-2">
+                                            <input
+                                                className="bg-transparent w-full outline-none"
+                                                value={typeof cell === 'string' ? cell : ''}
+                                                onChange={(e) => updateCell(rIdx, cIdx, e.target.value)}
+                                                onFocus={onFocus}
+                                                onBlur={onBlur}
+                                            />
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    <div className="flex flex-wrap items-center gap-4 mt-2">
+                        <button onClick={addRow} className="text-xs text-primary hover:underline">+ {language === 'es' ? "Añadir Fila" : "Add Row"}</button>
+                        <button onClick={addColumn} className="text-xs text-primary hover:underline">+ {language === 'es' ? "Añadir Columna" : "Add Column"}</button>
+                        {rows.length > 1 && (
+                            <button onClick={removeRow} className="text-xs text-red-500/70 hover:text-red-500 hover:underline">- {language === 'es' ? "Quitar Fila" : "Remove Row"}</button>
+                        )}
+                        {headers.length > 1 && (
+                            <button onClick={removeColumn} className="text-xs text-red-500/70 hover:text-red-500 hover:underline">- {language === 'es' ? "Quitar Columna" : "Remove Col"}</button>
+                        )}
+                    </div>
+                </div>
+            )
+        }
+
+        if (block.type === 'image') {
+            return (
+                <ImageBlockRenderer
+                    block={block}
+                    idx={idx}
+                    isFirst={isFirst}
+                    isLast={isLast}
+                    moveBlock={moveBlock}
+                    removeBlock={removeBlock}
+                    onChange={onChange}
+                    onImageClick={onImageClick}
+                />
+            )
+        }
+
+        if (block.type === 'drawing') {
+            return (
+                <div className="relative w-full">
+                    <p className="text-xs font-semibold text-muted-foreground/60 mb-2">{language === 'es' ? "Lienzo de dibujo" : "Drawing Canvas"}</p>
+                    <div className="h-64 w-full bg-black/30 border border-white/10 rounded-xl relative overflow-hidden">
+                        <DrawingCanvas initialData={typeof block.content === 'string' ? block.content : ''} onSave={onChange} />
+                    </div>
+                </div>
+            )
+        }
+
+        if (block.type === 'separator') {
+            return (
+                <div className="w-full py-3 flex items-center justify-center">
+                    <hr className="w-full border-t border-zinc-200 dark:border-white/10" />
+                </div>
+            )
+        }
+
+        return <div>Unknown block type: {String(block.type)}</div>
+    } catch (e: any) {
+        console.error("Error rendering block:", e, block)
+        return (
+            <div className="p-4 border border-red-500/50 rounded bg-red-500/10 text-red-500">
+                Error rendering block: {e?.message || String(e)}
+            </div>
+        )
+    }
+});
+
+const BlockWrapper = React.memo(({
+    block,
+    idx,
+    isFirst,
+    isLast,
+    language,
+    moveBlock,
+    removeBlock,
+    updateBlock,
+    handleImageClick,
+    handleWrapperFocus,
+    handleWrapperBlur,
+    autoFocus
+}: {
+    block: NoteBlock;
+    idx: number;
+    isFirst: boolean;
+    isLast: boolean;
+    language: string;
+    moveBlock: (idx: number, direction: 'up' | 'down') => void;
+    removeBlock: (id: string) => void;
+    updateBlock: (id: string, content: any) => void;
+    handleImageClick: (url: string) => void;
+    handleWrapperFocus: (id: string, type: BlockType) => void;
+    handleWrapperBlur: (currentTarget: HTMLElement) => void;
+    autoFocus: boolean;
+}) => {
+    return (
+        <motion.div
+            id={`block-${block.id}`}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -20 }}
+            transition={{ duration: 0.2 }}
+            tabIndex={0}
+            onFocus={() => handleWrapperFocus(block.id, block.type)}
+            onClick={() => handleWrapperFocus(block.id, block.type)}
+            onBlur={(e) => handleWrapperBlur(e.currentTarget)}
+            className="group relative flex flex-col gap-2 w-full p-2.5 rounded-xl border border-transparent hover:border-white/5 hover:bg-white/[0.01] focus:border-white/10 focus:bg-white/[0.02] focus-within:border-white/10 focus-within:bg-white/[0.02] transition-all outline-none transform-gpu render-optimized"
+        >
+            <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 flex items-center justify-between border-b border-white/5 pb-1.5 text-[10px] font-bold text-muted-foreground/60 dark:text-white/70 uppercase tracking-widest select-none transition-opacity duration-200">
+                <span className="flex items-center gap-1.5">
+                    {getBlockIconAndLabel(block.type, language)}
+                </span>
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => moveBlock(idx, 'up')}
+                        disabled={isFirst}
+                        className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors active:scale-90"
+                        title={language === 'es' ? "Subir bloque" : "Move block up"}
+                    >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                        onClick={() => moveBlock(idx, 'down')}
+                        disabled={isLast}
+                        className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors active:scale-90"
+                        title={language === 'es' ? "Bajar bloque" : "Move block down"}
+                    >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                        onClick={() => removeBlock(block.id)}
+                        className="p-1 text-muted-foreground hover:text-red-400 transition-colors active:scale-90 ml-1"
+                        title={language === 'es' ? "Eliminar bloque" : "Delete block"}
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+            </div>
+            <div className="pt-1">
+                <BlockRenderer
+                    block={block}
+                    idx={idx}
+                    isFirst={isFirst}
+                    isLast={isLast}
+                    moveBlock={moveBlock}
+                    removeBlock={removeBlock}
+                    onChange={(content) => updateBlock(block.id, content)}
+                    autoFocus={autoFocus}
+                    language={language}
+                    onImageClick={handleImageClick}
+                    onFocus={() => handleWrapperFocus(block.id, block.type)}
+                />
+            </div>
+        </motion.div>
+    );
+}, (prevProps, nextProps) => {
+    return prevProps.block === nextProps.block &&
+        prevProps.idx === nextProps.idx &&
+        prevProps.isFirst === nextProps.isFirst &&
+        prevProps.isLast === nextProps.isLast &&
+        prevProps.language === nextProps.language &&
+        prevProps.moveBlock === nextProps.moveBlock &&
+        prevProps.removeBlock === nextProps.removeBlock &&
+        prevProps.updateBlock === nextProps.updateBlock &&
+        prevProps.handleImageClick === nextProps.handleImageClick &&
+        prevProps.handleWrapperFocus === nextProps.handleWrapperFocus &&
+        prevProps.handleWrapperBlur === nextProps.handleWrapperBlur &&
+        prevProps.autoFocus === nextProps.autoFocus;
+});
+BlockWrapper.displayName = 'BlockWrapper';
+
+function DrawingCanvas({ initialData, onSave }: { initialData: string, onSave: (d: string) => void }) {
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+    const [isDrawing, setIsDrawing] = useState(false)
+
+    // Load initial data
+    useEffect(() => {
+        const canvas = canvasRef.current
+        if (canvas && initialData) {
+            const ctx = canvas.getContext('2d')
+            const img = new Image()
+            img.onload = () => ctx?.drawImage(img, 0, 0)
+            img.src = initialData
+        }
+    }, [initialData])
+
+    const startDraw = (e: any) => {
+        const canvas = canvasRef.current
+        if (!canvas) return
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+
+        const rect = canvas.getBoundingClientRect()
+        ctx.beginPath()
+        ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top)
+        setIsDrawing(true)
+    }
+
+    const draw = (e: any) => {
+        if (!isDrawing) return
+        const canvas = canvasRef.current
+        if (!canvas) return
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+
+        const rect = canvas.getBoundingClientRect()
+        ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top)
+        ctx.strokeStyle = '#fff'
+        ctx.lineWidth = 2
+        ctx.stroke()
+    }
+
+    const stopDraw = () => {
+        if (!isDrawing) return
+        setIsDrawing(false)
+        const canvas = canvasRef.current
+        if (canvas) {
+            onSave(canvas.toDataURL())
+        }
+    }
+
+    return (
+        <canvas
+            ref={canvasRef}
+            width={800}
+            height={400}
+            className="w-full h-full cursor-crosshair touch-none"
+            onMouseDown={startDraw}
+            onMouseMove={draw}
+            onMouseUp={stopDraw}
+            onMouseLeave={stopDraw}
+        />
+    )
+}
+
+function FormatButton({ icon: Icon, label, onClick, active }: { icon: any, label: string, onClick: () => void, active?: boolean }) {
+    return (
+        <button
+            onMouseDown={(e) => {
+                e.preventDefault();
+                onClick();
+            }}
+            className={`p-1.5 rounded transition-all active:scale-95 shrink-0 ${active
+                    ? "bg-purple-600/20 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/30 font-bold"
+                    : "hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                }`}
+            title={label}
+        >
+            <Icon className="w-4 h-4" />
+        </button>
+    );
+}
+
+function HighlightButton({ color, label, onClick }: { color: string, label: string, onClick: () => void }) {
+    return (
+        <button
+            onMouseDown={(e) => {
+                e.preventDefault();
+                onClick();
+            }}
+            className="w-5 h-5 rounded-full border border-zinc-300 dark:border-white/20 transition-transform hover:scale-110 active:scale-90 shrink-0"
+            style={{ backgroundColor: color }}
+            title={label}
+        />
+    );
+}
+
+function linkifyHTML(html: string): string {
+    if (!html) return '';
+    // Split the HTML by anchor tags to avoid touching existing links
+    const parts = html.split(/(<a\b[^>]*>[\s\S]*?<\/a>)/gi);
+    const urlRegex = /(https?:\/\/(?:[^\s<"'](?!&(?:nbsp|quot|apos|lt|gt);))+)/gi;
+
+    return parts.map((part, index) => {
+        // If index is odd, it's an <a> tag, return it as is
+        if (index % 2 !== 0) {
+            return part;
+        }
+        // If index is even, it's plain HTML text, so linkify it
+        return part.replace(urlRegex, (url) => {
+            // Trim trailing punctuation from the url and put it outside the <a> tag
+            const trailingPunctuationRegex = /[.,!?;:]+$/;
+            const match = url.match(trailingPunctuationRegex);
+            if (match) {
+                const punctuation = match[0];
+                const cleanUrl = url.slice(0, -punctuation.length);
+                return `<a href="${cleanUrl}" target="_blank" class="text-primary underline hover:opacity-80">${cleanUrl}</a>${punctuation}`;
+            }
+            return `<a href="${url}" target="_blank" class="text-primary underline hover:opacity-80">${url}</a>`;
+        });
+    }).join('');
+}
+
+function stripInlineColors(html: string): string {
+    if (!html) return '';
+    if (typeof window === 'undefined') return html;
+
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        // Remove color styles from all elements, preserving others like background-color
+        const styledElements = doc.querySelectorAll('[style]');
+        styledElements.forEach(el => {
+            const style = el.getAttribute('style');
+            if (style) {
+                const cleanStyles = style.split(';')
+                    .map(s => s.trim())
+                    .filter(s => {
+                        const lower = s.toLowerCase();
+                        return !lower.startsWith('color') && !lower.includes('text-decoration-color') && !lower.includes('-webkit-text-fill-color');
+                    })
+                    .join('; ');
+                if (cleanStyles) {
+                    el.setAttribute('style', cleanStyles);
+                } else {
+                    el.removeAttribute('style');
+                }
+            }
+        });
+
+        // Replace <font> tags with their child nodes
+        const fontElements = doc.querySelectorAll('font');
+        fontElements.forEach(font => {
+            const fragment = doc.createDocumentFragment();
+            while (font.firstChild) {
+                fragment.appendChild(font.firstChild);
+            }
+            font.parentNode?.replaceChild(fragment, font);
+        });
+
+        return doc.body.innerHTML;
+    } catch (e) {
+        console.error("Error sanitizing HTML colors:", e);
+        return html;
+    }
+}
+
+function cleanContainerStyle(el: HTMLDivElement | null) {
+    if (!el) return;
+    try {
+        const style = el.getAttribute('style');
+        if (style) {
+            const cleanStyles = style.split(';')
+                .map(s => s.trim())
+                .filter(s => {
+                    const lower = s.toLowerCase();
+                    return !lower.startsWith('color') && !lower.includes('text-decoration-color');
+                })
+                .join('; ');
+            if (cleanStyles) {
+                if (el.getAttribute('style') !== cleanStyles) {
+                    el.setAttribute('style', cleanStyles);
+                }
+            } else {
+                el.removeAttribute('style');
+            }
+        }
+    } catch (e) {
+        console.error("Error cleaning container style:", e);
+    }
+}
+
+const RichTaskTitle = React.memo(function RichTaskTitle({ content, onChange, onFocus, onBlur, placeholder }: { content: string, onChange: (c: string) => void, onFocus?: () => void, onBlur?: () => void, placeholder?: string }) {
+    const editorRef = useRef<HTMLDivElement>(null);
+    const isFirstLoad = useRef(true);
+
+    useEffect(() => {
+        if (editorRef.current) {
+            if (document.activeElement === editorRef.current && !isFirstLoad.current) {
+                return;
+            }
+            cleanContainerStyle(editorRef.current);
+            const cleaned = stripInlineColors(content || '');
+            if (isFirstLoad.current || editorRef.current.innerHTML !== cleaned) {
+                editorRef.current.innerHTML = cleaned;
+                isFirstLoad.current = false;
+            }
+        }
+    }, [content]);
+
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handleInput = () => {
+        if (editorRef.current) {
+            const newContent = editorRef.current.innerHTML;
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            timeoutRef.current = setTimeout(() => {
+                onChange(newContent);
+            }, 500);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            if (editorRef.current) onChange(editorRef.current.innerHTML);
+        }
+    };
+
+    return (
+        <div
+            ref={editorRef}
+            contentEditable
+            onInput={handleInput}
+            onKeyDown={handleKeyDown}
+            onFocus={onFocus}
+            onBlur={() => {
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                if (editorRef.current) {
+                    cleanContainerStyle(editorRef.current);
+                    const cleaned = stripInlineColors(editorRef.current.innerHTML);
+                    if (editorRef.current.innerHTML !== cleaned) {
+                        editorRef.current.innerHTML = cleaned;
+                    }
+                    onChange(editorRef.current.innerHTML); // Flush immediately on blur
+                }
+                if (onBlur) onBlur();
+            }}
+            {...({ placeholder: placeholder || "Título..." } as any)}
+            className="w-full bg-transparent border-none outline-none font-bold text-lg mb-2 text-foreground relative empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 before:absolute before:pointer-events-none rich-text-editor rich-task-title"
+        />
+    );
+});
+
+const RichTaskItem = React.memo(function RichTaskItem({ content, onChange, onEnter, onFocus, onBlur, placeholder, checked }: { content: string, onChange: (c: string) => void, onEnter?: () => void, onFocus?: () => void, onBlur?: () => void, placeholder?: string, checked: boolean }) {
+    const editorRef = useRef<HTMLDivElement>(null);
+    const isFirstLoad = useRef(true);
+
+    useEffect(() => {
+        if (editorRef.current) {
+            if (document.activeElement === editorRef.current && !isFirstLoad.current) {
+                return;
+            }
+            cleanContainerStyle(editorRef.current);
+            const cleaned = stripInlineColors(linkifyHTML(content || ''));
+            if (isFirstLoad.current || editorRef.current.innerHTML !== cleaned) {
+                editorRef.current.innerHTML = cleaned;
+                isFirstLoad.current = false;
+            }
+        }
+    }, [content]);
+
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handleInput = () => {
+        if (editorRef.current) {
+            const newContent = editorRef.current.innerHTML;
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            timeoutRef.current = setTimeout(() => {
+                onChange(newContent);
+            }, 500);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            if (editorRef.current) onChange(editorRef.current.innerHTML);
+            if (onEnter) onEnter();
+        }
+    };
+
+    const handlePaste = (e: React.ClipboardEvent) => {
+        const text = e.clipboardData.getData('text/plain');
+        const html = e.clipboardData.getData('text/html');
+        e.preventDefault();
+
+        let contentToInsert = '';
+        if (html) {
+            contentToInsert = stripInlineColors(html);
+        } else if (text) {
+            contentToInsert = linkifyHTML(text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+        }
+
+        document.execCommand('insertHTML', false, contentToInsert);
+        handleInput();
+    };
+
+    const handleClick = (e: React.MouseEvent) => {
+        const target = e.target as HTMLElement;
+        const anchor = target.closest('a');
+        if (anchor) {
+            const href = anchor.getAttribute('href');
+            if (href) {
+                e.preventDefault();
+                window.open(href, '_system');
+            }
+        }
+    };
+
+    return (
+        <div
+            ref={editorRef}
+            contentEditable
+            onInput={handleInput}
+            onKeyDown={handleKeyDown}
+            onFocus={onFocus}
+            onBlur={() => {
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                if (editorRef.current) {
+                    cleanContainerStyle(editorRef.current);
+                    const linkified = stripInlineColors(linkifyHTML(editorRef.current.innerHTML));
+                    if (editorRef.current.innerHTML !== linkified) {
+                        editorRef.current.innerHTML = linkified;
+                    }
+                    onChange(editorRef.current.innerHTML); // Flush immediately on blur
+                }
+                if (onBlur) onBlur();
+            }}
+            onPaste={handlePaste}
+            onClick={handleClick}
+            {...({ placeholder: placeholder || "Elemento..." } as any)}
+            className={`flex-1 bg-transparent border-none outline-none text-base text-foreground relative empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 before:absolute before:pointer-events-none rich-text-editor ${checked ? 'line-through text-muted-foreground/50' : ''}`}
+        />
+    );
+});
+
+const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, activeBlockId, onFocus, onBlur }: { content: string, onChange: (c: string) => void, activeBlockId: string, onFocus?: () => void, onBlur?: () => void }) {
+    const editorRef = useRef<HTMLDivElement>(null);
+    const isFirstLoad = useRef(true);
+
+    useEffect(() => {
+        isFirstLoad.current = true;
+    }, [activeBlockId]);
+
+    useEffect(() => {
+        if (editorRef.current) {
+            if (document.activeElement === editorRef.current && !isFirstLoad.current) {
+                return;
+            }
+            cleanContainerStyle(editorRef.current);
+            const cleaned = stripInlineColors(linkifyHTML(content || ''));
+            if (isFirstLoad.current || editorRef.current.innerHTML !== cleaned) {
+                editorRef.current.innerHTML = cleaned;
+                isFirstLoad.current = false;
+            }
+        }
+    }, [content]);
+
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handleInput = () => {
+        if (editorRef.current) {
+            const newContent = editorRef.current.innerHTML;
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            timeoutRef.current = setTimeout(() => {
+                onChange(newContent);
+            }, 500); // 500ms debounce
+        }
+    };
+
+    const handlePaste = (e: React.ClipboardEvent) => {
+        const text = e.clipboardData.getData('text/plain');
+        const html = e.clipboardData.getData('text/html');
+        e.preventDefault();
+
+        let contentToInsert = '';
+        if (html) {
+            contentToInsert = stripInlineColors(html);
+        } else if (text) {
+            contentToInsert = linkifyHTML(text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+        }
+
+        document.execCommand('insertHTML', false, contentToInsert);
+        handleInput();
+    };
+
+    const handleClick = (e: React.MouseEvent) => {
+        const target = e.target as HTMLElement;
+        const anchor = target.closest('a');
+        if (anchor) {
+            const href = anchor.getAttribute('href');
+            if (href) {
+                e.preventDefault();
+                window.open(href, '_system');
+            }
+        }
+    };
+
+    return (
+        <div
+            ref={editorRef}
+            contentEditable
+            onInput={handleInput}
+            onFocus={onFocus}
+            onBlur={() => {
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                if (editorRef.current) {
+                    cleanContainerStyle(editorRef.current);
+                    const linkified = stripInlineColors(linkifyHTML(editorRef.current.innerHTML));
+                    if (editorRef.current.innerHTML !== linkified) {
+                        editorRef.current.innerHTML = linkified;
+                    }
+                    onChange(editorRef.current.innerHTML); // Flush immediately on blur
+                }
+                if (onBlur) onBlur();
+            }}
+            onPaste={handlePaste}
+            onClick={handleClick}
+            {...({ placeholder: "Escribe algo aquí..." } as any)}
+            className="rich-text-editor w-full min-h-[30px] bg-transparent border-none outline-none text-base text-foreground relative empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 before:absolute before:pointer-events-none"
+        />
+    );
+});
+
+
+function getBlockIconAndLabel(type: BlockType, language: string) {
+    const isEs = language === 'es';
+    switch (type) {
+        case 'text':
+            return (
+                <>
+                    <Type className="w-3.5 h-3.5 text-blue-400" />
+                    <span>{isEs ? "Texto" : "Text"}</span>
+                </>
+            );
+        case 'task-list':
+            return (
+                <>
+                    <CheckSquare className="w-3.5 h-3.5 text-green-400" />
+                    <span>{isEs ? "Lista de tareas" : "Task List"}</span>
+                </>
+            );
+        case 'table':
+            return (
+                <>
+                    <TableIcon className="w-3.5 h-3.5 text-purple-400" />
+                    <span>{isEs ? "Tabla" : "Table"}</span>
+                </>
+            );
+        case 'image':
+            return (
+                <>
+                    <ImageIcon className="w-3.5 h-3.5 text-yellow-400" />
+                    <span>{isEs ? "Imagen" : "Image"}</span>
+                </>
+            );
+        case 'drawing':
+            return (
+                <>
+                    <PenTool className="w-3.5 h-3.5 text-orange-400" />
+                    <span>{isEs ? "Dibujo" : "Drawing"}</span>
+                </>
+            );
+        default:
+            return <span>{type}</span>;
+    }
+}

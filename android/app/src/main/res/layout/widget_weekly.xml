@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/widget_weekly_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Desglose de Compromiso Semanal"
+        android:textColor="@color/widget_text_primary"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_alignParentTop="true"
+        android:layout_toStartOf="@id/widget_weekly_clock"
+        android:layout_marginEnd="8dp"
+        android:maxLines="2" />
+
+    <ImageView
+        android:id="@+id/widget_weekly_clock"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentTop="true"
+        android:src="@drawable/ic_clock"
+        android:contentDescription="Clock" />
+
+    <ImageView
+        android:id="@+id/widget_weekly_chart"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/widget_weekly_title"
+        android:layout_marginTop="12dp"
+        android:scaleType="fitXY" />
+
+</RelativeLayout>
