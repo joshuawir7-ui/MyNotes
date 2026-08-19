@@ -15,6 +15,16 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
+import androidx.security.crypto.EncryptedSharedPreferences;
+import androidx.security.crypto.MasterKey;
+
+import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 
 public class ImageDownloadWorker extends Worker {
 
@@ -39,11 +49,10 @@ public class ImageDownloadWorker extends Worker {
             return Result.failure();
         }
 
-        SharedPreferences prefs = context.getSharedPreferences("CloudSync", Context.MODE_PRIVATE);
-        String token = prefs.getString("googleToken", null);
+        String token = getFreshAccessToken(context);
 
         if (token == null || token.isEmpty()) {
-            Log.e(TAG, "No Google Token found.");
+            Log.e(TAG, "No valid Google Token found or failed to refresh.");
             return Result.failure();
         }
 
@@ -101,5 +110,105 @@ public class ImageDownloadWorker extends Worker {
             Log.e(TAG, "Exception during image download", e);
             return Result.retry();
         }
+    }
+
+    private String getFreshAccessToken(Context context) {
+        try {
+            MasterKey masterKey = new MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build();
+
+            android.content.SharedPreferences encryptedPrefs = EncryptedSharedPreferences.create(
+                    context,
+                    "secure_auth_prefs",
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            );
+
+            String accessToken = encryptedPrefs.getString("google_access_token", null);
+            String refreshToken = encryptedPrefs.getString("google_refresh_token", null);
+            long expiryTime = encryptedPrefs.getLong("google_token_expiry", 0);
+
+            if (accessToken != null && System.currentTimeMillis() < (expiryTime - 5 * 60 * 1000)) {
+                return accessToken;
+            }
+
+            if (refreshToken == null) {
+                return null;
+            }
+
+            Log.d(TAG, "Token expired or expiring soon. Refreshing natively...");
+            return refreshGoogleAccessToken(context, encryptedPrefs, refreshToken);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error accessing EncryptedSharedPreferences", e);
+            return null;
+        }
+    }
+
+    private String refreshGoogleAccessToken(Context context, android.content.SharedPreferences encryptedPrefs, String refreshToken) {
+        try {
+            URL url = new URL("https://oauth2.googleapis.com/token");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            conn.setDoOutput(true);
+
+            String clientId = "309899943436-gp6o1oaqpij5qq6sal77f6dr15lh61fp.apps.googleusercontent.com";
+            String clientSecret = ""; // Agrega si tienes
+
+            StringBuilder params = new StringBuilder();
+            params.append("client_id=").append(URLEncoder.encode(clientId, "UTF-8"));
+            if (!clientSecret.isEmpty()) {
+                params.append("&client_secret=").append(URLEncoder.encode(clientSecret, "UTF-8"));
+            }
+            params.append("&refresh_token=").append(URLEncoder.encode(refreshToken, "UTF-8"));
+            params.append("&grant_type=refresh_token");
+
+            byte[] out = params.toString().getBytes(StandardCharsets.UTF_8);
+            conn.setFixedLengthStreamingMode(out.length);
+            OutputStream os = conn.getOutputStream();
+            os.write(out);
+            os.close();
+
+            int code = conn.getResponseCode();
+            if (code >= 200 && code < 300) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) sb.append(line);
+                reader.close();
+
+                JSONObject res = new JSONObject(sb.toString());
+                String newAccessToken = res.optString("access_token", null);
+                long expiresIn = res.optLong("expires_in", 3600);
+
+                if (newAccessToken != null) {
+                    encryptedPrefs.edit()
+                            .putString("google_access_token", newAccessToken)
+                            .putLong("google_token_expiry", System.currentTimeMillis() + (expiresIn * 1000))
+                            .apply();
+                    
+                    context.getSharedPreferences("CloudSync", Context.MODE_PRIVATE)
+                            .edit()
+                            .putString("googleToken", newAccessToken)
+                            .apply();
+
+                    Log.d(TAG, "Token refreshed successfully");
+                    return newAccessToken;
+                }
+            } else {
+                BufferedReader errorReader = new BufferedReader(new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8));
+                StringBuilder errorSb = new StringBuilder();
+                String errorLine;
+                while ((errorLine = errorReader.readLine()) != null) errorSb.append(errorLine);
+                errorReader.close();
+                Log.e(TAG, "Failed to refresh token: " + errorSb.toString());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Exception during token refresh", e);
+        }
+        return null;
     }
 }

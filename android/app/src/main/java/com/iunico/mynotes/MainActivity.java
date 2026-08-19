@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(WidgetSyncPlugin.class);
+        registerPlugin(CloudAuthPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Enable pinch-to-zoom controls

@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion"
 import { useStore, Note } from "@/lib/store"
+import { useShallow } from "zustand/react/shallow"
 import { useState, useEffect, useMemo, memo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Plus, StickyNote, Trash2, Calendar, ArrowUpAZ, ArrowDownAZ } from "lucide-react"
@@ -15,7 +16,7 @@ import { MobileContextMenu } from "@/components/ui/mobile-context-menu"
 import { getLocalImageSrc } from "@/lib/image-utils"
 
 export default function NotesPage() {
-    const notes = useStore(state => state.notes)
+    const notes = useStore(useShallow(state => state.notes))
     const addNote = useStore(state => state.addNote)
     const deleteNote = useStore(state => state.deleteNote)
     const loadAllNotes = useStore(state => state.loadAllNotes)

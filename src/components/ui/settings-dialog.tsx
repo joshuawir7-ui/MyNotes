@@ -248,6 +248,17 @@ export function SettingsDialog() {
                     isDemo: false
                 });
 
+                if (Capacitor.isNativePlatform() && result.serverAuthCode) {
+                    try {
+                        const { registerPlugin } = await import('@capacitor/core');
+                        const CloudAuth = registerPlugin('CloudAuth');
+                        await (CloudAuth as any).exchangeAndSaveTokens({ authCode: result.serverAuthCode });
+                        console.log("Tokens exchanged and saved securely via native plugin.");
+                    } catch (err) {
+                        console.error("Failed to exchange serverAuthCode natively", err);
+                    }
+                }
+
                 showNotif(
                     language === 'es' ? "Sesión Iniciada" : "Logged In",
                     language === 'es' ? `Bienvenido, ${name}` : `Welcome, ${name}`,

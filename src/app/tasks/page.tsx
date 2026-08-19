@@ -3,11 +3,13 @@
 import { getLocalImageSrc } from "@/lib/image-utils"
 
 import { motion, AnimatePresence } from "framer-motion"
+import { useShallow } from "zustand/react/shallow"
 import { useStore, RecurrenceType, Task, getLocalDateString } from "@/lib/store"
 import { useState, useRef, useEffect, useMemo, memo } from "react"
 import { Plus, Check, Trash2, Camera, X as XIcon, Edit2, Layers, ChevronRight, ChevronDown, History, Pin, Sparkles } from "lucide-react"
 import { WeeklyProgressChart } from "@/components/dashboard/weekly-progress-chart"
 import { Reveal } from "@/components/ui/reveal"
+import { Virtuoso } from "react-virtuoso"
 
 import { translations } from "@/lib/translations"
 import { CustomSelect } from "@/components/ui/custom-select"
@@ -40,7 +42,7 @@ const TourTooltip = ({
 };
 
 export default function TasksPage() {
-    const tasks = useStore(state => state.tasks)
+    const tasks = useStore(useShallow(state => state.tasks))
     const addTask = useStore(state => state.addTask)
     const toggleTask = useStore(state => state.toggleTask)
     const deleteTask = useStore(state => state.deleteTask)
@@ -52,7 +54,7 @@ export default function TasksPage() {
     const startTour = useStore(state => state.startTour)
     const tourCompleted = useStore(state => state.tourCompleted)
     const router = useRouter()
-    const taskGroups = useStore(state => state.taskGroups)
+    const taskGroups = useStore(useShallow(state => state.taskGroups))
     const addTaskGroup = useStore(state => state.addTaskGroup)
     const addTaskToGroup = useStore(state => state.addTaskToGroup)
     const toggleTaskInGroup = useStore(state => state.toggleTaskInGroup)
@@ -62,10 +64,10 @@ export default function TasksPage() {
     const unloadTasks = useStore(state => state.unloadTasks)
     const celebration = useStore(state => state.celebration)
     const clearCelebration = useStore(state => state.clearCelebration)
-    const notes = useStore(state => state.notes)
+    const notes = useStore(useShallow(state => state.notes))
     const updateNote = useStore(state => state.updateNote)
     const focusEffectEnabled = useStore(state => state.focusEffectEnabled)
-    const completedOnceHabits = useStore(state => state.completedOnceHabits)
+    const completedOnceHabits = useStore(useShallow(state => state.completedOnceHabits))
     const toggleTaskGroupPin = useStore(state => state.toggleTaskGroupPin)
     const showToast = useStore(state => state.showToast)
     const t = (translations[language]?.pages?.habits || translations['en'].pages.habits) as any
@@ -307,6 +309,8 @@ export default function TasksPage() {
         return priorityGroups
     }, [habits])
 
+    const activeHabitsMemo = useMemo(() => tasks.filter(t => t.isHabit), [tasks])
+
     const habitHistory = useMemo(() => {
         const now = new Date()
         const todayStr = getLocalDateString(now)
@@ -338,8 +342,8 @@ export default function TasksPage() {
         }
 
         // 2. Scan tasks and their completions in ONE pass
-        tasks.forEach((task) => {
-            if (task.isHabit && task.completionTimes) {
+        activeHabitsMemo.forEach((task) => {
+            if (task.completionTimes) {
                 task.completionTimes.forEach((ct) => {
                     if (typeof ct === 'string' && ct.length >= 10) {
                         const ctDateStr = ct.substring(0, 10)
@@ -411,7 +415,7 @@ export default function TasksPage() {
         }
 
         return history
-    }, [tasks, language, completedOnceHabits])
+    }, [activeHabitsMemo, language, completedOnceHabits])
 
     const handleToggleTask = (habit: Task) => {
         const today = getLocalDateString()
@@ -1769,7 +1773,7 @@ export default function TasksPage() {
                                 {language === 'es' ? 'Últimos 7 días' : 'Last 7 days'}
                             </p>
 
-                            <div className="flex-1 overflow-y-auto pr-1 space-y-6 custom-scrollbar">
+                            <div className="flex-1 pr-1 h-full min-h-[300px]">
                                 {habitHistory.length === 0 ? (
                                     <div className="py-12 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl opacity-40">
                                         <History className="w-8 h-8 mb-2" />
@@ -1778,29 +1782,33 @@ export default function TasksPage() {
                                         </p>
                                     </div>
                                 ) : (
-                                    habitHistory.map((dayGroup) => (
-                                        <div key={dayGroup.dateStr} className="space-y-2">
-                                            <h4 className="text-xs font-black uppercase tracking-wider text-primary">
-                                                {dayGroup.label}
-                                            </h4>
-                                            <div className="space-y-1.5">
-                                                {dayGroup.items.map((item, index) => (
-                                                    <div
-                                                        key={`${dayGroup.dateStr}-${index}`}
-                                                        className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5"
-                                                    >
-                                                        <span className="font-semibold text-sm text-foreground">
-                                                            {item.habitTitle}
-                                                        </span>
-                                                        <span className="text-xs font-bold text-muted-foreground/60 bg-white/5 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                                            <Check className="w-3.5 h-3.5 text-green-500" />
-                                                            {item.time}
-                                                        </span>
-                                                    </div>
-                                                ))}
+                                    <Virtuoso
+                                        style={{ height: '100%' }}
+                                        data={habitHistory}
+                                        itemContent={(index, dayGroup) => (
+                                            <div key={dayGroup.dateStr} className="space-y-2 mb-6">
+                                                <h4 className="text-xs font-black uppercase tracking-wider text-primary">
+                                                    {dayGroup.label}
+                                                </h4>
+                                                <div className="space-y-1.5">
+                                                    {dayGroup.items.map((item, i) => (
+                                                        <div
+                                                            key={`${dayGroup.dateStr}-${i}`}
+                                                            className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5"
+                                                        >
+                                                            <span className="font-semibold text-sm text-foreground">
+                                                                {item.habitTitle}
+                                                            </span>
+                                                            <span className="text-xs font-bold text-muted-foreground/60 bg-white/5 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                                <Check className="w-3.5 h-3.5 text-green-500" />
+                                                                {item.time}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))
+                                        )}
+                                    />
                                 )}
                             </div>
 

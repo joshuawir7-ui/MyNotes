@@ -1,0 +1,21 @@
+# Performance and Architecture Guidelines for MyNotes
+
+1. **Specific Zustand Selectors (`useShallow`)**:
+   Always use specific, granular selectors when extracting values from the Zustand store. If the selector returns an array or an object (e.g. `.filter` or `.map`), wrap the selector with `useShallow` from `zustand/react/shallow` to avoid unnecessary re-renders when other unrelated store properties change.
+   *Example:* `const habits = useStore(useShallow(state => state.tasks.filter(t => t.isHabit)))`
+
+2. **Acotated `useMemo` Dependencies**:
+   Ensure `useMemo` dependencies are strictly scoped to only the variables that affect the outcome. Do not depend on the entire monolithic `tasks` array if you only need `activeHabits`. Always pre-filter into specific arrays (like `habits`) and use them as dependencies for computationally heavy aggregations like `habitHistory` or `weeklyHistory`.
+
+3. **Virtualization over Monolithic Maps**:
+   Do not render long lists directly with `.map()`. Always use `react-virtuoso` (`<Virtuoso />`) to virtualize large arrays (such as the Habit History in Tasks and the Transactions History in Balance). 
+   *Rule:* Keep `<Virtuoso />` usage clean without nested overflow containers that conflict with its internal height and scrolling measurements.
+
+4. **Preserve Native Animations and Images**:
+   Under no circumstance should you break, alter, or remove existing `framer-motion` animations, transitions, or the `saveBase64ImageToFile` native image pipeline. Refactors must strictly target React render cycles without disturbing the CSS layout animations or Capacitor native integrations.
+
+5. **Cross-Component Lag Validation**:
+   When updating shared Zustand state properties (like `notes` blocks), ensure that the change does not trigger cascading re-renders in `balance/page.tsx` or `tasks/page.tsx`. Test the app mentally: adding a note should ONLY re-render the Notes page, NOT the entire Habit widget.
+
+6. **File Reading Rules**:
+   Never suggest reading an entire directory. Always name the exact file and the specific function when reading or debugging.

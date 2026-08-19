@@ -1,6 +1,9 @@
 "use client"
 // Force HMR Update para balance en tiempo real
 
+import { CustomSelect } from "@/components/ui/custom-select"
+import { useShallow } from "zustand/react/shallow"
+import { Virtuoso } from "react-virtuoso"
 import { Reveal } from "@/components/ui/reveal"
 import { useStore, Transaction, Appointment } from "@/lib/store"
 import { translations } from "@/lib/translations"
@@ -180,14 +183,14 @@ function CustomCalendar({ selectedDate, onSelectDate, onClear, language, minDate
 
 export default function BalancePage() {
     const language = useStore(state => state.language)
-    const transactions = useStore(state => state.transactions ?? [])
+    const transactions = useStore(useShallow(state => state.transactions ?? []))
     const balance = useMemo(() => {
         return transactions.reduce((sum, t) => {
             const amt = Number(t.amount) || 0;
             return sum + (t.type === 'expense' ? -amt : amt);
         }, 0);
     }, [transactions])
-    const appointments = useStore(state => state.appointments ?? [])
+    const appointments = useStore(useShallow(state => state.appointments ?? []))
     const savingsGoal = useStore(state => state.savingsGoal ?? 400)
     const addTransaction = useStore(state => state.addTransaction)
     const deleteTransaction = useStore(state => state.deleteTransaction)
@@ -295,7 +298,7 @@ export default function BalancePage() {
         return history
     }
 
-    const weeklyHistory = getWeeklyBalanceHistory()
+    const weeklyHistory = useMemo(() => getWeeklyBalanceHistory(), [transactions, balance, language])
 
     const handleSaveGoal = (e: React.FormEvent) => {
         e.preventDefault()
@@ -447,12 +450,14 @@ export default function BalancePage() {
         }
     }
 
-    const sortedTransactions = [...transactions].sort((a, b) => {
-        const dateA = new Date(a.date).getTime()
-        const dateB = new Date(b.date).getTime()
-        if (dateB !== dateA) return dateB - dateA
-        return (b.lastUpdated || 0) - (a.lastUpdated || 0)
-    })
+    const sortedTransactions = useMemo(() => {
+        return [...transactions].sort((a, b) => {
+            const dateA = new Date(a.date).getTime()
+            const dateB = new Date(b.date).getTime()
+            if (dateB !== dateA) return dateB - dateA
+            return (b.lastUpdated || 0) - (a.lastUpdated || 0)
+        })
+    }, [transactions])
 
     // Renders the sharp pointed SVG line chart (representing capital breakdown)
     const renderLineChart = () => {
@@ -758,73 +763,72 @@ export default function BalancePage() {
                             ) : (
                                 <div className="relative w-full">
                                     <div
-                                        className="grid grid-cols-1 gap-3 w-full max-h-[360px] md:max-h-[540px] overflow-y-auto pr-1 pt-3 pb-4"
+                                        className="grid grid-cols-1 w-full max-h-[360px] md:max-h-[540px] pr-1 pt-3 pb-4"
                                         style={{
                                             maskImage: 'linear-gradient(to bottom, transparent 0px, black 12px, black calc(100% - 16px), transparent 100%)',
                                             WebkitMaskImage: 'linear-gradient(to bottom, transparent 0px, black 12px, black calc(100% - 16px), transparent 100%)'
                                         }}
                                     >
-                                     <AnimatePresence initial={false}>
-                                        {sortedTransactions.map((tx) => (
-                                            <motion.div
-                                                key={tx.id}
-                                                initial={{ opacity: 0, y: 15 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, scale: 0.95 }}
-                                                onClick={() => setSelectedTxDetails(tx)}
-                                                className={`flex items-center justify-between p-4 rounded-3xl text-white shadow-md relative group overflow-hidden w-full cursor-pointer hover:brightness-105 active:scale-[0.99] transition-all
-                                                    ${tx.type === 'income'
-                                                        ? 'bg-[#00b050] dark:bg-[#7030a0]'
-                                                        : 'bg-[#e60000]'
-                                                    }`}
-                                            >
-                                                <div className="flex items-center gap-3 w-full pr-8">
-                                                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-                                                        {tx.type === 'income'
-                                                            ? <ArrowUpRight className="w-5 h-5 text-[#00b050] dark:text-[#7030a0]" />
-                                                            : <ArrowDownRight className="w-5 h-5 text-[#e60000]" />
-                                                        }
-                                                    </div>
+                                     <Virtuoso
+                                         style={{ height: '100%', minHeight: '360px' }}
+                                         data={sortedTransactions}
+                                         itemContent={(index, tx) => (
+                                             <div
+                                                 key={tx.id}
+                                                 onClick={() => setSelectedTxDetails(tx)}
+                                                 className={`mb-3 flex items-center justify-between p-4 rounded-3xl text-white shadow-md relative group overflow-hidden w-full cursor-pointer hover:brightness-105 active:scale-[0.99] transition-all
+                                                     ${tx.type === 'income'
+                                                         ? 'bg-[#00b050] dark:bg-[#7030a0]'
+                                                         : 'bg-[#e60000]'
+                                                     }`}
+                                             >
+                                                 <div className="flex items-center gap-3 w-full pr-8">
+                                                     <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+                                                         {tx.type === 'income'
+                                                             ? <ArrowUpRight className="w-5 h-5 text-[#00b050] dark:text-[#7030a0]" />
+                                                             : <ArrowDownRight className="w-5 h-5 text-[#e60000]" />
+                                                         }
+                                                     </div>
 
-                                                    <div className="flex-1 min-w-0 pr-2">
-                                                        <div className="flex flex-col">
-                                                            <span className="font-extrabold text-sm tracking-tight sm:text-base">
-                                                                {tx.type === 'income'
-                                                                    ? (tx.amount < 0
-                                                                        ? (language === 'es' ? `Gane ${tx.amount}${tx.currency || '$'}` : `Earned ${tx.amount}${tx.currency || '$'}`)
-                                                                        : (language === 'es' ? `Gane +${tx.amount}${tx.currency || '$'}` : `Earned +${tx.amount}${tx.currency || '$'}`)
-                                                                    )
-                                                                    : (tx.amount < 0
-                                                                        ? (language === 'es' ? `Gaste ${tx.amount}${tx.currency || '$'}` : `Spent ${tx.amount}${tx.currency || '$'}`)
-                                                                        : (language === 'es' ? `Gaste -${tx.amount}${tx.currency || '$'}` : `Spent -${tx.amount}${tx.currency || '$'}`)
-                                                                    )
-                                                                }
-                                                            </span>
-                                                            <span className="text-xs text-white/90 truncate block mt-0.5 font-medium">
-                                                                {tx.description}
-                                                            </span>
-                                                        </div>
-                                                    </div>
+                                                     <div className="flex-1 min-w-0 pr-2">
+                                                         <div className="flex flex-col">
+                                                             <span className="font-extrabold text-sm tracking-tight sm:text-base">
+                                                                 {tx.type === 'income'
+                                                                     ? (tx.amount < 0
+                                                                         ? (language === 'es' ? `Gane ${tx.amount}${tx.currency || '$'}` : `Earned ${tx.amount}${tx.currency || '$'}`)
+                                                                         : (language === 'es' ? `Gane +${tx.amount}${tx.currency || '$'}` : `Earned +${tx.amount}${tx.currency || '$'}`)
+                                                                     )
+                                                                     : (tx.amount < 0
+                                                                         ? (language === 'es' ? `Gaste ${tx.amount}${tx.currency || '$'}` : `Spent ${tx.amount}${tx.currency || '$'}`)
+                                                                         : (language === 'es' ? `Gaste -${tx.amount}${tx.currency || '$'}` : `Spent -${tx.amount}${tx.currency || '$'}`)
+                                                                     )
+                                                                 }
+                                                             </span>
+                                                             <span className="text-xs text-white/90 truncate block mt-0.5 font-medium">
+                                                                 {tx.description}
+                                                             </span>
+                                                         </div>
+                                                     </div>
 
-                                                    <div className="text-[10px] sm:text-xs font-black uppercase text-white/95 shrink-0 text-right self-center wallet-history-date">
-                                                        {formatTransactionDate(tx.date)}
-                                                    </div>
-                                                </div>
+                                                     <div className="text-[10px] sm:text-xs font-black uppercase text-white/95 shrink-0 text-right self-center wallet-history-date">
+                                                         {formatTransactionDate(tx.date)}
+                                                     </div>
+                                                 </div>
 
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        handleDeleteTransaction(tx.id)
-                                                    }}
-                                                    className="absolute top-1/2 right-2.5 -translate-y-1/2 p-2 bg-black/25 hover:bg-black/45 rounded-xl transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0 z-10"
-                                                    title={t.deleteTransactionConfirm}
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5 text-white" />
-                                                </button>
-                                            </motion.div>
-                                        ))}
-                                    </AnimatePresence>
-                                </div>
+                                                 <button
+                                                     onClick={(e) => {
+                                                         e.stopPropagation()
+                                                         handleDeleteTransaction(tx.id)
+                                                     }}
+                                                     className="absolute top-1/2 right-2.5 -translate-y-1/2 p-2 bg-black/25 hover:bg-black/45 rounded-xl transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0 z-10"
+                                                     title={t.deleteTransactionConfirm}
+                                                 >
+                                                     <Trash2 className="w-3.5 h-3.5 text-white" />
+                                                 </button>
+                                             </div>
+                                         )}
+                                     />
+                                    </div>
                             </div>
                         )}
                         </div>

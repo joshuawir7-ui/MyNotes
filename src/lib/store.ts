@@ -6,6 +6,7 @@ import { migrateBase64Images } from './image-utils';
 import { NotificationManager } from './notifications';
 import { Preferences } from '@capacitor/preferences'
 import { registerPlugin, Capacitor } from '@capacitor/core'
+import { get, set as idbSet, del } from 'idb-keyval'
 import { App } from '@capacitor/app'
 
 const isNative = Capacitor.isNativePlatform();
@@ -275,8 +276,13 @@ const capacitorStorage = {
             return data;
         }
 
-        // 3. Fallback to Preferences (migration from older versions / Web support)
+        // 3. Fallback to idb-keyval / Preferences (migration from older versions / Web support)
         try {
+            const idbValue = await get(name);
+            if (idbValue && idbValue !== '{}') {
+                pendingWrites[name] = idbValue;
+                return idbValue;
+            }
             const { value } = await Preferences.get({ key: name });
             if (value && value !== '{}') {
                 try {
@@ -289,6 +295,9 @@ const capacitorStorage = {
                             encoding: Encoding.UTF8,
                         });
                         await Preferences.remove({ key: name });
+                    } else {
+                        await idbSet(name, value);
+                        try { await Preferences.remove({ key: name }); } catch(e){}
                     }
                     pendingWrites[name] = value; // Cache it
                     return value;
@@ -363,22 +372,11 @@ const capacitorStorage = {
                         encoding: Encoding.UTF8,
                     });
                 } else {
-                    // Web fallback using Preferences
-                    await Preferences.set({
-                        key: name,
-                        value: dataToWrite
-                    });
+                    // Web fallback using idb-keyval
+                    await idbSet(name, dataToWrite);
                 }
             } catch (e) {
-                console.error('Storage save error, trying Preferences fallback', e);
-                try {
-                    await Preferences.set({
-                        key: name,
-                        value: dataToWrite
-                    });
-                } catch (prefErr) {
-                    console.error('Preferences fallback failed', prefErr);
-                }
+                console.error('Storage save error', e);
             }
         };
 
@@ -387,25 +385,13 @@ const capacitorStorage = {
     },
     removeItem: async (name: string): Promise<void> => {
         if (typeof window === 'undefined') return;
-
         delete pendingWrites[name];
-        if (writeDebounces[name]) {
-            clearTimeout(writeDebounces[name]);
-            delete writeDebounces[name];
-        }
-
-        try {
-            await Filesystem.deleteFile({
-                path: `${name}.json`,
-                directory: Directory.Data,
-            });
-            await Filesystem.deleteFile({
-                path: `${name}.bak.json`,
-                directory: Directory.Data,
-            }).catch(() => { });
-            await Preferences.remove({ key: name }); // Clean up old preferences just in case
-        } catch (e) {
-            console.error('Filesystem delete error', e);
+        if (isNative) {
+            try { await Filesystem.deleteFile({ path: `${name}.json`, directory: Directory.Data }); } catch (e) { }
+            try { await Filesystem.deleteFile({ path: `${name}.bak.json`, directory: Directory.Data }); } catch (e) { }
+        } else {
+            try { await del(name); } catch (e) { }
+            try { await Preferences.remove({ key: name }); } catch (e) { }
         }
     },
 };
