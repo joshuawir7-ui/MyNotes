@@ -175,64 +175,27 @@ export function SettingsDialog() {
         // Force reset syncing state on mount to prevent stuck greyed-out buttons
         useStore.setState({ isSyncingCloud: false });
 
-        import('@capawesome/capacitor-google-sign-in').then(({ GoogleSignIn }) => {
-            const initOptions: any = {
-                clientId: '309899943436-gp6o1oaqpij5qq6sal77f6dr15lh61fp.apps.googleusercontent.com',
-                scopes: [
-                    'https://www.googleapis.com/auth/userinfo.profile',
-                    'https://www.googleapis.com/auth/userinfo.email',
-                    'https://www.googleapis.com/auth/drive.file'
-                ]
-            };
+        import('@codetrix-studio/capacitor-google-auth').then(({ GoogleAuth }) => {
             if (typeof window !== 'undefined') {
-                initOptions.redirectUrl = window.location.origin;
+                GoogleAuth.initialize({
+                    clientId: '309899943436-gp6o1oaqpij5qq6sal77f6dr15lh61fp.apps.googleusercontent.com',
+                    scopes: [
+                        'https://www.googleapis.com/auth/userinfo.profile',
+                        'https://www.googleapis.com/auth/userinfo.email',
+                        'https://www.googleapis.com/auth/drive.file'
+                    ],
+                    grantOfflineAccess: true
+                });
             }
-            GoogleSignIn.initialize(initOptions).then(() => {
-                if (!Capacitor.isNativePlatform()) {
-                    GoogleSignIn.handleRedirectCallback()
-                        .then((result) => {
-                            if (result) {
-                                const accessToken = ((result as any).authentication?.accessToken || (result as any).accessToken) || undefined;
-                                const email = result.email || "";
-                                const name = result.displayName || "";
-                                const imageUrl = result.imageUrl || "";
-
-                                setGoogleUser({
-                                    name,
-                                    email,
-                                    imageUrl,
-                                    accessToken,
-                                    isDemo: false
-                                });
-
-                                showNotif(
-                                    language === 'es' ? "Sesión Iniciada" : "Logged In",
-                                    language === 'es' ? `Bienvenido, ${name}` : `Welcome, ${name}`,
-                                    "success"
-                                );
-
-                                setTimeout(() => {
-                                    import('@/lib/store').then(({ triggerBackgroundSync }) => triggerBackgroundSync());
-                                }, 500);
-                            }
-                        })
-                        .catch(err => {
-                            console.log("No redirect callback active or failed", err);
-                        });
-                }
-            }).catch(err => console.log("Google Sign-In initialization failed", err));
         });
     }, [])
 
     const handleGoogleLogin = async () => {
         try {
-            const { GoogleSignIn } = await import('@capawesome/capacitor-google-sign-in');
+            const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
             
-            const options: any = {
-                redirectUrl: window.location.origin
-            };
-            console.log("Calling GoogleSignIn.signIn with options:", options);
-            const result = await GoogleSignIn.signIn(options);
+            console.log("Calling GoogleAuth.signIn");
+            const result = await GoogleAuth.signIn();
 
             if (result) {
                 const accessToken = ((result as any).authentication?.accessToken || (result as any).accessToken) || undefined;

@@ -1162,17 +1162,16 @@ export const triggerBackgroundSync = async () => {
 
 /**
  * Intenta renovar el accessToken de Google de forma silenciosa (sin interacción del usuario).
- * Usa GoogleSignIn.signInSilently() para obtener un nuevo token cuando el actual expira (cada ~1 hora).
+ * Usa GoogleAuth.refresh() para obtener un nuevo token cuando el actual expira (cada ~1 hora).
  * Actualiza el store con el nuevo token y devuelve el token renovado, o null si falla.
  */
 export const silentRefreshGoogleToken = async (): Promise<string | null> => {
     try {
-        const { GoogleSignIn } = await import('@capawesome/capacitor-google-sign-in');
-        const result = await GoogleSignIn.signInSilently();
-        if (!result) return null;
+        const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+        const result = await GoogleAuth.refresh();
+        if (!result || !result.accessToken) return null;
 
-        const newToken = ((result as any).authentication?.accessToken || (result as any).accessToken) as string | undefined;
-        if (!newToken) return null;
+        const newToken = result.accessToken;
 
         // Actualizar el store con el token renovado (sin disparar cloud sync)
         const currentUser = useStore.getState().googleUser;
