@@ -182,15 +182,17 @@ function CustomCalendar({ selectedDate, onSelectDate, onClear, language, minDate
 }
 
 export default function BalancePage() {
-    const language = useStore(state => state.language)
-    const transactions = useStore(useShallow(state => state.transactions ?? []))
+    const language = useStore(state => state.language) || 'en'
+    const rawTransactions = useStore(useShallow(state => state.transactions ?? []))
+    const transactions = Array.isArray(rawTransactions) ? rawTransactions : []
     const balance = useMemo(() => {
         return transactions.reduce((sum, t) => {
             const amt = Number(t.amount) || 0;
             return sum + (t.type === 'expense' ? -amt : amt);
         }, 0);
     }, [transactions])
-    const appointments = useStore(useShallow(state => state.appointments ?? []))
+    const rawAppointments = useStore(useShallow(state => state.appointments ?? []))
+    const appointments = Array.isArray(rawAppointments) ? rawAppointments : []
     const savingsGoal = useStore(state => state.savingsGoal ?? 400)
     const addTransaction = useStore(state => state.addTransaction)
     const deleteTransaction = useStore(state => state.deleteTransaction)
@@ -202,6 +204,7 @@ export default function BalancePage() {
 
     const t = ((translations[language]?.pages as any)?.balance || (translations['en'].pages as any).balance) as any
 
+    const isHydrated = useStore(state => state.isHydrated)
     const [mounted, setMounted] = useState(false)
     const [isEditingGoal, setIsEditingGoal] = useState(false)
     const [tempGoalValue, setTempGoalValue] = useState("")
@@ -239,8 +242,6 @@ export default function BalancePage() {
         setTxDate(new Date().toISOString().split('T')[0])
     }, [])
 
-    if (!mounted) return null
-
     const todayStr = new Date().toISOString().split('T')[0]
 
     // Find pending recovery reminders that are due today or in the past
@@ -276,7 +277,7 @@ export default function BalancePage() {
 
             let tempBalance = balance
             transactions.forEach(tx => {
-                if (tx.date > dateStr) {
+                if (tx.date && tx.date > dateStr) {
                     const txAmt = tx.amount
                     const delta = tx.type === 'expense'
                         ? (txAmt > 0 ? -txAmt : txAmt)
@@ -428,6 +429,7 @@ export default function BalancePage() {
     }
 
     const formatTransactionDate = (dateStr: string) => {
+        if (!dateStr) return '';
         try {
             const parts = dateStr.split('-');
             if (parts.length !== 3) return dateStr;
@@ -452,12 +454,26 @@ export default function BalancePage() {
 
     const sortedTransactions = useMemo(() => {
         return [...transactions].sort((a, b) => {
-            const dateA = new Date(a.date).getTime()
-            const dateB = new Date(b.date).getTime()
+            const dateA = a.date ? new Date(a.date).getTime() : 0
+            const dateB = b.date ? new Date(b.date).getTime() : 0
             if (dateB !== dateA) return dateB - dateA
             return (b.lastUpdated || 0) - (a.lastUpdated || 0)
         })
     }, [transactions])
+
+    if (!mounted || !isHydrated) return (
+        <div className="flex flex-col h-[calc(100vh-5rem)] md:h-screen p-4 md:p-8 w-full max-w-5xl mx-auto">
+            <div className="animate-pulse">
+                <div className="h-40 bg-zinc-200 dark:bg-zinc-800 rounded-3xl mb-6"></div>
+                <div className="h-8 w-48 bg-zinc-200 dark:bg-zinc-800 rounded mb-4"></div>
+                <div className="space-y-3">
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="h-16 bg-zinc-200 dark:bg-zinc-800 rounded-2xl"></div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    )
 
     // Renders the sharp pointed SVG line chart (representing capital breakdown)
     const renderLineChart = () => {

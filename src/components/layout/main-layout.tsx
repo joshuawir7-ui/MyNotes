@@ -518,6 +518,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         initDeepLinks();
 
+        let updatedListener: any;
         let appointmentsListener: any;
         let notesListener: any;
         let noteOpenListener: any;
