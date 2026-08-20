@@ -306,7 +306,7 @@ export const translations = {
                     spend: "<b>Gaste:</b> gástate algo de dinero, bueno regístralo igual para saber el total que queda!"
                 },
                 step3: {
-                    title: "AGREGAR",
+                    title: "Agregar",
                     body: "¿Ganaste dinero? Genial, agrégalo al balance para registrarlo, así sabrás mejor si se pierde, te lo roban o si ya lo gastaste, es muy simple pero hay dos formas",
                     simpleTitle: "Agregar (simple)",
                     simpleStep1: "<b>Paso 1:</b> agrega la cantidad numérica de dinero",
@@ -321,7 +321,7 @@ export const translations = {
                     calloutTarget: "meta de conservación C."
                 },
                 step4: {
-                    title: "Gaste",
+                    title: "Gastar",
                     body: "Gastar no es malo, gastar es malo cuando no sabes cuanto gastas ni en que cosas has estado gastando, ten un registro de tus gastos claro con balance, de igual forma existen dos formas de registrarlo",
                     simpleTitle: "Gastar (simple)",
                     simpleStep1: "<b>Paso 1:</b> introduce el monto o cantidad numérica de dinero que gastaste",
