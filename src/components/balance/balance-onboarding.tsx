@@ -197,11 +197,21 @@ export function BalanceOnboarding({ onClose }: BalanceOnboardingProps) {
                 return (
                     <div className="flex flex-row w-full h-full p-[40px] gap-[40px] items-center">
                         <div className="w-[45%] flex-shrink-0 flex items-center justify-center h-full">
-                            <img src="/assets/onboarding/archive-box.png" alt="Archive Box" className="w-[80%] object-contain drop-shadow-2xl" />
+                            <img 
+                                src="/assets/onboarding/archive-box.png" 
+                                alt="Archive Box" 
+                                className="w-[85%] max-w-[280px] object-contain" 
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/images/archive-box.png'
+                                }}
+                            />
                         </div>
-                        <div className="w-[55%] flex flex-col justify-center gap-[24px]">
-                            <h3 className="text-[36px] font-bold text-black dark:text-white leading-tight">{t.step5.title}</h3>
-                            <p className="text-[18px] text-zinc-600 dark:text-zinc-300 leading-relaxed max-w-[90%]" dangerouslySetInnerHTML={{ __html: t.step5.body }} />
+                        <div className="w-[55%] flex flex-col justify-center pr-6">
+                            <h3 className="text-[38px] sm:text-[42px] font-dancing font-semibold text-black dark:text-white leading-tight mb-2">
+                                {t.step5.title}
+                            </h3>
+                            <div className="h-[1.5px] bg-black dark:bg-white w-full mb-6" />
+                            <p className="text-[16px] text-zinc-700 dark:text-zinc-300 leading-relaxed font-sans" dangerouslySetInnerHTML={{ __html: t.step5.body }} />
                         </div>
                     </div>
                 );
