@@ -232,6 +232,11 @@ const saveAllNotesToDisk = async (notes: Note[]) => {
 // AppStateChange listener is placed at the end of the file to ensure all store functions are fully hoisted and initialized
 
 // Custom storage for Capacitor to avoid SharedPreferences size limits (1-2MB)
+let syncWorker: Worker | null = null;
+if (typeof window !== 'undefined') {
+    syncWorker = new Worker(new URL('./sync-worker.ts', import.meta.url));
+}
+
 // Enhanced to include backup and recovery to prevent data loss
 const capacitorStorage = {
     getItem: async (name: string): Promise<string | null> => {
@@ -3224,7 +3229,42 @@ export const useStore = create<AppState>()(
         },
         {
             name: 'mynotes-storage-v1',
-            storage: createJSONStorage(() => capacitorStorage),
+            storage: {
+                getItem: async (name: string) => {
+                    const str = await capacitorStorage.getItem(name);
+                    if (!str) return null;
+                    try {
+                        return JSON.parse(str);
+                    } catch (e) {
+                        console.error('Failed to parse state', e);
+                        return null;
+                    }
+                },
+                setItem: async (name: string, value: any) => {
+                    if (!syncWorker) {
+                        await capacitorStorage.setItem(name, JSON.stringify(value));
+                        return;
+                    }
+                    return new Promise<void>((resolve) => {
+                        const handleMessage = (e: MessageEvent) => {
+                            if (e.data.name === name) {
+                                syncWorker!.removeEventListener('message', handleMessage);
+                                if (e.data.error) {
+                                    console.error('Worker serialization failed', e.data.error);
+                                    capacitorStorage.setItem(name, JSON.stringify(value)).then(resolve);
+                                } else {
+                                    capacitorStorage.setItem(name, e.data.serialized).then(resolve);
+                                }
+                            }
+                        };
+                        syncWorker!.addEventListener('message', handleMessage);
+                        syncWorker!.postMessage({ name, state: value });
+                    });
+                },
+                removeItem: async (name: string) => {
+                    await capacitorStorage.removeItem(name);
+                }
+            },
             onRehydrateStorage: (state) => {
                 return (rehydratedState, error) => {
                     if (error) {

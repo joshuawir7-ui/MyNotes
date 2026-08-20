@@ -4,4 +4,5 @@
     <string name="title_activity_main">MyNotes</string>
     <string name="package_name">com.iunico.mynotes</string>
     <string name="custom_url_scheme">com.iunico.mynotes</string>
+    <string name="server_client_id">309899943436-gp6o1oaqpij5qq6sal77f6dr15lh61fp.apps.googleusercontent.com</string>
 </resources>

@@ -10,6 +10,7 @@ import { translations } from "@/lib/translations"
 import { useState, useEffect, useMemo } from "react"
 import { Plus, Wallet, X, Trash2, Edit2, ArrowUpRight, ArrowDownRight, Calendar, DollarSign, Check, Coins, ChevronDown, AlertTriangle, TrendingUp, PieChart, RotateCcw } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { BalanceOnboarding } from "@/components/balance/balance-onboarding"
 
 // Custom Calendar component matching the user's mockup design
 interface CustomCalendarProps {
@@ -236,11 +237,23 @@ export default function BalancePage() {
     // Manage dismissed session warnings
     const [dismissedReminders, setDismissedReminders] = useState<string[]>([])
     const [selectedTxDetails, setSelectedTxDetails] = useState<Transaction | null>(null)
+    const [showOnboarding, setShowOnboarding] = useState(false)
 
     useEffect(() => {
         setMounted(true)
         setTxDate(new Date().toISOString().split('T')[0])
+        
+        // Check if onboarding has been seen
+        const hasSeenOnboarding = localStorage.getItem('balanceOnboardingSeen')
+        if (!hasSeenOnboarding) {
+            setShowOnboarding(true)
+        }
     }, [])
+
+    const handleCloseOnboarding = () => {
+        setShowOnboarding(false)
+        localStorage.setItem('balanceOnboardingSeen', 'true')
+    }
 
     const todayStr = new Date().toISOString().split('T')[0]
 
@@ -548,6 +561,8 @@ export default function BalancePage() {
 
     return (
         <div className="p-6 max-w-4xl mx-auto space-y-6 pb-16">
+            
+            {showOnboarding && <BalanceOnboarding onClose={handleCloseOnboarding} />}
 
             {/* Warning Banners for Due Capital Recovery Reminders */}
             <AnimatePresence>
@@ -601,13 +616,22 @@ export default function BalancePage() {
                                 <h1 className="text-3xl font-bold tracking-tight text-foreground font-dancing text-center flex-1">
                                     Balance
                                 </h1>
-                                <button
-                                    onClick={() => setChartType(prev => prev === 'donut' ? 'line' : 'donut')}
-                                    className="p-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all text-muted-foreground hover:text-foreground active:scale-95 shrink-0"
-                                    title={chartType === 'donut' ? (language === 'es' ? "Ver gráfico de líneas" : "Show line chart") : (language === 'es' ? "Ver gráfico circular" : "Show circular chart")}
-                                >
-                                    {chartType === 'donut' ? <TrendingUp className="w-4 h-4" /> : <PieChart className="w-4 h-4" />}
-                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowOnboarding(true)}
+                                        className="p-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all text-muted-foreground hover:text-foreground active:scale-95 shrink-0"
+                                        title={language === 'es' ? "Ayuda" : "Help"}
+                                    >
+                                        <div className="w-4 h-4 rounded-full border-2 border-current flex items-center justify-center text-[10px] font-bold text-current">?</div>
+                                    </button>
+                                    <button
+                                        onClick={() => setChartType(prev => prev === 'donut' ? 'line' : 'donut')}
+                                        className="p-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all text-muted-foreground hover:text-foreground active:scale-95 shrink-0"
+                                        title={chartType === 'donut' ? (language === 'es' ? "Ver gráfico de líneas" : "Show line chart") : (language === 'es' ? "Ver gráfico circular" : "Show circular chart")}
+                                    >
+                                        {chartType === 'donut' ? <TrendingUp className="w-4 h-4" /> : <PieChart className="w-4 h-4" />}
+                                    </button>
+                                </div>
                             </div>
 
                             {chartType === 'line' ? (

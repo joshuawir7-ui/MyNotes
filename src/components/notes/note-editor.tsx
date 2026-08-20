@@ -1546,6 +1546,8 @@ const RichTaskTitle = React.memo(function RichTaskTitle({ content, onChange, onF
             className="w-full bg-transparent border-none outline-none font-bold text-lg mb-2 text-foreground relative empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 before:absolute before:pointer-events-none rich-text-editor rich-task-title"
         />
     );
+}, (prev, next) => {
+    return prev.content === next.content && prev.placeholder === next.placeholder;
 });
 
 const RichTaskItem = React.memo(function RichTaskItem({ content, onChange, onEnter, onFocus, onBlur, placeholder, checked }: { content: string, onChange: (c: string) => void, onEnter?: () => void, onFocus?: () => void, onBlur?: () => void, placeholder?: string, checked: boolean }) {
@@ -1640,6 +1642,8 @@ const RichTaskItem = React.memo(function RichTaskItem({ content, onChange, onEnt
             className={`flex-1 bg-transparent border-none outline-none text-base text-foreground relative empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 before:absolute before:pointer-events-none rich-text-editor ${checked ? 'line-through text-muted-foreground/50' : ''}`}
         />
     );
+}, (prev, next) => {
+    return prev.content === next.content && prev.checked === next.checked && prev.placeholder === next.placeholder;
 });
 
 const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, activeBlockId, onFocus, onBlur }: { content: string, onChange: (c: string) => void, activeBlockId: string, onFocus?: () => void, onBlur?: () => void }) {
@@ -1728,6 +1732,8 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             className="rich-text-editor w-full min-h-[30px] bg-transparent border-none outline-none text-base text-foreground relative empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 before:absolute before:pointer-events-none"
         />
     );
+}, (prev, next) => {
+    return prev.content === next.content && prev.activeBlockId === next.activeBlockId;
 });
 
 

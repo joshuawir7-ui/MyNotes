@@ -65,6 +65,56 @@ export const translations = {
                 deleteReportConfirm: "Delete this progress report?"
             },
             balance: {
+                onboarding: {
+                step1: {
+                    title: "YOUR MONEY IS IMPORTANT",
+                    body: "\"He who carries his own bucket values every drop spilled\" in <b>balance</b> you can manage your money yourself...",
+                    ctaLearn: "I want to know how it works",
+                    ctaDismiss: "Okay"
+                },
+                step2: {
+                    title: "Balance!",
+                    body: "Balance is for you if you want to easily know <b>how much money enters and leaves your wallet</b>. This section is very simple to use but very useful.",
+                    meta: "<b>Goal</b> Set how much money you want to have or plan to keep,",
+                    adds: "<b>Add</b> money you earn to keep track and not forget it!",
+                    spend: "<b>Spend:</b> spend some money, well record it anyway to know the total remaining!"
+                },
+                step3: {
+                    title: "ADD",
+                    body: "Earned money? Great, add it to the balance to register it, so you'll know better if it gets lost, stolen or if you already spent it. It's very simple but there are two ways.",
+                    simpleTitle: "Add (simple)",
+                    simpleStep1: "<b>Step 1:</b> add the numeric amount of money",
+                    simpleStep2: "<b>Step 2:</b> tap add and done!",
+                    descTitle: "Add with description",
+                    descStep1: "<b>Step 1:</b> first tap add",
+                    descStep2: "<b>Step 2:</b> in <b>amount</b> add how much you earned.",
+                    descStep3: "<b>Step 3:</b> what did you earn it from? Add a note for yourself about what gave you that money, done!",
+                    calloutStep2: "Step 2",
+                    calloutStep3: "Step 3",
+                    calloutOptional: "(optional) <b>conservation goal</b> this puts on the calendar until what date you plan to keep that money, to keep it in mind and not forget.",
+                    calloutTarget: "conservation goal C."
+                },
+                step4: {
+                    title: "Spend",
+                    body: "Spending isn't bad, spending is bad when you don't know how much you spend or what you've been spending it on. Keep a clear record of your expenses with balance. Similarly, there are two ways to register it.",
+                    simpleTitle: "Spend (simple)",
+                    simpleStep1: "<b>Step 1:</b> enter the amount or numeric quantity of money you spent",
+                    simpleStep2: "<b>Step 2:</b> tap <b>spend</b> and done, it will be registered as an expense",
+                    descTitle: "Spend",
+                    descStep1: "<b>Step 1:</b> tap <b>spend</b> and a more defined interface will open to set what you spent on",
+                    descStep2: "<b>Step 2:</b> enter the amount you are spending (numeric value)",
+                    descStep3: "<b>Step 3:</b> define what you spent the money on",
+                    calloutDate: "Date you expect it back (optional)",
+                    calloutDateDesc: "Did you spend or lend money and expect to get it back? Schedule the date you expect it back so the app will notify you, marking it on the calendar and sending you a message."
+                },
+                step5: {
+                    title: "Expense Record!",
+                    body: "Similarly, you'll have access to a History, where you'll see the Income and expenses you've had.<br/><br/>And see what you've spent on.",
+                    ctaFinish: "Got it"
+                },
+                next: "Next",
+                close: "Close"
+            },
                 title: "General Balance",
                 description: "Track your current money, income, and expenses.",
                 currentBalance: "Current Balance",
@@ -237,6 +287,56 @@ export const translations = {
                 deleteReportConfirm: "¿Eliminar este reporte de avance?"
             },
             balance: {
+                onboarding: {
+                step1: {
+                    title: "TU DINERO ES IMPORTANTE",
+                    body: "\"Quien carga su propio balde da valor a cada gota que es derramada\" en <b>balance</b> podrás administrar tu dinero tú mismo...",
+                    ctaLearn: "Quiero saber cómo funciona",
+                    ctaDismiss: "Vale"
+                },
+                step2: {
+                    title: "Balance!",
+                    body: "Balance es para ti, si quieres saber de una forma fácil <b>cuanto dinero entra y sale de tu billetera</b> este apartado es muy simple de usar pero muy útil.",
+                    meta: "<b>Meta</b> Establece cuánto dinero quieres tener o piensas conservar,",
+                    adds: "<b>Agrega</b> dinero que obtengas para llevarlo registrado y que no se te olvide!",
+                    spend: "<b>Gaste:</b> gástate algo de dinero, bueno regístralo igual para saber el total que queda!"
+                },
+                step3: {
+                    title: "AGREGAR",
+                    body: "¿Ganaste dinero? Genial, agrégalo al balance para registrarlo, así sabrás mejor si se pierde, te lo roban o si ya lo gastaste, es muy simple pero hay dos formas",
+                    simpleTitle: "Agregar (simple)",
+                    simpleStep1: "<b>Paso 1:</b> agrega la cantidad numérica de dinero",
+                    simpleStep2: "<b>Paso 2:</b> ¡toca agregar y listo!",
+                    descTitle: "Agregar con descripción",
+                    descStep1: "<b>Paso 1:</b> toca primero agregar",
+                    descStep2: "<b>Paso 2:</b> en <b>monto</b> agrega cuando ganaste.",
+                    descStep3: "<b>Paso 3:</b> ¿en que ganaste? Pon una nota para ti mismo sobre que fue lo que te dio ese dinero, ¡listo!",
+                    calloutStep2: "Paso 2",
+                    calloutStep3: "Paso 3",
+                    calloutOptional: "(opcional) <b>meta de conservación</b> esto pone en el calendario, hasta que fecha piensas conservar ese dinero, para tenerlo en mente y que no se te olvide",
+                    calloutTarget: "meta de conservación C."
+                },
+                step4: {
+                    title: "Gaste",
+                    body: "Gastar no es malo, gastar es malo cuando no sabes cuanto gastas ni en que cosas has estado gastando, ten un registro de tus gastos claro con balance, de igual forma existen dos formas de registrarlo",
+                    simpleTitle: "Gastar (simple)",
+                    simpleStep1: "<b>Paso 1:</b> introduce el monto o cantidad numérica de dinero que gastaste",
+                    simpleStep2: "<b>Paso 2:</b> toca <b>gaste</b> y listo se va registrar como un gasto",
+                    descTitle: "Gastar",
+                    descStep1: "<b>Paso 1:</b> toca <b>gastar</b> y se abrirá una interfaz más definida para establecer en que gastaste",
+                    descStep2: "<b>Paso 2:</b> ingresa el monto de cuanto estas gastando (valor numérico)",
+                    descStep3: "<b>Paso 3:</b> define en que gastaste el dinero",
+                    calloutDate: "Fecha que esperas recuperarlo (opcional)",
+                    calloutDateDesc: "Gastaste o prestaste dinero y esperas recuperarlo, pues agenta la fecha en la piensas recuperarlo y así la app te avisara, marcándolo en el calendario y enviándote un mensaje"
+                },
+                step5: {
+                    title: "Registro de gastos!",
+                    body: "De igual manera tendrás acceso a un Historial, en donde veras los Ingresos y egresos que has tenido.<br/><br/>Y así ve en que has gastado.",
+                    ctaFinish: "Entendido"
+                },
+                next: "Siguiente",
+                close: "Cerrar"
+            },
                 title: "Balance General",
                 description: "Rastrea tu dinero actual, ingresos y gastos.",
                 currentBalance: "Saldo Actual",
@@ -352,6 +452,56 @@ export const translations = {
     zh: {
         nav: { goals: "目标", today: "今天", tasks: "习惯 / 任务", calendar: "日历", anytime: "随时", someday: "将来", notes: "笔记", projects: "项目", newProject: "项目名称...", shortcuts: "快捷键 (1-9)", balance: "收支平衡" },
         pages: {
+            balance: { onboarding: {
+                step1: {
+                    title: "YOUR MONEY IS IMPORTANT",
+                    body: "\"He who carries his own bucket values every drop spilled\" in <b>balance</b> you can manage your money yourself...",
+                    ctaLearn: "I want to know how it works",
+                    ctaDismiss: "Okay"
+                },
+                step2: {
+                    title: "Balance!",
+                    body: "Balance is for you if you want to easily know <b>how much money enters and leaves your wallet</b>. This section is very simple to use but very useful.",
+                    meta: "<b>Goal</b> Set how much money you want to have or plan to keep,",
+                    adds: "<b>Add</b> money you earn to keep track and not forget it!",
+                    spend: "<b>Spend:</b> spend some money, well record it anyway to know the total remaining!"
+                },
+                step3: {
+                    title: "ADD",
+                    body: "Earned money? Great, add it to the balance to register it, so you'll know better if it gets lost, stolen or if you already spent it. It's very simple but there are two ways.",
+                    simpleTitle: "Add (simple)",
+                    simpleStep1: "<b>Step 1:</b> add the numeric amount of money",
+                    simpleStep2: "<b>Step 2:</b> tap add and done!",
+                    descTitle: "Add with description",
+                    descStep1: "<b>Step 1:</b> first tap add",
+                    descStep2: "<b>Step 2:</b> in <b>amount</b> add how much you earned.",
+                    descStep3: "<b>Step 3:</b> what did you earn it from? Add a note for yourself about what gave you that money, done!",
+                    calloutStep2: "Step 2",
+                    calloutStep3: "Step 3",
+                    calloutOptional: "(optional) <b>conservation goal</b> this puts on the calendar until what date you plan to keep that money, to keep it in mind and not forget.",
+                    calloutTarget: "conservation goal C."
+                },
+                step4: {
+                    title: "Spend",
+                    body: "Spending isn't bad, spending is bad when you don't know how much you spend or what you've been spending it on. Keep a clear record of your expenses with balance. Similarly, there are two ways to register it.",
+                    simpleTitle: "Spend (simple)",
+                    simpleStep1: "<b>Step 1:</b> enter the amount or numeric quantity of money you spent",
+                    simpleStep2: "<b>Step 2:</b> tap <b>spend</b> and done, it will be registered as an expense",
+                    descTitle: "Spend",
+                    descStep1: "<b>Step 1:</b> tap <b>spend</b> and a more defined interface will open to set what you spent on",
+                    descStep2: "<b>Step 2:</b> enter the amount you are spending (numeric value)",
+                    descStep3: "<b>Step 3:</b> define what you spent the money on",
+                    calloutDate: "Date you expect it back (optional)",
+                    calloutDateDesc: "Did you spend or lend money and expect to get it back? Schedule the date you expect it back so the app will notify you, marking it on the calendar and sending you a message."
+                },
+                step5: {
+                    title: "Expense Record!",
+                    body: "Similarly, you'll have access to a History, where you'll see the Income and expenses you've had.<br/><br/>And see what you've spent on.",
+                    ctaFinish: "Got it"
+                },
+                next: "Next",
+                close: "Close"
+            } },
             goals: { title: "目标", description: "定义并追踪您的长期目标。" },
             today: { title: "今天", description: "专注于今天最重要的事情。" },
             notes: { title: "笔记", description: "捕捉想法、绘图和计划。", create: "创建新笔记", untitled: "无标题笔记", empty: "空笔记...", confirmDelete: "您确定要删除此笔记吗？" },
@@ -414,6 +564,56 @@ export const translations = {
     fr: {
         nav: { goals: "Objectifs", today: "Aujourd'hui", tasks: "Habitudes / Tâches", calendar: "Calendrier", anytime: "N'importe quand", someday: "Un jour", notes: "Notes", projects: "Projets", newProject: "Nom du projet...", shortcuts: "RACCOURCIS (1-9)", balance: "Bilan général" },
         pages: {
+            balance: { onboarding: {
+                step1: {
+                    title: "YOUR MONEY IS IMPORTANT",
+                    body: "\"He who carries his own bucket values every drop spilled\" in <b>balance</b> you can manage your money yourself...",
+                    ctaLearn: "I want to know how it works",
+                    ctaDismiss: "Okay"
+                },
+                step2: {
+                    title: "Balance!",
+                    body: "Balance is for you if you want to easily know <b>how much money enters and leaves your wallet</b>. This section is very simple to use but very useful.",
+                    meta: "<b>Goal</b> Set how much money you want to have or plan to keep,",
+                    adds: "<b>Add</b> money you earn to keep track and not forget it!",
+                    spend: "<b>Spend:</b> spend some money, well record it anyway to know the total remaining!"
+                },
+                step3: {
+                    title: "ADD",
+                    body: "Earned money? Great, add it to the balance to register it, so you'll know better if it gets lost, stolen or if you already spent it. It's very simple but there are two ways.",
+                    simpleTitle: "Add (simple)",
+                    simpleStep1: "<b>Step 1:</b> add the numeric amount of money",
+                    simpleStep2: "<b>Step 2:</b> tap add and done!",
+                    descTitle: "Add with description",
+                    descStep1: "<b>Step 1:</b> first tap add",
+                    descStep2: "<b>Step 2:</b> in <b>amount</b> add how much you earned.",
+                    descStep3: "<b>Step 3:</b> what did you earn it from? Add a note for yourself about what gave you that money, done!",
+                    calloutStep2: "Step 2",
+                    calloutStep3: "Step 3",
+                    calloutOptional: "(optional) <b>conservation goal</b> this puts on the calendar until what date you plan to keep that money, to keep it in mind and not forget.",
+                    calloutTarget: "conservation goal C."
+                },
+                step4: {
+                    title: "Spend",
+                    body: "Spending isn't bad, spending is bad when you don't know how much you spend or what you've been spending it on. Keep a clear record of your expenses with balance. Similarly, there are two ways to register it.",
+                    simpleTitle: "Spend (simple)",
+                    simpleStep1: "<b>Step 1:</b> enter the amount or numeric quantity of money you spent",
+                    simpleStep2: "<b>Step 2:</b> tap <b>spend</b> and done, it will be registered as an expense",
+                    descTitle: "Spend",
+                    descStep1: "<b>Step 1:</b> tap <b>spend</b> and a more defined interface will open to set what you spent on",
+                    descStep2: "<b>Step 2:</b> enter the amount you are spending (numeric value)",
+                    descStep3: "<b>Step 3:</b> define what you spent the money on",
+                    calloutDate: "Date you expect it back (optional)",
+                    calloutDateDesc: "Did you spend or lend money and expect to get it back? Schedule the date you expect it back so the app will notify you, marking it on the calendar and sending you a message."
+                },
+                step5: {
+                    title: "Expense Record!",
+                    body: "Similarly, you'll have access to a History, where you'll see the Income and expenses you've had.<br/><br/>And see what you've spent on.",
+                    ctaFinish: "Got it"
+                },
+                next: "Next",
+                close: "Close"
+            } },
             goals: { title: "Objectifs", description: "Définissez et suivez vos objectifs à long terme." },
             today: { title: "Aujourd'hui", description: "Concentrez-vous sur ce qui compte le plus aujourd'hui." },
             notes: { title: "Notes", description: "Capturez des idées, des dessins et des plans.", create: "Créer une nouvelle note", untitled: "Note sans titre", empty: "Note vide...", confirmDelete: "Êtes-vous sûr de vouloir supprimer cette note ?" },
@@ -476,6 +676,56 @@ export const translations = {
     de: {
         nav: { goals: "Ziele", today: "Heute", tasks: "Gewohnheiten / Aufgaben", calendar: "Kalender", anytime: "Jederzeit", someday: "Irgendwann", notes: "Notizen", projects: "Projekte", newProject: "Projektname...", shortcuts: "VERKNÜPFUNGEN (1-9)", balance: "Gesamtbilanz" },
         pages: {
+            balance: { onboarding: {
+                step1: {
+                    title: "YOUR MONEY IS IMPORTANT",
+                    body: "\"He who carries his own bucket values every drop spilled\" in <b>balance</b> you can manage your money yourself...",
+                    ctaLearn: "I want to know how it works",
+                    ctaDismiss: "Okay"
+                },
+                step2: {
+                    title: "Balance!",
+                    body: "Balance is for you if you want to easily know <b>how much money enters and leaves your wallet</b>. This section is very simple to use but very useful.",
+                    meta: "<b>Goal</b> Set how much money you want to have or plan to keep,",
+                    adds: "<b>Add</b> money you earn to keep track and not forget it!",
+                    spend: "<b>Spend:</b> spend some money, well record it anyway to know the total remaining!"
+                },
+                step3: {
+                    title: "ADD",
+                    body: "Earned money? Great, add it to the balance to register it, so you'll know better if it gets lost, stolen or if you already spent it. It's very simple but there are two ways.",
+                    simpleTitle: "Add (simple)",
+                    simpleStep1: "<b>Step 1:</b> add the numeric amount of money",
+                    simpleStep2: "<b>Step 2:</b> tap add and done!",
+                    descTitle: "Add with description",
+                    descStep1: "<b>Step 1:</b> first tap add",
+                    descStep2: "<b>Step 2:</b> in <b>amount</b> add how much you earned.",
+                    descStep3: "<b>Step 3:</b> what did you earn it from? Add a note for yourself about what gave you that money, done!",
+                    calloutStep2: "Step 2",
+                    calloutStep3: "Step 3",
+                    calloutOptional: "(optional) <b>conservation goal</b> this puts on the calendar until what date you plan to keep that money, to keep it in mind and not forget.",
+                    calloutTarget: "conservation goal C."
+                },
+                step4: {
+                    title: "Spend",
+                    body: "Spending isn't bad, spending is bad when you don't know how much you spend or what you've been spending it on. Keep a clear record of your expenses with balance. Similarly, there are two ways to register it.",
+                    simpleTitle: "Spend (simple)",
+                    simpleStep1: "<b>Step 1:</b> enter the amount or numeric quantity of money you spent",
+                    simpleStep2: "<b>Step 2:</b> tap <b>spend</b> and done, it will be registered as an expense",
+                    descTitle: "Spend",
+                    descStep1: "<b>Step 1:</b> tap <b>spend</b> and a more defined interface will open to set what you spent on",
+                    descStep2: "<b>Step 2:</b> enter the amount you are spending (numeric value)",
+                    descStep3: "<b>Step 3:</b> define what you spent the money on",
+                    calloutDate: "Date you expect it back (optional)",
+                    calloutDateDesc: "Did you spend or lend money and expect to get it back? Schedule the date you expect it back so the app will notify you, marking it on the calendar and sending you a message."
+                },
+                step5: {
+                    title: "Expense Record!",
+                    body: "Similarly, you'll have access to a History, where you'll see the Income and expenses you've had.<br/><br/>And see what you've spent on.",
+                    ctaFinish: "Got it"
+                },
+                next: "Next",
+                close: "Close"
+            } },
             goals: { title: "Ziele", description: "Definieren und verfolgen Sie Ihre langfristigen Ziele." },
             today: { title: "Heute", description: "Konzentrieren Sie sich auf das, was heute am wichtigsten ist." },
             notes: { title: "Notizen", description: "Erfassen Sie Ideen, Zeichnungen und Pläne.", create: "Neue Notiz erstellen", untitled: "Unbenannte Notiz", empty: "Leere Notiz...", confirmDelete: "Sind Sie sicher, dass Sie diese Notiz löschen möchten?" },
@@ -538,6 +788,56 @@ export const translations = {
     pt: {
         nav: { goals: "Metas", today: "Hoje", tasks: "Hábitos / Tarefas", calendar: "Calendário", anytime: "A qualquer momento", someday: "Algum dia", notes: "Notas", projects: "Projetos", newProject: "Nome do Projeto...", shortcuts: "ATALHOS (1-9)", balance: "Balanço geral" },
         pages: {
+            balance: { onboarding: {
+                step1: {
+                    title: "YOUR MONEY IS IMPORTANT",
+                    body: "\"He who carries his own bucket values every drop spilled\" in <b>balance</b> you can manage your money yourself...",
+                    ctaLearn: "I want to know how it works",
+                    ctaDismiss: "Okay"
+                },
+                step2: {
+                    title: "Balance!",
+                    body: "Balance is for you if you want to easily know <b>how much money enters and leaves your wallet</b>. This section is very simple to use but very useful.",
+                    meta: "<b>Goal</b> Set how much money you want to have or plan to keep,",
+                    adds: "<b>Add</b> money you earn to keep track and not forget it!",
+                    spend: "<b>Spend:</b> spend some money, well record it anyway to know the total remaining!"
+                },
+                step3: {
+                    title: "ADD",
+                    body: "Earned money? Great, add it to the balance to register it, so you'll know better if it gets lost, stolen or if you already spent it. It's very simple but there are two ways.",
+                    simpleTitle: "Add (simple)",
+                    simpleStep1: "<b>Step 1:</b> add the numeric amount of money",
+                    simpleStep2: "<b>Step 2:</b> tap add and done!",
+                    descTitle: "Add with description",
+                    descStep1: "<b>Step 1:</b> first tap add",
+                    descStep2: "<b>Step 2:</b> in <b>amount</b> add how much you earned.",
+                    descStep3: "<b>Step 3:</b> what did you earn it from? Add a note for yourself about what gave you that money, done!",
+                    calloutStep2: "Step 2",
+                    calloutStep3: "Step 3",
+                    calloutOptional: "(optional) <b>conservation goal</b> this puts on the calendar until what date you plan to keep that money, to keep it in mind and not forget.",
+                    calloutTarget: "conservation goal C."
+                },
+                step4: {
+                    title: "Spend",
+                    body: "Spending isn't bad, spending is bad when you don't know how much you spend or what you've been spending it on. Keep a clear record of your expenses with balance. Similarly, there are two ways to register it.",
+                    simpleTitle: "Spend (simple)",
+                    simpleStep1: "<b>Step 1:</b> enter the amount or numeric quantity of money you spent",
+                    simpleStep2: "<b>Step 2:</b> tap <b>spend</b> and done, it will be registered as an expense",
+                    descTitle: "Spend",
+                    descStep1: "<b>Step 1:</b> tap <b>spend</b> and a more defined interface will open to set what you spent on",
+                    descStep2: "<b>Step 2:</b> enter the amount you are spending (numeric value)",
+                    descStep3: "<b>Step 3:</b> define what you spent the money on",
+                    calloutDate: "Date you expect it back (optional)",
+                    calloutDateDesc: "Did you spend or lend money and expect to get it back? Schedule the date you expect it back so the app will notify you, marking it on the calendar and sending you a message."
+                },
+                step5: {
+                    title: "Expense Record!",
+                    body: "Similarly, you'll have access to a History, where you'll see the Income and expenses you've had.<br/><br/>And see what you've spent on.",
+                    ctaFinish: "Got it"
+                },
+                next: "Next",
+                close: "Close"
+            } },
             goals: { title: "Metas", description: "Defina e acompanhe seus objetivos de longo prazo." },
             today: { title: "Hoje", description: "Concentre-se no que é mais importante hoje." },
             notes: { title: "Notas", description: "Capture ideias, desenhos e planos.", create: "Criar Nova Nota", untitled: "Nota sem título", empty: "Nota vazia...", confirmDelete: "Tem certeza de que deseja excluir esta nota?" },
@@ -600,6 +900,56 @@ export const translations = {
     ar: {
         nav: { goals: "الأهداف", today: "اليوم", tasks: "العادات / المهام", calendar: "التقويم", anytime: "في أي وقت", someday: "يوماً ما", notes: "ملاحظات", projects: "المشاريع", newProject: "اسم المشروع...", shortcuts: "الاختصارات (1-9)", balance: "الميزانية العمومية" },
         pages: {
+            balance: { onboarding: {
+                step1: {
+                    title: "YOUR MONEY IS IMPORTANT",
+                    body: "\"He who carries his own bucket values every drop spilled\" in <b>balance</b> you can manage your money yourself...",
+                    ctaLearn: "I want to know how it works",
+                    ctaDismiss: "Okay"
+                },
+                step2: {
+                    title: "Balance!",
+                    body: "Balance is for you if you want to easily know <b>how much money enters and leaves your wallet</b>. This section is very simple to use but very useful.",
+                    meta: "<b>Goal</b> Set how much money you want to have or plan to keep,",
+                    adds: "<b>Add</b> money you earn to keep track and not forget it!",
+                    spend: "<b>Spend:</b> spend some money, well record it anyway to know the total remaining!"
+                },
+                step3: {
+                    title: "ADD",
+                    body: "Earned money? Great, add it to the balance to register it, so you'll know better if it gets lost, stolen or if you already spent it. It's very simple but there are two ways.",
+                    simpleTitle: "Add (simple)",
+                    simpleStep1: "<b>Step 1:</b> add the numeric amount of money",
+                    simpleStep2: "<b>Step 2:</b> tap add and done!",
+                    descTitle: "Add with description",
+                    descStep1: "<b>Step 1:</b> first tap add",
+                    descStep2: "<b>Step 2:</b> in <b>amount</b> add how much you earned.",
+                    descStep3: "<b>Step 3:</b> what did you earn it from? Add a note for yourself about what gave you that money, done!",
+                    calloutStep2: "Step 2",
+                    calloutStep3: "Step 3",
+                    calloutOptional: "(optional) <b>conservation goal</b> this puts on the calendar until what date you plan to keep that money, to keep it in mind and not forget.",
+                    calloutTarget: "conservation goal C."
+                },
+                step4: {
+                    title: "Spend",
+                    body: "Spending isn't bad, spending is bad when you don't know how much you spend or what you've been spending it on. Keep a clear record of your expenses with balance. Similarly, there are two ways to register it.",
+                    simpleTitle: "Spend (simple)",
+                    simpleStep1: "<b>Step 1:</b> enter the amount or numeric quantity of money you spent",
+                    simpleStep2: "<b>Step 2:</b> tap <b>spend</b> and done, it will be registered as an expense",
+                    descTitle: "Spend",
+                    descStep1: "<b>Step 1:</b> tap <b>spend</b> and a more defined interface will open to set what you spent on",
+                    descStep2: "<b>Step 2:</b> enter the amount you are spending (numeric value)",
+                    descStep3: "<b>Step 3:</b> define what you spent the money on",
+                    calloutDate: "Date you expect it back (optional)",
+                    calloutDateDesc: "Did you spend or lend money and expect to get it back? Schedule the date you expect it back so the app will notify you, marking it on the calendar and sending you a message."
+                },
+                step5: {
+                    title: "Expense Record!",
+                    body: "Similarly, you'll have access to a History, where you'll see the Income and expenses you've had.<br/><br/>And see what you've spent on.",
+                    ctaFinish: "Got it"
+                },
+                next: "Next",
+                close: "Close"
+            } },
             goals: { title: "الأهداف", description: "حدد وتتبع أهدافك طويلة المدى." },
             today: { title: "اليوم", description: "ركز على ما يهم أكثر اليوم." },
             notes: { title: "ملاحظات", description: "التقط الأفكار والرسومات والخطط.", create: "إنشاء ملاحظة جديدة", untitled: "ملاحظة بدون عنوان", empty: "ملاحظة فارغة...", confirmDelete: "هل أنت متأكد أنك تريد حذف هذه الملاحظة؟" },
@@ -662,6 +1012,56 @@ export const translations = {
     ja: {
         nav: { goals: "目標", today: "今日", tasks: "習慣 / タスク", calendar: "カレンダー", anytime: "いつでも", someday: "いつか", notes: "ノート", projects: "プロジェクト", newProject: "プロジェクト名...", shortcuts: "ショートカット (1-9)", balance: "収支バランス" },
         pages: {
+            balance: { onboarding: {
+                step1: {
+                    title: "YOUR MONEY IS IMPORTANT",
+                    body: "\"He who carries his own bucket values every drop spilled\" in <b>balance</b> you can manage your money yourself...",
+                    ctaLearn: "I want to know how it works",
+                    ctaDismiss: "Okay"
+                },
+                step2: {
+                    title: "Balance!",
+                    body: "Balance is for you if you want to easily know <b>how much money enters and leaves your wallet</b>. This section is very simple to use but very useful.",
+                    meta: "<b>Goal</b> Set how much money you want to have or plan to keep,",
+                    adds: "<b>Add</b> money you earn to keep track and not forget it!",
+                    spend: "<b>Spend:</b> spend some money, well record it anyway to know the total remaining!"
+                },
+                step3: {
+                    title: "ADD",
+                    body: "Earned money? Great, add it to the balance to register it, so you'll know better if it gets lost, stolen or if you already spent it. It's very simple but there are two ways.",
+                    simpleTitle: "Add (simple)",
+                    simpleStep1: "<b>Step 1:</b> add the numeric amount of money",
+                    simpleStep2: "<b>Step 2:</b> tap add and done!",
+                    descTitle: "Add with description",
+                    descStep1: "<b>Step 1:</b> first tap add",
+                    descStep2: "<b>Step 2:</b> in <b>amount</b> add how much you earned.",
+                    descStep3: "<b>Step 3:</b> what did you earn it from? Add a note for yourself about what gave you that money, done!",
+                    calloutStep2: "Step 2",
+                    calloutStep3: "Step 3",
+                    calloutOptional: "(optional) <b>conservation goal</b> this puts on the calendar until what date you plan to keep that money, to keep it in mind and not forget.",
+                    calloutTarget: "conservation goal C."
+                },
+                step4: {
+                    title: "Spend",
+                    body: "Spending isn't bad, spending is bad when you don't know how much you spend or what you've been spending it on. Keep a clear record of your expenses with balance. Similarly, there are two ways to register it.",
+                    simpleTitle: "Spend (simple)",
+                    simpleStep1: "<b>Step 1:</b> enter the amount or numeric quantity of money you spent",
+                    simpleStep2: "<b>Step 2:</b> tap <b>spend</b> and done, it will be registered as an expense",
+                    descTitle: "Spend",
+                    descStep1: "<b>Step 1:</b> tap <b>spend</b> and a more defined interface will open to set what you spent on",
+                    descStep2: "<b>Step 2:</b> enter the amount you are spending (numeric value)",
+                    descStep3: "<b>Step 3:</b> define what you spent the money on",
+                    calloutDate: "Date you expect it back (optional)",
+                    calloutDateDesc: "Did you spend or lend money and expect to get it back? Schedule the date you expect it back so the app will notify you, marking it on the calendar and sending you a message."
+                },
+                step5: {
+                    title: "Expense Record!",
+                    body: "Similarly, you'll have access to a History, where you'll see the Income and expenses you've had.<br/><br/>And see what you've spent on.",
+                    ctaFinish: "Got it"
+                },
+                next: "Next",
+                close: "Close"
+            } },
             goals: { title: "目標", description: "長期的な目標を定義し、追跡します。" },
             today: { title: "今日", description: "今日最も重要なことに集中します。" },
             notes: { title: "ノート", description: "アイデア、描画、計画をキャプチャします。", create: "新しいノートを作成", untitled: "無題のノート", empty: "空のノート...", confirmDelete: "このノートを削除してもよろしいですか？" },
@@ -686,6 +1086,56 @@ export const translations = {
     hi: {
         nav: { goals: "लक्ष्य", today: "आज", tasks: "आदतें / कार्य", calendar: "कैलेंडर", anytime: "किसी भी समय", someday: "किसी दिन", notes: "नोट्स", projects: "परियोजनाएं", newProject: "परियोजना का नाम...", shortcuts: "शॉर्टकट (1-9)", balance: "सामान्य संतुलन" },
         pages: {
+            balance: { onboarding: {
+                step1: {
+                    title: "YOUR MONEY IS IMPORTANT",
+                    body: "\"He who carries his own bucket values every drop spilled\" in <b>balance</b> you can manage your money yourself...",
+                    ctaLearn: "I want to know how it works",
+                    ctaDismiss: "Okay"
+                },
+                step2: {
+                    title: "Balance!",
+                    body: "Balance is for you if you want to easily know <b>how much money enters and leaves your wallet</b>. This section is very simple to use but very useful.",
+                    meta: "<b>Goal</b> Set how much money you want to have or plan to keep,",
+                    adds: "<b>Add</b> money you earn to keep track and not forget it!",
+                    spend: "<b>Spend:</b> spend some money, well record it anyway to know the total remaining!"
+                },
+                step3: {
+                    title: "ADD",
+                    body: "Earned money? Great, add it to the balance to register it, so you'll know better if it gets lost, stolen or if you already spent it. It's very simple but there are two ways.",
+                    simpleTitle: "Add (simple)",
+                    simpleStep1: "<b>Step 1:</b> add the numeric amount of money",
+                    simpleStep2: "<b>Step 2:</b> tap add and done!",
+                    descTitle: "Add with description",
+                    descStep1: "<b>Step 1:</b> first tap add",
+                    descStep2: "<b>Step 2:</b> in <b>amount</b> add how much you earned.",
+                    descStep3: "<b>Step 3:</b> what did you earn it from? Add a note for yourself about what gave you that money, done!",
+                    calloutStep2: "Step 2",
+                    calloutStep3: "Step 3",
+                    calloutOptional: "(optional) <b>conservation goal</b> this puts on the calendar until what date you plan to keep that money, to keep it in mind and not forget.",
+                    calloutTarget: "conservation goal C."
+                },
+                step4: {
+                    title: "Spend",
+                    body: "Spending isn't bad, spending is bad when you don't know how much you spend or what you've been spending it on. Keep a clear record of your expenses with balance. Similarly, there are two ways to register it.",
+                    simpleTitle: "Spend (simple)",
+                    simpleStep1: "<b>Step 1:</b> enter the amount or numeric quantity of money you spent",
+                    simpleStep2: "<b>Step 2:</b> tap <b>spend</b> and done, it will be registered as an expense",
+                    descTitle: "Spend",
+                    descStep1: "<b>Step 1:</b> tap <b>spend</b> and a more defined interface will open to set what you spent on",
+                    descStep2: "<b>Step 2:</b> enter the amount you are spending (numeric value)",
+                    descStep3: "<b>Step 3:</b> define what you spent the money on",
+                    calloutDate: "Date you expect it back (optional)",
+                    calloutDateDesc: "Did you spend or lend money and expect to get it back? Schedule the date you expect it back so the app will notify you, marking it on the calendar and sending you a message."
+                },
+                step5: {
+                    title: "Expense Record!",
+                    body: "Similarly, you'll have access to a History, where you'll see the Income and expenses you've had.<br/><br/>And see what you've spent on.",
+                    ctaFinish: "Got it"
+                },
+                next: "Next",
+                close: "Close"
+            } },
             goals: { title: "लक्ष्य", description: "अपने दीर्घकालिक उद्देश्यों को परिभाषित और ट्रैक करें।" },
             today: { title: "आज", description: "आज जो सबसे ज्यादा मायने रखता है उस पर ध्यान दें।" },
             notes: { title: "नोट्स", description: "विचार, चित्र और योजनाएं कैप्चर करें।", create: "नया नोट बनाएं", untitled: "अनाम नोट", empty: "खाली नोट...", confirmDelete: "क्या आप वाकई इस नोट को हटाना चाहते हैं?" },
