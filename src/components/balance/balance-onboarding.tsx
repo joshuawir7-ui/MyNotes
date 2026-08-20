@@ -232,43 +232,46 @@ export function BalanceOnboarding({ onClose }: BalanceOnboardingProps) {
                     >
                         {step === 1 ? (
                             // Step 1: Centered Onboarding Card (matching reference image 2)
-                            <div className="flex flex-col w-full h-full px-[48px] py-[36px] items-center justify-center text-center overflow-y-auto">
+                            <div className="flex flex-col w-full h-full px-[32px] py-[28px] sm:px-[48px] sm:py-[36px] items-center justify-center text-center overflow-y-auto">
                                 {/* Dollar Bill Image with diffuse shadow */}
-                                <div className="relative flex-shrink-0">
+                                <div className="relative mb-3 flex-shrink-0">
                                     <img 
                                         src="/assets/onboarding/dollar-bill.png" 
                                         alt="Dollar Bill" 
                                         className="balance-onboarding-bill cursor-pointer hover:scale-105 transition-transform duration-300" 
+                                        onError={(e) => {
+                                            (e.target as HTMLImageElement).src = '/images/dollar-bill.png'
+                                        }}
                                     />
                                 </div>
                                 
                                 {/* Title */}
-                                <h2 className="text-[26px] md:text-[30px] font-extrabold tracking-tight text-black dark:text-white uppercase mb-3 leading-tight">
+                                <h2 className="text-[24px] sm:text-[28px] font-extrabold tracking-tight text-black dark:text-white uppercase mb-2 leading-tight">
                                     {t.step1.title}
                                 </h2>
 
                                 {/* Body with Dancing Script Quote */}
-                                <div className="max-w-[660px] text-center mb-6">
-                                    <p className="font-dancing text-[20px] sm:text-[23px] font-semibold text-black dark:text-white mb-2 leading-snug">
+                                <div className="max-w-[660px] text-center mb-5">
+                                    <p className="font-dancing text-[19px] sm:text-[22px] font-semibold text-black dark:text-white mb-2 leading-snug">
                                         {t.step1.quote || "“Quien carga su propio balde da valor a cada gota que es derramada”"}
                                     </p>
                                     <p 
-                                        className="text-[14px] sm:text-[15px] text-zinc-700 dark:text-zinc-300 leading-relaxed font-sans"
+                                        className="text-[13px] sm:text-[14px] text-zinc-700 dark:text-zinc-300 leading-relaxed font-sans"
                                         dangerouslySetInnerHTML={{ __html: t.step1.bodyText || t.step1.body }}
                                     />
                                 </div>
                                 
                                 {/* Action Buttons */}
-                                <div className="flex flex-row items-center justify-center gap-4 flex-shrink-0">
+                                <div className="flex flex-row items-center justify-center gap-3 flex-shrink-0">
                                     <button 
                                         onClick={nextStep}
-                                        className="px-7 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold text-[14px] hover:scale-105 transition-transform shadow-md"
+                                        className="px-7 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-full font-bold text-[14px] hover:scale-105 transition-transform shadow-md"
                                     >
                                         {t.step1.ctaLearn}
                                     </button>
                                     <button 
                                         onClick={handleClose}
-                                        className="px-7 py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl font-bold text-[14px] hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+                                        className="px-7 py-2.5 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-full font-bold text-[14px] hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
                                     >
                                         {t.step1.ctaDismiss}
                                     </button>
