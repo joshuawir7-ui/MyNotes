@@ -68,6 +68,8 @@ export const translations = {
                 onboarding: {
                 step1: {
                     title: "YOUR MONEY IS IMPORTANT",
+                    quote: "“He who carries his own bucket values every drop spilled”",
+                    bodyText: "in <b>balance</b> you can manage your money yourself, you'll have a manual count of how much money you have. This isn't bad, it's something good, as it teaches you to be responsible for your money, since neither the bank, a system nor another person will count the money for you, and you'll value every dollar of your account.",
                     body: "\"He who carries his own bucket values every drop spilled\" in <b>balance</b> you can manage your money yourself...",
                     ctaLearn: "I want to know how it works",
                     ctaDismiss: "Okay"
@@ -290,6 +292,8 @@ export const translations = {
                 onboarding: {
                 step1: {
                     title: "TU DINERO ES IMPORTANTE",
+                    quote: "“Quien carga su propio balde da valor a cada gota que es derramada”",
+                    bodyText: "en <b>balance</b> podrás administrar tu dinero tú mismo, tendrás un conteo manual de cuánto dinero tienes, esto no es malo, es algo bueno, ya que te enseña a ser responsable sobre el dinero, ya que ni el banco, un sistema u otra persona estará contando el dinero por ti, y le darás un valor a cada dólar de tu cuenta, no automatizada, debes ingresar los ingresos por ti mismo, esos centavos que ganas y la banca en línea no sabe que tienes, bueno balance si los contara, porque",
                     body: "\"Quien carga su propio balde da valor a cada gota que es derramada\" en <b>balance</b> podrás administrar tu dinero tú mismo...",
                     ctaLearn: "Quiero saber cómo funciona",
                     ctaDismiss: "Vale"

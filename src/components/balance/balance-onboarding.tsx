@@ -231,45 +231,47 @@ export function BalanceOnboarding({ onClose }: BalanceOnboardingProps) {
                         className="bg-white dark:bg-[#121212] rounded-[32px] flex flex-row w-[876px] h-[494px] absolute top-0 left-0 shadow-[0_20px_60px_rgba(0,0,0,0.15)] items-stretch border border-zinc-100 dark:border-zinc-800 overflow-hidden origin-top-left"
                     >
                         {step === 1 ? (
-                            // Step 1: Gateway Card (similar to Jupiter)
-                            <div className="flex flex-row w-full h-full px-[48px] py-[40px] gap-[48px]">
-                                <div className="w-[56%] flex-shrink-0 flex flex-col justify-center gap-6 relative h-full">
-                                    <div>
-                                        <h2 className="text-[42px] font-bold tracking-tight text-black dark:text-white uppercase leading-none">
-                                            {t.step1.title}
-                                        </h2>
-                                        <div className="h-[2px] bg-black/90 dark:bg-white/60 w-full max-w-[80%] mt-6 mb-6" /> 
-                                        <p 
-                                            className="text-[20px] font-normal text-zinc-800 dark:text-zinc-200 leading-[1.5] max-w-[420px]"
-                                            dangerouslySetInnerHTML={{ __html: t.step1.body }}
-                                        />
-                                    </div>
-                                    
-                                    <div className="flex flex-row items-center gap-4 mt-8">
-                                        <button 
-                                            onClick={nextStep}
-                                            className="px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-full font-medium hover:scale-105 transition-transform"
-                                        >
-                                            {t.step1.ctaLearn}
-                                        </button>
-                                        <button 
-                                            onClick={handleClose}
-                                            className="px-6 py-3 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-full font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                                        >
-                                            {t.step1.ctaDismiss}
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <div className="w-[44%] flex-shrink-0 bg-zinc-100 dark:bg-zinc-900 rounded-[24px] overflow-hidden flex items-center justify-center relative h-full border border-zinc-200 dark:border-zinc-800 shadow-inner">
+                            // Step 1: Centered Onboarding Card (matching reference image 2)
+                            <div className="flex flex-col w-full h-full px-[48px] py-[36px] items-center justify-center text-center overflow-y-auto">
+                                {/* Dollar Bill Image with diffuse shadow */}
+                                <div className="relative flex-shrink-0">
                                     <img 
                                         src="/assets/onboarding/dollar-bill.png" 
                                         alt="Dollar Bill" 
-                                        className="w-full h-full object-cover" 
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800&q=80'
-                                        }}
+                                        className="balance-onboarding-bill cursor-pointer hover:scale-105 transition-transform duration-300" 
                                     />
+                                </div>
+                                
+                                {/* Title */}
+                                <h2 className="text-[26px] md:text-[30px] font-extrabold tracking-tight text-black dark:text-white uppercase mb-3 leading-tight">
+                                    {t.step1.title}
+                                </h2>
+
+                                {/* Body with Dancing Script Quote */}
+                                <div className="max-w-[660px] text-center mb-6">
+                                    <p className="font-dancing text-[20px] sm:text-[23px] font-semibold text-black dark:text-white mb-2 leading-snug">
+                                        {t.step1.quote || "“Quien carga su propio balde da valor a cada gota que es derramada”"}
+                                    </p>
+                                    <p 
+                                        className="text-[14px] sm:text-[15px] text-zinc-700 dark:text-zinc-300 leading-relaxed font-sans"
+                                        dangerouslySetInnerHTML={{ __html: t.step1.bodyText || t.step1.body }}
+                                    />
+                                </div>
+                                
+                                {/* Action Buttons */}
+                                <div className="flex flex-row items-center justify-center gap-4 flex-shrink-0">
+                                    <button 
+                                        onClick={nextStep}
+                                        className="px-7 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold text-[14px] hover:scale-105 transition-transform shadow-md"
+                                    >
+                                        {t.step1.ctaLearn}
+                                    </button>
+                                    <button 
+                                        onClick={handleClose}
+                                        className="px-7 py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl font-bold text-[14px] hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+                                    >
+                                        {t.step1.ctaDismiss}
+                                    </button>
                                 </div>
                             </div>
                         ) : (

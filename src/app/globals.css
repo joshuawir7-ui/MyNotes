@@ -622,8 +622,20 @@
   padding: 0 !important;
 }
 
+
 @media (orientation: landscape) and (max-height: 500px) {
   .wallet-history-date {
     display: none;
   }
+}
+
+/* Balance Onboarding Bill Shadow and Placement */
+.balance-onboarding-bill {
+  display: block;
+  margin: 0 auto 20px auto;
+  width: 180px;
+  height: auto;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.22));
+  box-shadow: 0 10px 16px rgba(0, 0, 0, 0.18);
+  border-radius: 4px;
 }
