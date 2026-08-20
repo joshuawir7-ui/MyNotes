@@ -30,7 +30,7 @@ export function BalanceOnboarding({ onClose }: BalanceOnboardingProps) {
         
         const updateCardScale = () => {
             if (wrapperRef.current && cardRef.current) {
-                const scale = wrapperRef.current.offsetWidth / 876;
+                const scale = wrapperRef.current.offsetWidth / 750;
                 cardRef.current.style.transform = `scale(${scale})`;
             }
         };
@@ -195,23 +195,23 @@ export function BalanceOnboarding({ onClose }: BalanceOnboardingProps) {
                 );
             case 5:
                 return (
-                    <div className="flex flex-row w-full h-full p-[40px] gap-[40px] items-center">
+                    <div className="flex flex-row w-full h-full p-[32px] sm:p-[40px] gap-[32px] sm:gap-[40px] items-center">
                         <div className="w-[45%] flex-shrink-0 flex items-center justify-center h-full">
                             <img 
                                 src="/assets/onboarding/archive-box.png" 
                                 alt="Archive Box" 
-                                className="w-[85%] max-w-[280px] object-contain" 
+                                className="w-[85%] max-w-[260px] object-contain shadow-none filter-none" 
                                 onError={(e) => {
                                     (e.target as HTMLImageElement).src = '/images/archive-box.png'
                                 }}
                             />
                         </div>
-                        <div className="w-[55%] flex flex-col justify-center pr-6">
-                            <h3 className="text-[38px] sm:text-[42px] font-dancing font-semibold text-black dark:text-white leading-tight mb-2">
+                        <div className="w-[55%] flex flex-col justify-center pr-4 sm:pr-6">
+                            <h3 className="text-[36px] sm:text-[42px] font-dancing font-bold text-black dark:text-white leading-none mb-1">
                                 {t.step5.title}
                             </h3>
-                            <div className="h-[1.5px] bg-black dark:bg-white w-full mb-6" />
-                            <p className="text-[16px] text-zinc-700 dark:text-zinc-300 leading-relaxed font-sans" dangerouslySetInnerHTML={{ __html: t.step5.body }} />
+                            <div className="h-[2px] bg-black dark:bg-white w-full max-w-[340px] mt-1.5 mb-5" />
+                            <p className="text-[15px] sm:text-[16px] text-zinc-700 dark:text-zinc-300 leading-relaxed font-sans" dangerouslySetInnerHTML={{ __html: t.step5.body }} />
                         </div>
                     </div>
                 );
@@ -233,12 +233,12 @@ export function BalanceOnboarding({ onClose }: BalanceOnboardingProps) {
                     animate={{ scale: 1, opacity: 1, y: 0 }}
                     exit={{ scale: 0.95, opacity: 0, y: 20 }}
                     className="w-full relative overflow-hidden flex-shrink-0" 
-                    style={{ aspectRatio: '876 / 494', maxWidth: '876px' }}
+                    style={{ aspectRatio: '750 / 440', maxWidth: '750px' }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div
                         ref={cardRef}
-                        className="bg-white dark:bg-[#121212] rounded-[32px] flex flex-row w-[876px] h-[494px] absolute top-0 left-0 shadow-[0_20px_60px_rgba(0,0,0,0.15)] items-stretch border border-zinc-100 dark:border-zinc-800 overflow-hidden origin-top-left"
+                        className="bg-white dark:bg-[#121212] rounded-[32px] flex flex-row w-[750px] h-[440px] absolute top-0 left-0 shadow-[0_20px_60px_rgba(0,0,0,0.15)] items-stretch border border-zinc-100 dark:border-zinc-800 overflow-hidden origin-top-left"
                     >
                         {step === 1 ? (
                             // Step 1: Centered Onboarding Card (matching reference image 2)
