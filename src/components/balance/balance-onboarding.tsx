@@ -282,36 +282,40 @@ export function BalanceOnboarding({ onClose }: BalanceOnboardingProps) {
                                     </motion.div>
                                 </AnimatePresence>
 
-                                {/* Navigation Arrows */}
+                                {/* Bottom Navigation Control Bar (Centered at bottom) */}
                                 {step > 1 && (
-                                    <div className="absolute bottom-[40px] right-[40px] flex gap-3 items-center">
-                                        {step > 2 && (
+                                    <div className="absolute bottom-[24px] left-0 right-0 z-20 flex items-center justify-center gap-4 pointer-events-none">
+                                        <div className="flex items-center gap-3 pointer-events-auto bg-white/90 dark:bg-[#121212]/90 backdrop-blur-md px-5 py-2 rounded-full border border-zinc-200/80 dark:border-zinc-800/80 shadow-lg">
+                                            {step > 2 && (
+                                                <button 
+                                                    onClick={prevStep}
+                                                    className="w-[36px] h-[36px] rounded-full border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                                >
+                                                    <ChevronLeft size={18} />
+                                                </button>
+                                            )}
+
+                                            {/* Progress dots */}
+                                            <div className="flex gap-1.5 items-center px-1">
+                                                {[2, 3, 4, 5].map((idx) => (
+                                                    <div 
+                                                        key={idx} 
+                                                        className={`h-[6px] rounded-full transition-all duration-300 ${step === idx ? 'w-[20px] bg-black dark:bg-white' : 'w-[6px] bg-zinc-300 dark:bg-zinc-700'}`} 
+                                                    />
+                                                ))}
+                                            </div>
+
+                                            {/* Action Button (Siguiente / Entendido) */}
                                             <button 
-                                                onClick={prevStep}
-                                                className="w-[44px] h-[44px] rounded-full border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                                onClick={nextStep}
+                                                className="px-5 h-[38px] rounded-full bg-black dark:bg-white text-white dark:text-black font-semibold text-[13px] flex items-center gap-1.5 hover:scale-105 transition-transform shadow-md"
                                             >
-                                                <ChevronLeft size={20} />
+                                                {step === 5 ? t.step5.ctaFinish : t.next}
+                                                {step < 5 && <ChevronRight size={16} />}
                                             </button>
-                                        )}
-                                        <button 
-                                            onClick={nextStep}
-                                            className="px-6 h-[44px] rounded-full bg-black dark:bg-white text-white dark:text-black font-medium flex items-center gap-2 hover:scale-105 transition-transform"
-                                        >
-                                            {step === 5 ? t.step5.ctaFinish : t.next}
-                                            {step < 5 && <ChevronRight size={18} />}
-                                        </button>
+                                        </div>
                                     </div>
                                 )}
-                                
-                                {/* Progress dots */}
-                                <div className="absolute bottom-[52px] left-[40px] flex gap-2">
-                                    {[2, 3, 4, 5].map((idx) => (
-                                        <div 
-                                            key={idx} 
-                                            className={`h-[6px] rounded-full transition-all duration-300 ${step === idx ? 'w-[24px] bg-black dark:bg-white' : 'w-[6px] bg-zinc-300 dark:bg-zinc-700'}`} 
-                                        />
-                                    ))}
-                                </div>
                             </div>
                         )}
                     </div>
