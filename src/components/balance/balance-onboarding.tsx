@@ -96,47 +96,37 @@ export function BalanceOnboarding({ onClose }: BalanceOnboardingProps) {
                 );
             case 3:
                 return (
-                    <div className="flex flex-row w-full h-full p-[40px] gap-[40px]">
-                        <div className="w-[45%] h-full relative rounded-[20px] overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-inner flex items-center justify-center">
-                            <img src="/assets/onboarding/gane-screen.png" alt="Gane UI" className="h-[90%] object-contain" />
-                            
-                            {/* Callouts over image */}
-                            <div className="absolute right-[-10px] top-[40%] flex items-center">
-                                <div className="w-[80px] h-[2px] bg-black dark:bg-white border border-white dark:border-black opacity-80" />
-                                <div className="bg-black dark:bg-white text-white dark:text-black px-3 py-1 rounded-md text-[12px] font-bold whitespace-nowrap z-10 shadow-lg ml-1">
-                                    {t.step3.calloutStep2}
-                                </div>
-                            </div>
-                            <div className="absolute right-[0px] top-[60%] flex items-center">
-                                <div className="w-[60px] h-[2px] bg-black dark:bg-white border border-white dark:border-black opacity-80" />
-                                <div className="bg-black dark:bg-white text-white dark:text-black px-3 py-1 rounded-md text-[12px] font-bold whitespace-nowrap z-10 shadow-lg ml-1">
-                                    {t.step3.calloutStep3}
-                                </div>
-                            </div>
-                            <div className="absolute left-[5%] bottom-[15%] max-w-[150px]">
-                                <div className="bg-white/90 dark:bg-black/90 backdrop-blur-sm p-2 rounded-lg border border-black/10 dark:border-white/10 shadow-lg">
-                                    <p className="text-[11px] leading-tight text-zinc-800 dark:text-zinc-200" dangerouslySetInnerHTML={{ __html: t.step3.calloutOptional }} />
-                                </div>
-                            </div>
+                    <div className="flex flex-row w-full h-full p-[32px] sm:p-[40px] gap-[32px] sm:gap-[40px]">
+                        <div className="w-[45%] h-full relative rounded-[20px] overflow-hidden bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 shadow-inner flex items-center justify-center p-2">
+                            <img 
+                                src="/assets/onboarding/gane-screen.png" 
+                                alt="Gane UI" 
+                                className="h-full w-full object-contain rounded-lg" 
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/images/gane-screen.png'
+                                }}
+                            />
                         </div>
-                        <div className="w-[55%] flex flex-col justify-center gap-[20px] overflow-y-auto">
-                            <h3 className="text-[32px] font-bold text-black dark:text-white uppercase">{t.step3.title}</h3>
-                            <p className="text-[15px] text-zinc-600 dark:text-zinc-300 leading-relaxed" dangerouslySetInnerHTML={{ __html: t.step3.body }} />
+                        <div className="w-[55%] flex flex-col justify-center gap-[16px] overflow-y-auto pr-2">
+                            <h3 className="text-[36px] sm:text-[40px] font-dancing font-bold text-black dark:text-white leading-tight">
+                                {t.step3.title}
+                            </h3>
+                            <p className="text-[14px] sm:text-[15px] text-zinc-600 dark:text-zinc-300 leading-relaxed font-sans" dangerouslySetInnerHTML={{ __html: t.step3.body }} />
                             
-                            <div className="mt-2 space-y-4">
+                            <div className="space-y-3 font-sans">
                                 <div>
-                                    <h4 className="font-bold text-[16px] text-black dark:text-white mb-2">{t.step3.simpleTitle}</h4>
+                                    <h4 className="font-bold text-[15px] text-black dark:text-white mb-1">{t.step3.simpleTitle}</h4>
                                     <ul className="space-y-1">
-                                        <li className="text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step3.simpleStep1 }} />
-                                        <li className="text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step3.simpleStep2 }} />
+                                        <li className="text-[13px] sm:text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step3.simpleStep1 }} />
+                                        <li className="text-[13px] sm:text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step3.simpleStep2 }} />
                                     </ul>
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-[16px] text-black dark:text-white mb-2">{t.step3.descTitle}</h4>
+                                    <h4 className="font-bold text-[15px] text-black dark:text-white mb-1">{t.step3.descTitle}</h4>
                                     <ul className="space-y-1">
-                                        <li className="text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step3.descStep1 }} />
-                                        <li className="text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step3.descStep2 }} />
-                                        <li className="text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step3.descStep3 }} />
+                                        <li className="text-[13px] sm:text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step3.descStep1 }} />
+                                        <li className="text-[13px] sm:text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step3.descStep2 }} />
+                                        <li className="text-[13px] sm:text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step3.descStep3 }} />
                                     </ul>
                                 </div>
                             </div>
@@ -145,48 +135,37 @@ export function BalanceOnboarding({ onClose }: BalanceOnboardingProps) {
                 );
             case 4:
                 return (
-                    <div className="flex flex-row w-full h-full p-[40px] gap-[40px]">
-                        <div className="w-[45%] h-full relative rounded-[20px] overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-inner flex items-center justify-center">
-                            <img src="/assets/onboarding/gaste-screen.png" alt="Gaste UI" className="h-[90%] object-contain" />
-                            
-                            {/* Callouts over image */}
-                            <div className="absolute right-[-10px] top-[40%] flex items-center">
-                                <div className="w-[80px] h-[2px] bg-black dark:bg-white border border-white dark:border-black opacity-80" />
-                                <div className="bg-black dark:bg-white text-white dark:text-black px-3 py-1 rounded-md text-[12px] font-bold whitespace-nowrap z-10 shadow-lg ml-1">
-                                    {t.step3.calloutStep2}
-                                </div>
-                            </div>
-                            <div className="absolute right-[0px] top-[60%] flex items-center">
-                                <div className="w-[60px] h-[2px] bg-black dark:bg-white border border-white dark:border-black opacity-80" />
-                                <div className="bg-black dark:bg-white text-white dark:text-black px-3 py-1 rounded-md text-[12px] font-bold whitespace-nowrap z-10 shadow-lg ml-1">
-                                    {t.step3.calloutStep3}
-                                </div>
-                            </div>
-                            <div className="absolute left-[5%] bottom-[20%] max-w-[160px]">
-                                <div className="bg-white/90 dark:bg-black/90 backdrop-blur-sm p-3 rounded-lg border border-black/10 dark:border-white/10 shadow-lg">
-                                    <p className="text-[12px] font-bold text-black dark:text-white mb-1" dangerouslySetInnerHTML={{ __html: t.step4.calloutDate }} />
-                                    <p className="text-[11px] leading-tight text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step4.calloutDateDesc }} />
-                                </div>
-                            </div>
+                    <div className="flex flex-row w-full h-full p-[32px] sm:p-[40px] gap-[32px] sm:gap-[40px]">
+                        <div className="w-[45%] h-full relative rounded-[20px] overflow-hidden bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 shadow-inner flex items-center justify-center p-2">
+                            <img 
+                                src="/assets/onboarding/gaste-screen.png" 
+                                alt="Gaste UI" 
+                                className="h-full w-full object-contain rounded-lg" 
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/images/gaste-screen.png'
+                                }}
+                            />
                         </div>
-                        <div className="w-[55%] flex flex-col justify-center gap-[20px] overflow-y-auto">
-                            <h3 className="text-[32px] font-bold text-black dark:text-white uppercase">{t.step4.title}</h3>
-                            <p className="text-[15px] text-zinc-600 dark:text-zinc-300 leading-relaxed" dangerouslySetInnerHTML={{ __html: t.step4.body }} />
+                        <div className="w-[55%] flex flex-col justify-center gap-[16px] overflow-y-auto pr-2">
+                            <h3 className="text-[36px] sm:text-[40px] font-dancing font-bold text-black dark:text-white leading-tight">
+                                {t.step4.title}
+                            </h3>
+                            <p className="text-[14px] sm:text-[15px] text-zinc-600 dark:text-zinc-300 leading-relaxed font-sans" dangerouslySetInnerHTML={{ __html: t.step4.body }} />
                             
-                            <div className="mt-2 space-y-4">
+                            <div className="space-y-3 font-sans">
                                 <div>
-                                    <h4 className="font-bold text-[16px] text-black dark:text-white mb-2">{t.step4.simpleTitle}</h4>
+                                    <h4 className="font-bold text-[15px] text-black dark:text-white mb-1">{t.step4.simpleTitle}</h4>
                                     <ul className="space-y-1">
-                                        <li className="text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step4.simpleStep1 }} />
-                                        <li className="text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step4.simpleStep2 }} />
+                                        <li className="text-[13px] sm:text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step4.simpleStep1 }} />
+                                        <li className="text-[13px] sm:text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step4.simpleStep2 }} />
                                     </ul>
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-[16px] text-black dark:text-white mb-2">{t.step4.descTitle}</h4>
+                                    <h4 className="font-bold text-[15px] text-black dark:text-white mb-1">{t.step4.descTitle}</h4>
                                     <ul className="space-y-1">
-                                        <li className="text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step4.descStep1 }} />
-                                        <li className="text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step4.descStep2 }} />
-                                        <li className="text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step4.descStep3 }} />
+                                        <li className="text-[13px] sm:text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step4.descStep1 }} />
+                                        <li className="text-[13px] sm:text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step4.descStep2 }} />
+                                        <li className="text-[13px] sm:text-[14px] text-zinc-700 dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: t.step4.descStep3 }} />
                                     </ul>
                                 </div>
                             </div>
