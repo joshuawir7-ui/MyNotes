@@ -20,6 +20,7 @@ import { X, Sparkles } from "lucide-react"
 import { App as CapacitorApp } from "@capacitor/app"
 import { useRouter } from "next/navigation"
 import { NotificationManager } from "@/lib/notifications"
+import { registerWebNotifications, startWebNotificationPolling, stopWebNotificationPolling } from "@/lib/web-notifications"
 import { Capacitor } from '@capacitor/core'
 
 const isNative = Capacitor.isNativePlatform();
@@ -462,13 +463,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         
         NotificationManager.initialize();
 
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(registration => {
-                    console.log('SW registered: ', registration);
-                }).catch(registrationError => {
-                    console.log('SW registration failed: ', registrationError);
-                });
+        // Web notifications: register SW + permission + start polling loop
+        if (!Capacitor.isNativePlatform()) {
+            registerWebNotifications().then((granted) => {
+                if (granted) {
+                    startWebNotificationPolling(
+                        () => useStore.getState().tasks,
+                        () => useStore.getState().appointments,
+                        () => useStore.getState().language,
+                        () => useStore.getState().notificationsEnabled,
+                    );
+                }
             });
         }
 
@@ -557,6 +562,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             if (unsubHydrate) {
                 unsubHydrate();
             }
+            stopWebNotificationPolling();
             if (appListener && appListener.remove) {
                 appListener.remove();
             }
