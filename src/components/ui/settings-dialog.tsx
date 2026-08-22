@@ -175,64 +175,131 @@ export function SettingsDialog() {
         // Force reset syncing state on mount to prevent stuck greyed-out buttons
         useStore.setState({ isSyncingCloud: false });
 
-        import('@codetrix-studio/capacitor-google-auth').then(({ GoogleAuth }) => {
-            if (typeof window !== 'undefined') {
-                const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '309899943436-gp6o1oaqpij5qq6sal77f6dr15lh61fp.apps.googleusercontent.com';
-                GoogleAuth.initialize({
-                    clientId,
-                    scopes: [
-                        'https://www.googleapis.com/auth/userinfo.profile',
-                        'https://www.googleapis.com/auth/userinfo.email',
-                        'https://www.googleapis.com/auth/drive.file'
-                    ],
-                    grantOfflineAccess: true
-                });
-            }
-        });
+        // Only initialize capacitor-google-auth on native platforms
+        // On web we use Google Identity Services (GSI) directly
+        if (Capacitor.isNativePlatform()) {
+            import('@codetrix-studio/capacitor-google-auth').then(({ GoogleAuth }) => {
+                if (typeof window !== 'undefined') {
+                    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '309899943436-gp6o1oaqpij5qq6sal77f6dr15lh61fp.apps.googleusercontent.com';
+                    GoogleAuth.initialize({
+                        clientId,
+                        scopes: [
+                            'https://www.googleapis.com/auth/userinfo.profile',
+                            'https://www.googleapis.com/auth/userinfo.email',
+                            'https://www.googleapis.com/auth/drive.file'
+                        ],
+                        grantOfflineAccess: true
+                    });
+                }
+            });
+        }
     }, [])
 
+    // ──────────────────────────────────────────────────────
+    // WEB LOGIN: uses Google Identity Services (GSI) directly
+    // Avoids the Capacitor native plugin on browsers
+    // ──────────────────────────────────────────────────────
+    const handleGoogleLoginWeb = (): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '309899943436-gp6o1oaqpij5qq6sal77f6dr15lh61fp.apps.googleusercontent.com';
+            const gsi = (window as any).google?.accounts?.oauth2;
+            if (!gsi) {
+                reject(new Error('Google Identity Services not loaded'));
+                return;
+            }
+            const client = gsi.initTokenClient({
+                client_id: clientId,
+                scope: [
+                    'https://www.googleapis.com/auth/userinfo.profile',
+                    'https://www.googleapis.com/auth/userinfo.email',
+                    'https://www.googleapis.com/auth/drive.file'
+                ].join(' '),
+                callback: async (tokenResponse: any) => {
+                    if (tokenResponse.error) {
+                        reject(new Error(tokenResponse.error));
+                        return;
+                    }
+                    try {
+                        // Fetch user profile with the access token
+                        const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                            headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                        });
+                        const profile = await profileRes.json();
+                        setGoogleUser({
+                            name: profile.name || '',
+                            email: profile.email || '',
+                            imageUrl: profile.picture || '',
+                            accessToken: tokenResponse.access_token,
+                            isDemo: false
+                        });
+                        showNotif(
+                            language === 'es' ? "Sesión Iniciada" : "Logged In",
+                            language === 'es' ? `Bienvenido, ${profile.name}` : `Welcome, ${profile.name}`,
+                            "success"
+                        );
+                        setTimeout(() => {
+                            import('@/lib/store').then(({ triggerBackgroundSync }) => triggerBackgroundSync());
+                        }, 500);
+                        resolve();
+                    } catch (e) {
+                        reject(e);
+                    }
+                },
+                // Force account chooser every time
+                prompt: 'select_account',
+            });
+            client.requestAccessToken();
+        });
+    };
+
+    // ──────────────────────────────────────────────────────
+    // MOBILE LOGIN: uses capacitor-google-auth (native SDK)
+    // ──────────────────────────────────────────────────────
+    const handleGoogleLoginNative = async () => {
+        const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+        // Sign out first to always show the account chooser
+        await GoogleAuth.signOut().catch(() => { });
+        console.log("Calling GoogleAuth.signIn (native)");
+        const result = await GoogleAuth.signIn();
+        if (result) {
+            const accessToken = ((result as any).authentication?.accessToken || (result as any).accessToken) || undefined;
+            setGoogleUser({
+                name: result.displayName || '',
+                email: result.email || '',
+                imageUrl: result.imageUrl || '',
+                accessToken,
+                isDemo: false
+            });
+            if (result.serverAuthCode) {
+                try {
+                    const { registerPlugin } = await import('@capacitor/core');
+                    const CloudAuth = registerPlugin('CloudAuth');
+                    await (CloudAuth as any).exchangeAndSaveTokens({ authCode: result.serverAuthCode });
+                    console.log("Tokens exchanged and saved securely via native plugin.");
+                } catch (err) {
+                    console.error("Failed to exchange serverAuthCode natively", err);
+                }
+            }
+            showNotif(
+                language === 'es' ? "Sesión Iniciada" : "Logged In",
+                language === 'es' ? `Bienvenido, ${result.displayName}` : `Welcome, ${result.displayName}`,
+                "success"
+            );
+            setTimeout(() => {
+                import('@/lib/store').then(({ triggerBackgroundSync }) => triggerBackgroundSync());
+            }, 500);
+        }
+    };
+
+    // ──────────────────────────────────────────────────────
+    // ENTRY POINT: routes to the correct login flow
+    // ──────────────────────────────────────────────────────
     const handleGoogleLogin = async () => {
         try {
-            const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
-            
-            await GoogleAuth.signOut().catch(() => { });
-            console.log("Calling GoogleAuth.signIn");
-            const result = await GoogleAuth.signIn();
-
-            if (result) {
-                const accessToken = ((result as any).authentication?.accessToken || (result as any).accessToken) || undefined;
-                const email = result.email || "";
-                const name = result.displayName || "";
-                const imageUrl = result.imageUrl || "";
-
-                setGoogleUser({
-                    name,
-                    email,
-                    imageUrl,
-                    accessToken,
-                    isDemo: false
-                });
-
-                if (Capacitor.isNativePlatform() && result.serverAuthCode) {
-                    try {
-                        const { registerPlugin } = await import('@capacitor/core');
-                        const CloudAuth = registerPlugin('CloudAuth');
-                        await (CloudAuth as any).exchangeAndSaveTokens({ authCode: result.serverAuthCode });
-                        console.log("Tokens exchanged and saved securely via native plugin.");
-                    } catch (err) {
-                        console.error("Failed to exchange serverAuthCode natively", err);
-                    }
-                }
-
-                showNotif(
-                    language === 'es' ? "Sesión Iniciada" : "Logged In",
-                    language === 'es' ? `Bienvenido, ${name}` : `Welcome, ${name}`,
-                    "success"
-                );
-
-                setTimeout(() => {
-                    import('@/lib/store').then(({ triggerBackgroundSync }) => triggerBackgroundSync());
-                }, 500);
+            if (Capacitor.isNativePlatform()) {
+                await handleGoogleLoginNative();
+            } else {
+                await handleGoogleLoginWeb();
             }
         } catch (err: any) {
             console.error("Google login failed", err);
