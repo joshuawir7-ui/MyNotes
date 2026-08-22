@@ -177,8 +177,9 @@ export function SettingsDialog() {
 
         import('@codetrix-studio/capacitor-google-auth').then(({ GoogleAuth }) => {
             if (typeof window !== 'undefined') {
+                const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '309899943436-gp6o1oaqpij5qq6sal77f6dr15lh61fp.apps.googleusercontent.com';
                 GoogleAuth.initialize({
-                    clientId: '309899943436-gp6o1oaqpij5qq6sal77f6dr15lh61fp.apps.googleusercontent.com',
+                    clientId,
                     scopes: [
                         'https://www.googleapis.com/auth/userinfo.profile',
                         'https://www.googleapis.com/auth/userinfo.email',
@@ -194,6 +195,7 @@ export function SettingsDialog() {
         try {
             const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
             
+            await GoogleAuth.signOut().catch(() => { });
             console.log("Calling GoogleAuth.signIn");
             const result = await GoogleAuth.signIn();
 
@@ -262,8 +264,8 @@ export function SettingsDialog() {
 
     const handleGoogleLogout = async () => {
         try {
-            const { GoogleSignIn } = await import('@capawesome/capacitor-google-sign-in');
-            await GoogleSignIn.signOut().catch(() => { });
+            const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+            await GoogleAuth.signOut().catch(() => { });
         } catch (e) { }
         setGoogleUser(null);
         showNotif(
