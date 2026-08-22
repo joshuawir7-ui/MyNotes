@@ -191,7 +191,7 @@ export default function Home() {
           {/* 2. Week (Weekly Progress) */}
           <Reveal delay={0.2} margin="0px" className={`relative transition-all duration-300 ${showWeeklyTooltip ? 'z-50' : 'z-10'}`}>
             <div className="relative z-30">
-              <span className="absolute -top-2 -left-1 text-[10px] font-black uppercase text-primary/40 tracking-widest z-20">{t.week}</span>
+              <span className="absolute -top-2 -left-1 text-[10px] font-black uppercase text-primary/40 tracking-widest z-20 portrait:hidden">{t.week}</span>
               <WeeklyProgressChart />
               <AnimatePresence>
                 {showWeeklyTooltip && (

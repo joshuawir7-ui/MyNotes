@@ -4,6 +4,7 @@ import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from "rec
 import { useState, useEffect, useMemo } from "react"
 import { useStore } from "@/lib/store"
 import { translations } from "@/lib/translations"
+import { motion } from "framer-motion"
 
 const CustomTooltip = ({ active, payload }: any) => {
     const language = useStore(state => state.language);
@@ -29,6 +30,7 @@ export function PulseChart() {
     const t = translations[language].dashboard.charts
 
     const [mounted, setMounted] = useState(false)
+    const [timeframe, setTimeframe] = useState<'today' | 'week'>('today')
 
     // Create an array of hours to display (24 hours)
     const displayHours = useMemo(() => Array.from({ length: 24 }, (_, i) => i), [])
@@ -38,38 +40,71 @@ export function PulseChart() {
     }, [])
 
     const chartData = useMemo(() => {
-        // Generate dynamic data from tasks completion history using local date to avoid timezone offset mismatches
         const now = new Date()
-        const nowYear = now.getFullYear()
-        const nowMonth = String(now.getMonth() + 1).padStart(2, '0')
-        const nowDay = String(now.getDate()).padStart(2, '0')
-        const todayStr = `${nowYear}-${nowMonth}-${nowDay}`
 
-        const hoursCompletionsCount = Array(24).fill(0)
-        tasks.forEach(task => {
-            if (task.completionTimes) {
-                task.completionTimes.forEach(time => {
-                    // String startsWith is super fast and avoids parsing Date if it's not today!
-                    if (time && time.startsWith(todayStr)) {
-                        try {
-                            const date = new Date(time)
-                            const hr = date.getHours()
-                            if (hr >= 0 && hr < 24) {
-                                hoursCompletionsCount[hr]++
+        if (timeframe === 'today') {
+            const nowYear = now.getFullYear()
+            const nowMonth = String(now.getMonth() + 1).padStart(2, '0')
+            const nowDay = String(now.getDate()).padStart(2, '0')
+            const todayStr = `${nowYear}-${nowMonth}-${nowDay}`
+
+            const hoursCompletionsCount = Array(24).fill(0)
+            tasks.forEach(task => {
+                if (task.completionTimes) {
+                    task.completionTimes.forEach(time => {
+                        // String startsWith is super fast and avoids parsing Date if it's not today!
+                        if (time && time.startsWith(todayStr)) {
+                            try {
+                                const date = new Date(time)
+                                const hr = date.getHours()
+                                if (hr >= 0 && hr < 24) {
+                                    hoursCompletionsCount[hr]++
+                                }
+                            } catch (e) {
+                                console.error("Invalid completion time format:", time, e)
                             }
-                        } catch (e) {
-                            console.error("Invalid completion time format:", time, e)
                         }
-                    }
-                })
-            }
-        })
+                    })
+                }
+            })
 
-        return displayHours.map(hour => {
-            const hourStr = hour === 0 ? '12am' : hour === 12 ? '12pm' : hour > 12 ? `${hour - 12}pm` : `${hour}am`
-            return { time: hourStr, value: hoursCompletionsCount[hour] }
-        })
-    }, [tasks, displayHours])
+            return displayHours.map(hour => {
+                const hourStr = hour === 0 ? '12am' : hour === 12 ? '12pm' : hour > 12 ? `${hour - 12}pm` : `${hour}am`
+                return { time: hourStr, value: hoursCompletionsCount[hour] }
+            })
+        } else {
+            // Week data (Mon-Sun)
+            const dayNamesEs = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+            const dayNamesEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const days = language === 'es' ? dayNamesEs : dayNamesEn;
+
+            const weekCompletionsCount = Array(7).fill(0);
+            
+            // Get current day of week (0 = Sun, 1 = Mon ... 6 = Sat) => Convert to Mon=0 ... Sun=6
+            const currentDayIndex = now.getDay() === 0 ? 6 : now.getDay() - 1;
+            
+            // Calculate the date of Monday of this week
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - currentDayIndex);
+            startOfWeek.setHours(0,0,0,0);
+
+            tasks.forEach(task => {
+                if (task.completionTimes) {
+                    task.completionTimes.forEach(time => {
+                        const d = new Date(time);
+                        if (d >= startOfWeek && d <= now) {
+                            const dayIdx = d.getDay() === 0 ? 6 : d.getDay() - 1;
+                            if (dayIdx >= 0 && dayIdx < 7) {
+                                weekCompletionsCount[dayIdx]++;
+                            }
+                        }
+                    });
+                }
+            });
+
+            return days.map((dayName, idx) => ({ time: dayName, value: weekCompletionsCount[idx] }));
+        }
+    }, [tasks, displayHours, timeframe, language])
 
     if (!mounted) {
         return <div className="w-full h-[260px] glass-panel rounded-2xl p-6 relative overflow-hidden group animate-pulse" />
@@ -90,10 +125,28 @@ export function PulseChart() {
                     <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_10px_rgba(74,222,128,0.5)]" />
                     {t.productivityPulse}
                 </h3>
-                <select className="bg-transparent text-xs text-muted-foreground border-none outline-none cursor-pointer hover:text-foreground transition-colors appearance-none">
-                    <option>{t.today}</option>
-                    <option>{t.thisWeek}</option>
-                </select>
+                
+                {/* Better timeframe toggle replacing the select element */}
+                <div className="flex bg-black/5 dark:bg-white/5 rounded-lg p-0.5 relative">
+                    <button
+                        onClick={() => setTimeframe('today')}
+                        className={`relative z-10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${timeframe === 'today' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'}`}
+                    >
+                        {t.today}
+                        {timeframe === 'today' && (
+                            <motion.div layoutId="pulse-time-indicator" className="absolute inset-0 bg-white dark:bg-zinc-800 rounded-md shadow-sm -z-10" />
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setTimeframe('week')}
+                        className={`relative z-10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${timeframe === 'week' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'}`}
+                    >
+                        {t.thisWeek}
+                        {timeframe === 'week' && (
+                            <motion.div layoutId="pulse-time-indicator" className="absolute inset-0 bg-white dark:bg-zinc-800 rounded-md shadow-sm -z-10" />
+                        )}
+                    </button>
+                </div>
             </div>
 
             <div className="h-[180px] w-full relative z-10">
@@ -114,20 +167,21 @@ export function PulseChart() {
                             tickLine={false}
                             axisLine={false}
                             dy={10}
-                            interval={3}
+                            interval={timeframe === 'today' ? 3 : 0}
                         />
                         <Tooltip
                             content={<CustomTooltip />}
                             cursor={{ stroke: 'rgba(139, 92, 246, 0.2)', strokeWidth: 2 }}
                         />
                         <Line
+                            key={timeframe} // Force re-animation when changing timeframe
                             type="monotone"
                             dataKey="value"
                             stroke="url(#gradientPulse)"
                             strokeWidth={4}
                             dot={false}
                             activeDot={{ r: 6, stroke: '#fff', strokeWidth: 3, fill: '#8b5cf6' }}
-                            animationDuration={2000}
+                            animationDuration={1500}
                         />
                     </LineChart>
                 </ResponsiveContainer>
