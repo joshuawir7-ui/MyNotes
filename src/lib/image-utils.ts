@@ -232,15 +232,17 @@ export async function generateVideoThumbnail(videoUri: string | null, file?: Fil
             }
 
             const video = document.createElement('video');
-            video.crossOrigin = 'anonymous';
+            // Do not set crossOrigin for blob URLs, it causes CORS errors!
             video.muted = true;
             video.playsInline = true;
             
             // Allow Web to load Capacitor file src if needed, but blob URL is preferred
             video.src = videoSource.startsWith('file://') ? Capacitor.convertFileSrc(videoSource) : videoSource;
+            video.load();
             
             video.onloadeddata = () => {
-                video.currentTime = 1; // Seek to 1s to ensure we get a frame, avoiding black frames
+                // Seek to 0.1s to ensure we get a frame but avoid seeking past short videos
+                video.currentTime = 0.1; 
             };
             
             video.onseeked = async () => {
