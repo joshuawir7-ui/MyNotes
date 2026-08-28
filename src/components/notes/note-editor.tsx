@@ -6,7 +6,8 @@ import { useStore, Note, NoteBlock, BlockType } from "@/lib/store"
 import { translations } from "@/lib/translations"
 import { motion, AnimatePresence } from "framer-motion"
 import { App as CapacitorApp } from "@capacitor/app"
-import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle } from "lucide-react"
+import { Capacitor } from "@capacitor/core"
+import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation } from "lucide-react"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 
 const isNoteEmpty = (titleStr: string, blocksList: NoteBlock[]) => {
@@ -50,6 +51,8 @@ const isNoteEmpty = (titleStr: string, blocksList: NoteBlock[]) => {
             if (typeof block.content === 'string' && block.content.trim() !== '') return false;
         } else if (block.type === 'drawing') {
             if (typeof block.content === 'string' && block.content.trim() !== '') return false;
+        } else if (block.type === 'file') {
+            if (block.content && typeof block.content === 'object' && block.content.url !== '') return false;
         }
     }
     return true;
@@ -425,6 +428,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
             case 'table': return { headers: ['Col 1', 'Col 2'], rows: [['', '']] }
             case 'image': return '' // URL
             case 'drawing': return '' // Data URL
+            case 'file': return { url: '', name: '', type: '' }
             default: return ''
         }
     }
@@ -469,6 +473,9 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                 </button>
                                 <button onClick={() => addBlock('drawing')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Dibujo" : "Drawing"}>
                                     <PenTool className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => addBlock('file')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Archivo" : "File"}>
+                                    <Paperclip className="w-3.5 h-3.5" />
                                 </button>
                                 <button onClick={() => addBlock('separator')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Separador" : "Separator"}>
                                     <SeparatorHorizontal className="w-3.5 h-3.5" />
@@ -548,6 +555,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                 <ToolbarButton icon={TableIcon} label={language === 'es' ? "Tabla" : "Table"} onClick={() => addBlock('table')} />
                                 <ToolbarButton icon={ImageIcon} label={language === 'es' ? "Imagen" : "Image"} onClick={() => addBlock('image')} />
                                 <ToolbarButton icon={PenTool} label={language === 'es' ? "Dibujo" : "Drawing"} onClick={() => addBlock('drawing')} />
+                                <ToolbarButton icon={Paperclip} label={language === 'es' ? "Archivo" : "File"} onClick={() => addBlock('file')} />
                                 <ToolbarButton icon={SeparatorHorizontal} label={language === 'es' ? "Separador" : "Separator"} onClick={() => addBlock('separator')} />
                             </div>
                         </div>
@@ -929,6 +937,156 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
     )
 }
 
+const getFileIconAndColor = (type: string, name: string = '') => {
+    const ext = (type || name.split('.').pop() || '').toLowerCase();
+    if (['pdf'].includes(ext)) return { Icon: FileText, color: 'text-red-500', bg: 'bg-red-500/20' };
+    if (['doc', 'docx'].includes(ext)) return { Icon: FileText, color: 'text-blue-500', bg: 'bg-blue-500/20' };
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return { Icon: FileSpreadsheet, color: 'text-green-500', bg: 'bg-green-500/20' };
+    if (['ppt', 'pptx'].includes(ext)) return { Icon: Presentation, color: 'text-orange-500', bg: 'bg-orange-500/20' };
+    if (['mp3', 'wav', 'ogg', 'm4a', 'audio'].includes(ext)) return { Icon: FileAudio, color: 'text-purple-500', bg: 'bg-purple-500/20' };
+    return { Icon: FileIcon, color: 'text-primary', bg: 'bg-primary/20' };
+};
+
+function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange }: any) {
+    const [showControls, setShowControls] = useState(true);
+    const fileData = block.content || { url: '', name: '', type: '' };
+    const hasFile = !!fileData.url;
+    const isDownloading = block.isDownloading;
+
+    const { Icon, color, bg } = getFileIconAndColor(fileData.type, fileData.name);
+
+    const handleFileClick = async () => {
+        if (hasFile && typeof window !== 'undefined') {
+            const src = getLocalImageSrc(fileData.url);
+            if (Capacitor.isNativePlatform()) {
+                try {
+                    const { Share } = await import('@capacitor/share');
+                    await Share.share({
+                        title: fileData.name,
+                        url: src,
+                        dialogTitle: 'Abrir con...'
+                    });
+                } catch (e) {
+                    console.error("Share failed", e);
+                    window.open(src, '_blank');
+                }
+            } else {
+                // Web / Windows Desktop browser logic
+                try {
+                    let fileToShare = null;
+                    if (src.startsWith('data:')) {
+                        const arr = src.split(',');
+                        const mime = arr[0].match(/:(.*?);/)?.[1] || '';
+                        const bstr = atob(arr[1]);
+                        let n = bstr.length;
+                        const u8arr = new Uint8Array(n);
+                        while(n--){
+                            u8arr[n] = bstr.charCodeAt(n);
+                        }
+                        fileToShare = new File([u8arr], fileData.name, { type: mime });
+                    } else if (src.startsWith('blob:') || src.startsWith('http')) {
+                        const response = await fetch(src);
+                        const blob = await response.blob();
+                        fileToShare = new File([blob], fileData.name, { type: blob.type });
+                    }
+
+                    if (fileToShare && navigator.canShare && navigator.canShare({ files: [fileToShare] })) {
+                        await navigator.share({
+                            files: [fileToShare],
+                            title: fileData.name,
+                        });
+                        return; // Share dialog opened successfully
+                    }
+                } catch (e) {
+                    console.error("Web share failed", e);
+                }
+
+                // Fallback si no soporta Web Share API (descargar el archivo forzando el diálogo del navegador)
+                const a = document.createElement('a');
+                a.href = src;
+                a.download = fileData.name || 'archivo';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        }
+    };
+
+    return (
+        <div
+            className={`relative group rounded-xl flex flex-col items-center justify-center transition-all ${hasFile || isDownloading
+                    ? 'p-4 bg-white/5 border border-white/10 min-h-[100px]'
+                    : 'border-2 border-dashed border-white/10 p-4 min-h-[120px] bg-black/20'
+                }`}
+            onMouseEnter={() => setShowControls(true)}
+            onMouseLeave={() => setShowControls(false)}
+        >
+            {showControls && (hasFile || isDownloading) && (
+                <div className="absolute top-2 right-2 flex gap-1 md:hidden bg-white/90 dark:bg-zinc-950/80 backdrop-blur rounded-lg p-0.5 border border-zinc-200 dark:border-white/10 z-10 animate-in fade-in duration-200">
+                    <button onMouseDown={(e) => { e.preventDefault(); if (!isFirst) moveBlock(idx, 'up'); }} disabled={isFirst} className="p-1 text-zinc-700 dark:text-white/70 disabled:opacity-30">
+                        <ChevronUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button onMouseDown={(e) => { e.preventDefault(); if (!isLast) moveBlock(idx, 'down'); }} disabled={isLast} className="p-1 text-zinc-700 dark:text-white/70 disabled:opacity-30">
+                        <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button onMouseDown={(e) => { e.preventDefault(); removeBlock(block.id); }} className="p-1 text-red-500">
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+            )}
+
+            {isDownloading ? (
+                <div className="flex flex-col items-center justify-center w-full animate-pulse">
+                    <FileIcon className="w-10 h-10 text-white/20 mb-2 animate-bounce" />
+                    <span className="text-white/40 text-sm font-medium">Downloading...</span>
+                </div>
+            ) : hasFile ? (
+                <div className="flex items-center gap-4 w-full cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors" onClick={handleFileClick}>
+                    <div className={`w-12 h-12 rounded-lg ${bg} ${color} flex items-center justify-center shrink-0`}>
+                        <Icon className="w-6 h-6" />
+                    </div>
+                    <div className="flex flex-col flex-1 min-w-0">
+                        <span className="text-sm font-medium text-foreground truncate">{fileData.name || 'Unknown File'}</span>
+                        <span className="text-xs text-muted-foreground truncate uppercase">{fileData.type || 'FILE'}</span>
+                    </div>
+                </div>
+            ) : (
+                <div className="text-center">
+                    <Paperclip className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground mb-4">Upload a file (PDF, Docx, etc.)</p>
+                    <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,text/plain,audio/*,video/*"
+                        className="hidden"
+                        id={`file-${block.id}`}
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = async () => {
+                                    const base64 = reader.result as string;
+                                    const { saveBase64File } = await import('@/lib/image-utils');
+                                    const uri = await saveBase64File(base64, file.name);
+                                    
+                                    onChange({
+                                        url: uri || base64,
+                                        name: file.name,
+                                        type: file.name.split('.').pop() || 'file'
+                                    });
+                                }
+                                reader.readAsDataURL(file);
+                            }
+                        }}
+                    />
+                    <label htmlFor={`file-${block.id}`} className="px-4 py-2 bg-primary/20 text-primary rounded-lg cursor-pointer hover:bg-primary/30 transition-colors">
+                        Choose File
+                    </label>
+                </div>
+            )}
+        </div>
+    );
+}
+
 const BlockRenderer = React.memo(function BlockRenderer({
     block,
     idx,
@@ -1168,6 +1326,20 @@ const BlockRenderer = React.memo(function BlockRenderer({
                         <DrawingCanvas initialData={typeof block.content === 'string' ? block.content : ''} onSave={onChange} />
                     </div>
                 </div>
+            )
+        }
+
+        if (block.type === 'file') {
+            return (
+                <FileBlockRenderer
+                    block={block}
+                    idx={idx}
+                    isFirst={isFirst}
+                    isLast={isLast}
+                    moveBlock={moveBlock}
+                    removeBlock={removeBlock}
+                    onChange={onChange}
+                />
             )
         }
 
@@ -1773,6 +1945,13 @@ function getBlockIconAndLabel(type: BlockType, language: string) {
                 <>
                     <PenTool className="w-3.5 h-3.5 text-orange-400" />
                     <span>{isEs ? "Dibujo" : "Drawing"}</span>
+                </>
+            );
+        case 'file':
+            return (
+                <>
+                    <Paperclip className="w-3.5 h-3.5 text-sky-400" />
+                    <span>{isEs ? "Archivo" : "File"}</span>
                 </>
             );
         default:

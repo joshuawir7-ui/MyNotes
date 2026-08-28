@@ -330,14 +330,38 @@ export function SettingsDialog() {
     };
 
     const handleGoogleLogout = async () => {
+        // 1. Flush all pending writes to disk BEFORE clearing the account,
+        //    so data is never lost if the app closes right after logout.
+        try {
+            const {
+                flushStorage,
+                readAllNotesFromDisk,
+                readAllTasksFromDisk,
+                saveAllNotesToDisk,
+                saveAllTasksToDisk
+            } = await import('@/lib/store');
+            const state = useStore.getState();
+            // Ensure full notes/tasks are persisted to disk immediately
+            const fullNotes = await readAllNotesFromDisk(state.notes);
+            const fullTasks = await readAllTasksFromDisk(state.tasks);
+            await saveAllNotesToDisk(fullNotes);
+            await saveAllTasksToDisk(fullTasks);
+            await flushStorage();
+        } catch (e) {
+            console.warn('[Logout] Could not flush storage before logout:', e);
+        }
+
+        // 2. Sign out from Google SDK
         try {
             const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
             await GoogleAuth.signOut().catch(() => { });
         } catch (e) { }
+
+        // 3. Clear only the Google account from state (data stays in local storage)
         setGoogleUser(null);
         showNotif(
             language === 'es' ? "Sesión Cerrada" : "Logged Out",
-            language === 'es' ? "Sesión de Google cerrada correctamente." : "Logged out of Google successfully.",
+            language === 'es' ? "Sesión de Google cerrada. Tus datos se conservan localmente." : "Google session closed. Your data is kept locally.",
             "info"
         );
     };

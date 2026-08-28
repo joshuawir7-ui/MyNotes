@@ -176,3 +176,31 @@ export async function getOrCreateThumbnail(originalPathOrBase64: string): Promis
         return getLocalImageSrc(originalPathOrBase64);
     }
 }
+
+/**
+ * Saves a base64 file string to the device filesystem.
+ * Returns the file path URI if successful, or null if it fails.
+ */
+export async function saveBase64File(base64Data: string, originalName: string): Promise<string | null> {
+    if (typeof window === 'undefined') return null;
+    if (!Capacitor.isNativePlatform()) return null; // Fallback to base64 on Web
+    try {
+        const ext = originalName.split('.').pop() || 'file';
+        const name = `file_${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+        
+        let pureBase64 = base64Data;
+        if (base64Data.includes(',')) {
+            pureBase64 = base64Data.split(',')[1];
+        }
+
+        const savedFile = await Filesystem.writeFile({
+            path: name,
+            data: pureBase64,
+            directory: Directory.Data,
+        });
+        return savedFile.uri;
+    } catch (err) {
+        console.error("Failed to save file to filesystem:", err);
+        return null;
+    }
+}

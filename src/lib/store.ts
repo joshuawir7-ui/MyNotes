@@ -175,7 +175,7 @@ export const readAllNotesFromDisk = async (currentInMemory: Note[]): Promise<Not
     return currentInMemory;
 };
 
-const saveAllTasksToDisk = async (tasks: Task[]) => {
+export const saveAllTasksToDisk = async (tasks: Task[]) => {
     if (typeof window === 'undefined') return;
     try {
         const data = JSON.stringify(tasks);
@@ -202,7 +202,7 @@ const saveAllTasksToDisk = async (tasks: Task[]) => {
     }
 };
 
-const saveAllNotesToDisk = async (notes: Note[]) => {
+export const saveAllNotesToDisk = async (notes: Note[]) => {
     if (typeof window === 'undefined') return;
     try {
         const data = JSON.stringify(notes);
@@ -832,7 +832,7 @@ export interface Project {
     milestones: { id: string, title: string, date: string, completed: boolean }[]
 }
 
-export type BlockType = 'text' | 'task-list' | 'table' | 'image' | 'drawing' | 'separator'
+export type BlockType = 'text' | 'task-list' | 'table' | 'image' | 'drawing' | 'separator' | 'file'
 
 export interface NoteBlock {
     id: string
@@ -2989,8 +2989,14 @@ export const useStore = create<AppState>()(
                             driveData.notes, driveData.tasks, driveData.goals, driveData.appointments
                         ].some(arr => Array.isArray(arr) && arr.length > 0);
 
+                        // ── Read disk data to ensure in-memory state didn't miss anything ──────
+                        // The in-memory state might be empty if notes/tasks weren't loaded yet,
+                        // but the disk (via readAllNotesFromDisk) always has the full dataset.
+                        const diskNotes = await readAllNotesFromDisk(freshState.notes);
+                        const diskTasks = await readAllTasksFromDisk(freshState.tasks);
+
                         const localHasData = [
-                            freshState.notes, freshState.tasks, freshState.goals, freshState.appointments
+                            diskNotes, diskTasks, freshState.goals, freshState.appointments
                         ].some(arr => Array.isArray(arr) && arr.length > 0);
 
                         // ── Case 1: Local is fresh/empty, Drive has real data → pull from Drive ─
@@ -3031,8 +3037,9 @@ export const useStore = create<AppState>()(
                         // ── Case 2: Drive is empty but Local has data → push to Drive ──────────
                         if (localHasData && !driveHasData) {
                             console.log('[Sync] Local has data but Drive does not → pushing to Drive.');
-                            const fullNotes = await readAllNotesFromDisk(freshState.notes);
-                            const fullTasks = await readAllTasksFromDisk(freshState.tasks);
+                            // Re-use diskNotes/diskTasks already read above (avoids double disk read)
+                            const fullNotes = diskNotes;
+                            const fullTasks = diskTasks;
                             const newTimestamp = Date.now();
                             const dataToUpload = {
                                 notes: fullNotes,
@@ -3075,8 +3082,9 @@ export const useStore = create<AppState>()(
                             const useLocalForConflicts = localLastUpdated > driveLastUpdated;
                             console.log(`[Sync] Timestamps differ. Merging. Local is newer: ${useLocalForConflicts}`);
 
-                            const fullNotes = await readAllNotesFromDisk(freshState.notes);
-                            const fullTasks = await readAllTasksFromDisk(freshState.tasks);
+                            // Re-use diskNotes/diskTasks already read above (avoids double disk read)
+                            const fullNotes = diskNotes;
+                            const fullTasks = diskTasks;
 
                             const mergedDeletedItems = mergeDeletedItems(freshState.deletedItems, driveData.deletedItems);
                             const mergedNotes = mergeNotesLists(fullNotes, driveData.notes, useLocalForConflicts, mergedDeletedItems);

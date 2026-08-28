@@ -201,7 +201,7 @@ export function BalanceOnboarding({ onClose }: BalanceOnboardingProps) {
                                     <img 
                                         src="/assets/onboarding/dollar-bill.png" 
                                         alt="Dollar Bill" 
-                                        className="w-[120px] sm:w-auto cursor-pointer hover:scale-105 transition-transform duration-300" 
+                                        className="w-[160px] sm:w-[230px] max-w-full h-auto object-contain cursor-pointer hover:scale-105 transition-transform duration-300" 
                                         onError={(e) => {
                                             (e.target as HTMLImageElement).src = '/images/dollar-bill.png'
                                         }}
