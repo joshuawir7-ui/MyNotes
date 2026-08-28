@@ -939,11 +939,11 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
 
 const getFileIconAndColor = (type: string, name: string = '') => {
     const ext = (type || name.split('.').pop() || '').toLowerCase();
-    if (['pdf'].includes(ext)) return { Icon: FileText, color: 'text-red-500', bg: 'bg-red-500/20' };
+    if (['pdf'].includes(ext)) return { imageSrc: '/icons/pdf.png', color: '', bg: 'bg-transparent' };
     if (['doc', 'docx'].includes(ext)) return { imageSrc: '/icons/word.jpg', color: '', bg: 'bg-transparent' };
     if (['xls', 'xlsx', 'csv'].includes(ext)) return { imageSrc: '/icons/excel.jpg', color: '', bg: 'bg-transparent' };
     if (['ppt', 'pptx'].includes(ext)) return { imageSrc: '/icons/powerpoint.jpg', color: '', bg: 'bg-transparent' };
-    if (['mp3', 'wav', 'ogg', 'm4a', 'audio'].includes(ext)) return { Icon: FileAudio, color: 'text-purple-500', bg: 'bg-purple-500/20' };
+    if (['mp3', 'wav', 'ogg', 'm4a', 'audio'].includes(ext)) return { imageSrc: '/icons/audio.png', color: '', bg: 'bg-transparent' };
     return { Icon: FileIcon, color: 'text-primary', bg: 'bg-primary/20' };
 };
 
