@@ -204,3 +204,59 @@ export async function saveBase64File(base64Data: string, originalName: string): 
         return null;
     }
 }
+
+export async function generateVideoThumbnail(videoUri: string): Promise<string | null> {
+    if (typeof document === 'undefined') return null;
+    return new Promise((resolve) => {
+        try {
+            const video = document.createElement('video');
+            video.crossOrigin = 'anonymous';
+            video.muted = true;
+            video.playsInline = true;
+            
+            // Allow Web to load Capacitor file src if needed
+            video.src = videoUri.startsWith('file://') ? Capacitor.convertFileSrc(videoUri) : videoUri;
+            
+            video.onloadeddata = () => {
+                video.currentTime = 0.1; // Seek to 0.1s to ensure we get a frame
+            };
+            
+            video.onseeked = async () => {
+                try {
+                    const maxDim = 480;
+                    let w = video.videoWidth;
+                    let h = video.videoHeight;
+                    if (w > h && w > maxDim) {
+                        h = Math.floor(h * (maxDim / w));
+                        w = maxDim;
+                    } else if (h > maxDim) {
+                        w = Math.floor(w * (maxDim / h));
+                        h = maxDim;
+                    }
+                    
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(video, 0, 0, w, h);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                    
+                    // Devuelve base64 directamente (escalado ~10KB) para que se incluya en el JSON 
+                    // y cumpla con la descarga liviana en el restore automáticamente.
+                    resolve(dataUrl);
+                } catch (e) {
+                    console.error('Failed to generate thumbnail', e);
+                    resolve(null);
+                }
+            };
+            
+            video.onerror = (e) => {
+                console.error('Error loading video for thumbnail', e);
+                resolve(null);
+            };
+        } catch (e) {
+            console.error('Exception generating thumbnail', e);
+            resolve(null);
+        }
+    });
+}

@@ -7,7 +7,7 @@ import { translations } from "@/lib/translations"
 import { motion, AnimatePresence } from "framer-motion"
 import { App as CapacitorApp } from "@capacitor/app"
 import { Capacitor } from "@capacitor/core"
-import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation } from "lucide-react"
+import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation, Film } from "lucide-react"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 
 const isNoteEmpty = (titleStr: string, blocksList: NoteBlock[]) => {
@@ -429,6 +429,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
             case 'image': return '' // URL
             case 'drawing': return '' // Data URL
             case 'file': return { url: '', name: '', type: '' }
+            case 'video': return { url: '', name: '', type: '' }
             default: return ''
         }
     }
@@ -470,6 +471,9 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                 </button>
                                 <button onClick={() => addBlock('image')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Imagen" : "Image"}>
                                     <ImageIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => addBlock('video')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Video" : "Video"}>
+                                    <Film className="w-3.5 h-3.5" />
                                 </button>
                                 <button onClick={() => addBlock('drawing')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Dibujo" : "Drawing"}>
                                     <PenTool className="w-3.5 h-3.5" />
@@ -554,6 +558,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                 <ToolbarButton icon={CheckSquare} label={language === 'es' ? "Lista" : "Task List"} onClick={() => addBlock('task-list')} />
                                 <ToolbarButton icon={TableIcon} label={language === 'es' ? "Tabla" : "Table"} onClick={() => addBlock('table')} />
                                 <ToolbarButton icon={ImageIcon} label={language === 'es' ? "Imagen" : "Image"} onClick={() => addBlock('image')} />
+                                <ToolbarButton icon={Film} label={language === 'es' ? "Video" : "Video"} onClick={() => addBlock('video')} />
                                 <ToolbarButton icon={PenTool} label={language === 'es' ? "Dibujo" : "Drawing"} onClick={() => addBlock('drawing')} />
                                 <ToolbarButton icon={Paperclip} label={language === 'es' ? "Archivo" : "File"} onClick={() => addBlock('file')} />
                                 <ToolbarButton icon={SeparatorHorizontal} label={language === 'es' ? "Separador" : "Separator"} onClick={() => addBlock('separator')} />
@@ -947,30 +952,98 @@ const getFileIconAndColor = (type: string, name: string = '') => {
     return { Icon: FileIcon, color: 'text-primary', bg: 'bg-primary/20' };
 };
 
-function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange }: any) {
+function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange, noteId }: any) {
     const [showControls, setShowControls] = useState(true);
     const fileData = block.content || { url: '', name: '', type: '' };
     const hasFile = !!fileData.url;
-    const isDownloading = block.isDownloading;
+    const [isDownloadingState, setIsDownloadingState] = useState(false);
+    const isDownloading = block.isDownloading || isDownloadingState;
 
     const { Icon, imageSrc, color, bg } = getFileIconAndColor(fileData.type, fileData.name);
 
     const handleFileClick = async () => {
-        if (hasFile && typeof window !== 'undefined') {
-            const src = getLocalImageSrc(fileData.url);
+        if (isDownloading) return;
+        
+        let currentFileUri = fileData.url;
+        let needsDownload = !hasFile;
+        
+        if (typeof window !== 'undefined') {
             if (Capacitor.isNativePlatform()) {
+                if (hasFile && currentFileUri) {
+                    if (currentFileUri.startsWith('http://localhost/_capacitor_file_')) {
+                        currentFileUri = currentFileUri.replace('http://localhost/_capacitor_file_', 'file://');
+                    }
+                    if (currentFileUri.startsWith('file://')) {
+                        try {
+                            const { Filesystem } = await import('@capacitor/filesystem');
+                            const statRes = await Filesystem.stat({ path: currentFileUri.replace('file://', '') });
+                            if (!statRes || statRes.type === 'directory') needsDownload = true;
+                        } catch(e) {
+                            needsDownload = true;
+                        }
+                    }
+                }
+
+                if (needsDownload && block.driveFileId && noteId) {
+                    setIsDownloadingState(true);
+                    const { useStore } = await import('@/lib/store');
+                    const success = await useStore.getState().downloadAttachment(noteId, block.id);
+                    setIsDownloadingState(false);
+                    if (success) {
+                        const updatedNote = useStore.getState().notes.find(n => n.id === noteId);
+                        const updatedBlock = updatedNote?.blocks.find(b => b.id === block.id);
+                        if (updatedBlock?.type === 'file' && updatedBlock.content?.url) {
+                            currentFileUri = updatedBlock.content.url;
+                        } else {
+                            useStore.getState().showToast("Error al abrir el archivo descargado", "error");
+                            return;
+                        }
+                    } else {
+                        useStore.getState().showToast("Error al descargar el archivo de la nube", "error");
+                        return;
+                    }
+                }
+                
+                if (!currentFileUri) return;
+                
                 try {
-                    const { Share } = await import('@capacitor/share');
-                    await Share.share({
-                        title: fileData.name,
-                        url: src,
-                        dialogTitle: 'Abrir con...'
-                    });
+                    const mimeTypeMap: Record<string, string> = {
+                        'pdf': 'application/pdf',
+                        'doc': 'application/msword',
+                        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        'xls': 'application/vnd.ms-excel',
+                        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        'ppt': 'application/vnd.ms-powerpoint',
+                        'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                        'mp3': 'audio/mpeg',
+                        'wav': 'audio/wav',
+                        'mp4': 'video/mp4'
+                    };
+                    const ext = fileData.type?.toLowerCase() || '';
+                    const mimeType = mimeTypeMap[ext] || '*/*';
+                    
+                    if (currentFileUri.startsWith('http://localhost/_capacitor_file_')) {
+                        currentFileUri = currentFileUri.replace('http://localhost/_capacitor_file_', 'file://');
+                    }
+                    
+                    if (currentFileUri.startsWith('file://')) {
+                        const { WidgetSync } = await import('@/lib/store');
+                        await WidgetSync.openFile({ url: currentFileUri, mimeType });
+                    } else {
+                        const { Share } = await import('@capacitor/share');
+                        await Share.share({
+                            title: fileData.name,
+                            url: currentFileUri,
+                            dialogTitle: 'Abrir con...'
+                        });
+                    }
                 } catch (e) {
-                    console.error("Share failed", e);
-                    window.open(src, '_blank');
+                    console.error("Open/Share failed", e);
+                    window.open(getLocalImageSrc(currentFileUri), '_blank');
                 }
             } else {
+                if (!hasFile) return;
+                const src = getLocalImageSrc(currentFileUri);
                 // Web / Windows Desktop browser logic
                 try {
                     let fileToShare = null;
@@ -1080,6 +1153,181 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
                     />
                     <label htmlFor={`file-${block.id}`} className="px-4 py-2 bg-primary/20 text-primary rounded-lg cursor-pointer hover:bg-primary/30 transition-colors">
                         Choose File
+                    </label>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange, noteId }: any) {
+    const [showControls, setShowControls] = useState(true);
+    const videoData = block.content || { url: '', name: '', type: '' };
+    const hasVideo = !!videoData.url;
+    const [isDownloadingState, setIsDownloadingState] = useState(false);
+    const isDownloading = block.isDownloading || isDownloadingState;
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
+
+    const handlePlayClick = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isDownloading || isProcessing) return;
+        
+        let currentVideoUri = videoData.url;
+        let needsDownload = !hasVideo;
+        
+        if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
+            if (hasVideo && currentVideoUri) {
+                if (currentVideoUri.startsWith('http://localhost/_capacitor_file_')) {
+                    currentVideoUri = currentVideoUri.replace('http://localhost/_capacitor_file_', 'file://');
+                }
+                if (currentVideoUri.startsWith('file://')) {
+                    try {
+                        const { Filesystem } = await import('@capacitor/filesystem');
+                        const statRes = await Filesystem.stat({ path: currentVideoUri.replace('file://', '') });
+                        if (!statRes || statRes.type === 'directory') needsDownload = true;
+                    } catch(e) {
+                        needsDownload = true;
+                    }
+                }
+            }
+
+            if (needsDownload && block.driveFileId && noteId) {
+                setIsDownloadingState(true);
+                const { useStore } = await import('@/lib/store');
+                const success = await useStore.getState().downloadAttachment(noteId, block.id);
+                setIsDownloadingState(false);
+                if (success) {
+                    const updatedNote = useStore.getState().notes.find(n => n.id === noteId);
+                    const updatedBlock = updatedNote?.blocks.find(b => b.id === block.id);
+                    if (updatedBlock?.type === 'video' && updatedBlock.content?.url) {
+                        currentVideoUri = updatedBlock.content.url;
+                    }
+                } else {
+                    useStore.getState().showToast("Error al descargar el video de la nube", "error");
+                    return;
+                }
+            }
+        }
+        
+        setIsPlaying(true);
+    };
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // 100MB limit
+        if (file.size > 100 * 1024 * 1024) {
+            import('@/lib/store').then(({ useStore }) => {
+                useStore.getState().showToast("El video es demasiado grande. El límite es 100MB.", "error");
+            });
+            return;
+        }
+
+        setIsProcessing(true);
+        try {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64 = reader.result as string;
+                const { saveBase64File, generateVideoThumbnail } = await import('@/lib/image-utils');
+                const uri = await saveBase64File(base64, file.name);
+                
+                let thumbUri = null;
+                if (uri || base64) {
+                    thumbUri = await generateVideoThumbnail(uri || base64);
+                }
+
+                onChange({
+                    url: uri || base64,
+                    name: file.name,
+                    type: file.name.split('.').pop() || 'video'
+                }, { thumbnailPath: thumbUri });
+                
+                setIsProcessing(false);
+            }
+            reader.readAsDataURL(file);
+        } catch (err) {
+            console.error("Error processing video", err);
+            setIsProcessing(false);
+        }
+    };
+
+    return (
+        <div
+            className={`relative group rounded-xl flex flex-col items-center justify-center transition-all overflow-hidden ${hasVideo || isDownloading
+                    ? 'bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10'
+                    : 'border-2 border-dashed border-white/10 p-4 min-h-[120px] bg-black/20'
+                }`}
+            onMouseEnter={() => setShowControls(true)}
+            onMouseLeave={() => setShowControls(false)}
+        >
+            {showControls && (hasVideo || isDownloading) && (
+                <div className="absolute top-2 right-2 flex gap-1 md:hidden bg-white/90 dark:bg-zinc-950/80 backdrop-blur rounded-lg p-0.5 border border-zinc-200 dark:border-white/10 z-10 animate-in fade-in duration-200">
+                    <button onMouseDown={(e) => { e.preventDefault(); if (!isFirst) moveBlock(idx, 'up'); }} disabled={isFirst} className="p-1 text-zinc-700 dark:text-white/70 disabled:opacity-30">
+                        <ChevronUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button onMouseDown={(e) => { e.preventDefault(); if (!isLast) moveBlock(idx, 'down'); }} disabled={isLast} className="p-1 text-zinc-700 dark:text-white/70 disabled:opacity-30">
+                        <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button onMouseDown={(e) => { e.preventDefault(); removeBlock(block.id); }} className="p-1 text-red-500">
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+            )}
+
+            {isProcessing ? (
+                <div className="flex flex-col items-center justify-center w-full min-h-[200px] bg-black/20 animate-pulse p-4">
+                    <Film className="w-12 h-12 text-white/20 mb-3 animate-bounce" />
+                    <span className="text-white/40 text-sm font-medium">Procesando video...</span>
+                </div>
+            ) : isDownloading ? (
+                <div className="flex flex-col items-center justify-center w-full min-h-[200px] bg-black/20 animate-pulse p-4">
+                    <Film className="w-12 h-12 text-white/20 mb-3 animate-bounce" />
+                    <span className="text-white/40 text-sm font-medium">Downloading video...</span>
+                </div>
+            ) : hasVideo ? (
+                isPlaying ? (
+                    <video
+                        src={getLocalImageSrc(videoData.url)}
+                        controls
+                        autoPlay
+                        className="w-full max-h-[60vh] object-contain bg-black"
+                        preload="none"
+                        poster={block.thumbnailPath ? getLocalImageSrc(block.thumbnailPath) : undefined}
+                    />
+                ) : (
+                    <div className="relative w-full cursor-pointer bg-black/10 group-hover:bg-black/20 transition-colors" onClick={handlePlayClick}>
+                        {block.thumbnailPath ? (
+                            <img src={getLocalImageSrc(block.thumbnailPath)} alt="Video Thumbnail" className="w-full max-h-[60vh] object-contain opacity-80" />
+                        ) : (
+                            <div className="w-full h-[200px] flex items-center justify-center bg-black/20">
+                                <Film className="w-16 h-16 text-white/30" />
+                            </div>
+                        )}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-16 h-16 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center shadow-xl border border-white/20 group-hover:scale-110 transition-transform">
+                                <div className="w-0 h-0 border-t-8 border-t-transparent border-l-[14px] border-l-white border-b-8 border-b-transparent ml-1"></div>
+                            </div>
+                        </div>
+                        <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur text-white text-xs px-2 py-1 rounded">
+                            {videoData.name || 'Video'}
+                        </div>
+                    </div>
+                )
+            ) : (
+                <div className="text-center w-full">
+                    <Film className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground mb-4">Upload a video (MP4, WebM)</p>
+                    <input
+                        type="file"
+                        accept="video/mp4,video/webm"
+                        className="hidden"
+                        id={`video-${block.id}`}
+                        onChange={handleFileSelect}
+                    />
+                    <label htmlFor={`video-${block.id}`} className="px-4 py-2 bg-primary/20 text-primary rounded-lg cursor-pointer hover:bg-primary/30 transition-colors">
+                        Choose Video
                     </label>
                 </div>
             )}
@@ -1339,6 +1587,22 @@ const BlockRenderer = React.memo(function BlockRenderer({
                     moveBlock={moveBlock}
                     removeBlock={removeBlock}
                     onChange={onChange}
+                    noteId={note.id}
+                />
+            )
+        }
+
+        if (block.type === 'video') {
+            return (
+                <VideoBlockRenderer
+                    block={block}
+                    idx={idx}
+                    isFirst={isFirst}
+                    isLast={isLast}
+                    moveBlock={moveBlock}
+                    removeBlock={removeBlock}
+                    onChange={onChange}
+                    noteId={note.id}
                 />
             )
         }
@@ -1952,6 +2216,13 @@ function getBlockIconAndLabel(type: BlockType, language: string) {
                 <>
                     <Paperclip className="w-3.5 h-3.5 text-sky-400" />
                     <span>{isEs ? "Archivo" : "File"}</span>
+                </>
+            );
+        case 'video':
+            return (
+                <>
+                    <Film className="w-3.5 h-3.5 text-purple-400" />
+                    <span>{isEs ? "Video" : "Video"}</span>
                 </>
             );
         default:

@@ -291,8 +291,13 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
                                     newNoteItems.add(item);
                                 }
                             }
-                        } else if ("image".equals(type) || "drawing".equals(type)) {
-                            String imageContent = block.optString("content", "");
+                        } else if ("image".equals(type) || "drawing".equals(type) || "video".equals(type)) {
+                            String imageContent = "";
+                            if ("video".equals(type)) {
+                                imageContent = block.optString("thumbnailPath", "");
+                            } else {
+                                imageContent = block.optString("content", "");
+                            }
                             if (imageContent != null && !imageContent.isEmpty()) {
                                 Bitmap bitmap = decodeBase64(imageContent);
                                 if (bitmap != null) {

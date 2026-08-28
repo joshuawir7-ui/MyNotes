@@ -27,6 +27,7 @@ export function SettingsDialog() {
     const setGoogleUser = useStore(state => state.setGoogleUser)
     const googleSessionExpired = useStore(state => state.googleSessionExpired)
     const isSyncingCloud = useStore(state => state.isSyncingCloud)
+    const restoreProgress = useStore(state => state.restoreProgress)
     const syncError = useStore(state => state.syncError)
     const lastCloudSync = useStore(state => state.lastCloudSync)
     const syncWithGoogleDrive = useStore(state => state.syncWithGoogleDrive)
@@ -330,28 +331,7 @@ export function SettingsDialog() {
     };
 
     const handleGoogleLogout = async () => {
-        // 1. Flush all pending writes to disk BEFORE clearing the account,
-        //    so data is never lost if the app closes right after logout.
-        try {
-            const {
-                flushStorage,
-                readAllNotesFromDisk,
-                readAllTasksFromDisk,
-                saveAllNotesToDisk,
-                saveAllTasksToDisk
-            } = await import('@/lib/store');
-            const state = useStore.getState();
-            // Ensure full notes/tasks are persisted to disk immediately
-            const fullNotes = await readAllNotesFromDisk(state.notes);
-            const fullTasks = await readAllTasksFromDisk(state.tasks);
-            await saveAllNotesToDisk(fullNotes);
-            await saveAllTasksToDisk(fullTasks);
-            await flushStorage();
-        } catch (e) {
-            console.warn('[Logout] Could not flush storage before logout:', e);
-        }
-
-        // 2. Sign out from Google SDK
+        // 1. Sign out from Google SDK
         try {
             const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
             await GoogleAuth.signOut().catch(() => { });
@@ -1134,6 +1114,12 @@ export function SettingsDialog() {
                                                                     {t.restoreFromCloud || "Restore"}
                                                                 </motion.button>
                                                             </div>
+
+                                                            {restoreProgress && (
+                                                                <div className="w-full text-center text-xs text-primary font-medium mt-1 animate-pulse">
+                                                                    {restoreProgress}
+                                                                </div>
+                                                            )}
 
                                                             {/* Recover images from Drive revision history */}
                                                             <motion.button

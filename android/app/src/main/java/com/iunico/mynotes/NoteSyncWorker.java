@@ -76,16 +76,25 @@ public class NoteSyncWorker extends Worker {
                         for (int j = 0; j < blocks.length(); j++) {
                             JSONObject block = blocks.getJSONObject(j);
                             String type = block.optString("type");
-                            if ("image".equals(type) || "drawing".equals(type)) {
+                            if ("image".equals(type) || "drawing".equals(type) || "file".equals(type) || "video".equals(type)) {
                                 String driveFileId = block.optString("driveFileId", null);
-                                String content = block.optString("content", null);
+                                String contentStr = null;
                                 
-                                if ((driveFileId == null || driveFileId.isEmpty()) && content != null && content.startsWith("file://")) {
+                                if ("file".equals(type) || "video".equals(type)) {
+                                    JSONObject contentObj = block.optJSONObject("content");
+                                    if (contentObj != null) {
+                                        contentStr = contentObj.optString("url", null);
+                                    }
+                                } else {
+                                    contentStr = block.optString("content", null);
+                                }
+                                
+                                if ((driveFileId == null || driveFileId.isEmpty()) && contentStr != null && contentStr.startsWith("file://")) {
                                     if (folderId == null) {
                                         folderId = getOrCreateImagesFolder(token);
                                     }
-                                    Log.d(TAG, "Uploading missing image for block: " + block.optString("id"));
-                                    String uploadedId = uploadImageToDrive(content, token, folderId);
+                                    Log.d(TAG, "Uploading missing file for block: " + block.optString("id"));
+                                    String uploadedId = uploadImageToDrive(contentStr, token, folderId);
                                     if (uploadedId != null) {
                                         block.put("driveFileId", uploadedId);
                                     }
@@ -263,8 +272,17 @@ public class NoteSyncWorker extends Worker {
             conn.setRequestProperty("Content-Type", "multipart/related; boundary=" + boundary);
             conn.setDoOutput(true);
 
-            String mimeType = "image/jpeg";
-            if (path.endsWith(".png")) mimeType = "image/png";
+            String mimeType = "application/octet-stream";
+            String lowerPath = path.toLowerCase();
+            if (lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg")) mimeType = "image/jpeg";
+            else if (lowerPath.endsWith(".png")) mimeType = "image/png";
+            else if (lowerPath.endsWith(".pdf")) mimeType = "application/pdf";
+            else if (lowerPath.endsWith(".doc") || lowerPath.endsWith(".docx")) mimeType = "application/msword";
+            else if (lowerPath.endsWith(".xls") || lowerPath.endsWith(".xlsx")) mimeType = "application/vnd.ms-excel";
+            else if (lowerPath.endsWith(".ppt") || lowerPath.endsWith(".pptx")) mimeType = "application/vnd.ms-powerpoint";
+            else if (lowerPath.endsWith(".mp3")) mimeType = "audio/mpeg";
+            else if (lowerPath.endsWith(".mp4")) mimeType = "video/mp4";
+            else if (lowerPath.endsWith(".webm")) mimeType = "video/webm";
             
             String metadata = "{\"name\":\"" + imageFile.getName() + "\",\"mimeType\":\"" + mimeType + "\"";
             if (folderId != null) {

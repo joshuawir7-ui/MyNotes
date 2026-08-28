@@ -24,16 +24,24 @@ export const WidgetSync = registerPlugin<{
     openBatteryOptimizationSettings: () => Promise<void>;
     startTaskGroupReminder: () => Promise<void>;
     stopTaskGroupReminder: () => Promise<void>;
-    enqueueImageDownload: (data: { token: string, driveFileId: string, noteId: string, blockId: string }) => Promise<void>;
+    enqueueImageDownload: (data: { token: string, driveFileId: string, noteId: string, blockId: string, fileName?: string }) => Promise<void>;
     openAppSettings: () => Promise<void>;
     requestNotificationPermission: () => Promise<void>;
+    openFile: (data: { url: string, mimeType?: string }) => Promise<void>;
 }>('WidgetSync');
 
 if (isNative) {
     WidgetSync.addListener('imageDownloaded', (data: { driveFileId: string, noteId: string, blockId: string, localUri: string }) => {
         const state = useStore.getState();
         if (state.updateNoteBlockContent) {
-            state.updateNoteBlockContent(data.noteId, data.blockId, data.localUri);
+            const note = state.notes.find(n => n.id === data.noteId);
+            const block = note?.blocks?.find(b => b.id === data.blockId);
+            if (block?.type === 'file') {
+                const oldContent = typeof block.content === 'object' && block.content !== null ? block.content : {};
+                state.updateNoteBlockContent(data.noteId, data.blockId, { ...oldContent, url: data.localUri });
+            } else {
+                state.updateNoteBlockContent(data.noteId, data.blockId, data.localUri);
+            }
         }
     });
 }
@@ -832,7 +840,7 @@ export interface Project {
     milestones: { id: string, title: string, date: string, completed: boolean }[]
 }
 
-export type BlockType = 'text' | 'task-list' | 'table' | 'image' | 'drawing' | 'separator' | 'file'
+export type BlockType = 'text' | 'task-list' | 'table' | 'image' | 'drawing' | 'separator' | 'file' | 'video'
 
 export interface NoteBlock {
     id: string
@@ -840,6 +848,8 @@ export interface NoteBlock {
     content: any
     driveFileId?: string
     isDownloading?: boolean
+    thumbnailPath?: string
+    durationSeconds?: number
 }
 
 export interface Note {
@@ -960,6 +970,7 @@ interface AppState {
     syncError: string | null
     lastCloudSync?: string
     lastUpdated?: number
+    restoreProgress?: string | null
     toast: { message: string; type: 'success' | 'error' | 'info' | 'warning' } | null
     showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void
     clearToast: () => void
@@ -995,6 +1006,7 @@ interface AppState {
     syncWithGoogleDrive: () => Promise<boolean>
     restoreFromGoogleDrive: () => Promise<boolean>
     autoSyncGoogleDrive: () => Promise<boolean>
+    downloadAttachment: (noteId: string, blockId: string) => Promise<boolean>
     inAppNotificationDates: number[]
     notificationsEnabled: boolean
     dailySnapshots: Record<string, { total: number, completed: number }> // Key: YYYY-MM-DD
@@ -1264,6 +1276,7 @@ export const useStore = create<AppState>()(
                 syncError: null,
                 lastCloudSync: undefined,
                 lastUpdated: 0,
+                restoreProgress: null,
                 toast: null,
                 showToast: (message, type = 'info') => set({ toast: { message, type } }),
                 clearToast: () => set({ toast: null }),
@@ -2438,6 +2451,74 @@ export const useStore = create<AppState>()(
 
                 setGoogleUser: (user) => set({ googleUser: user, googleSessionExpired: false }),
 
+                downloadAttachment: async (noteId: string, blockId: string) => {
+                    if (!isNative) return false;
+                    const state = get();
+                    const user = state.googleUser;
+                    if (!user || !user.accessToken) return false;
+
+                    const note = state.notes.find(n => n.id === noteId);
+                    if (!note) return false;
+                    const block = note.blocks.find(b => b.id === blockId);
+                    if (!block || !block.driveFileId) return false;
+
+                    let fileName = 'attachment';
+                    if ((block.type === 'file' || block.type === 'video') && block.content?.name) fileName = block.content.name;
+                    else if (block.type === 'image') fileName = 'image.png';
+
+                    try {
+                        const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+                        const localFileName = `attachment_${block.driveFileId}_${safeFileName}`;
+                        
+                        const result = await Filesystem.downloadFile({
+                            url: `https://www.googleapis.com/drive/v3/files/${block.driveFileId}?alt=media`,
+                            path: localFileName,
+                            directory: Directory.Data,
+                            headers: {
+                                Authorization: `Bearer ${user.accessToken}`
+                            }
+                        });
+
+                        if (result.path) {
+                            let fileUri = result.path;
+                            if (!fileUri.startsWith('file://') && !fileUri.startsWith('/')) {
+                                // Sometimes it returns a relative path, get full uri
+                                const uriRes = await Filesystem.getUri({ path: localFileName, directory: Directory.Data });
+                                fileUri = uriRes.uri;
+                            } else if (fileUri.startsWith('/')) {
+                                fileUri = 'file://' + fileUri;
+                            }
+
+                            // Update block content with local path
+                            set((s) => {
+                                const newNotes = s.notes.map(n => {
+                                    if (n.id === noteId) {
+                                        return {
+                                            ...n,
+                                            blocks: n.blocks.map(b => {
+                                                if (b.id === blockId) {
+                                                    if (b.type === 'file' || b.type === 'video') {
+                                                        return { ...b, content: { ...b.content, url: fileUri } };
+                                                    } else {
+                                                        return { ...b, content: fileUri };
+                                                    }
+                                                }
+                                                return b;
+                                            })
+                                        };
+                                    }
+                                    return n;
+                                });
+                                return { notes: newNotes };
+                            });
+                            return true;
+                        }
+                    } catch (e) {
+                        console.error('downloadAttachment error:', e);
+                    }
+                    return false;
+                },
+
                 resolveSyncConflict: async (keepLocal: boolean) => {
                     const conflict = get().syncConflict;
                     if (!conflict) return;
@@ -2822,6 +2903,96 @@ export const useStore = create<AppState>()(
                             const mergedSavingsGoal = data.savingsGoal ?? 400;
                             const mergedSnapshots = mergeDailySnapshots(state.dailySnapshots, data.dailySnapshots);
                             const mergedUser = mergeUser(state.user, data.user);
+
+                            // Identify missing attachments
+                            const missingAttachments: { noteId: string, blockId: string, driveFileId: string, fileName: string }[] = [];
+                            if (isNative) {
+                                for (const note of mergedNotes) {
+                                    for (const block of note.blocks) {
+                                        if ((block.type === 'image' || block.type === 'drawing' || block.type === 'file') && block.driveFileId) {
+                                            let localPath = '';
+                                            let fileName = 'attachment';
+                                            if (block.type === 'file' && block.content) {
+                                                localPath = block.content.url;
+                                                fileName = block.content.name || 'file';
+                                            } else if (typeof block.content === 'string') {
+                                                localPath = block.content;
+                                                fileName = 'image.png';
+                                            }
+                                            
+                                            let needsDownload = false;
+                                            if (!localPath || !localPath.startsWith('file://')) {
+                                                needsDownload = true;
+                                            } else {
+                                                try {
+                                                    const res = await Filesystem.stat({ path: localPath.replace('file://', '') });
+                                                    if (!res || res.type === 'directory') needsDownload = true;
+                                                } catch(e) {
+                                                    needsDownload = true;
+                                                }
+                                            }
+                                            
+                                            if (needsDownload) {
+                                                missingAttachments.push({ noteId: note.id, blockId: block.id, driveFileId: block.driveFileId, fileName });
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Download missing attachments sequentially with progress
+                            let downloadedCount = 0;
+                            const totalToDownload = missingAttachments.length;
+                            for (const attachment of missingAttachments) {
+                                downloadedCount++;
+                                const lang = get().language;
+                                const progressMsg = lang === 'es' 
+                                    ? `Restaurando adjuntos... ${downloadedCount}/${totalToDownload}`
+                                    : `Restoring attachments... ${downloadedCount}/${totalToDownload}`;
+                                set({ restoreProgress: progressMsg });
+                                
+                                try {
+                                    const safeFileName = attachment.fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+                                    const localFileName = `attachment_${attachment.driveFileId}_${safeFileName}`;
+                                    
+                                    const dlResult = await Filesystem.downloadFile({
+                                        url: `https://www.googleapis.com/drive/v3/files/${attachment.driveFileId}?alt=media`,
+                                        path: localFileName,
+                                        directory: Directory.Data,
+                                        headers: {
+                                            Authorization: `Bearer ${token}`
+                                        }
+                                    });
+
+                                    if (dlResult.path) {
+                                        let fileUri = dlResult.path;
+                                        if (!fileUri.startsWith('file://') && !fileUri.startsWith('/')) {
+                                            const uriRes = await Filesystem.getUri({ path: localFileName, directory: Directory.Data });
+                                            fileUri = uriRes.uri;
+                                        } else if (fileUri.startsWith('/')) {
+                                            fileUri = 'file://' + fileUri;
+                                        }
+
+                                        // Update block content in mergedNotes
+                                        const noteToUpdate = mergedNotes.find(n => n.id === attachment.noteId);
+                                        if (noteToUpdate) {
+                                            const blockToUpdate = noteToUpdate.blocks.find(b => b.id === attachment.blockId);
+                                            if (blockToUpdate) {
+                                                if (blockToUpdate.type === 'file') {
+                                                    blockToUpdate.content = { ...blockToUpdate.content, url: fileUri };
+                                                } else {
+                                                    blockToUpdate.content = fileUri;
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.error('Failed to download attachment during restore:', e);
+                                }
+                            }
+                            if (totalToDownload > 0) {
+                                set({ restoreProgress: null });
+                            }
 
                             await saveAllNotesToDisk(mergedNotes);
                             await saveAllTasksToDisk(mergedTasks);
@@ -3355,13 +3526,21 @@ export const checkAndEnqueueMissingImages = async () => {
     for (const note of state.notes) {
         if (!note.blocks) continue;
         for (const block of note.blocks) {
-            if ((block.type === 'image' || block.type === 'drawing') && block.driveFileId && !block.isDownloading) {
+            if ((block.type === 'image' || block.type === 'drawing' || block.type === 'file') && block.driveFileId && !block.isDownloading) {
                 let needsDownload = false;
-                if (!block.content) {
-                    needsDownload = true;
-                } else if (typeof block.content === 'string' && block.content.startsWith('file://')) {
+                let fileUri = '';
+
+                if (block.type === 'file') {
+                    if (!block.content || !block.content.url) needsDownload = true;
+                    else fileUri = block.content.url;
+                } else {
+                    if (!block.content) needsDownload = true;
+                    else if (typeof block.content === 'string') fileUri = block.content;
+                }
+
+                if (fileUri && fileUri.startsWith('file://')) {
                     try {
-                        const localSrc = Capacitor.convertFileSrc(block.content);
+                        const localSrc = Capacitor.convertFileSrc(fileUri);
                         const res = await fetch(localSrc, { method: 'HEAD' });
                         if (!res.ok) needsDownload = true;
                     } catch (e) {
@@ -3371,12 +3550,17 @@ export const checkAndEnqueueMissingImages = async () => {
 
                 if (needsDownload) {
                     state.setBlockDownloading(note.id, block.id, true);
+                    let fileNameStr = '';
+                    if (block.type === 'file' && block.content && block.content.name) {
+                        fileNameStr = block.content.name;
+                    }
                     WidgetSync.enqueueImageDownload({
                         token,
                         driveFileId: block.driveFileId,
                         noteId: note.id,
-                        blockId: block.id
-                    }).catch(console.error);
+                        blockId: block.id,
+                        fileName: fileNameStr
+                    } as any).catch(console.error);
                 }
             }
         }

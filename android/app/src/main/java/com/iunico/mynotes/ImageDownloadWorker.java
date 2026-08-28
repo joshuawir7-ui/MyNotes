@@ -65,10 +65,20 @@ public class ImageDownloadWorker extends Worker {
             int code = conn.getResponseCode();
             if (code == 200) {
                 // Determine file extension
-                String fileName = "img_" + driveFileId + ".jpg"; // default
-                String contentType = conn.getContentType();
-                if (contentType != null && contentType.contains("png")) {
-                    fileName = "img_" + driveFileId + ".png";
+                String fileName = getInputData().getString("fileName");
+                if (fileName == null || fileName.isEmpty()) {
+                    fileName = "img_" + driveFileId + ".jpg"; // default
+                    String contentType = conn.getContentType();
+                    if (contentType != null) {
+                        if (contentType.contains("png")) fileName = "img_" + driveFileId + ".png";
+                        else if (contentType.contains("pdf")) fileName = "file_" + driveFileId + ".pdf";
+                        else if (contentType.contains("msword")) fileName = "file_" + driveFileId + ".doc";
+                        else if (contentType.contains("officedocument.wordprocessingml")) fileName = "file_" + driveFileId + ".docx";
+                        else if (contentType.contains("excel")) fileName = "file_" + driveFileId + ".xls";
+                        else if (contentType.contains("officedocument.spreadsheetml")) fileName = "file_" + driveFileId + ".xlsx";
+                        else if (contentType.contains("powerpoint")) fileName = "file_" + driveFileId + ".ppt";
+                        else if (contentType.contains("officedocument.presentationml")) fileName = "file_" + driveFileId + ".pptx";
+                    }
                 }
 
                 File outFile = new File(context.getFilesDir(), fileName);

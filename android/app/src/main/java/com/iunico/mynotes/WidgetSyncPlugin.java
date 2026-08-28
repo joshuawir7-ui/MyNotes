@@ -361,6 +361,7 @@ public class WidgetSyncPlugin extends Plugin {
         String driveFileId = call.getString("driveFileId");
         String noteId = call.getString("noteId");
         String blockId = call.getString("blockId");
+        String fileName = call.getString("fileName");
 
         if (token == null || driveFileId == null || noteId == null || blockId == null) {
             call.reject("token, driveFileId, noteId, blockId are required");
@@ -375,6 +376,7 @@ public class WidgetSyncPlugin extends Plugin {
                 .putString("driveFileId", driveFileId)
                 .putString("noteId", noteId)
                 .putString("blockId", blockId)
+                .putString("fileName", fileName)
                 .build();
 
             androidx.work.OneTimeWorkRequest downloadRequest = new androidx.work.OneTimeWorkRequest.Builder(ImageDownloadWorker.class)
@@ -593,6 +595,52 @@ public class WidgetSyncPlugin extends Plugin {
 
         } catch (Exception e) {
             android.util.Log.e("WidgetSyncPlugin", "Error in triggerNotificationRefresh", e);
+        }
+    }
+
+    @PluginMethod
+    public void openFile(PluginCall call) {
+        String url = call.getString("url");
+        String mimeType = call.getString("mimeType", "*/*");
+        if (url == null) {
+            call.reject("url is required");
+            return;
+        }
+        
+        try {
+            Context context = getContext();
+            String path = url.replace("file://", "");
+            java.io.File file = new java.io.File(path);
+            if (!file.exists()) {
+                call.reject("File does not exist: " + path);
+                return;
+            }
+            
+            Uri contentUri = androidx.core.content.FileProvider.getUriForFile(
+                context, 
+                context.getPackageName() + ".fileprovider", 
+                file
+            );
+            
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(contentUri, mimeType);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            
+            // Explicitly grant permission to all apps that can handle this intent
+            // (Intent.createChooser strips flags on some Android versions)
+            java.util.List<android.content.pm.ResolveInfo> resInfoList = context.getPackageManager().queryIntentActivities(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+            for (android.content.pm.ResolveInfo resolveInfo : resInfoList) {
+                String packageName = resolveInfo.activityInfo.packageName;
+                context.grantUriPermission(packageName, contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            }
+            
+            Intent chooser = Intent.createChooser(intent, "Abrir con...");
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(chooser);
+            
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Failed to open file: " + e.getMessage());
         }
     }
 }
