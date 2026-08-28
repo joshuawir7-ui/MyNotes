@@ -596,6 +596,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                 handleWrapperFocus={handleWrapperFocus}
                                 handleWrapperBlur={handleWrapperBlur}
                                 autoFocus={idx === 0 && note.title === ''}
+                                noteId={note.id}
                             />
                         ))}
                     </AnimatePresence>
@@ -1347,7 +1348,8 @@ const BlockRenderer = React.memo(function BlockRenderer({
     onFocus,
     onBlur,
     language,
-    onImageClick
+    onImageClick,
+    noteId
 }: {
     block: NoteBlock,
     idx: number,
@@ -1360,7 +1362,8 @@ const BlockRenderer = React.memo(function BlockRenderer({
     onFocus?: () => void,
     onBlur?: () => void,
     language: string,
-    onImageClick?: (url: string) => void
+    onImageClick?: (url: string) => void,
+    noteId: string
 }) {
     try {
         if (!block || typeof block !== 'object' || !block.id) return <div className="p-2 border border-red-500/20 bg-red-500/5 rounded text-red-400 text-xs">Invalid Block Structure</div>
@@ -1587,7 +1590,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                     moveBlock={moveBlock}
                     removeBlock={removeBlock}
                     onChange={onChange}
-                    noteId={note.id}
+                    noteId={noteId}
                 />
             )
         }
@@ -1602,7 +1605,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                     moveBlock={moveBlock}
                     removeBlock={removeBlock}
                     onChange={onChange}
-                    noteId={note.id}
+                    noteId={noteId}
                 />
             )
         }
@@ -1638,7 +1641,8 @@ const BlockWrapper = React.memo(({
     handleImageClick,
     handleWrapperFocus,
     handleWrapperBlur,
-    autoFocus
+    autoFocus,
+    noteId
 }: {
     block: NoteBlock;
     idx: number;
@@ -1652,6 +1656,7 @@ const BlockWrapper = React.memo(({
     handleWrapperFocus: (id: string, type: BlockType) => void;
     handleWrapperBlur: (currentTarget: HTMLElement) => void;
     autoFocus: boolean;
+    noteId: string;
 }) => {
     return (
         <motion.div
@@ -1709,6 +1714,7 @@ const BlockWrapper = React.memo(({
                     language={language}
                     onImageClick={handleImageClick}
                     onFocus={() => handleWrapperFocus(block.id, block.type)}
+                    noteId={noteId}
                 />
             </div>
         </motion.div>
@@ -1725,7 +1731,8 @@ const BlockWrapper = React.memo(({
         prevProps.handleImageClick === nextProps.handleImageClick &&
         prevProps.handleWrapperFocus === nextProps.handleWrapperFocus &&
         prevProps.handleWrapperBlur === nextProps.handleWrapperBlur &&
-        prevProps.autoFocus === nextProps.autoFocus;
+        prevProps.autoFocus === nextProps.autoFocus &&
+        prevProps.noteId === nextProps.noteId;
 });
 BlockWrapper.displayName = 'BlockWrapper';
 
