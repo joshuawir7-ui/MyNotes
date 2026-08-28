@@ -940,9 +940,9 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
 const getFileIconAndColor = (type: string, name: string = '') => {
     const ext = (type || name.split('.').pop() || '').toLowerCase();
     if (['pdf'].includes(ext)) return { Icon: FileText, color: 'text-red-500', bg: 'bg-red-500/20' };
-    if (['doc', 'docx'].includes(ext)) return { Icon: FileText, color: 'text-blue-500', bg: 'bg-blue-500/20' };
-    if (['xls', 'xlsx', 'csv'].includes(ext)) return { Icon: FileSpreadsheet, color: 'text-green-500', bg: 'bg-green-500/20' };
-    if (['ppt', 'pptx'].includes(ext)) return { Icon: Presentation, color: 'text-orange-500', bg: 'bg-orange-500/20' };
+    if (['doc', 'docx'].includes(ext)) return { imageSrc: '/icons/word.png', color: '', bg: 'bg-transparent' };
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return { imageSrc: '/icons/excel.png', color: '', bg: 'bg-transparent' };
+    if (['ppt', 'pptx'].includes(ext)) return { imageSrc: '/icons/powerpoint.png', color: '', bg: 'bg-transparent' };
     if (['mp3', 'wav', 'ogg', 'm4a', 'audio'].includes(ext)) return { Icon: FileAudio, color: 'text-purple-500', bg: 'bg-purple-500/20' };
     return { Icon: FileIcon, color: 'text-primary', bg: 'bg-primary/20' };
 };
@@ -953,7 +953,7 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
     const hasFile = !!fileData.url;
     const isDownloading = block.isDownloading;
 
-    const { Icon, color, bg } = getFileIconAndColor(fileData.type, fileData.name);
+    const { Icon, imageSrc, color, bg } = getFileIconAndColor(fileData.type, fileData.name);
 
     const handleFileClick = async () => {
         if (hasFile && typeof window !== 'undefined') {
@@ -1042,8 +1042,8 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
                 </div>
             ) : hasFile ? (
                 <div className="flex items-center gap-4 w-full cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors" onClick={handleFileClick}>
-                    <div className={`w-12 h-12 rounded-lg ${bg} ${color} flex items-center justify-center shrink-0`}>
-                        <Icon className="w-6 h-6" />
+                    <div className={`w-12 h-12 rounded-lg ${bg} ${color} flex items-center justify-center shrink-0 overflow-hidden`}>
+                        {Icon ? <Icon className="w-6 h-6" /> : <img src={imageSrc} alt="Icon" className="w-10 h-10 object-contain drop-shadow-md" />}
                     </div>
                     <div className="flex flex-col flex-1 min-w-0">
                         <span className="text-sm font-medium text-foreground truncate">{fileData.name || 'Unknown File'}</span>
