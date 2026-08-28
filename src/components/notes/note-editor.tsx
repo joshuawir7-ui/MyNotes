@@ -1257,9 +1257,7 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                 const uri = await saveBase64File(base64, file.name);
                 
                 let thumbUri = null;
-                if (uri || base64) {
-                    thumbUri = await generateVideoThumbnail(uri || base64);
-                }
+                thumbUri = await generateVideoThumbnail(uri, file);
 
                 onChange({
                     url: uri || base64,

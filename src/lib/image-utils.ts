@@ -205,30 +205,39 @@ export async function saveBase64File(base64Data: string, originalName: string): 
     }
 }
 
-export async function generateVideoThumbnail(videoUri: string): Promise<string | null> {
+export async function generateVideoThumbnail(videoUri: string | null, file?: File): Promise<string | null> {
     if (typeof window === 'undefined') return null;
 
-    if (Capacitor.isNativePlatform()) {
+    if (Capacitor.isNativePlatform() && videoUri) {
         try {
             const { WidgetSync } = await import('@/lib/store');
             const res = await WidgetSync.generateVideoThumbnailNative({ videoPath: videoUri });
-            return res.base64;
+            if (res && res.base64) {
+                return res.base64;
+            }
         } catch (e) {
-            console.error('Failed to generate native thumbnail', e);
-            return null;
+            console.warn('Failed to generate native thumbnail, falling back to web canvas implementation', e);
+            // Fallthrough to the web implementation below instead of returning null
         }
     }
 
     if (typeof document === 'undefined') return null;
     return new Promise((resolve) => {
         try {
+            // Prefer blob URL for web to bypass CORS/Tainted canvas entirely!
+            const videoSource = file ? URL.createObjectURL(file) : videoUri;
+            if (!videoSource) {
+                resolve(null);
+                return;
+            }
+
             const video = document.createElement('video');
             video.crossOrigin = 'anonymous';
             video.muted = true;
             video.playsInline = true;
             
-            // Allow Web to load Capacitor file src if needed
-            video.src = videoUri.startsWith('file://') ? Capacitor.convertFileSrc(videoUri) : videoUri;
+            // Allow Web to load Capacitor file src if needed, but blob URL is preferred
+            video.src = videoSource.startsWith('file://') ? Capacitor.convertFileSrc(videoSource) : videoSource;
             
             video.onloadeddata = () => {
                 video.currentTime = 1; // Seek to 1s to ensure we get a frame, avoiding black frames
@@ -254,15 +263,20 @@ export async function generateVideoThumbnail(videoUri: string): Promise<string |
                     ctx?.drawImage(video, 0, 0, w, h);
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
                     
+                    if (file) {
+                        URL.revokeObjectURL(videoSource);
+                    }
                     resolve(dataUrl);
                 } catch (e) {
                     console.error('Failed to generate thumbnail', e);
+                    if (file) URL.revokeObjectURL(videoSource);
                     resolve(null);
                 }
             };
             
             video.onerror = () => {
                 console.error("Video load error during thumbnail generation");
+                if (file) URL.revokeObjectURL(videoSource);
                 resolve(null);
             };
         } catch (e) {

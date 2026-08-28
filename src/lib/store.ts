@@ -28,6 +28,7 @@ export const WidgetSync = registerPlugin<{
     openAppSettings: () => Promise<void>;
     requestNotificationPermission: () => Promise<void>;
     openFile: (data: { url: string, mimeType?: string }) => Promise<void>;
+    generateVideoThumbnailNative: (data: { videoPath: string }) => Promise<{ base64: string }>;
 }>('WidgetSync');
 
 if (isNative) {
