@@ -7,7 +7,7 @@ import { translations } from "@/lib/translations"
 import { motion, AnimatePresence } from "framer-motion"
 import { App as CapacitorApp } from "@capacitor/app"
 import { Capacitor } from "@capacitor/core"
-import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation, Film } from "lucide-react"
+import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation, Film, PictureInPicture } from "lucide-react"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 
 const isNoteEmpty = (titleStr: string, blocksList: NoteBlock[]) => {
@@ -1169,6 +1169,28 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
     const isDownloading = block.isDownloading || isDownloadingState;
     const [isPlaying, setIsPlaying] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [supportsPip, setSupportsPip] = useState(false);
+
+    useEffect(() => {
+        if (typeof document !== 'undefined' && 'pictureInPictureEnabled' in document) {
+            setSupportsPip(document.pictureInPictureEnabled);
+        }
+    }, []);
+
+    const togglePip = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!videoRef.current) return;
+        try {
+            if (document.pictureInPictureElement) {
+                await document.exitPictureInPicture();
+            } else {
+                await videoRef.current.requestPictureInPicture();
+            }
+        } catch (err) {
+            console.error("Error with Picture-in-Picture:", err);
+        }
+    };
 
     const handlePlayClick = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -1289,14 +1311,28 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                 </div>
             ) : hasVideo ? (
                 isPlaying ? (
-                    <video
-                        src={getLocalImageSrc(videoData.url)}
-                        controls
-                        autoPlay
-                        className="w-full max-h-[60vh] object-contain bg-black"
-                        preload="none"
-                        poster={block.thumbnailPath ? getLocalImageSrc(block.thumbnailPath) : undefined}
-                    />
+                    <div className="relative w-full group/video bg-black flex items-center justify-center">
+                        <video
+                            ref={videoRef}
+                            src={getLocalImageSrc(videoData.url)}
+                            controls
+                            autoPlay
+                            playsInline
+                            className="w-full max-h-[60vh] object-contain bg-black"
+                            preload="none"
+                            poster={block.thumbnailPath ? getLocalImageSrc(block.thumbnailPath) : undefined}
+                        />
+                        {supportsPip && (
+                            <button
+                                onClick={togglePip}
+                                className="absolute bottom-3 right-3 z-20 p-2 bg-black/70 hover:bg-black/90 text-white rounded-full backdrop-blur-md border border-white/20 transition-all active:scale-95 shadow-lg flex items-center gap-1.5 text-xs font-medium"
+                                title="Picture-in-Picture (Ventana flotante)"
+                            >
+                                <PictureInPicture className="w-4 h-4" />
+                                <span className="hidden sm:inline">PiP</span>
+                            </button>
+                        )}
+                    </div>
                 ) : (
                     <div className="relative w-full cursor-pointer bg-black/10 group-hover:bg-black/20 transition-colors" onClick={handlePlayClick}>
                         {block.thumbnailPath ? (
