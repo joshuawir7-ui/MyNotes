@@ -206,6 +206,19 @@ export async function saveBase64File(base64Data: string, originalName: string): 
 }
 
 export async function generateVideoThumbnail(videoUri: string): Promise<string | null> {
+    if (typeof window === 'undefined') return null;
+
+    if (Capacitor.isNativePlatform()) {
+        try {
+            const { WidgetSync } = await import('@/lib/store');
+            const res = await WidgetSync.generateVideoThumbnailNative({ videoPath: videoUri });
+            return res.base64;
+        } catch (e) {
+            console.error('Failed to generate native thumbnail', e);
+            return null;
+        }
+    }
+
     if (typeof document === 'undefined') return null;
     return new Promise((resolve) => {
         try {
@@ -218,7 +231,7 @@ export async function generateVideoThumbnail(videoUri: string): Promise<string |
             video.src = videoUri.startsWith('file://') ? Capacitor.convertFileSrc(videoUri) : videoUri;
             
             video.onloadeddata = () => {
-                video.currentTime = 0.1; // Seek to 0.1s to ensure we get a frame
+                video.currentTime = 1; // Seek to 1s to ensure we get a frame, avoiding black frames
             };
             
             video.onseeked = async () => {
@@ -241,8 +254,6 @@ export async function generateVideoThumbnail(videoUri: string): Promise<string |
                     ctx?.drawImage(video, 0, 0, w, h);
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
                     
-                    // Devuelve base64 directamente (escalado ~10KB) para que se incluya en el JSON 
-                    // y cumpla con la descarga liviana en el restore automáticamente.
                     resolve(dataUrl);
                 } catch (e) {
                     console.error('Failed to generate thumbnail', e);
@@ -250,12 +261,12 @@ export async function generateVideoThumbnail(videoUri: string): Promise<string |
                 }
             };
             
-            video.onerror = (e) => {
-                console.error('Error loading video for thumbnail', e);
+            video.onerror = () => {
+                console.error("Video load error during thumbnail generation");
                 resolve(null);
             };
         } catch (e) {
-            console.error('Exception generating thumbnail', e);
+            console.error('Exception during thumbnail generation', e);
             resolve(null);
         }
     });

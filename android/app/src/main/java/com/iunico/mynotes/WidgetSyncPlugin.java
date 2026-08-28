@@ -599,47 +599,124 @@ public class WidgetSyncPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void generateVideoThumbnailNative(PluginCall call) {
+        String videoPath = call.getString("videoPath");
+        if (videoPath == null) {
+            call.reject("Missing videoPath");
+            return;
+        }
+
+        try {
+            String resolvedPath = videoPath.replace("file://", "");
+            if (resolvedPath.startsWith("http://localhost/_capacitor_file_")) {
+                resolvedPath = resolvedPath.replace("http://localhost/_capacitor_file_", "");
+            }
+            
+            android.media.MediaMetadataRetriever retriever = new android.media.MediaMetadataRetriever();
+            retriever.setDataSource(resolvedPath);
+            android.graphics.Bitmap bitmap = retriever.getFrameAtTime(1000000); // 1 second
+            
+            if (bitmap != null) {
+                int maxDim = 480;
+                int w = bitmap.getWidth();
+                int h = bitmap.getHeight();
+                if (w > h && w > maxDim) {
+                    h = (int) (h * ((float) maxDim / w));
+                    w = maxDim;
+                } else if (h > maxDim) {
+                    w = (int) (w * ((float) maxDim / h));
+                    h = maxDim;
+                }
+                android.graphics.Bitmap scaledBitmap = android.graphics.Bitmap.createScaledBitmap(bitmap, w, h, true);
+                
+                java.io.ByteArrayOutputStream byteStream = new java.io.ByteArrayOutputStream();
+                scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, byteStream);
+                byte[] bytes = byteStream.toByteArray();
+                String base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP);
+                
+                retriever.release();
+                
+                JSObject ret = new JSObject();
+                ret.put("base64", "data:image/jpeg;base64," + base64);
+                call.resolve(ret);
+            } else {
+                retriever.release();
+                call.reject("Could not generate frame from video");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WidgetSyncPlugin", "Error generating native video thumbnail", e);
+            call.reject("Error generating video thumbnail: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
     public void openFile(PluginCall call) {
         String url = call.getString("url");
         String mimeType = call.getString("mimeType", "*/*");
         if (url == null) {
+            android.util.Log.e("AttachmentOpen", "url is null");
             call.reject("url is required");
             return;
         }
+        
+        android.util.Log.d("AttachmentOpen", "Iniciando apertura de " + url + " (mimeType=" + mimeType + ")");
         
         try {
             Context context = getContext();
             String path = url.replace("file://", "");
             java.io.File file = new java.io.File(path);
             if (!file.exists()) {
+                android.util.Log.e("AttachmentOpen", "No existe copia local en la ruta: " + path);
                 call.reject("File does not exist: " + path);
                 return;
             }
             
-            Uri contentUri = androidx.core.content.FileProvider.getUriForFile(
-                context, 
-                context.getPackageName() + ".fileprovider", 
-                file
-            );
+            android.util.Log.d("AttachmentOpen", "Archivo local confirmado: " + file.getAbsolutePath());
+            
+            Uri contentUri;
+            try {
+                contentUri = androidx.core.content.FileProvider.getUriForFile(
+                    context, 
+                    context.getPackageName() + ".fileprovider", 
+                    file
+                );
+            } catch (Exception e) {
+                android.util.Log.e("AttachmentOpen", "FALLÓ generar URI de FileProvider", e);
+                call.reject("FileProvider error: " + e.getMessage());
+                return;
+            }
+            
+            android.util.Log.d("AttachmentOpen", "URI generada: " + contentUri);
             
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(contentUri, mimeType);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             
             // Explicitly grant permission to all apps that can handle this intent
-            // (Intent.createChooser strips flags on some Android versions)
             java.util.List<android.content.pm.ResolveInfo> resInfoList = context.getPackageManager().queryIntentActivities(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+            if (resInfoList.isEmpty()) {
+                android.util.Log.w("AttachmentOpen", "No hay apps instaladas que manejen el intent ACTION_VIEW para " + mimeType);
+            } else {
+                android.util.Log.d("AttachmentOpen", "Encontradas " + resInfoList.size() + " apps compatibles.");
+            }
+            
             for (android.content.pm.ResolveInfo resolveInfo : resInfoList) {
                 String packageName = resolveInfo.activityInfo.packageName;
                 context.grantUriPermission(packageName, contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
             }
             
-            Intent chooser = Intent.createChooser(intent, "Abrir con...");
-            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(chooser);
-            
-            call.resolve();
+            try {
+                Intent chooser = Intent.createChooser(intent, "Abrir con...");
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(chooser);
+                android.util.Log.d("AttachmentOpen", "Intent de apertura (chooser) lanzado correctamente");
+                call.resolve();
+            } catch (Exception e) {
+                android.util.Log.e("AttachmentOpen", "FALLÓ lanzar el intent de apertura", e);
+                call.reject("Failed to launch intent: " + e.getMessage());
+            }
         } catch (Exception e) {
+            android.util.Log.e("AttachmentOpen", "Excepción general en openFile", e);
             call.reject("Failed to open file: " + e.getMessage());
         }
     }

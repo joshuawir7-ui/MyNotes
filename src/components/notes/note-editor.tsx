@@ -1347,9 +1347,6 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                                 <div className="w-0 h-0 border-t-8 border-t-transparent border-l-[14px] border-l-white border-b-8 border-b-transparent ml-1"></div>
                             </div>
                         </div>
-                        <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur text-white text-xs px-2 py-1 rounded">
-                            {videoData.name || 'Video'}
-                        </div>
                     </div>
                 )
             ) : (
