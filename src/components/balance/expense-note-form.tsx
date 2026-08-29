@@ -127,8 +127,8 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                         <span className="font-sans font-bold text-[16px] text-[#6b7280]">
                             Balance actual:
                         </span>
-                        <span className="font-sans font-bold text-[16px] text-[#1a1a1a]">
-                            {totalWalletBalance}$
+                        <span className={`font-sans font-bold text-[16px] ${sumatoriaGastos > 0 ? 'text-red-500' : 'text-[#1a1a1a]'}`}>
+                            {projectedBalance}$
                         </span>
                         <button onClick={onClose} className="ml-2 p-1 text-zinc-400 hover:text-zinc-600 transition-colors" title="Cerrar">
                             <X className="w-5 h-5" />
