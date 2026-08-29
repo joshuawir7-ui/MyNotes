@@ -36,8 +36,10 @@ export default function NotesPage() {
     const sortedNotes = useMemo(() => {
         if (!notes) return []
         return [...notes.filter(n => n && typeof n === 'object' && n.id)].sort((a, b) => {
-            if (a.isPinned !== b.isPinned) {
-                return a.isPinned ? -1 : 1;
+            const aPinned = !!a.isPinned;
+            const bPinned = !!b.isPinned;
+            if (aPinned !== bPinned) {
+                return aPinned ? -1 : 1;
             }
             if (sortBy === 'recent') {
                 const timeA = typeof a.lastUpdated === 'number' ? a.lastUpdated : (a.createdAt ? new Date(a.createdAt).getTime() : 0)
