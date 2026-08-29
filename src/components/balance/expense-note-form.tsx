@@ -127,141 +127,139 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-white dark:bg-[#0c0c0c] w-screen h-screen overflow-y-auto p-4 sm:p-10 flex flex-col justify-between animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/60 backdrop-blur-sm">
             <style>{`@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&display=swap');`}</style>
-            
-            <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col justify-between space-y-6">
-                {/* Header */}
-                <div>
-                    <div className="flex items-center justify-between pb-6 border-b border-black/5 dark:border-white/10 mb-8">
-                        <h2 className="font-['Dancing_Script',cursive] text-4xl sm:text-5xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight lowercase">
-                            nota de gastos
-                        </h2>
-                        
-                        <div className="flex items-center gap-3 font-bold text-base sm:text-lg">
-                            <span className="text-zinc-500 dark:text-zinc-400">
-                                Balance actual: {totalWalletBalance.toLocaleString()}$
-                            </span>
-                            <span className="text-zinc-300 dark:text-zinc-700">|</span>
-                            <span className={`font-black text-2xl sm:text-3xl ${projectedBalance < 0 ? 'text-red-600 animate-pulse' : 'text-red-600 dark:text-rose-500'}`}>
-                                {projectedBalance.toLocaleString()}$
-                            </span>
-                        </div>
+
+            {/* Contenedor Principal Pixel Perfect */}
+            <div className="relative w-full max-w-[800px] bg-white dark:bg-[#0c0c0c] rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] border border-[#e5e7eb] dark:border-white/10 p-6 sm:p-8 my-auto animate-in zoom-in-95 duration-200">
+                {/* 1. Header (fila superior) */}
+                <div className="flex justify-between items-center mb-[24px]">
+                    <h2 className="font-['Dancing_Script',cursive] text-[20px] font-normal text-[#1a1a1a] dark:text-zinc-100 tracking-tight">
+                        nota de gastos
+                    </h2>
+                    
+                    <div className="flex items-center gap-[12px]">
+                        <span className="font-sans font-bold text-[16px] text-[#6b7280] dark:text-zinc-400">
+                            Balance actual:
+                        </span>
+                        <span className="font-sans font-bold text-[16px] text-[#6b7280] dark:text-zinc-400">
+                            {totalWalletBalance.toLocaleString()}$
+                        </span>
+                        <span className="text-[#d1d5db] dark:text-zinc-700 text-[16px]">|</span>
+                        <span className={`font-sans font-bold text-[16px] ${projectedBalance < 0 ? 'text-red-600 animate-pulse' : 'text-[#1a1a1a] dark:text-white'}`}>
+                            {projectedBalance.toLocaleString()}$
+                        </span>
+                    </div>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-[16px]">
+                    <div className="space-y-[16px] max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
+                        {items.map((item) => (
+                            <div key={item.id} className="space-y-[16px] relative group">
+                                {items.length > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveItem(item.id)}
+                                        className="absolute -top-3 right-0 p-1 text-zinc-400 hover:text-red-500 transition-colors"
+                                        title="Eliminar este gasto"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                )}
+
+                                {/* 2. Fila de Inputs (Título + Precio) */}
+                                <div className="flex flex-col sm:flex-row gap-[16px]">
+                                    <input
+                                        type="text"
+                                        required
+                                        value={item.title}
+                                        onChange={e => handleUpdateItem(item.id, 'title', e.target.value)}
+                                        placeholder="¿Título del gasto?"
+                                        className="flex-1 bg-white dark:bg-zinc-950 border border-[#e5e7eb] dark:border-zinc-700 rounded-[12px] px-[18px] py-[14px] text-[15px] text-[#1a1a1a] dark:text-zinc-100 placeholder:text-[#9ca3af] focus:outline-none focus:border-[#9ca3af]"
+                                    />
+                                    <input
+                                        type="number"
+                                        required
+                                        min="0"
+                                        step="0.01"
+                                        value={item.price}
+                                        onChange={e => handleUpdateItem(item.id, 'price', e.target.value)}
+                                        placeholder="PRECIO"
+                                        className="w-full sm:w-[180px] bg-white dark:bg-zinc-950 border border-[#e5e7eb] dark:border-zinc-700 rounded-[12px] px-[18px] py-[14px] text-[15px] font-bold text-center text-[#1a1a1a] dark:text-zinc-100 placeholder:text-[#9ca3af] placeholder:font-bold focus:outline-none focus:border-[#9ca3af] uppercase"
+                                    />
+                                </div>
+
+                                {/* 3. Textarea "Justificación" */}
+                                <div>
+                                    <textarea
+                                        value={item.description}
+                                        onChange={e => handleUpdateItem(item.id, 'description', e.target.value)}
+                                        rows={3}
+                                        placeholder="Justificación, o algo que valide por lo que se está gastando"
+                                        className="w-full bg-white dark:bg-zinc-950 border border-[#e5e7eb] dark:border-zinc-700 rounded-[12px] px-[18px] py-[16px] text-[15px] text-[#1a1a1a] dark:text-zinc-100 placeholder:text-[#9ca3af] focus:outline-none focus:border-[#9ca3af] min-h-[100px] resize-none"
+                                    />
+                                </div>
+
+                                {/* 4. Input "Imagen del producto" */}
+                                <div>
+                                    {item.imagePreview ? (
+                                        <div className="relative w-full h-36 rounded-[12px] overflow-hidden border border-[#e5e7eb] dark:border-zinc-700 group/img">
+                                            <img src={item.imagePreview} alt="Producto" className="w-full h-full object-cover" />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleUpdateItem(item.id, 'imagePreview', null)}
+                                                className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-red-600 transition-colors"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <label className="w-full border border-[#e5e7eb] dark:border-zinc-700 bg-white dark:bg-zinc-950 rounded-[12px] px-[18px] py-[14px] text-center text-[15px] text-[#9ca3af] hover:text-[#6b7280] dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center justify-center gap-2">
+                                            <Camera className="w-4 h-4 text-[#9ca3af]" />
+                                            <span>Imagen del producto</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={e => handleFileChange(item.id, e)}
+                                            />
+                                        </label>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="space-y-6">
-                            {items.map((item) => (
-                                <div key={item.id} className="bg-[#f8f9fa] dark:bg-zinc-900/60 p-6 sm:p-8 rounded-[36px] border border-zinc-200/80 dark:border-zinc-800 space-y-4 relative group">
-                                    {items.length > 1 && (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRemoveItem(item.id)}
-                                            className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
-                                            title="Eliminar este gasto"
-                                        >
-                                            <Trash2 className="w-5 h-5" />
-                                        </button>
-                                    )}
+                    {/* 5. Fila inferior (Botón + Línea punteada) */}
+                    <div className="flex items-center gap-[16px] pt-[4px]">
+                        <button
+                            type="button"
+                            onClick={handleAddItem}
+                            className="bg-[#1a1a1a] dark:bg-white text-white dark:text-black rounded-[10px] px-[24px] py-[14px] text-[13px] font-bold tracking-[0.5px] uppercase border-none cursor-pointer whitespace-nowrap shadow-sm hover:opacity-90 active:scale-95 transition-all"
+                        >
+                            AGREGAR OTRO GASTO
+                        </button>
+                        <div className="flex-1 border-t-[2px] border-dashed border-[#d1d5db] dark:border-zinc-700 h-0" />
+                    </div>
 
-                                    {/* Row 1: Title & Price */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                        <div className="sm:col-span-2">
-                                            <input
-                                                type="text"
-                                                required
-                                                value={item.title}
-                                                onChange={e => handleUpdateItem(item.id, 'title', e.target.value)}
-                                                placeholder="¿Título del gasto?"
-                                                className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-2xl px-5 py-4 text-base text-zinc-800 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-500"
-                                            />
-                                        </div>
-                                        <div>
-                                            <input
-                                                type="number"
-                                                required
-                                                min="0"
-                                                step="0.01"
-                                                value={item.price}
-                                                onChange={e => handleUpdateItem(item.id, 'price', e.target.value)}
-                                                placeholder="PRECIO"
-                                                className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-2xl px-5 py-4 text-base font-black text-center text-zinc-800 dark:text-zinc-100 placeholder:text-zinc-400 placeholder:font-black focus:outline-none focus:border-zinc-500 uppercase"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Row 2: Description */}
-                                    <div>
-                                        <textarea
-                                            value={item.description}
-                                            onChange={e => handleUpdateItem(item.id, 'description', e.target.value)}
-                                            rows={3}
-                                            placeholder="Justificación, o algo que valide por lo que se está gastando"
-                                            className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-2xl px-5 py-4 text-base text-zinc-800 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-500 resize-none"
-                                        />
-                                    </div>
-
-                                    {/* Row 3: Product Image */}
-                                    <div>
-                                        {item.imagePreview ? (
-                                            <div className="relative w-full h-44 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 group/img">
-                                                <img src={item.imagePreview} alt="Producto" className="w-full h-full object-cover" />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleUpdateItem(item.id, 'imagePreview', null)}
-                                                    className="absolute top-2 right-2 p-2 bg-black/60 text-white rounded-full hover:bg-red-600 transition-colors"
-                                                >
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <label className="w-full py-4 px-5 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 rounded-2xl flex items-center justify-center gap-2.5 text-base text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer transition-colors">
-                                                <Camera className="w-5 h-5 text-zinc-400" />
-                                                <span>Imagen del producto</span>
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    onChange={e => handleFileChange(item.id, e)}
-                                                />
-                                            </label>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Button AGREGAR OTRO GASTO + Dashed Line */}
-                        <div className="flex items-center pt-2">
-                            <button
-                                type="button"
-                                onClick={handleAddItem}
-                                className="px-6 py-4 bg-black dark:bg-white text-white dark:text-black font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all shrink-0"
-                            >
-                                AGREGAR OTRO GASTO
-                            </button>
-                            <div className="border-t-2 border-dashed border-zinc-300 dark:border-zinc-700 flex-1 ml-5" />
-                        </div>
-
-                        {/* Actions / Submit */}
-                        <div className="flex justify-end items-center gap-4 pt-8 pb-4">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="px-8 py-4 text-zinc-500 font-bold hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors text-base"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={isSubmitting || !isValid}
-                                className="px-10 py-4 bg-[#ff0044] hover:bg-[#e0003c] text-white font-black text-base uppercase tracking-wider rounded-full transition-all shadow-xl shadow-rose-600/30 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95"
-                            >
-                                {isSubmitting ? "Guardando..." : "GUARDAR GASTOS"}
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    {/* Acciones de cierre/envío */}
+                    <div className="flex justify-end items-center gap-3 pt-4 border-t border-black/5 dark:border-white/10">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-5 py-2.5 rounded-[10px] text-zinc-500 font-bold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-xs"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isSubmitting || !isValid}
+                            className="px-6 py-2.5 bg-[#1a1a1a] dark:bg-white text-white dark:text-black font-bold text-xs uppercase tracking-wider rounded-[10px] transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 active:scale-95"
+                        >
+                            {isSubmitting ? "Guardando..." : "GUARDAR GASTOS"}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     );
