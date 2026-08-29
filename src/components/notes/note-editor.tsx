@@ -928,6 +928,17 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                                         console.log('[DEBUG] Bloque de imagen insertado. Content:', finalContent, 'URI original:', uri);
                                         
                                         onChange(finalContent);
+                                        
+                                        import('@/lib/store').then(({ useStore }) => {
+                                            const token = useStore.getState().googleUser?.accessToken;
+                                            if (token) {
+                                                uploadAttachmentToDrive(base64, file.name, token)
+                                                    .then((driveFileId) => {
+                                                        onChange(finalContent, { driveFileId });
+                                                    })
+                                                    .catch(err => console.error('[Upload] Image drive sync failed:', err));
+                                            }
+                                        });
                                     }
                                     reader.readAsDataURL(file)
                                 }
@@ -941,6 +952,52 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
             </div>
         </>
     )
+}
+
+async function uploadAttachmentToDrive(
+    base64Data: string,
+    fileName: string,
+    accessToken: string
+): Promise<string> {
+    const pureBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+    const byteCharacters = atob(pureBase64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const fileBlob = new Blob([new Uint8Array(byteNumbers)]);
+
+    const metadata = { name: fileName };
+    const boundary = 'mynotes_upload_boundary';
+    const multipartBody =
+        `--${boundary}\r\n` +
+        `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+        `${JSON.stringify(metadata)}\r\n` +
+        `--${boundary}\r\n` +
+        `Content-Type: application/octet-stream\r\n\r\n`;
+
+    const closing = `\r\n--${boundary}--`;
+
+    const fullBody = new Blob([multipartBody, fileBlob, closing]);
+
+    const response = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+        {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': `multipart/related; boundary=${boundary}`,
+            },
+            body: fullBody,
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error(`Drive upload falló: ${response.status} ${await response.text()}`);
+    }
+
+    const result = await response.json();
+    return result.id;
 }
 
 const getFileIconAndColor = (type: string, name: string = '') => {
@@ -1142,10 +1199,22 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
                                     const { saveBase64File } = await import('@/lib/image-utils');
                                     const uri = await saveBase64File(base64, file.name);
                                     
-                                    onChange({
+                                    const fileContent = {
                                         url: uri || base64,
                                         name: file.name,
                                         type: file.name.split('.').pop() || 'file'
+                                    };
+                                    onChange(fileContent);
+
+                                    import('@/lib/store').then(({ useStore }) => {
+                                        const token = useStore.getState().googleUser?.accessToken;
+                                        if (token) {
+                                            uploadAttachmentToDrive(base64, file.name, token)
+                                                .then((driveFileId) => {
+                                                    onChange(fileContent, { driveFileId });
+                                                })
+                                                .catch(err => console.error('[Upload] File drive sync failed:', err));
+                                        }
                                     });
                                 }
                                 reader.readAsDataURL(file);
@@ -1367,12 +1436,24 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                 console.log('[VIDEO] Bloque final creado (equivalente a):', JSON.stringify(newBlock));
 
                 // Since onChange here expects (content, meta), we'll do:
-                onChange({
+                const baseContent = {
                     url: uri || base64,
                     name: file.name,
                     type: file.name.split('.').pop() || 'video'
-                }, { thumbnailPath: thumbUri });
+                };
+                onChange(baseContent, { thumbnailPath: thumbUri });
                 
+                import('@/lib/store').then(({ useStore }) => {
+                    const token = useStore.getState().googleUser?.accessToken;
+                    if (token) {
+                        uploadAttachmentToDrive(base64, file.name, token)
+                            .then((driveFileId) => {
+                                onChange(baseContent, { thumbnailPath: thumbUri, driveFileId });
+                            })
+                            .catch(err => console.error('[Upload] Video drive sync failed:', err));
+                    }
+                });
+
                 setIsProcessing(false);
             }
             reader.readAsDataURL(file);
