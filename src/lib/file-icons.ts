@@ -1,9 +1,9 @@
 import { FileIcon } from "lucide-react";
 
 export const FILE_TYPE_ICONS: Record<string, string> = {
-  xlsx: '/icons/excel_3d.png',
-  xls: '/icons/excel_3d.png',
-  csv: '/icons/excel_3d.png',
+  xlsx: '/icons/excel.png',
+  xls: '/icons/excel.png',
+  csv: '/icons/excel.png',
   docx: '/icons/word.png',
   doc: '/icons/word.png',
   pdf: '/icons/pdf.png',
