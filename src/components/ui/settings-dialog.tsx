@@ -353,7 +353,8 @@ export function SettingsDialog() {
             if (success) {
                 showToast(language === 'es' ? "Sincronización completada" : "Sync completed", "success");
             } else {
-                const errorMsg = useStore.getState().syncError || "";
+                const errorMsg = useStore.getState().syncError;
+                if (!errorMsg) { showToast(language === 'es' ? "Sincronización ya en curso" : "Sync already in progress", "info"); return; }
                 showNotif(
                     language === 'es' ? "Error" : "Error",
                     language === 'es' 
@@ -376,7 +377,8 @@ export function SettingsDialog() {
             if (success) {
                 showToast(language === 'es' ? "Elementos de la nube restaurados" : "Cloud elements restored", "success");
             } else {
-                const errorMsg = useStore.getState().syncError || "";
+                const errorMsg = useStore.getState().syncError;
+                if (!errorMsg) { showToast(language === 'es' ? "Restauración ya en curso" : "Restore already in progress", "info"); return; }
                 showNotif(
                     language === 'es' ? "Error" : "Error",
                     language === 'es' 

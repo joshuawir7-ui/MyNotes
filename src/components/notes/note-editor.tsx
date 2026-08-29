@@ -1160,6 +1160,9 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
                     <button onMouseDown={(e) => { e.preventDefault(); if (!isLast) moveBlock(idx, 'down'); }} disabled={isLast} className="p-1 text-zinc-700 dark:text-white/70 disabled:opacity-30">
                         <ChevronDown className="w-3.5 h-3.5" />
                     </button>
+                    <button onMouseDown={(e) => { e.preventDefault(); handleFileClick(); }} className="px-2 mx-1 py-0.5 flex items-center text-[10px] font-bold text-red-500 hover:bg-red-500/10 rounded transition-colors uppercase">
+                        OPEN
+                    </button>
                     <button onMouseDown={(e) => { e.preventDefault(); removeBlock(block.id); }} className="p-1 text-red-500">
                         <Trash2 className="w-3.5 h-3.5" />
                     </button>
