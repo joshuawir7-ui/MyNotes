@@ -1087,7 +1087,7 @@ interface AppState {
     addProject: (project: Omit<Project, 'id' | 'progress' | 'milestones'>) => void
     addXP: (amount: number) => void
     incrementFocusTime: (minutes: number) => void
-    addNote: (note: Omit<Note, 'id' | 'createdAt' | 'lastUpdated'>) => Promise<Note>
+    addNote: (note: Omit<Note, 'id' | 'createdAt' | 'lastUpdated'>) => Note
     updateNote: (id: string, title: string, blocks: NoteBlock[]) => void
     updateNoteBlockContent: (noteId: string, blockId: string, content: string) => void
     setBlockDownloading: (noteId: string, blockId: string, isDownloading: boolean) => void
@@ -1851,19 +1851,26 @@ export const useStore = create<AppState>()(
                     user: { ...state.user, focusTimeMinutes: state.user.focusTimeMinutes + minutes }
                 })),
 
-                addNote: async (note) => {
+                addNote: (note) => {
                     lastLocalNotesUpdate = Date.now();
                     const newNote = { ...note, id: Math.random().toString(36).substring(7), createdAt: new Date().toISOString(), lastUpdated: Date.now() }
                     
-                    const allNotes = await readAllNotesFromDisk(get().notes);
-                    const finalNotes = [...allNotes, newNote];
-                    await saveAllNotesToDisk(finalNotes);
-
                     set((state) => {
                         const newNotes = [...state.notes, newNote]
                         syncWidgetData(state.goals, state.appointments, newNotes)
                         return { notes: newNotes }
-                    })
+                    });
+
+                    (async () => {
+                        try {
+                            const allNotes = await readAllNotesFromDisk(get().notes);
+                            const finalNotes = [...allNotes, newNote];
+                            await saveAllNotesToDisk(finalNotes);
+                        } catch (e) {
+                            console.error("Async disk save failed", e);
+                        }
+                    })();
+
                     return newNote
                 },
 
