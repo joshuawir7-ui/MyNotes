@@ -1122,7 +1122,7 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
                     }
 
                     if (fileToShare && navigator.canShare && navigator.canShare({ files: [fileToShare] })) {
-                        await navigator.share({
+                                        await navigator.share({
                             files: [fileToShare],
                             title: fileData.name,
                         });
@@ -1131,14 +1131,25 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
                 } catch (e) {
                     console.error("Web share failed", e);
                 }
+                
+                // Fallback si no soporta Web Share API o falla
+                if (block.driveFileId) {
+                    window.open(`https://drive.google.com/file/d/${block.driveFileId}/view`, '_blank');
+                    return;
+                }
 
-                // Fallback si no soporta Web Share API (descargar el archivo forzando el diálogo del navegador)
-                const a = document.createElement('a');
-                a.href = src;
-                a.download = fileData.name || 'archivo';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                if (src.startsWith('data:')) {
+                    // Forzar descarga para Base64 ya que los navegadores bloquean abrir data URIs en nuevas pestañas
+                    const a = document.createElement('a');
+                    a.href = src;
+                    a.download = fileData.name || 'archivo';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                } else {
+                    // Dejar que el navegador decida (abrir o preguntar, dependiendo de la configuración y extensiones)
+                    window.open(src, '_blank');
+                }
             }
         }
     };
@@ -1160,9 +1171,6 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
                     <button onMouseDown={(e) => { e.preventDefault(); if (!isLast) moveBlock(idx, 'down'); }} disabled={isLast} className="p-1 text-zinc-700 dark:text-white/70 disabled:opacity-30">
                         <ChevronDown className="w-3.5 h-3.5" />
                     </button>
-                    <button onMouseDown={(e) => { e.preventDefault(); handleFileClick(); }} className="px-2 mx-1 py-0.5 flex items-center text-[10px] font-bold text-red-500 hover:bg-red-500/10 rounded transition-colors uppercase">
-                        OPEN
-                    </button>
                     <button onMouseDown={(e) => { e.preventDefault(); removeBlock(block.id); }} className="p-1 text-red-500">
                         <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -1182,6 +1190,11 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
                     <div className="flex flex-col flex-1 min-w-0">
                         <span className="text-sm font-medium text-foreground truncate">{fileData.name || 'Unknown File'}</span>
                         <span className="text-xs text-muted-foreground truncate uppercase">{fileData.type || 'FILE'}</span>
+                    </div>
+                    <div className="shrink-0 ml-2">
+                        <button className="px-4 py-1.5 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm font-medium rounded-md shadow-sm border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors">
+                            Open
+                        </button>
                     </div>
                 </div>
             ) : (
