@@ -1004,7 +1004,7 @@ const getFileIconAndColor = (type: string, name: string = '') => {
     const ext = (type || name.split('.').pop() || '').toLowerCase();
     if (['pdf'].includes(ext)) return { imageSrc: '/icons/pdf.png', color: '', bg: 'bg-transparent' };
     if (['doc', 'docx'].includes(ext)) return { imageSrc: '/icons/word.png', color: '', bg: 'bg-transparent' };
-    if (['xls', 'xlsx', 'csv'].includes(ext)) return { imageSrc: '/icons/excel.png', color: '', bg: 'bg-transparent' };
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return { imageSrc: '/icons/excel.svg', color: '', bg: 'bg-transparent' };
     if (['ppt', 'pptx'].includes(ext)) return { imageSrc: '/icons/powerpoint.png', color: '', bg: 'bg-transparent' };
     if (['mp3', 'wav', 'ogg', 'm4a', 'audio'].includes(ext)) return { imageSrc: '/icons/audio.png', color: '', bg: 'bg-transparent' };
     return { Icon: FileIcon, color: 'text-primary', bg: 'bg-primary/20' };
