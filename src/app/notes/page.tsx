@@ -5,7 +5,7 @@ import { useStore, Note } from "@/lib/store"
 import { useShallow } from "zustand/react/shallow"
 import React, { useState, useEffect, useMemo, memo } from "react"
 import { useSearchParams } from "next/navigation"
-import { Plus, StickyNote, Trash2, Calendar, ArrowUpAZ, ArrowDownAZ } from "lucide-react"
+import { Plus, StickyNote, Trash2, Calendar, ArrowUpAZ, ArrowDownAZ, Pin } from "lucide-react"
 import { WelcomeNotesModal } from "@/components/ui/welcome-notes-modal"
 import { NoteEditor, isNoteEmpty } from "@/components/notes/note-editor"
 import { Reveal } from "@/components/ui/reveal"
@@ -19,6 +19,7 @@ export default function NotesPage() {
     const notes = useStore(useShallow(state => state.notes))
     const addNote = useStore(state => state.addNote)
     const deleteNote = useStore(state => state.deleteNote)
+    const updateNote = useStore(state => state.updateNote)
     const loadAllNotes = useStore(state => state.loadAllNotes)
     const unloadNotes = useStore(state => state.unloadNotes)
     const language = useStore(state => state.language)
@@ -35,6 +36,9 @@ export default function NotesPage() {
     const sortedNotes = useMemo(() => {
         if (!notes) return []
         return [...notes.filter(n => n && typeof n === 'object' && n.id)].sort((a, b) => {
+            if (a.isPinned !== b.isPinned) {
+                return a.isPinned ? -1 : 1;
+            }
             if (sortBy === 'recent') {
                 const timeA = typeof a.lastUpdated === 'number' ? a.lastUpdated : (a.createdAt ? new Date(a.createdAt).getTime() : 0)
                 const timeB = typeof b.lastUpdated === 'number' ? b.lastUpdated : (b.createdAt ? new Date(b.createdAt).getTime() : 0)
@@ -256,6 +260,10 @@ export default function NotesPage() {
                                     note={note}
                                     onEdit={() => setEditingNote(note)}
                                     onDelete={() => setIsDeleting(note.id)}
+                                    onTogglePin={(e) => {
+                                        e.stopPropagation();
+                                        updateNote(note.id, { isPinned: !note.isPinned });
+                                    }}
                                     t={t}
                                 />
                             ))}
@@ -303,7 +311,7 @@ const NoteCardSkeleton = () => (
     </div>
 )
 
-const NoteCard = memo(({ note, onEdit, onDelete, t }: { note: Note; onEdit: () => void; onDelete: () => void; t: any }) => {
+const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note; onEdit: () => void; onDelete: () => void; onTogglePin: (e: React.MouseEvent) => void; t: any }) => {
     // Compute thumbnail src synchronously from note blocks.
     // IMPORTANT: thumbSrc is derived only from already-stored data (no async fetch),
     // so it is either a string or null from the very first render — no state update needed.
@@ -324,9 +332,17 @@ const NoteCard = memo(({ note, onEdit, onDelete, t }: { note: Note; onEdit: () =
         >
             <div
                 onClick={onEdit}
-                className="glass-panel p-6 rounded-2xl hover:scale-[1.02] transition-transform cursor-pointer group flex flex-row items-start justify-between min-h-[160px] gap-4"
+                className="glass-panel p-6 rounded-2xl hover:scale-[1.02] transition-transform cursor-pointer group flex flex-row items-start justify-between min-h-[160px] gap-4 relative"
             >
-                <div className="flex flex-col justify-between h-full flex-1 min-w-0">
+                {/* Pin button */}
+                <button
+                    onClick={onTogglePin}
+                    className={`absolute top-4 right-4 p-1.5 rounded-full transition-colors z-10 ${note.isPinned ? 'text-red-500 hover:text-red-600' : 'text-zinc-300 dark:text-zinc-600 hover:text-zinc-500 hover:bg-black/5 dark:hover:bg-white/5 opacity-0 group-hover:opacity-100'}`}
+                    title={note.isPinned ? "Desfijar nota" : "Fijar nota"}
+                >
+                    <Pin className={`w-4 h-4 ${note.isPinned ? 'fill-current' : ''}`} />
+                </button>
+                <div className="flex flex-col justify-between h-full flex-1 min-w-0 pt-2">
                     <div>
                         <h3 className={`text-xl font-bold mb-2 group-hover:text-primary transition-colors truncate ${!note.title ? 'text-muted-foreground italic' : ''}`}>
                             {typeof note.title === 'string' ? (note.title || t.untitled) : t.untitled}

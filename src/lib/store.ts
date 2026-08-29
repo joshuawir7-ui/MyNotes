@@ -881,6 +881,7 @@ export interface Note {
     createdAt: string
     tags: string[]
     lastUpdated?: number
+    isPinned?: boolean
 }
 
 export type GoalType = 'general' | 'checklist' | 'numeric' | 'weight' | 'budget';
