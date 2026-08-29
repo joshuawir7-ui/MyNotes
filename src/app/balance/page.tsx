@@ -686,39 +686,25 @@ export default function BalancePage() {
                                         <Wallet className="w-16 h-16" />
                                     </div>
 
-                                    {/* Expense Note Trigger Button (Bottom-Right of gauge, in neutral gray) */}
-                                    <button
-                                        onClick={() => setShowExpenseNoteModal(true)}
-                                        className="absolute bottom-2 right-2 p-2.5 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all text-zinc-500 dark:text-zinc-400 hover:text-foreground active:scale-95 shadow-sm"
-                                        title={language === 'es' ? "Nueva Nota de Gasto" : "New Expense Note"}
-                                    >
-                                        <FileText className="w-4 h-4" />
-                                    </button>
                                 </div>
                             )}
 
                             {/* Flanked Balance display */}
                             <div className="flex flex-col items-center justify-center gap-2 mt-2 w-full px-4">
-                                <div className="flex items-center justify-center gap-4 w-full">
+                                <div className="flex items-center justify-center gap-4 w-full relative">
                                     <div className="h-[1px] bg-black/10 dark:bg-white/10 flex-1" />
                                     <span className="text-sm font-extrabold tracking-wider uppercase text-foreground shrink-0 whitespace-nowrap">
                                         {language === 'es' ? 'Tienes' : 'You have'}: {balance.toLocaleString()}$
                                     </span>
                                     <div className="h-[1px] bg-black/10 dark:bg-white/10 flex-1" />
+                                    <button
+                                        onClick={() => setShowExpenseNoteModal(true)}
+                                        className="absolute right-0 text-zinc-500 dark:text-zinc-400 hover:text-foreground transition-all active:scale-95 p-1"
+                                        title={language === 'es' ? "Nueva Nota de Gasto" : "New Expense Note"}
+                                    >
+                                        <FileText className="w-5 h-5" />
+                                    </button>
                                 </div>
-                                {totalDocumentedExpenses > 0 && (
-                                    <div className="grid grid-cols-2 gap-4 w-full max-w-[280px]">
-                                        <div className="bg-white/5 border border-white/10 rounded-xl p-2 text-center flex flex-col">
-                                            <span className="text-[10px] uppercase tracking-wider text-white/50 font-bold">{language === 'es' ? 'Balance Real' : 'Real Balance'}</span>
-                                            <span className="text-white font-bold">{balance.toLocaleString()}$</span>
-                                        </div>
-                                        <div className="bg-white/5 border border-rose-500/30 rounded-xl p-2 text-center flex flex-col relative overflow-hidden">
-                                            <div className="absolute inset-0 bg-rose-500/5" />
-                                            <span className="text-[10px] uppercase tracking-wider text-rose-400 font-bold relative z-10">{language === 'es' ? 'Proyectado' : 'Projected'}</span>
-                                            <span className="text-rose-100 font-bold relative z-10">{projectedBalance.toLocaleString()}$</span>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
                         </div>

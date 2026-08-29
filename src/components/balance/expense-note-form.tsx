@@ -115,7 +115,7 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
             <style>{`@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600;700&display=swap');`}</style>
             
-            <div className="bg-[#FFFFFF] rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] p-[32px] w-full max-w-[800px] mx-auto relative max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col">
+            <div className="bg-[#FFFFFF] rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] p-[32px] w-full max-w-[800px] mx-auto relative max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col">
                 
                 {/* 1. Header (fila superior) */}
                 <div className="flex justify-between items-center mb-[24px] shrink-0">
@@ -127,61 +127,67 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                         <span className="font-sans font-bold text-[16px] text-[#6b7280]">
                             Balance actual:
                         </span>
-                        <span className="font-sans font-bold text-[16px] text-[#6b7280]">
+                        <span className="font-sans font-bold text-[16px] text-[#1a1a1a]">
                             {totalWalletBalance}$
                         </span>
-                        <div className="w-[1px] h-[20px] bg-[#d1d5db]"></div>
-                        <span className="font-sans font-bold text-[16px] text-[#1a1a1a]">
-                            {projectedBalance}$
-                        </span>
+                        <button onClick={onClose} className="ml-2 p-1 text-zinc-400 hover:text-zinc-600 transition-colors" title="Cerrar">
+                            <X className="w-5 h-5" />
+                        </button>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 pb-4">
+                <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pr-1 pb-4">
                     {items.map((item, index) => (
                         <div key={item.id} className="relative group">
-                            {/* Trash button */}
-                            <button
-                                type="button"
-                                onClick={() => handleRemoveItem(item.id)}
-                                className="absolute -right-2 top-2 p-2 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors z-10"
-                                title="Eliminar este gasto"
-                            >
-                                <Trash2 className="w-5 h-5" />
-                            </button>
-
-                            {/* 2. Fila de Inputs (Título + Precio) */}
-                            <div className="flex flex-col sm:flex-row gap-[16px] mb-[16px]">
+                            {/* 2. Fila de Inputs (Título + Precio + Trash) */}
+                            <div className="flex flex-col sm:flex-row gap-[16px] mb-[16px] items-start sm:items-center">
                                 <input
                                     type="text"
                                     value={item.title}
                                     onChange={e => handleUpdateItem(item.id, { title: e.target.value })}
                                     placeholder="¿Título del gasto?"
                                     disabled={item.confirmado}
-                                    className="flex-1 border border-[#e5e7eb] rounded-[12px] px-[18px] py-[14px] text-[15px] placeholder:text-[#9ca3af] bg-transparent outline-none focus:border-zinc-400 text-[#1a1a1a] transition-colors disabled:opacity-60"
+                                    className="flex-1 w-full border border-[#e5e7eb] rounded-[12px] px-[18px] py-[14px] text-[15px] placeholder:text-[#9ca3af] bg-transparent outline-none focus:border-zinc-400 text-[#1a1a1a] transition-colors disabled:opacity-60"
                                 />
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={item.amount || ''}
-                                    onChange={e => {
-                                        const val = parseFloat(e.target.value);
-                                        handleUpdateItem(item.id, { amount: isNaN(val) ? 0 : val });
-                                    }}
-                                    placeholder="PRECIO"
-                                    disabled={item.confirmado}
-                                    className="w-full sm:w-[180px] border border-[#e5e7eb] rounded-[12px] px-[18px] py-[14px] text-[15px] font-bold text-center placeholder:text-[#9ca3af] bg-transparent outline-none focus:border-zinc-400 text-[#1a1a1a] transition-colors disabled:opacity-60"
-                                />
+                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={item.amount || ''}
+                                        onChange={e => {
+                                            const val = parseFloat(e.target.value);
+                                            handleUpdateItem(item.id, { amount: isNaN(val) ? 0 : val });
+                                        }}
+                                        placeholder="PRECIO"
+                                        disabled={item.confirmado}
+                                        className="flex-1 sm:w-[140px] border border-[#e5e7eb] rounded-[12px] px-[18px] py-[14px] text-[15px] font-bold text-center placeholder:text-[#9ca3af] bg-transparent outline-none focus:border-zinc-400 text-[#1a1a1a] transition-colors disabled:opacity-60"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveItem(item.id)}
+                                        className="p-3 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors shrink-0"
+                                        title="Eliminar este gasto"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                </div>
                             </div>
 
                             {/* 3. Textarea "Justificación" */}
                             <textarea
                                 value={item.description}
-                                onChange={e => handleUpdateItem(item.id, { description: e.target.value })}
+                                onChange={e => {
+                                    handleUpdateItem(item.id, { description: e.target.value });
+                                }}
+                                onInput={e => {
+                                    const target = e.target as HTMLTextAreaElement;
+                                    target.style.height = 'auto';
+                                    target.style.height = `${target.scrollHeight}px`;
+                                }}
                                 placeholder="Justificación, o algo que valide por lo que se está gastando"
                                 disabled={item.confirmado}
-                                className="w-full border border-[#e5e7eb] rounded-[12px] px-[18px] py-[16px] min-h-[100px] text-[15px] placeholder:text-[#9ca3af] mb-[16px] resize-none bg-transparent outline-none focus:border-zinc-400 text-[#1a1a1a] transition-colors block disabled:opacity-60"
+                                className="w-full border border-[#e5e7eb] rounded-[12px] px-[18px] py-[16px] min-h-[56px] text-[15px] placeholder:text-[#9ca3af] mb-[16px] resize-none bg-transparent outline-none focus:border-zinc-400 text-[#1a1a1a] transition-colors block overflow-hidden disabled:opacity-60"
                             />
 
                             {/* 4. Input "Imagen del producto" */}
@@ -251,16 +257,6 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                     ))}
                 </div>
 
-                {/* Bottom padding / Close action */}
-                <div className="flex justify-end pt-4 shrink-0">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-[32px] py-[14px] bg-[#1a1a1a] text-[#FFFFFF] font-bold text-[15px] rounded-[12px] hover:bg-[#333333] transition-colors"
-                    >
-                        Cerrar Libreta
-                    </button>
-                </div>
             </div>
         </div>
     );
