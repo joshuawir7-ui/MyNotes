@@ -241,6 +241,7 @@ export const saveAllNotesToDisk = async (notes: Note[]) => {
 // AppStateChange listener is placed at the end of the file to ensure all store functions are fully hoisted and initialized
 
 // Custom storage for Capacitor to avoid SharedPreferences size limits (1-2MB)
+let syncInProgress = false;
 let syncWorker: Worker | null = null;
 if (typeof window !== 'undefined') {
     syncWorker = new Worker(new URL('./sync-worker.ts', import.meta.url));
@@ -1102,7 +1103,7 @@ let lastLocalNotesUpdate = 0;
 
 async function fetchWithTimeout(resource: string, options: any = {}, timeout = 15000) {
     const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeout);
+    const id = setTimeout(() => controller.abort('Timeout reached'), timeout);
     try {
         const response = await fetch(resource, {
             ...options,
@@ -2647,10 +2648,16 @@ export const useStore = create<AppState>()(
                 },
 
                 syncWithGoogleDrive: async () => {
-                    if (get().isSyncingCloud) {
-                        console.log("Cloud sync already in progress, skipping syncWithGoogleDrive.");
+                    if (syncInProgress) {
+                        console.log("[Sync] Ya hay una sincronización en curso, se omite esta llamada");
                         return false;
                     }
+                    syncInProgress = true;
+                    try {
+                        if (get().isSyncingCloud) {
+                            console.log("Cloud sync already in progress, skipping syncWithGoogleDrive.");
+                            return false;
+                        }
                     const user = get().googleUser;
                     if (!user) return false;
 
@@ -2843,13 +2850,22 @@ export const useStore = create<AppState>()(
                         }
                         return false;
                     }
+                    } finally {
+                        syncInProgress = false;
+                    }
                 },
 
                 restoreFromGoogleDrive: async () => {
-                    if (get().isSyncingCloud) {
-                        console.log("Cloud sync already in progress, skipping restoreFromGoogleDrive.");
+                    if (syncInProgress) {
+                        console.log("[Sync] Ya hay una sincronización en curso, se omite esta llamada");
                         return false;
                     }
+                    syncInProgress = true;
+                    try {
+                        if (get().isSyncingCloud) {
+                            console.log("Cloud sync already in progress, skipping restoreFromGoogleDrive.");
+                            return false;
+                        }
                     const user = get().googleUser;
                     if (!user) return false;
 
@@ -3096,13 +3112,22 @@ export const useStore = create<AppState>()(
                         }
                         return false;
                     }
+                    } finally {
+                        syncInProgress = false;
+                    }
                 },
 
                 autoSyncGoogleDrive: async () => {
-                    if (get().isSyncingCloud) {
-                        console.log("Cloud sync already in progress, skipping autoSyncGoogleDrive.");
+                    if (syncInProgress) {
+                        console.log("[Sync] Ya hay una sincronización en curso, se omite esta llamada");
                         return false;
                     }
+                    syncInProgress = true;
+                    try {
+                        if (get().isSyncingCloud) {
+                            console.log("Cloud sync already in progress, skipping autoSyncGoogleDrive.");
+                            return false;
+                        }
                     const user = get().googleUser;
                     if (!user) return false;
 
@@ -3453,6 +3478,9 @@ export const useStore = create<AppState>()(
                         }
                         return false;
                     }
+                    } finally {
+                        syncInProgress = false;
+                    }
                 }
             };
         },
@@ -3504,7 +3532,13 @@ export const useStore = create<AppState>()(
                 };
             },
             partialize: (state) => {
-                const { isSyncingCloud, syncError, tourStep, isTourManuallyStarted, ...rest } = state;
+                const serializableState: any = {};
+                for (const key in state) {
+                    if (typeof state[key as keyof AppState] !== 'function') {
+                        serializableState[key] = state[key as keyof AppState];
+                    }
+                }
+                const { isSyncingCloud, syncError, tourStep, isTourManuallyStarted, ...rest } = serializableState;
                 return {
                     ...rest,
                     areNotesLoaded: true,
