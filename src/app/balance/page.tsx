@@ -629,13 +629,6 @@ export default function BalancePage() {
                                 </h1>
                                 <div className="flex gap-2">
                                     <button
-                                        onClick={() => setShowExpenseNoteModal(true)}
-                                        className="p-2 bg-rose-500/10 border border-rose-500/20 rounded-2xl hover:bg-rose-500/20 transition-all text-rose-500 active:scale-95 shrink-0"
-                                        title={language === 'es' ? "Nueva Nota de Gasto" : "New Expense Note"}
-                                    >
-                                        <FileText className="w-4 h-4" />
-                                    </button>
-                                    <button
                                         onClick={() => setShowOnboarding(true)}
                                         className="p-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all text-muted-foreground hover:text-foreground active:scale-95 shrink-0"
                                         title={language === 'es' ? "Ayuda" : "Help"}
@@ -655,7 +648,7 @@ export default function BalancePage() {
                             {chartType === 'line' ? (
                                 renderLineChart()
                             ) : (
-                                /* SVG Donut (Starts bottom at 6 o'clock, fills counter-clockwise left-to-right bottom-to-top) */
+                                /* SVG Donut */
                                 <div className="relative w-56 h-56 flex items-center justify-center select-none">
                                     <svg className="w-full h-full transform rotate-90 scale-x-[-1]" viewBox="0 0 200 200">
                                         <defs>
@@ -692,6 +685,15 @@ export default function BalancePage() {
                                     <div className="absolute flex flex-col items-center justify-center text-zinc-400 dark:text-white pointer-events-none">
                                         <Wallet className="w-16 h-16" />
                                     </div>
+
+                                    {/* Expense Note Trigger Button (Bottom-Right of gauge, in neutral gray) */}
+                                    <button
+                                        onClick={() => setShowExpenseNoteModal(true)}
+                                        className="absolute bottom-2 right-2 p-2.5 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all text-zinc-500 dark:text-zinc-400 hover:text-foreground active:scale-95 shadow-sm"
+                                        title={language === 'es' ? "Nueva Nota de Gasto" : "New Expense Note"}
+                                    >
+                                        <FileText className="w-4 h-4" />
+                                    </button>
                                 </div>
                             )}
 
