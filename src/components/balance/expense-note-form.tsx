@@ -127,134 +127,128 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/60 backdrop-blur-sm">
-            <style>{`@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&display=swap');`}</style>
-
-            {/* Contenedor Principal Pixel Perfect */}
-            <div className="relative w-full max-w-[800px] bg-white dark:bg-[#0c0c0c] rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] border border-[#e5e7eb] dark:border-white/10 p-6 sm:p-8 my-auto animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <style>{`@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600;700&display=swap');`}</style>
+            
+            <div className="bg-[#FFFFFF] rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] p-[32px] w-full max-w-[800px] mx-auto relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+                
                 {/* 1. Header (fila superior) */}
                 <div className="flex justify-between items-center mb-[24px]">
-                    <h2 className="font-['Dancing_Script',cursive] text-[20px] font-normal text-[#1a1a1a] dark:text-zinc-100 tracking-tight">
+                    <h2 className="font-['Dancing_Script',cursive] text-[20px] text-[#1a1a1a] font-normal m-0 leading-none">
                         nota de gastos
                     </h2>
                     
                     <div className="flex items-center gap-[12px]">
-                        <span className="font-sans font-bold text-[16px] text-[#6b7280] dark:text-zinc-400">
+                        <span className="font-sans font-bold text-[16px] text-[#6b7280]">
                             Balance actual:
                         </span>
-                        <span className="font-sans font-bold text-[16px] text-[#6b7280] dark:text-zinc-400">
-                            {totalWalletBalance.toLocaleString()}$
+                        <span className="font-sans font-bold text-[16px] text-[#6b7280]">
+                            {totalWalletBalance}$
                         </span>
-                        <span className="text-[#d1d5db] dark:text-zinc-700 text-[16px]">|</span>
-                        <span className={`font-sans font-bold text-[16px] ${projectedBalance < 0 ? 'text-red-600 animate-pulse' : 'text-[#1a1a1a] dark:text-white'}`}>
-                            {projectedBalance.toLocaleString()}$
+                        <div className="w-[1px] h-[20px] bg-[#d1d5db]"></div>
+                        <span className="font-sans font-bold text-[16px] text-[#1a1a1a]">
+                            {projectedBalance}$
                         </span>
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-[16px]">
-                    <div className="space-y-[16px] max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
-                        {items.map((item) => (
-                            <div key={item.id} className="space-y-[16px] relative group">
-                                {items.length > 1 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleRemoveItem(item.id)}
-                                        className="absolute -top-3 right-0 p-1 text-zinc-400 hover:text-red-500 transition-colors"
-                                        title="Eliminar este gasto"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                )}
+                <form onSubmit={handleSubmit}>
+                    {items.map((item) => (
+                        <div key={item.id} className="relative group">
+                            {items.length > 1 && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveItem(item.id)}
+                                    className="absolute -right-2 top-2 p-2 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors z-10"
+                                    title="Eliminar este gasto"
+                                >
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
+                            )}
 
-                                {/* 2. Fila de Inputs (Título + Precio) */}
-                                <div className="flex flex-col sm:flex-row gap-[16px]">
-                                    <input
-                                        type="text"
-                                        required
-                                        value={item.title}
-                                        onChange={e => handleUpdateItem(item.id, 'title', e.target.value)}
-                                        placeholder="¿Título del gasto?"
-                                        className="flex-1 bg-white dark:bg-zinc-950 border border-[#e5e7eb] dark:border-zinc-700 rounded-[12px] px-[18px] py-[14px] text-[15px] text-[#1a1a1a] dark:text-zinc-100 placeholder:text-[#9ca3af] focus:outline-none focus:border-[#9ca3af]"
-                                    />
-                                    <input
-                                        type="number"
-                                        required
-                                        min="0"
-                                        step="0.01"
-                                        value={item.price}
-                                        onChange={e => handleUpdateItem(item.id, 'price', e.target.value)}
-                                        placeholder="PRECIO"
-                                        className="w-full sm:w-[180px] bg-white dark:bg-zinc-950 border border-[#e5e7eb] dark:border-zinc-700 rounded-[12px] px-[18px] py-[14px] text-[15px] font-bold text-center text-[#1a1a1a] dark:text-zinc-100 placeholder:text-[#9ca3af] placeholder:font-bold focus:outline-none focus:border-[#9ca3af] uppercase"
-                                    />
-                                </div>
-
-                                {/* 3. Textarea "Justificación" */}
-                                <div>
-                                    <textarea
-                                        value={item.description}
-                                        onChange={e => handleUpdateItem(item.id, 'description', e.target.value)}
-                                        rows={3}
-                                        placeholder="Justificación, o algo que valide por lo que se está gastando"
-                                        className="w-full bg-white dark:bg-zinc-950 border border-[#e5e7eb] dark:border-zinc-700 rounded-[12px] px-[18px] py-[16px] text-[15px] text-[#1a1a1a] dark:text-zinc-100 placeholder:text-[#9ca3af] focus:outline-none focus:border-[#9ca3af] min-h-[100px] resize-none"
-                                    />
-                                </div>
-
-                                {/* 4. Input "Imagen del producto" */}
-                                <div>
-                                    {item.imagePreview ? (
-                                        <div className="relative w-full h-36 rounded-[12px] overflow-hidden border border-[#e5e7eb] dark:border-zinc-700 group/img">
-                                            <img src={item.imagePreview} alt="Producto" className="w-full h-full object-cover" />
-                                            <button
-                                                type="button"
-                                                onClick={() => handleUpdateItem(item.id, 'imagePreview', null)}
-                                                className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-red-600 transition-colors"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <label className="w-full border border-[#e5e7eb] dark:border-zinc-700 bg-white dark:bg-zinc-950 rounded-[12px] px-[18px] py-[14px] text-center text-[15px] text-[#9ca3af] hover:text-[#6b7280] dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center justify-center gap-2">
-                                            <Camera className="w-4 h-4 text-[#9ca3af]" />
-                                            <span>Imagen del producto</span>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="hidden"
-                                                onChange={e => handleFileChange(item.id, e)}
-                                            />
-                                        </label>
-                                    )}
-                                </div>
+                            {/* 2. Fila de Inputs (Título + Precio) */}
+                            <div className="flex flex-col sm:flex-row gap-[16px] mb-[16px]">
+                                <input
+                                    type="text"
+                                    required
+                                    value={item.title}
+                                    onChange={e => handleUpdateItem(item.id, 'title', e.target.value)}
+                                    placeholder="¿Título del gasto?"
+                                    className="flex-1 border border-[#e5e7eb] rounded-[12px] px-[18px] py-[14px] text-[15px] placeholder:text-[#9ca3af] bg-transparent outline-none focus:border-zinc-400 text-[#1a1a1a] transition-colors"
+                                />
+                                <input
+                                    type="number"
+                                    required
+                                    min="0"
+                                    step="0.01"
+                                    value={item.price}
+                                    onChange={e => handleUpdateItem(item.id, 'price', e.target.value)}
+                                    placeholder="PRECIO"
+                                    className="w-full sm:w-[180px] border border-[#e5e7eb] rounded-[12px] px-[18px] py-[14px] text-[15px] font-bold text-center placeholder:text-[#9ca3af] bg-transparent outline-none focus:border-zinc-400 text-[#1a1a1a] transition-colors"
+                                />
                             </div>
-                        ))}
-                    </div>
+
+                            {/* 3. Textarea "Justificación" */}
+                            <textarea
+                                value={item.description}
+                                onChange={e => handleUpdateItem(item.id, 'description', e.target.value)}
+                                placeholder="Justificación, o algo que valide por lo que se está gastando"
+                                className="w-full border border-[#e5e7eb] rounded-[12px] px-[18px] py-[16px] min-h-[100px] text-[15px] placeholder:text-[#9ca3af] mb-[16px] resize-none bg-transparent outline-none focus:border-zinc-400 text-[#1a1a1a] transition-colors block"
+                            />
+
+                            {/* 4. Input "Imagen del producto" */}
+                            <div className="mb-[20px]">
+                                {item.imagePreview ? (
+                                    <div className="relative w-full h-[140px] rounded-[12px] overflow-hidden border border-[#e5e7eb] group/img">
+                                        <img src={item.imagePreview} alt="Producto" className="w-full h-full object-cover" />
+                                        <button
+                                            type="button"
+                                            onClick={() => handleUpdateItem(item.id, 'imagePreview', null)}
+                                            className="absolute top-2 right-2 p-2 bg-black/60 text-white rounded-full hover:bg-red-600 transition-colors"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <label className="w-full border border-[#e5e7eb] rounded-[12px] px-[18px] py-[14px] text-center text-[15px] text-[#9ca3af] cursor-pointer flex items-center justify-center gap-2 hover:bg-zinc-50 transition-colors">
+                                        <span>Imagen del producto</span>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={e => handleFileChange(item.id, e)}
+                                        />
+                                    </label>
+                                )}
+                            </div>
+                        </div>
+                    ))}
 
                     {/* 5. Fila inferior (Botón + Línea punteada) */}
-                    <div className="flex items-center gap-[16px] pt-[4px]">
+                    <div className="flex items-center gap-[16px] mb-[24px]">
                         <button
                             type="button"
                             onClick={handleAddItem}
-                            className="bg-[#1a1a1a] dark:bg-white text-white dark:text-black rounded-[10px] px-[24px] py-[14px] text-[13px] font-bold tracking-[0.5px] uppercase border-none cursor-pointer whitespace-nowrap shadow-sm hover:opacity-90 active:scale-95 transition-all"
+                            className="bg-[#1a1a1a] text-[#FFFFFF] rounded-[10px] px-[24px] py-[14px] text-[13px] font-bold tracking-[0.5px] uppercase border-none cursor-pointer whitespace-nowrap hover:opacity-90 active:scale-95 transition-all"
                         >
                             AGREGAR OTRO GASTO
                         </button>
-                        <div className="flex-1 border-t-[2px] border-dashed border-[#d1d5db] dark:border-zinc-700 h-0" />
+                        <div className="flex-1 border-t-[2px] border-dashed border-[#d1d5db] h-0"></div>
                     </div>
 
-                    {/* Acciones de cierre/envío */}
-                    <div className="flex justify-end items-center gap-3 pt-4 border-t border-black/5 dark:border-white/10">
+                    {/* Actions / Submit */}
+                    <div className="flex justify-end items-center gap-[16px] pt-[16px]">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-5 py-2.5 rounded-[10px] text-zinc-500 font-bold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-xs"
+                            className="px-[24px] py-[14px] text-[#6b7280] font-bold hover:bg-zinc-100 rounded-[12px] transition-colors text-[15px]"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             disabled={isSubmitting || !isValid}
-                            className="px-6 py-2.5 bg-[#1a1a1a] dark:bg-white text-white dark:text-black font-bold text-xs uppercase tracking-wider rounded-[10px] transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 active:scale-95"
+                            className="px-[32px] py-[14px] bg-[#ff0044] hover:bg-[#e0003c] text-[#FFFFFF] font-bold text-[15px] uppercase tracking-[0.5px] rounded-full transition-all shadow-lg shadow-rose-500/20 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95"
                         >
                             {isSubmitting ? "Guardando..." : "GUARDAR GASTOS"}
                         </button>
