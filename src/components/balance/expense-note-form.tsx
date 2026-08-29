@@ -1,5 +1,5 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { Camera, X, Check, FileText, Trash2, Plus } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Camera, X, Trash2 } from 'lucide-react';
 import { useStore, ExpenseNote } from '@/lib/store';
 import { useShallow } from 'zustand/react/shallow';
 import { Capacitor } from '@capacitor/core';
@@ -127,34 +127,34 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/60 backdrop-blur-sm">
-            <div className="relative w-full max-w-xl bg-white dark:bg-[#0c0c0c] border border-black/10 dark:border-white/10 rounded-[32px] sm:rounded-[40px] shadow-2xl p-6 sm:p-8 my-auto animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 overflow-y-auto bg-black/60 backdrop-blur-sm">
+            <div className="relative w-full max-w-4xl bg-white dark:bg-[#0c0c0c] border border-black/10 dark:border-white/10 rounded-[36px] sm:rounded-[44px] shadow-2xl p-6 sm:p-10 my-auto animate-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-black/5 dark:border-white/10 mb-6">
-                    <h2 className="font-serif italic text-2xl sm:text-3xl text-zinc-900 dark:text-zinc-100 tracking-tight">
+                <div className="flex items-center justify-between pb-6 border-b border-black/5 dark:border-white/10 mb-8">
+                    <h2 className="font-serif italic text-3xl sm:text-4xl text-zinc-900 dark:text-zinc-100 tracking-tight lowercase">
                         nota de gastos
                     </h2>
                     
-                    <div className="flex items-center gap-2 font-bold text-sm sm:text-base">
+                    <div className="flex items-center gap-3 font-bold text-base sm:text-lg">
                         <span className="text-zinc-500 dark:text-zinc-400">
                             Balance actual: {totalWalletBalance.toLocaleString()}$
                         </span>
                         <span className="text-zinc-300 dark:text-zinc-700">|</span>
-                        <span className={`font-black text-lg sm:text-xl ${projectedBalance < 0 ? 'text-red-600 animate-pulse' : 'text-red-500 dark:text-rose-500'}`}>
+                        <span className={`font-black text-xl sm:text-2xl ${projectedBalance < 0 ? 'text-red-600 animate-pulse' : 'text-red-500 dark:text-rose-500'}`}>
                             {projectedBalance.toLocaleString()}$
                         </span>
                     </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
-                        {items.map((item, index) => (
-                            <div key={item.id} className="space-y-3 p-4 sm:p-5 bg-zinc-50 dark:bg-zinc-900/60 rounded-3xl border border-black/5 dark:border-white/10 relative group">
+                    <div className="space-y-6 max-h-[65vh] overflow-y-auto pr-2 custom-scrollbar">
+                        {items.map((item) => (
+                            <div key={item.id} className="bg-[#f8f9fa] dark:bg-zinc-900/60 p-5 sm:p-7 rounded-[32px] border border-zinc-200/80 dark:border-zinc-800 space-y-4 relative group">
                                 {items.length > 1 && (
                                     <button
                                         type="button"
                                         onClick={() => handleRemoveItem(item.id)}
-                                        className="absolute top-3 right-3 p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
+                                        className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
                                         title="Eliminar este gasto"
                                     >
                                         <Trash2 className="w-4 h-4" />
@@ -162,7 +162,7 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                                 )}
 
                                 {/* Row 1: Title & Price */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div className="sm:col-span-2">
                                         <input
                                             type="text"
@@ -170,7 +170,7 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                                             value={item.title}
                                             onChange={e => handleUpdateItem(item.id, 'title', e.target.value)}
                                             placeholder="¿Título del gasto?"
-                                            className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-2xl px-4 py-3 text-sm font-medium text-foreground placeholder:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400"
+                                            className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-2xl px-5 py-3.5 text-base text-zinc-800 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-500"
                                         />
                                     </div>
                                     <div>
@@ -182,7 +182,7 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                                             value={item.price}
                                             onChange={e => handleUpdateItem(item.id, 'price', e.target.value)}
                                             placeholder="PRECIO"
-                                            className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-2xl px-4 py-3 text-sm font-black text-center text-foreground placeholder:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 uppercase"
+                                            className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-2xl px-5 py-3.5 text-base font-black text-center text-zinc-800 dark:text-zinc-100 placeholder:text-zinc-400 placeholder:font-black focus:outline-none focus:border-zinc-500 uppercase"
                                         />
                                     </div>
                                 </div>
@@ -192,28 +192,28 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                                     <textarea
                                         value={item.description}
                                         onChange={e => handleUpdateItem(item.id, 'description', e.target.value)}
-                                        rows={2}
+                                        rows={3}
                                         placeholder="Justificación, o algo que valide por lo que se está gastando"
-                                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-2xl px-4 py-3 text-sm text-foreground placeholder:text-zinc-400 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 resize-none"
+                                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-2xl px-5 py-3.5 text-base text-zinc-800 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-500 resize-none"
                                     />
                                 </div>
 
-                                {/* Row 3: Image Upload */}
+                                {/* Row 3: Product Image */}
                                 <div>
                                     {item.imagePreview ? (
-                                        <div className="relative w-full h-32 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 group/img">
+                                        <div className="relative w-full h-40 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 group/img">
                                             <img src={item.imagePreview} alt="Producto" className="w-full h-full object-cover" />
                                             <button
                                                 type="button"
                                                 onClick={() => handleUpdateItem(item.id, 'imagePreview', null)}
-                                                className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-red-600 transition-colors"
+                                                className="absolute top-2 right-2 p-2 bg-black/60 text-white rounded-full hover:bg-red-600 transition-colors"
                                             >
                                                 <X className="w-4 h-4" />
                                             </button>
                                         </div>
                                     ) : (
-                                        <label className="w-full py-3 px-4 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 rounded-2xl flex items-center justify-center gap-2 text-sm text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer transition-colors">
-                                            <Camera className="w-4 h-4" />
+                                        <label className="w-full py-4 px-5 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 rounded-2xl flex items-center justify-center gap-2.5 text-base text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer transition-colors">
+                                            <Camera className="w-5 h-5 text-zinc-400" />
                                             <span>Imagen del producto</span>
                                             <input
                                                 type="file"
@@ -233,28 +233,28 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                         <button
                             type="button"
                             onClick={handleAddItem}
-                            className="px-5 py-3 bg-black dark:bg-white text-white dark:text-black font-black text-xs uppercase tracking-wider rounded-xl shadow-md hover:scale-[1.02] active:scale-95 transition-all shrink-0"
+                            className="px-6 py-3.5 bg-black dark:bg-white text-white dark:text-black font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all shrink-0"
                         >
                             AGREGAR OTRO GASTO
                         </button>
-                        <div className="border-t-2 border-dashed border-zinc-300 dark:border-zinc-700 flex-1 ml-4" />
+                        <div className="border-t-2 border-dashed border-zinc-300 dark:border-zinc-700 flex-1 ml-5" />
                     </div>
 
                     {/* Actions / Submit */}
-                    <div className="flex justify-end gap-3 pt-4 border-t border-black/5 dark:border-white/10">
+                    <div className="flex justify-end items-center gap-4 pt-6 border-t border-black/5 dark:border-white/10">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-6 py-3 rounded-2xl text-zinc-500 font-bold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            className="px-6 py-3.5 text-zinc-500 font-bold hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             disabled={isSubmitting || !isValid}
-                            className="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black text-sm uppercase tracking-wider rounded-2xl transition-all shadow-lg shadow-rose-600/30 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95"
+                            className="px-8 py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-sm uppercase tracking-wider rounded-full transition-all shadow-lg shadow-rose-600/30 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95"
                         >
-                            {isSubmitting ? "Guardando..." : "Guardar Gastos"}
+                            {isSubmitting ? "Guardando..." : "GUARDAR GASTOS"}
                         </button>
                     </div>
                 </form>
