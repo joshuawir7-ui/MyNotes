@@ -1017,13 +1017,8 @@ function NoteAudioBlock({ block, removeBlock }: any) {
     if (!showPlayer) {
         return (
             <div className="flex items-center gap-4 w-full cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors group" onClick={() => setShowPlayer(true)}>
-                <div className="w-12 h-12 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0 overflow-hidden relative">
-                    <FileIcon className="w-6 h-6" />
-                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center rounded-lg">
-                        <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                            <span className="text-white text-xs">▶</span>
-                        </div>
-                    </div>
+                <div className="w-12 h-12 rounded-lg bg-transparent flex items-center justify-center shrink-0 overflow-hidden relative">
+                    <img src="/icons/audio.png" alt="Audio" className="w-10 h-10 object-contain drop-shadow-md dark:invert" />
                 </div>
                 <div className="flex flex-col flex-1 min-w-0">
                     <span className="text-sm font-medium text-foreground truncate">{fileData.name || 'Audio'}</span>
@@ -1239,8 +1234,7 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
             ) : (
                 <div className="flex items-center gap-4 w-full cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors group" onClick={handleFileClick}>
                     <div className={`w-12 h-12 rounded-lg ${bg} ${color} flex items-center justify-center shrink-0 overflow-hidden relative`}>
-                        {Icon ? <Icon className="w-6 h-6" /> : <img src={imageSrc} alt="Icon" className="w-10 h-10 object-contain drop-shadow-md" />}
-                        {isAudio && <div className="absolute inset-0 bg-black/20 flex items-center justify-center rounded-lg"><div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm"><span className="text-white text-xs">▶</span></div></div>}
+                        {Icon ? <Icon className="w-6 h-6" /> : <img src={imageSrc} alt="Icon" className="w-10 h-10 object-contain drop-shadow-md dark:invert" />}
                     </div>
                     <div className="flex flex-col flex-1 min-w-0">
                         <span className="text-sm font-medium text-foreground truncate">{fileData.name || 'Unknown File'}</span>
