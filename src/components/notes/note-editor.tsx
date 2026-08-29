@@ -1162,6 +1162,7 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
 }
 
 function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange, noteId }: any) {
+    console.log('[VIDEO] Renderizando thumbnail, path:', block.thumbnailPath);
     const [showControls, setShowControls] = useState(true);
     const videoData = block.content || { url: '', name: '', type: '' };
     const hasVideo = !!videoData.url;
@@ -1196,8 +1197,13 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
         e.stopPropagation();
         if (isDownloading || isProcessing) return;
         
+        console.log('[VIDEO] Play presionado para:', videoData.name);
+        console.log('[VIDEO] localPath actual:', videoData.url);
+        console.log('[VIDEO] driveFileId:', block.driveFileId);
+
         let currentVideoUri = videoData.url;
         let needsDownload = !hasVideo;
+        let localExists = false;
         
         if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
             if (hasVideo && currentVideoUri) {
@@ -1209,30 +1215,51 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                         const { Filesystem } = await import('@capacitor/filesystem');
                         const statRes = await Filesystem.stat({ path: currentVideoUri.replace('file://', '') });
                         if (!statRes || statRes.type === 'directory') needsDownload = true;
+                        localExists = !needsDownload;
                     } catch(e) {
                         needsDownload = true;
                     }
                 }
             }
+            
+            console.log('[VIDEO] ¿Archivo local existe?', localExists);
 
-            if (needsDownload && block.driveFileId && noteId) {
+            if (needsDownload) {
+                if (!block.driveFileId) {
+                    console.error('[VIDEO] No hay localPath válido NI driveFileId — video sin fuente');
+                    import('@/lib/store').then(({ useStore }) => {
+                        useStore.getState().showToast('Este video no está disponible.', 'error');
+                    });
+                    return;
+                }
+                console.log('[VIDEO] Descargando desde Drive...');
                 setIsDownloadingState(true);
                 const { useStore } = await import('@/lib/store');
-                const success = await useStore.getState().downloadAttachment(noteId, block.id);
-                setIsDownloadingState(false);
-                if (success) {
-                    const updatedNote = useStore.getState().notes.find(n => n.id === noteId);
-                    const updatedBlock = updatedNote?.blocks.find(b => b.id === block.id);
-                    if (updatedBlock?.type === 'video' && updatedBlock.content?.url) {
-                        currentVideoUri = updatedBlock.content.url;
+                try {
+                    const success = await useStore.getState().downloadAttachment(noteId, block.id);
+                    setIsDownloadingState(false);
+                    if (success) {
+                        const updatedNote = useStore.getState().notes.find(n => n.id === noteId);
+                        const updatedBlock = updatedNote?.blocks.find(b => b.id === block.id);
+                        if (updatedBlock?.type === 'video' && updatedBlock.content?.url) {
+                            currentVideoUri = updatedBlock.content.url;
+                            console.log('[VIDEO] Descarga completada:', currentVideoUri);
+                        }
+                    } else {
+                        console.error('[VIDEO] FALLÓ la descarga');
+                        useStore.getState().showToast("Error al descargar el video de la nube", "error");
+                        return;
                     }
-                } else {
-                    useStore.getState().showToast("Error al descargar el video de la nube", "error");
+                } catch (err) {
+                    setIsDownloadingState(false);
+                    console.error('[VIDEO] FALLÓ la descarga:', err);
+                    useStore.getState().showToast('No se pudo descargar el video.', 'error');
                     return;
                 }
             }
         }
         
+        console.log('[VIDEO] Reproduciendo desde:', currentVideoUri);
         setIsPlaying(true);
     };
 
@@ -1250,15 +1277,31 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
 
         setIsProcessing(true);
         try {
+            console.log('[VIDEO] Insertando video:', file.name);
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const base64 = reader.result as string;
                 const { saveBase64File, generateVideoThumbnail } = await import('@/lib/image-utils');
                 const uri = await saveBase64File(base64, file.name);
+                console.log('[VIDEO] Archivo guardado en:', uri);
                 
                 let thumbUri = null;
-                thumbUri = await generateVideoThumbnail(uri, file);
+                console.log('[VIDEO] Generando miniatura...');
+                thumbUri = await generateVideoThumbnail(uri, file).catch((err) => {
+                    console.error('[VIDEO] FALLÓ la generación de miniatura:', err);
+                    return null;
+                });
+                console.log('[VIDEO] Resultado de miniatura:', thumbUri);
 
+                const newBlock = {
+                    type: 'video',
+                    fileName: file.name,
+                    localPath: uri || base64,
+                    thumbnailPath: thumbUri ?? undefined,
+                };
+                console.log('[VIDEO] Bloque final creado (equivalente a):', JSON.stringify(newBlock));
+
+                // Since onChange here expects (content, meta), we'll do:
                 onChange({
                     url: uri || base64,
                     name: file.name,
