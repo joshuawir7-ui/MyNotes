@@ -1721,13 +1721,14 @@ export const useStore = create<AppState>()(
                     user: { ...state.user, focusTimeMinutes: state.user.focusTimeMinutes + minutes }
                 })),
 
-                addNote: (note) => {
+                addNote: async (note) => {
                     lastLocalNotesUpdate = Date.now();
                     const newNote = { ...note, id: Math.random().toString(36).substring(7), createdAt: new Date().toISOString(), lastUpdated: Date.now() }
-                    readAllNotesFromDisk(get().notes).then(allNotes => {
-                        const finalNotes = [...allNotes, newNote];
-                        saveAllNotesToDisk(finalNotes);
-                    });
+                    
+                    const allNotes = await readAllNotesFromDisk(get().notes);
+                    const finalNotes = [...allNotes, newNote];
+                    await saveAllNotesToDisk(finalNotes);
+
                     set((state) => {
                         const newNotes = [...state.notes, newNote]
                         syncWidgetData(state.goals, state.appointments, newNotes)
@@ -1736,13 +1737,14 @@ export const useStore = create<AppState>()(
                     return newNote
                 },
 
-                updateNote: (id, title, blocks) => {
+                updateNote: async (id, title, blocks) => {
                     const now = Date.now();
                     lastLocalNotesUpdate = now;
-                    readAllNotesFromDisk(get().notes).then(allNotes => {
-                        const finalNotes = allNotes.map(n => n.id === id ? { ...n, title, blocks, lastUpdated: now } : n);
-                        saveAllNotesToDisk(finalNotes);
-                    });
+                    
+                    const allNotes = await readAllNotesFromDisk(get().notes);
+                    const finalNotes = allNotes.map(n => n.id === id ? { ...n, title, blocks, lastUpdated: now } : n);
+                    await saveAllNotesToDisk(finalNotes);
+
                     set((state) => {
                         const newNotes = state.notes.map(n => n.id === id ? { ...n, title, blocks, lastUpdated: now } : n)
                         syncWidgetData(state.goals, state.appointments, newNotes)
@@ -1750,17 +1752,18 @@ export const useStore = create<AppState>()(
                     });
                 },
 
-                updateNoteBlockContent: (noteId, blockId, content) => {
+                updateNoteBlockContent: async (noteId, blockId, content) => {
                     const now = Date.now();
                     lastLocalNotesUpdate = now;
-                    readAllNotesFromDisk(get().notes).then(allNotes => {
-                        const finalNotes = allNotes.map(n => n.id === noteId ? {
-                            ...n,
-                            lastUpdated: now,
-                            blocks: n.blocks.map(b => b.id === blockId ? { ...b, content, isDownloading: false } : b)
-                        } : n);
-                        saveAllNotesToDisk(finalNotes);
-                    });
+
+                    const allNotes = await readAllNotesFromDisk(get().notes);
+                    const finalNotes = allNotes.map(n => n.id === noteId ? {
+                        ...n,
+                        lastUpdated: now,
+                        blocks: n.blocks.map(b => b.id === blockId ? { ...b, content, isDownloading: false } : b)
+                    } : n);
+                    await saveAllNotesToDisk(finalNotes);
+
                     set((state) => {
                         const newNotes = state.notes.map(n => n.id === noteId ? {
                             ...n,
@@ -1781,12 +1784,13 @@ export const useStore = create<AppState>()(
                     }))
                 },
 
-                deleteNote: (id) => {
+                deleteNote: async (id) => {
                     lastLocalNotesUpdate = Date.now();
-                    readAllNotesFromDisk(get().notes).then(allNotes => {
-                        const finalNotes = allNotes.filter(n => n.id !== id);
-                        saveAllNotesToDisk(finalNotes);
-                    });
+                    
+                    const allNotes = await readAllNotesFromDisk(get().notes);
+                    const finalNotes = allNotes.filter(n => n.id !== id);
+                    await saveAllNotesToDisk(finalNotes);
+
                     set((state) => {
                         const newNotes = state.notes.filter(n => n.id !== id)
                         const deletedItems = { ...(state.deletedItems || {}), [id]: Date.now() };
@@ -2490,12 +2494,57 @@ export const useStore = create<AppState>()(
                                 fileUri = 'file://' + fileUri;
                             }
 
-                            // Update block content with local path
+                            const now = Date.now();
+                            const currentState = get();
+                            const newNotes = currentState.notes.map(n => {
+                                if (n.id === noteId) {
+                                    return {
+                                        ...n,
+                                        lastUpdated: now,
+                                        blocks: n.blocks.map(b => {
+                                            if (b.id === blockId) {
+                                                if (b.type === 'file' || b.type === 'video') {
+                                                    return { ...b, content: { ...b.content, url: fileUri } };
+                                                } else {
+                                                    return { ...b, content: fileUri };
+                                                }
+                                            }
+                                            return b;
+                                        })
+                                    };
+                                }
+                                return n;
+                            });
+                            
+                            // Fix: Wait for persistence to finish before updating UI state (Single Source of Truth)
+                            const allNotes = await readAllNotesFromDisk(currentState.notes);
+                            const finalNotes = allNotes.map(n => {
+                                if (n.id === noteId) {
+                                    return {
+                                        ...n,
+                                        lastUpdated: now,
+                                        blocks: n.blocks.map(b => {
+                                            if (b.id === blockId) {
+                                                if (b.type === 'file' || b.type === 'video') {
+                                                    return { ...b, content: { ...b.content, url: fileUri } };
+                                                } else {
+                                                    return { ...b, content: fileUri };
+                                                }
+                                            }
+                                            return b;
+                                        })
+                                    };
+                                }
+                                return n;
+                            });
+                            await saveAllNotesToDisk(finalNotes);
+
                             set((s) => {
-                                const newNotes = s.notes.map(n => {
+                                const stateNotes = s.notes.map(n => {
                                     if (n.id === noteId) {
                                         return {
                                             ...n,
+                                            lastUpdated: now,
                                             blocks: n.blocks.map(b => {
                                                 if (b.id === blockId) {
                                                     if (b.type === 'file' || b.type === 'video') {
@@ -2510,7 +2559,7 @@ export const useStore = create<AppState>()(
                                     }
                                     return n;
                                 });
-                                return { notes: newNotes };
+                                return { notes: stateNotes };
                             });
                             return true;
                         }

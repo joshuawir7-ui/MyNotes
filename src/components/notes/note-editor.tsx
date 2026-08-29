@@ -394,8 +394,8 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         scrollToBlock(newBlock.id)
     }
 
-    const updateBlock = useCallback((id: string, content: any) => {
-        setBlocks(prev => prev.map(b => b.id === id ? { ...b, content } : b))
+    const updateBlock = useCallback((id: string, content: any, extraProps?: any) => {
+        setBlocks(prev => prev.map(b => b.id === id ? { ...b, content, ...extraProps } : b))
     }, [])
 
     const removeBlock = useCallback((id: string) => {
@@ -1784,7 +1784,7 @@ const BlockWrapper = React.memo(({
     language: string;
     moveBlock: (idx: number, direction: 'up' | 'down') => void;
     removeBlock: (id: string) => void;
-    updateBlock: (id: string, content: any) => void;
+    updateBlock: (id: string, content: any, extraProps?: any) => void;
     handleImageClick: (url: string) => void;
     handleWrapperFocus: (id: string, type: BlockType) => void;
     handleWrapperBlur: (currentTarget: HTMLElement) => void;
@@ -1842,7 +1842,7 @@ const BlockWrapper = React.memo(({
                     isLast={isLast}
                     moveBlock={moveBlock}
                     removeBlock={removeBlock}
-                    onChange={(content) => updateBlock(block.id, content)}
+                    onChange={(content, extraProps) => updateBlock(block.id, content, extraProps)}
                     autoFocus={autoFocus}
                     language={language}
                     onImageClick={handleImageClick}
