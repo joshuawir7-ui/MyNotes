@@ -19,7 +19,7 @@ export default function NotesPage() {
     const notes = useStore(useShallow(state => state.notes))
     const addNote = useStore(state => state.addNote)
     const deleteNote = useStore(state => state.deleteNote)
-    const updateNote = useStore(state => state.updateNote)
+    const toggleNotePin = useStore(state => state.toggleNotePin)
     const loadAllNotes = useStore(state => state.loadAllNotes)
     const unloadNotes = useStore(state => state.unloadNotes)
     const language = useStore(state => state.language)
@@ -264,7 +264,7 @@ export default function NotesPage() {
                                     onDelete={() => setIsDeleting(note.id)}
                                     onTogglePin={(e) => {
                                         e.stopPropagation();
-                                        updateNote(note.id, { isPinned: !note.isPinned });
+                                        toggleNotePin(note.id);
                                     }}
                                     t={t}
                                 />

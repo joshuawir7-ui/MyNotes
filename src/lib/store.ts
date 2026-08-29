@@ -1093,6 +1093,7 @@ interface AppState {
     updateNote: (id: string, title: string, blocks: NoteBlock[]) => void
     updateNoteBlockContent: (noteId: string, blockId: string, content: string) => void
     setBlockDownloading: (noteId: string, blockId: string, isDownloading: boolean) => void
+    toggleNotePin: (id: string) => void
     deleteNote: (id: string) => void
     addAppointment: (apt: Omit<Appointment, 'id'>) => void
     updateAppointment: (id: string, updates: Partial<Appointment>) => void
@@ -1886,6 +1887,21 @@ export const useStore = create<AppState>()(
 
                     set((state) => {
                         const newNotes = state.notes.map(n => n.id === id ? { ...n, title, blocks, lastUpdated: now } : n)
+                        syncWidgetData(state.goals, state.appointments, newNotes)
+                        return { notes: newNotes }
+                    });
+                },
+
+                toggleNotePin: async (id) => {
+                    const now = Date.now();
+                    lastLocalNotesUpdate = now;
+                    
+                    const allNotes = await readAllNotesFromDisk(get().notes);
+                    const finalNotes = allNotes.map(n => n.id === id ? { ...n, isPinned: !n.isPinned, lastUpdated: now } : n);
+                    await saveAllNotesToDisk(finalNotes);
+
+                    set((state) => {
+                        const newNotes = state.notes.map(n => n.id === id ? { ...n, isPinned: !n.isPinned, lastUpdated: now } : n)
                         syncWidgetData(state.goals, state.appointments, newNotes)
                         return { notes: newNotes }
                     });
