@@ -1242,7 +1242,7 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
                     </div>
                     {!isAudio && (
                         <div className="shrink-0 ml-2">
-                            <button className="px-4 py-1.5 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm font-medium rounded-md shadow-sm border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors">
+                            <button className="px-4 py-1.5 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm font-bold rounded-xl shadow-[0_4px_14px_rgba(0,0,0,0.18)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.5)] border border-black/10 dark:border-white/10 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all hover:scale-[1.02] active:scale-95">
                                 Open
                             </button>
                         </div>
