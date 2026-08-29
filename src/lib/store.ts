@@ -634,7 +634,27 @@ const mergeNotesLists = (
             }
         }
 
-        return note;
+        // PREVENT OVERWRITING LOCAL CACHE:
+        // If we picked the remote note, but the remote block has a stripped `drive://` URL,
+        // and we already have a real local URL (file:// or data:) for the same block, preserve the local URL.
+        let finalNote = note;
+        if (finalNote === remote) {
+            const preservedBlocks = finalNote.blocks.map(b => {
+                if (['image', 'video', 'file'].includes(b.type) && b.driveFileId && b.content?.url?.startsWith('drive://')) {
+                    const localB = localBlocks.find(lb => lb.id === b.id && lb.driveFileId === b.driveFileId);
+                    if (localB && localB.content?.url && !localB.content.url.startsWith('drive://')) {
+                        return {
+                            ...b,
+                            content: { ...b.content, url: localB.content.url }
+                        };
+                    }
+                }
+                return b;
+            });
+            finalNote = { ...finalNote, blocks: preservedBlocks };
+        }
+
+        return finalNote;
     });
 };
 
@@ -1101,7 +1121,7 @@ interface AppState {
 let lastLocalTasksUpdate = 0;
 let lastLocalNotesUpdate = 0;
 
-async function fetchWithTimeout(resource: string, options: any = {}, timeout = 15000) {
+async function fetchWithTimeout(resource: string, options: any = {}, timeout = 60000) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort('Timeout reached'), timeout);
     try {
@@ -1115,6 +1135,92 @@ async function fetchWithTimeout(resource: string, options: any = {}, timeout = 1
         clearTimeout(id);
         throw error;
     }
+}
+
+// Helper to strip massive base64 payloads to reduce JSON size
+export const stripLargePayloads = (notes: Note[]): Note[] => {
+    return notes.map(note => ({
+        ...note,
+        blocks: note.blocks.map(block => {
+            if (['image', 'video', 'file'].includes(block.type) && block.driveFileId && block.content?.url) {
+                if (block.content.url.startsWith('data:') || block.content.url.length > 500) {
+                    return {
+                        ...block,
+                        content: {
+                            ...block.content,
+                            url: `drive://${block.driveFileId}`
+                        }
+                    };
+                }
+            }
+            return block;
+        })
+    }));
+};
+
+// Helper to upload attachments that don't have a driveFileId yet
+export const uploadMissingAttachments = async (token: string, notes: Note[]): Promise<Note[]> => {
+    let hasChanges = false;
+    for (let i = 0; i < notes.length; i++) {
+        const note = notes[i];
+        for (let j = 0; j < note.blocks.length; j++) {
+            const block = note.blocks[j];
+            if (['image', 'video', 'file'].includes(block.type) && !block.driveFileId && block.content?.url && block.content.url.startsWith('data:')) {
+                try {
+                    console.log(`[Sync] Subiendo archivo faltante de bloque ${block.id}...`);
+                    const base64Data = block.content.url;
+                    const fileName = block.content.name || `file_${Date.now()}`;
+                    const pureBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+                    const byteCharacters = atob(pureBase64);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let k = 0; k < byteCharacters.length; k++) {
+                        byteNumbers[k] = byteCharacters.charCodeAt(k);
+                    }
+                    const fileBlob = new Blob([new Uint8Array(byteNumbers)]);
+                    const metadata = { name: fileName };
+                    const boundary = 'mynotes_upload_boundary';
+                    const multipartBody =
+                        `--${boundary}\r\n` +
+                        `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+                        `${JSON.stringify(metadata)}\r\n` +
+                        `--${boundary}\r\n` +
+                        `Content-Type: application/octet-stream\r\n\r\n`;
+                    const closing = `\r\n--${boundary}--`;
+                    const fullBody = new Blob([multipartBody, fileBlob, closing]);
+
+                    const uploadRes = await fetch(
+                        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+                        {
+                            method: 'POST',
+                            headers: {
+                                Authorization: `Bearer ${token}`,
+                                'Content-Type': `multipart/related; boundary=${boundary}`,
+                            },
+                            body: fullBody,
+                        }
+                    );
+                    
+                    if (uploadRes.ok) {
+                        const data = await uploadRes.json();
+                        if (data.id) {
+                            block.driveFileId = data.id;
+                            hasChanges = true;
+                            console.log(`[Sync] Archivo subido exitosamente: ${data.id}`);
+                        }
+                    }
+                } catch (e) {
+                    console.error('[Sync] Error subiendo archivo faltante:', e);
+                }
+            }
+        }
+    }
+    
+    if (hasChanges) {
+        const storeModule = await import('./store');
+        await storeModule.saveAllNotesToDisk(notes);
+    }
+    
+    return notes;
 }
 
 export let isCloudSyncDirty = false;
@@ -1145,7 +1251,7 @@ export const triggerBackgroundSync = async () => {
             const fullNotes = await readAllNotesFromDisk(state.notes);
             const fullTasks = await readAllTasksFromDisk(state.tasks);
             const dataToSync = {
-                notes: fullNotes,
+                notes: stripLargePayloads(fullNotes),
                 tasks: fullTasks,
                 goals: state.goals,
                 appointments: state.appointments,
@@ -2585,7 +2691,8 @@ export const useStore = create<AppState>()(
                     try {
                         const chosenData = keepLocal ? conflict.localData : conflict.remoteData;
                         const newTimestamp = Date.now();
-                        const dataToUpload = { ...chosenData, lastUpdated: newTimestamp };
+                        const chosenNotes = chosenData.notes ? stripLargePayloads(chosenData.notes) : [];
+                        const dataToUpload = { ...chosenData, notes: chosenNotes, lastUpdated: newTimestamp };
 
                         // Apply chosen data to local state
                         await saveAllNotesToDisk(chosenData.notes || []);
@@ -2672,6 +2779,7 @@ export const useStore = create<AppState>()(
                     try {
                         const token = user.accessToken;
                         if (!token) throw new Error("No access token");
+                        await uploadMissingAttachments(token, get().notes);
 
                         const fullNotes = await readAllNotesFromDisk(get().notes);
                         const fullTasks = await readAllTasksFromDisk(get().tasks);
@@ -2749,7 +2857,7 @@ export const useStore = create<AppState>()(
                             }, 0);
 
                             dataToSync = {
-                                notes: mergedNotes,
+                                notes: stripLargePayloads(mergedNotes),
                                 tasks: mergedTasks,
                                 goals: mergedGoals,
                                 appointments: mergedAppointments,
@@ -2783,7 +2891,7 @@ export const useStore = create<AppState>()(
                         } else {
                             const state = get();
                             dataToSync = {
-                                notes: fullNotes,
+                                notes: stripLargePayloads(fullNotes),
                                 tasks: fullTasks,
                                 goals: state.goals,
                                 appointments: state.appointments,
@@ -2922,6 +3030,7 @@ export const useStore = create<AppState>()(
                     try {
                         const token = user.accessToken;
                         if (!token) throw new Error("No access token");
+                        await uploadMissingAttachments(token, get().notes);
 
                         const searchRes = await fetchWithTimeout(
                             `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false`,
@@ -3142,6 +3251,7 @@ export const useStore = create<AppState>()(
                     try {
                         const token = user.accessToken;
                         if (!token) throw new Error("No access token");
+                        await uploadMissingAttachments(token, get().notes);
 
                         const searchRes = await fetchWithTimeout(
                             `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false`,
@@ -3163,7 +3273,7 @@ export const useStore = create<AppState>()(
                             const fullTasks = await readAllTasksFromDisk(freshState.tasks);
                             const localLastUpdated = freshState.lastUpdated || 0;
                             const dataToSync = {
-                                notes: fullNotes,
+                                notes: stripLargePayloads(fullNotes),
                                 tasks: fullTasks,
                                 goals: freshState.goals,
                                 appointments: freshState.appointments,
@@ -3288,7 +3398,7 @@ export const useStore = create<AppState>()(
                             const fullTasks = diskTasks;
                             const newTimestamp = Date.now();
                             const dataToUpload = {
-                                notes: fullNotes,
+                                notes: stripLargePayloads(fullNotes),
                                 tasks: fullTasks,
                                 goals: freshState.goals,
                                 appointments: freshState.appointments,
@@ -3374,7 +3484,7 @@ export const useStore = create<AppState>()(
                             }, 0);
 
                             const dataToUpload = {
-                                notes: mergedNotes,
+                                notes: stripLargePayloads(mergedNotes),
                                 tasks: mergedTasks,
                                 goals: mergedGoals,
                                 appointments: mergedAppointments,
