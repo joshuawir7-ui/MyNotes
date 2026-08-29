@@ -197,9 +197,10 @@ export default function BalancePage() {
     
     const rawExpenseNotes = useStore(useShallow(state => state.expenseNotes ?? []))
     const expenseNotes = Array.isArray(rawExpenseNotes) ? rawExpenseNotes : []
+    const pendingExpenseNotes = useMemo(() => expenseNotes.filter(n => !n.isSpent), [expenseNotes])
     const totalDocumentedExpenses = useMemo(() => {
-        return expenseNotes.reduce((sum, n) => sum + (Number(n.amount) || 0), 0);
-    }, [expenseNotes])
+        return pendingExpenseNotes.reduce((sum, n) => sum + (Number(n.amount) || 0), 0);
+    }, [pendingExpenseNotes])
     const projectedBalance = balance - totalDocumentedExpenses
 
     const rawAppointments = useStore(useShallow(state => state.appointments ?? []))
@@ -208,6 +209,7 @@ export default function BalancePage() {
     const addTransaction = useStore(state => state.addTransaction)
     const deleteTransaction = useStore(state => state.deleteTransaction)
     const clearAllTransactions = useStore(state => state.clearAllTransactions)
+    const updateExpenseNote = useStore(state => state.updateExpenseNote)
     const setSavingsGoal = useStore(state => state.setSavingsGoal)
     const updateAppointment = useStore(state => state.updateAppointment)
     const showToast = useStore(state => state.showToast)
@@ -808,6 +810,27 @@ export default function BalancePage() {
 
                 {/* RIGHT COLUMN: Wallet History List */}
                 <div className="space-y-5 w-full flex flex-col justify-start">
+
+                    {pendingExpenseNotes.length > 0 && (
+                        <Reveal margin="0px" duration={0.8} delay={0.15} className="w-full">
+                            <div className="flex flex-col space-y-2 w-full mb-4">
+                                <div className="flex justify-between items-center px-1 pb-1">
+                                    <h2 className="text-lg font-black tracking-tight text-foreground uppercase">
+                                        {language === 'es' ? "Notas de Gastos" : "Expense Notes"}
+                                    </h2>
+                                </div>
+                                <div className="flex flex-col w-full max-h-[250px] overflow-y-auto custom-scrollbar pr-1 pt-2"
+                                    style={{
+                                        maskImage: 'linear-gradient(to bottom, transparent 0px, black 12px, black calc(100% - 16px), transparent 100%)',
+                                        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0px, black 12px, black calc(100% - 16px), transparent 100%)'
+                                    }}>
+                                    {pendingExpenseNotes.map(note => (
+                                        <ExpenseNoteCard key={note.id} note={note} currencySymbol="$" />
+                                    ))}
+                                </div>
+                            </div>
+                        </Reveal>
+                    )}
 
                     <Reveal margin="0px" duration={0.8} delay={0.2} className="w-full">
                         <div className="flex flex-col space-y-4 w-full">
