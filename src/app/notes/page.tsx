@@ -3,11 +3,11 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { useStore, Note } from "@/lib/store"
 import { useShallow } from "zustand/react/shallow"
-import { useState, useEffect, useMemo, memo } from "react"
+import React, { useState, useEffect, useMemo, memo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Plus, StickyNote, Trash2, Calendar, ArrowUpAZ, ArrowDownAZ } from "lucide-react"
 import { WelcomeNotesModal } from "@/components/ui/welcome-notes-modal"
-import { NoteEditor } from "@/components/notes/note-editor"
+import { NoteEditor, isNoteEmpty } from "@/components/notes/note-editor"
 import { Reveal } from "@/components/ui/reveal"
 import { translations } from "@/lib/translations"
 import { PageDescription } from "@/components/ui/page-description"
@@ -80,8 +80,17 @@ export default function NotesPage() {
         }
     }, [notes, searchParams])
 
-
-
+    const hasCleanedUp = React.useRef(false)
+    useEffect(() => {
+        if (!notes || hasCleanedUp.current) return;
+        hasCleanedUp.current = true;
+        
+        notes.forEach(note => {
+            if (isNoteEmpty(note.title || '', note.blocks || [])) {
+                deleteNote(note.id);
+            }
+        });
+    }, [notes, deleteNote]);
 
     const handleCreateNote = () => {
         const newNote = {

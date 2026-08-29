@@ -11,8 +11,9 @@ import { Capacitor } from "@capacitor/core"
 import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation, Film, PictureInPicture } from "lucide-react"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 
-const isNoteEmpty = (titleStr: string, blocksList: NoteBlock[]) => {
-    if (titleStr.trim() !== '') return false;
+export const isNoteEmpty = (titleStr: string, blocksList: NoteBlock[]) => {
+    const t = titleStr.trim();
+    if (t !== '' && t !== 'Nota sin título' && t !== 'Untitled Note') return false;
     for (const block of blocksList) {
         if (!block) continue;
         if (block.type === 'text') {
