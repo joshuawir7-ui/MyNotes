@@ -924,7 +924,7 @@ export type ExpenseNote = {
         driveFileId?: string;
         thumbnailPath?: string;
     };
-    isSpent?: boolean;
+    confirmado?: boolean;
     createdAt: number;
     lastUpdated?: number;
 };
