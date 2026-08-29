@@ -914,6 +914,21 @@ export interface Goal {
     pinned?: boolean
 }
 
+export type ExpenseNote = {
+    id: string;
+    title: string;
+    description: string;
+    amount: number;
+    imageBlock?: {
+        localPath?: string;
+        driveFileId?: string;
+        thumbnailPath?: string;
+    };
+    createdAt: number;
+    lastUpdated?: number;
+};
+
+
 export interface Transaction {
     id: string
     date: string // YYYY-MM-DD
@@ -977,6 +992,7 @@ interface AppState {
     appointments: Appointment[]
     goals: Goal[]
     transactions: Transaction[]
+    expenseNotes: ExpenseNote[]
     user: UserState
     language: Language
     pinnedNoteId: string | null
@@ -1071,7 +1087,7 @@ interface AppState {
     addProject: (project: Omit<Project, 'id' | 'progress' | 'milestones'>) => void
     addXP: (amount: number) => void
     incrementFocusTime: (minutes: number) => void
-    addNote: (note: Omit<Note, 'id' | 'createdAt'>) => Note
+    addNote: (note: Omit<Note, 'id' | 'createdAt' | 'lastUpdated'>) => Promise<Note>
     updateNote: (id: string, title: string, blocks: NoteBlock[]) => void
     updateNoteBlockContent: (noteId: string, blockId: string, content: string) => void
     setBlockDownloading: (noteId: string, blockId: string, isDownloading: boolean) => void
@@ -1113,6 +1129,10 @@ interface AppState {
     addTransaction: (tx: Omit<Transaction, 'id' | 'lastUpdated'>) => void
     deleteTransaction: (id: string) => void
     clearAllTransactions: () => void
+
+    addExpenseNote: (note: ExpenseNote) => void
+    updateExpenseNote: (id: string, noteData: Partial<ExpenseNote>) => void
+    deleteExpenseNote: (id: string) => void
     savingsGoal: number
     setSavingsGoal: (goal: number) => void
     recoverImagesFromDriveRevisions?: () => Promise<{ recovered: number; failed: number; message: string }>
@@ -1355,6 +1375,7 @@ export const useStore = create<AppState>()(
                 appointments: [],
                 goals: [],
                 transactions: [],
+                expenseNotes: [],
                 savingsGoal: 400,
                 completedOnceHabits: [],
                 user: {
@@ -1389,6 +1410,8 @@ export const useStore = create<AppState>()(
                 showToast: (message, type = 'info') => set({ toast: { message, type } }),
                 clearToast: () => set({ toast: null }),
                 syncConflict: null,
+                isCloudSyncDirty: false,
+                scheduleSyncDebounced: () => {},
 
                 areNotesLoaded: false,
                 areTasksLoaded: false,
@@ -2157,6 +2180,45 @@ export const useStore = create<AppState>()(
                         showNativeHabitNotification(newTasks)
                         syncWidgetData(state.goals, state.appointments, state.notes, newTasks);
                         return { tasks: newTasks }
+                    });
+                },
+
+                addExpenseNote: (note) => {
+                    set((state) => {
+                        const newNotes = [...(state.expenseNotes || []), note];
+                        WidgetSync.enqueueCloudSync({
+                            token: state.googleUser?.accessToken || '',
+                            payload: JSON.stringify({ expenseNotes: newNotes })
+                        }).catch(() => {});
+                        return { expenseNotes: newNotes };
+                    });
+                },
+
+                updateExpenseNote: (id, noteData) => {
+                    set((state) => {
+                        const newNotes = (state.expenseNotes || []).map(n => 
+                            n.id === id ? { ...n, ...noteData, lastUpdated: Date.now() } : n
+                        );
+                        WidgetSync.enqueueCloudSync({
+                            token: state.googleUser?.accessToken || '',
+                            payload: JSON.stringify({ expenseNotes: newNotes })
+                        }).catch(() => {});
+                        return { expenseNotes: newNotes };
+                    });
+                },
+
+                deleteExpenseNote: (id) => {
+                    set((state) => {
+                        const newNotes = (state.expenseNotes || []).filter(n => n.id !== id);
+                        WidgetSync.enqueueCloudSync({
+                            token: state.googleUser?.accessToken || '',
+                            payload: JSON.stringify({ expenseNotes: newNotes })
+                        }).catch(() => {});
+                        
+                        const deletedItems = { ...(state.deletedItems || {}) };
+                        deletedItems[`expenseNote_${id}`] = Date.now();
+                        
+                        return { expenseNotes: newNotes, deletedItems };
                     });
                 },
 

@@ -8,7 +8,9 @@ import { Reveal } from "@/components/ui/reveal"
 import { useStore, Transaction, Appointment } from "@/lib/store"
 import { translations } from "@/lib/translations"
 import { useState, useEffect, useMemo } from "react"
-import { Plus, Wallet, X, Trash2, Edit2, ArrowUpRight, ArrowDownRight, Calendar, DollarSign, Check, Coins, ChevronDown, AlertTriangle, TrendingUp, PieChart, RotateCcw } from "lucide-react"
+import { Plus, Wallet, X, Trash2, Edit2, ArrowUpRight, ArrowDownRight, Calendar, DollarSign, Check, Coins, ChevronDown, AlertTriangle, TrendingUp, PieChart, RotateCcw, FileText } from "lucide-react"
+import { ExpenseNoteForm } from "@/components/balance/expense-note-form"
+import { ExpenseNoteCard } from "@/components/balance/expense-note-card"
 import { motion, AnimatePresence } from "framer-motion"
 import { BalanceOnboarding } from "@/components/balance/balance-onboarding"
 
@@ -192,6 +194,14 @@ export default function BalancePage() {
             return sum + (t.type === 'expense' ? -amt : amt);
         }, 0);
     }, [transactions])
+    
+    const rawExpenseNotes = useStore(useShallow(state => state.expenseNotes ?? []))
+    const expenseNotes = Array.isArray(rawExpenseNotes) ? rawExpenseNotes : []
+    const totalDocumentedExpenses = useMemo(() => {
+        return expenseNotes.reduce((sum, n) => sum + (Number(n.amount) || 0), 0);
+    }, [expenseNotes])
+    const projectedBalance = balance - totalDocumentedExpenses
+
     const rawAppointments = useStore(useShallow(state => state.appointments ?? []))
     const appointments = Array.isArray(rawAppointments) ? rawAppointments : []
     const savingsGoal = useStore(state => state.savingsGoal ?? 400)
@@ -223,6 +233,7 @@ export default function BalancePage() {
 
     // Form inputs & modal control
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [showExpenseNoteModal, setShowExpenseNoteModal] = useState(false)
     const [txType, setTxType] = useState<"income" | "expense">("expense")
 
     const [txAmount, setTxAmount] = useState("")
@@ -618,6 +629,13 @@ export default function BalancePage() {
                                 </h1>
                                 <div className="flex gap-2">
                                     <button
+                                        onClick={() => setShowExpenseNoteModal(true)}
+                                        className="p-2 bg-rose-500/10 border border-rose-500/20 rounded-2xl hover:bg-rose-500/20 transition-all text-rose-500 active:scale-95 shrink-0"
+                                        title={language === 'es' ? "Nueva Nota de Gasto" : "New Expense Note"}
+                                    >
+                                        <FileText className="w-4 h-4" />
+                                    </button>
+                                    <button
                                         onClick={() => setShowOnboarding(true)}
                                         className="p-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all text-muted-foreground hover:text-foreground active:scale-95 shrink-0"
                                         title={language === 'es' ? "Ayuda" : "Help"}
@@ -678,12 +696,27 @@ export default function BalancePage() {
                             )}
 
                             {/* Flanked Balance display */}
-                            <div className="flex items-center justify-center gap-4 mt-2 w-full px-4">
-                                <div className="h-[1px] bg-black/10 dark:bg-white/10 flex-1" />
-                                <span className="text-sm font-extrabold tracking-wider uppercase text-foreground shrink-0 whitespace-nowrap">
-                                    {language === 'es' ? 'Tienes' : 'You have'}: {balance.toLocaleString()}$
-                                </span>
-                                <div className="h-[1px] bg-black/10 dark:bg-white/10 flex-1" />
+                            <div className="flex flex-col items-center justify-center gap-2 mt-2 w-full px-4">
+                                <div className="flex items-center justify-center gap-4 w-full">
+                                    <div className="h-[1px] bg-black/10 dark:bg-white/10 flex-1" />
+                                    <span className="text-sm font-extrabold tracking-wider uppercase text-foreground shrink-0 whitespace-nowrap">
+                                        {language === 'es' ? 'Tienes' : 'You have'}: {balance.toLocaleString()}$
+                                    </span>
+                                    <div className="h-[1px] bg-black/10 dark:bg-white/10 flex-1" />
+                                </div>
+                                {totalDocumentedExpenses > 0 && (
+                                    <div className="grid grid-cols-2 gap-4 w-full max-w-[280px]">
+                                        <div className="bg-white/5 border border-white/10 rounded-xl p-2 text-center flex flex-col">
+                                            <span className="text-[10px] uppercase tracking-wider text-white/50 font-bold">{language === 'es' ? 'Balance Real' : 'Real Balance'}</span>
+                                            <span className="text-white font-bold">{balance.toLocaleString()}$</span>
+                                        </div>
+                                        <div className="bg-white/5 border border-rose-500/30 rounded-xl p-2 text-center flex flex-col relative overflow-hidden">
+                                            <div className="absolute inset-0 bg-rose-500/5" />
+                                            <span className="text-[10px] uppercase tracking-wider text-rose-400 font-bold relative z-10">{language === 'es' ? 'Proyectado' : 'Projected'}</span>
+                                            <span className="text-rose-100 font-bold relative z-10">{projectedBalance.toLocaleString()}$</span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                         </div>
@@ -871,6 +904,30 @@ export default function BalancePage() {
                                     </div>
                             </div>
                         )}
+                        </div>
+                    </Reveal>
+
+                    <Reveal margin="0px" duration={0.8} delay={0.4} className="w-full">
+                        <div className="bg-transparent rounded-[32px] p-2 mt-4 relative w-full overflow-hidden max-h-[300px] flex flex-col border border-white/5">
+                            <div className="flex justify-between items-center px-2 pb-2">
+                                <h2 className="text-lg font-black tracking-tight text-foreground uppercase">
+                                    {language === 'es' ? "Notas de Gastos" : "Expense Notes"}
+                                </h2>
+                            </div>
+                            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-2">
+                                {expenseNotes.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center text-center p-6 bg-white/5 border border-white/10 rounded-[24px]">
+                                        <FileText className="w-8 h-8 text-white/20 mb-3" />
+                                        <p className="text-white/40 text-sm font-medium">
+                                            {language === 'es' ? "No hay notas de gastos" : "No expense notes yet"}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    [...expenseNotes].sort((a, b) => b.createdAt - a.createdAt).map(note => (
+                                        <ExpenseNoteCard key={note.id} note={note} currencySymbol="$" />
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </Reveal>
 
@@ -1361,6 +1418,10 @@ export default function BalancePage() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {showExpenseNoteModal && (
+                <ExpenseNoteForm onClose={() => setShowExpenseNoteModal(false)} />
+            )}
         </div>
     )
 }
