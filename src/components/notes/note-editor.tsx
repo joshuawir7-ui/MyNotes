@@ -1,6 +1,1007 @@
 "use client"
 
 import { getLocalImageSrc } from "@/lib/image-utils"
+import { getFileIcon } from "@/lib/file-icons"
+import React, { useState, useRef, useEffect, useCallback } from "react"
+import { useStore, Note, NoteBlock, BlockType } from "@/lib/store"
+import { translations } from "@/lib/translations"
+import { motion, AnimatePresence } from "framer-motion"
+import { App as CapacitorApp } from "@capacitor/app"
+import { Capacitor } from "@capacitor/core"
+import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation, Film, PictureInPicture } from "lucide-react"
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
+
+const isNoteEmpty = (titleStr: string, blocksList: NoteBlock[]) => {
+    if (titleStr.trim() !== '') return false;
+    for (const block of blocksList) {
+        if (!block) continue;
+        if (block.type === 'text') {
+            const textContent = typeof block.content === 'string' ? block.content : '';
+            const cleanText = textContent.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+            if (cleanText !== '') return false;
+        } else if (block.type === 'task-list') {
+            let listTitle = '';
+            let items: any[] = [];
+            if (block.content && typeof block.content === 'object' && !Array.isArray(block.content)) {
+                listTitle = block.content.title || '';
+                items = Array.isArray(block.content.items) ? block.content.items : [];
+            } else {
+                items = Array.isArray(block.content) ? block.content : [];
+            }
+            if (listTitle.trim() !== '') return false;
+            for (const item of items) {
+                if (item && typeof item === 'object' && typeof item.text === 'string' && item.text.trim() !== '') {
+                    return false;
+                }
+            }
+        } else if (block.type === 'table') {
+            const content = block.content || { headers: [], rows: [] };
+            const headers = Array.isArray(content.headers) ? content.headers : [];
+            const rows = Array.isArray(content.rows) ? content.rows : [];
+            for (const h of headers) {
+                if (typeof h === 'string' && h.trim() !== '') return false;
+            }
+            for (const r of rows) {
+                if (Array.isArray(r)) {
+                    for (const c of r) {
+                        if (typeof c === 'string' && c.trim() !== '') return false;
+                    }
+                }
+            }
+        } else if (block.type === 'image') {
+            if (typeof block.content === 'string' && block.content.trim() !== '') return false;
+        } else if (block.type === 'drawing') {
+            if (typeof block.content === 'string' && block.content.trim() !== '') return false;
+        } else if (block.type === 'file') {
+            if (block.content && typeof block.content === 'object' && block.content.url !== '') return false;
+        }
+    }
+    return true;
+};
+
+interface NoteEditorProps {
+    note: Note
+    onClose: () => void
+}
+
+export function NoteEditor({ note, onClose }: NoteEditorProps) {
+    const updateNote = useStore(state => state.updateNote)
+    const deleteNote = useStore(state => state.deleteNote)
+    const language = useStore(state => state.language)
+    const showToast = useStore(state => state.showToast)
+    const storeNote = useStore(state => state.notes.find(n => n.id === note.id))
+    const [title, setTitle] = useState(note.title)
+    const [blocks, setBlocks] = useState<NoteBlock[]>(note.blocks || [])
+
+    useEffect(() => {
+        if (storeNote) {
+            setBlocks(storeNote.blocks || []);
+            setTitle(storeNote.title || '');
+        }
+    }, [storeNote?.lastUpdated])
+    const [isSaving, setIsSaving] = useState(false)
+    const [lastSaved, setLastSaved] = useState<string | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [isKeyboardToolbarVisible, setIsKeyboardToolbarVisible] = useState(false)
+    const [activeBlockId, setActiveBlockId] = useState<string | null>(null)
+    const [viewportOffset, setViewportOffset] = useState(0)
+    const [fullscreenImageUrl, setFullscreenImageUrl] = useState<string | null>(null)
+
+    const [isLandscape, setIsLandscape] = useState(false)
+    const [showHeader, setShowHeader] = useState(true)
+    const lastScrollTop = useRef(0)
+    const contentContainerRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const checkOrientation = () => {
+            setIsLandscape(window.innerWidth > window.innerHeight)
+        }
+        checkOrientation()
+        window.addEventListener('resize', checkOrientation)
+        return () => window.removeEventListener('resize', checkOrientation)
+    }, [])
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const scrollTop = e.currentTarget.scrollTop
+        lastScrollTop.current = scrollTop
+    }
+
+    useEffect(() => {
+        let backListener: any;
+        const setupBackListener = async () => {
+            try {
+                backListener = await CapacitorApp.addListener('backButton', () => {
+                    handleCloseRef.current?.();
+                });
+            } catch (e) {
+                console.error("Back button listener failed", e);
+            }
+        };
+        setupBackListener();
+
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') handleCloseRef.current?.();
+        }
+        window.addEventListener('keydown', handleEscape)
+
+        if (typeof window === 'undefined' || !window.visualViewport) return
+
+        const handleResize = () => {
+            const vv = window.visualViewport
+            if (vv) {
+                const offset = window.innerHeight - vv.height
+                setViewportOffset(offset > 0 ? offset : 0)
+            }
+        }
+
+        window.visualViewport.addEventListener('resize', handleResize)
+        handleResize()
+
+        return () => {
+            window.visualViewport?.removeEventListener('resize', handleResize)
+        }
+    }, [])
+
+    const [formatStates, setFormatStates] = useState({
+        bold: false,
+        italic: false,
+        underline: false,
+        justifyLeft: false,
+        justifyCenter: false,
+        justifyRight: false,
+        insertUnorderedList: false,
+        insertOrderedList: false,
+        h1: false,
+        h2: false,
+        h3: false,
+    })
+
+    const formatStatesRef = useRef(formatStates)
+    useEffect(() => {
+        formatStatesRef.current = formatStates
+    }, [formatStates])
+
+    const updateFormatStates = useCallback(() => {
+        if (typeof document === 'undefined') return
+
+        let isH1 = false;
+        let isH2 = false;
+        let isH3 = false;
+
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+            let node = selection.getRangeAt(0).startContainer;
+            while (node && node !== document.body) {
+                const nodeName = node.nodeName.toLowerCase();
+                if (nodeName === 'h1') isH1 = true;
+                if (nodeName === 'h2') isH2 = true;
+                if (nodeName === 'h3') isH3 = true;
+                node = node.parentNode as Node;
+            }
+        }
+
+        const nextStates = {
+            bold: document.queryCommandState('bold'),
+            italic: document.queryCommandState('italic'),
+            underline: document.queryCommandState('underline'),
+            justifyLeft: document.queryCommandState('justifyLeft'),
+            justifyCenter: document.queryCommandState('justifyCenter'),
+            justifyRight: document.queryCommandState('justifyRight'),
+            insertUnorderedList: document.queryCommandState('insertUnorderedList'),
+            insertOrderedList: document.queryCommandState('insertOrderedList'),
+            h1: isH1,
+            h2: isH2,
+            h3: isH3,
+        };
+
+        const currentStates = formatStatesRef.current;
+        const hasChanged =
+            nextStates.bold !== currentStates.bold ||
+            nextStates.italic !== currentStates.italic ||
+            nextStates.underline !== currentStates.underline ||
+            nextStates.justifyLeft !== currentStates.justifyLeft ||
+            nextStates.justifyCenter !== currentStates.justifyCenter ||
+            nextStates.justifyRight !== currentStates.justifyRight ||
+            nextStates.insertUnorderedList !== currentStates.insertUnorderedList ||
+            nextStates.insertOrderedList !== currentStates.insertOrderedList ||
+            nextStates.h1 !== currentStates.h1 ||
+            nextStates.h2 !== currentStates.h2 ||
+            nextStates.h3 !== currentStates.h3;
+
+        if (hasChanged) {
+            setFormatStates(nextStates);
+        }
+    }, [])
+
+    const applyHeading = (tag: 'h1' | 'h2' | 'h3') => {
+        if (typeof document === 'undefined') return
+        const selection = window.getSelection()
+        if (!selection || selection.rangeCount === 0) return
+
+        let isCurrentHeadingActive = false
+        let node = selection.getRangeAt(0).startContainer
+        while (node && node !== document.body) {
+            if (node.nodeName.toLowerCase() === tag) {
+                isCurrentHeadingActive = true
+                break
+            }
+            node = node.parentNode as Node
+        }
+
+        if (isCurrentHeadingActive) {
+            document.execCommand('formatBlock', false, '<p>')
+        } else {
+            document.execCommand('formatBlock', false, `<${tag}>`)
+        }
+        updateFormatStates()
+    }
+
+    const applyFormat = (command: string, value: string = '') => {
+        document.execCommand(command, false, value)
+        updateFormatStates()
+    }
+
+    // Register selection change listener to update format toolbar buttons state
+    useEffect(() => {
+        let frameId: number;
+        const handler = () => {
+            if (!isKeyboardToolbarVisible) return;
+            cancelAnimationFrame(frameId);
+            frameId = requestAnimationFrame(() => {
+                updateFormatStates();
+            });
+        }
+        document.addEventListener('selectionchange', handler)
+        return () => {
+            cancelAnimationFrame(frameId);
+            document.removeEventListener('selectionchange', handler);
+        }
+    }, [isKeyboardToolbarVisible, updateFormatStates])
+
+    const moveBlock = useCallback((index: number, direction: 'up' | 'down') => {
+        setBlocks(prev => {
+            const newIndex = direction === 'up' ? index - 1 : index + 1
+            if (newIndex < 0 || newIndex >= prev.length) return prev
+
+            const newBlocks = [...prev]
+            const temp = newBlocks[index]
+            newBlocks[index] = newBlocks[newIndex]
+            newBlocks[newIndex] = temp
+            return newBlocks
+        })
+    }, [])
+
+    // Safety check for translations
+    const langSection = translations[language] || translations.en
+    const t = langSection.common || translations.en.common
+    const noteTranslations = langSection.pages?.notes || translations.en.pages.notes
+
+    const titleInputRef = useRef<HTMLInputElement>(null)
+
+    useEffect(() => {
+        // We will autofocus the text body instead of the title based on the user's request.
+        // The title auto-focus effect has been removed.
+    }, [])
+
+    useEffect(() => {
+        console.log("NoteEditor mounted for note:", note.id)
+    }, [note.id])
+
+    const titleRef = useRef(title)
+    const blocksRef = useRef(blocks)
+    titleRef.current = title
+    blocksRef.current = blocks
+    const skipSaveRef = useRef(false)
+    const lastSavedValuesRef = useRef({ title: note.title, blocks: note.blocks || [] })
+
+    const handleCloseRef = useRef<() => void>(undefined)
+    handleCloseRef.current = () => {
+        const initialHadContent = (note.blocks && note.blocks.length > 0) || (typeof note.title === 'string' && note.title.trim() !== '');
+        if (isNoteEmpty(titleRef.current, blocksRef.current) && !initialHadContent) {
+            skipSaveRef.current = true
+            deleteNote(note.id)
+            showToast(language === 'es' ? "Nota vacía eliminada" : "Empty note deleted", "info")
+        }
+        onClose()
+    }
+
+    // Save on unmount or when the window/app is closed (unload/beforeunload)
+    useEffect(() => {
+        const hasUnsavedChanges = () => {
+            return titleRef.current !== lastSavedValuesRef.current.title ||
+                JSON.stringify(blocksRef.current) !== JSON.stringify(lastSavedValuesRef.current.blocks)
+        }
+
+        const handleUnload = () => {
+            if (skipSaveRef.current) return
+            if (hasUnsavedChanges()) {
+                const initialHadContent = (note.blocks && note.blocks.length > 0) || (typeof note.title === 'string' && note.title.trim() !== '');
+                if (isNoteEmpty(titleRef.current, blocksRef.current) && !initialHadContent) {
+                    deleteNote(note.id)
+                } else {
+                    updateNote(note.id, titleRef.current, blocksRef.current)
+                }
+                lastSavedValuesRef.current = { title: titleRef.current, blocks: blocksRef.current }
+            }
+        }
+
+        window.addEventListener('beforeunload', handleUnload)
+        window.addEventListener('pagehide', handleUnload)
+
+        return () => {
+            handleUnload()
+            window.removeEventListener('beforeunload', handleUnload)
+            window.removeEventListener('pagehide', handleUnload)
+        }
+    }, [note.id])
+
+    // Debounce save (Auto-save) after 5 seconds of inactivity
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            handleSave(true)
+        }, 5000)
+        return () => clearTimeout(timeout)
+    }, [blocks, title, note.id])
+
+    const handleSave = async (isAuto = false) => {
+        if (!isAuto) setIsSaving(true)
+
+        updateNote(note.id, title, blocks)
+        lastSavedValuesRef.current = { title, blocks }
+
+        if (!isAuto) {
+            // Artificial delay for feedback if manual
+            await new Promise(r => setTimeout(r, 500))
+            setIsSaving(false)
+            setLastSaved(new Date().toLocaleTimeString())
+            showToast(language === 'es' ? "Nota guardada" : "Note saved", "success")
+
+            // Clear "Saved" feedback after 3s
+            setTimeout(() => setLastSaved(null), 3000)
+        }
+    }
+
+    const scrollToBlock = (blockId: string) => {
+        setTimeout(() => {
+            const element = document.getElementById(`block-${blockId}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 150);
+    }
+
+    const addBlock = (type: BlockType, afterBlockId?: string | null) => {
+        const newBlock: NoteBlock = {
+            id: Math.random().toString(36).substring(7),
+            type,
+            content: getDefaultContent(type)
+        }
+
+        const currentActiveId = afterBlockId || activeBlockId
+        if (currentActiveId) {
+            const index = blocks.findIndex(b => b.id === currentActiveId)
+            if (index !== -1) {
+                const newBlocks = [...blocks]
+                const insertIndex = type === 'separator' ? index : index + 1
+                newBlocks.splice(insertIndex, 0, newBlock)
+                setBlocks(newBlocks)
+                scrollToBlock(newBlock.id)
+                return
+            }
+        }
+
+        setBlocks([...blocks, newBlock])
+        scrollToBlock(newBlock.id)
+    }
+
+    const updateBlock = useCallback((id: string, content: any, extraProps?: any) => {
+        setBlocks(prev => prev.map(b => b.id === id ? { ...b, content, ...extraProps } : b))
+    }, [])
+
+    const removeBlock = useCallback((id: string) => {
+        setBlocks(prev => prev.filter(b => b.id !== id))
+    }, [])
+
+    const handleWrapperFocus = useCallback((id: string, type: BlockType) => {
+        setActiveBlockId(id);
+        if (type === 'text' || type === 'task-list' || type === 'table') {
+            setIsKeyboardToolbarVisible(true);
+            setTimeout(updateFormatStates, 50);
+        } else {
+            setIsKeyboardToolbarVisible(false);
+        }
+    }, [updateFormatStates]);
+
+    const handleWrapperBlur = useCallback((_currentTarget: HTMLElement) => {
+        // Mobile soft keyboards (Gboard/Samsung), autocorrect suggestion taps, and scroll gestures
+        // trigger transient blur events. We keep the toolbar visible while editing to prevent it from disappearing.
+    }, []);
+
+    const handleImageClick = useCallback((url: string) => {
+        setFullscreenImageUrl(url);
+    }, [])
+
+    const getDefaultContent = (type: BlockType) => {
+        switch (type) {
+            case 'text': return ''
+            case 'task-list': return [{ id: '1', text: 'New Item', checked: false }]
+            case 'table': return { headers: ['Col 1', 'Col 2'], rows: [['', '']] }
+            case 'image': return '' // URL
+            case 'drawing': return '' // Data URL
+            case 'file': return { url: '', name: '', type: '' }
+            case 'video': return { url: '', name: '', type: '' }
+            default: return ''
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="w-full max-w-4xl h-[90vh] bg-white dark:bg-[#0c0c0e] border border-zinc-200 dark:border-white/10 rounded-2xl flex flex-col relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+
+                {/* PREMIUM HEADER - Collapse and adapt on landscape/portrait */}
+                <div className={`transition-all duration-300 ease-in-out overflow-hidden shrink-0 ${showHeader
+                        ? (isLandscape ? 'max-h-16 opacity-100 py-2 px-4 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent' : 'max-h-48 opacity-100 p-4 md:p-6 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent')
+                        : 'max-h-0 opacity-0 py-0 border-none pointer-events-none'
+                    }`}>
+                    {isLandscape ? (
+                        /* Landscape Combined Header */
+                        <div className="flex items-center justify-between gap-3 h-10">
+                            <div className="flex items-center gap-2 overflow-hidden flex-1">
+                                <StickyNote className="w-5 h-5 text-primary shrink-0" />
+                                <span className="hidden sm:inline text-[10px] md:text-xs font-bold uppercase tracking-widest text-muted-foreground shrink-0">{language === 'es' ? 'Nota:' : 'Note:'}</span>
+                                <input
+                                    ref={titleInputRef}
+                                    className="text-base md:text-lg font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground/30 dark:placeholder:text-white/40 flex-1 min-w-[85px] tracking-tight text-foreground"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder={noteTranslations.untitled || "Untitled Note"}
+                                />
+                            </div>
+
+                            {/* Toolbar Buttons Embedded in Landscape Header */}
+                            <div className="flex items-center gap-1 px-2 bg-white/5 rounded-full border border-white/5 py-0.5">
+                                <button onClick={() => addBlock('text')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Texto" : "Text"}>
+                                    <Type className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => addBlock('task-list')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Lista" : "Task List"}>
+                                    <CheckSquare className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => addBlock('table')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Tabla" : "Table"}>
+                                    <TableIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => addBlock('image')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Imagen" : "Image"}>
+                                    <ImageIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => addBlock('video')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Video" : "Video"}>
+                                    <Film className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => addBlock('drawing')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Dibujo" : "Drawing"}>
+                                    <PenTool className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => addBlock('file')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Archivo" : "File"}>
+                                    <Paperclip className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => addBlock('separator')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Separador" : "Separator"}>
+                                    <SeparatorHorizontal className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                    onClick={() => handleSave()}
+                                    disabled={isSaving}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all text-xs font-bold shadow-lg ${lastSaved
+                                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                        : 'bg-purple-600 text-white hover:bg-purple-700 active:scale-95 shadow-purple-500/20'
+                                        }`}
+                                >
+                                    <span>{isSaving ? '...' : lastSaved ? (language === 'es' ? 'Guardado' : 'Saved') : (language === 'es' ? 'Guardar' : 'Save')}</span>
+                                </button>
+                                <button className="p-1.5 rounded-full bg-white/5 text-muted-foreground hover:bg-white/10 transition-all border border-white/10 active:scale-95">
+                                    <Share2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    onClick={() => setIsDeleting(true)}
+                                    className="p-1.5 hover:bg-red-500/10 text-muted-foreground hover:text-red-400 rounded-full transition-colors active:scale-95"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => handleCloseRef.current?.()} className="p-1.5 hover:bg-white/10 rounded-full transition-colors active:scale-95">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        /* Portrait Standard Header */
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center justify-between gap-2 w-full">
+                                <div className="flex items-center gap-2 md:gap-3 text-muted-foreground overflow-hidden flex-1 mr-2">
+                                    <StickyNote className="w-5 h-5 text-primary shrink-0" />
+                                    <input
+                                        ref={titleInputRef}
+                                        className="text-base md:text-xl font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground/30 dark:placeholder:text-white/40 flex-1 min-w-0 tracking-tight text-foreground"
+                                        value={title}
+                                        onChange={(e) => setTitle(e.target.value)}
+                                        placeholder={noteTranslations.untitled || "Untitled Note"}
+                                    />
+                                </div>
+                                <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
+                                    <button
+                                        onClick={() => handleSave()}
+                                        disabled={isSaving}
+                                        className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-6 py-1.5 md:py-2 rounded-full transition-all text-xs md:text-sm font-bold shadow-lg ${lastSaved
+                                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                            : 'bg-purple-600 text-white hover:bg-purple-700 active:scale-95 shadow-purple-500/20'
+                                            }`}
+                                    >
+                                        <span className="hidden xs:inline">{isSaving ? langSection.common.saving : lastSaved ? langSection.common.saved : langSection.common.save}</span>
+                                        <span className="xs:hidden inline">{isSaving ? '...' : langSection.common.save}</span>
+                                    </button>
+                                    <button className="p-1.5 md:p-2.5 rounded-full bg-white/5 text-muted-foreground hover:bg-white/10 transition-all border border-white/10 active:scale-95">
+                                        <Share2 className="w-4 h-4 md:w-5 md:h-5" />
+                                    </button>
+                                    <button
+                                        onClick={() => setIsDeleting(true)}
+                                        className="p-1.5 md:p-2.5 hover:bg-red-500/10 text-muted-foreground hover:text-red-400 rounded-full transition-colors active:scale-95"
+                                    >
+                                        <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
+                                    </button>
+                                    <button onClick={() => handleCloseRef.current?.()} className="p-1.5 md:p-2.5 hover:bg-white/10 rounded-full transition-colors active:scale-95 ml-0.5 md:ml-2">
+                                        <X className="w-5 h-5 md:w-6 md:h-6" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Mobile Toolbar (Options) moved to the top of standard portrait header */}
+                            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-1.5 border-t border-white/5 mt-1">
+                                <ToolbarButton icon={Type} label={language === 'es' ? "Texto" : "Text"} onClick={() => addBlock('text')} />
+                                <ToolbarButton icon={CheckSquare} label={language === 'es' ? "Lista" : "Task List"} onClick={() => addBlock('task-list')} />
+                                <ToolbarButton icon={TableIcon} label={language === 'es' ? "Tabla" : "Table"} onClick={() => addBlock('table')} />
+                                <ToolbarButton icon={ImageIcon} label={language === 'es' ? "Imagen" : "Image"} onClick={() => addBlock('image')} />
+                                <ToolbarButton icon={Film} label={language === 'es' ? "Video" : "Video"} onClick={() => addBlock('video')} />
+                                <ToolbarButton icon={PenTool} label={language === 'es' ? "Dibujo" : "Drawing"} onClick={() => addBlock('drawing')} />
+                                <ToolbarButton icon={Paperclip} label={language === 'es' ? "Archivo" : "File"} onClick={() => addBlock('file')} />
+                                <ToolbarButton icon={SeparatorHorizontal} label={language === 'es' ? "Separador" : "Separator"} onClick={() => addBlock('separator')} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+
+                {/* Content */}
+                <div
+                    ref={contentContainerRef}
+                    onScroll={handleScroll}
+                    className="flex-1 overflow-y-auto p-5 md:p-8 space-y-2"
+                >
+
+                    {blocks.length === 0 && (
+                        <div className="text-center text-muted-foreground mt-20 italic">
+                            {language === 'es' ? "Comienza añadiendo un bloque desde la barra superior." : "Start by adding a block from the toolbar above."}
+                        </div>
+                    )}
+                    <AnimatePresence initial={false} mode="popLayout">
+                        {blocks.filter(b => b && typeof b === 'object' && b.id).map((block, idx) => (
+                            <BlockWrapper
+                                key={block.id}
+                                block={block}
+                                idx={idx}
+                                isFirst={idx === 0}
+                                isLast={idx === blocks.length - 1}
+                                language={language}
+                                moveBlock={moveBlock}
+                                removeBlock={removeBlock}
+                                updateBlock={updateBlock}
+                                handleImageClick={handleImageClick}
+                                handleWrapperFocus={handleWrapperFocus}
+                                handleWrapperBlur={handleWrapperBlur}
+                                autoFocus={idx === 0 && note.title === ''}
+                                noteId={note.id}
+                            />
+                        ))}
+                    </AnimatePresence>
+                </div>
+            </div>
+            <ConfirmationDialog
+                isOpen={isDeleting}
+                onClose={() => setIsDeleting(false)}
+                onConfirm={() => {
+                    skipSaveRef.current = true
+                    deleteNote(note.id)
+                    showToast(language === 'es' ? "Nota eliminada" : "Note deleted", "info")
+                    onClose()
+                }}
+                title={language === 'es' ? '¿Eliminar esta nota?' : 'Delete this note?'}
+                message={language === 'es' ? 'Esta nota se eliminará permanentemente.' : 'This note will be permanently deleted.'}
+            />
+
+            {/* Keyboard Floating Toolbar */}
+            <AnimatePresence>
+                {isKeyboardToolbarVisible && (
+                    <motion.div
+                        initial={{ y: "100%", opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: "100%", opacity: 0 }}
+                        transition={{ type: "spring", damping: 26, stiffness: 320 }}
+                        style={{ bottom: `${viewportOffset}px` }}
+                        className="fixed left-0 right-0 z-50 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-t border-zinc-200 dark:border-white/10 p-2 flex items-center justify-between shadow-2xl"
+                    >
+                        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-0.5 pr-2">
+                            {/* Block Management Group */}
+                            {activeBlockId && (
+                                <>
+                                    <button
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            const idx = blocks.findIndex(b => b.id === activeBlockId);
+                                            if (idx > 0) moveBlock(idx, 'up');
+                                        }}
+                                        disabled={blocks.findIndex(b => b.id === activeBlockId) === 0}
+                                        className="p-1.5 rounded-md text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shrink-0"
+                                        title={language === 'es' ? "Subir Bloque" : "Move Block Up"}
+                                    >
+                                        <ChevronUp className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            const idx = blocks.findIndex(b => b.id === activeBlockId);
+                                            if (idx !== -1 && idx < blocks.length - 1) moveBlock(idx, 'down');
+                                        }}
+                                        disabled={blocks.findIndex(b => b.id === activeBlockId) === blocks.length - 1}
+                                        className="p-1.5 rounded-md text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shrink-0"
+                                        title={language === 'es' ? "Bajar Bloque" : "Move Block Down"}
+                                    >
+                                        <ChevronDown className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            if (activeBlockId) {
+                                                removeBlock(activeBlockId);
+                                                setActiveBlockId(null);
+                                                setIsKeyboardToolbarVisible(false);
+                                            }
+                                        }}
+                                        className="p-1.5 rounded-md text-red-500 hover:bg-red-500/10 transition-all active:scale-95 shrink-0"
+                                        title={language === 'es' ? "Eliminar Bloque" : "Delete Block"}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                    <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+                                </>
+                            )}
+
+                            {/* Headings Group */}
+                            <button
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    applyHeading('h1');
+                                }}
+                                className={`px-3 py-1.5 rounded-md text-xs font-extrabold transition-all active:scale-95 shrink-0 ${formatStates.h1
+                                        ? "bg-purple-600/20 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/30"
+                                        : "text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10"
+                                    }`}
+                                title="H1"
+                            >
+                                H1
+                            </button>
+                            <button
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    applyHeading('h2');
+                                }}
+                                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all active:scale-95 shrink-0 ${formatStates.h2
+                                        ? "bg-purple-600/20 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/30"
+                                        : "text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10"
+                                    }`}
+                                title="H2"
+                            >
+                                H2
+                            </button>
+                            <button
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    applyHeading('h3');
+                                }}
+                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all active:scale-95 shrink-0 ${formatStates.h3
+                                        ? "bg-purple-600/20 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/30"
+                                        : "text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10"
+                                    }`}
+                                title="H3"
+                            >
+                                H3
+                            </button>
+
+                            <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
+                            {/* Formatting Group */}
+                            <FormatButton icon={Bold} label="Negrita" onClick={() => applyFormat('bold')} active={formatStates.bold} />
+                            <FormatButton icon={Italic} label="Cursiva" onClick={() => applyFormat('italic')} active={formatStates.italic} />
+                            <FormatButton icon={Underline} label="Subrayado" onClick={() => applyFormat('underline')} active={formatStates.underline} />
+
+                            <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
+                            {/* Alignment Group */}
+                            <FormatButton icon={AlignLeft} label="Alinear Izquierda" onClick={() => applyFormat('justifyLeft')} active={formatStates.justifyLeft} />
+                            <FormatButton icon={AlignCenter} label="Centrar" onClick={() => applyFormat('justifyCenter')} active={formatStates.justifyCenter} />
+                            <FormatButton icon={AlignRight} label="Alinear Derecha" onClick={() => applyFormat('justifyRight')} active={formatStates.justifyRight} />
+
+                            <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
+                            {/* Lists Group */}
+                            <FormatButton icon={List} label="Viñetas" onClick={() => applyFormat('insertUnorderedList')} active={formatStates.insertUnorderedList} />
+                            <FormatButton icon={ListOrdered} label="Numeración" onClick={() => applyFormat('insertOrderedList')} active={formatStates.insertOrderedList} />
+
+                            <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
+                            {/* Highlighters Group */}
+                            <span className="text-[9px] uppercase font-bold text-zinc-500 dark:text-white/40 tracking-wider shrink-0 mr-1">{language === 'es' ? "Resaltar:" : "Highlight:"}</span>
+                            <HighlightButton color="#fef08a" label={language === 'es' ? "Amarillo" : "Yellow"} onClick={() => applyFormat('backColor', '#fef08a')} />
+                            <HighlightButton color="#bbf7d0" label={language === 'es' ? "Verde" : "Green"} onClick={() => applyFormat('backColor', '#bbf7d0')} />
+                            <HighlightButton color="#bfdbfe" label={language === 'es' ? "Azul" : "Blue"} onClick={() => applyFormat('backColor', '#bfdbfe')} />
+                            <HighlightButton color="#fecaca" label={language === 'es' ? "Rojo" : "Red"} onClick={() => applyFormat('backColor', '#fecaca')} />
+                            <HighlightButton color="#e9d5ff" label={language === 'es' ? "Morado" : "Purple"} onClick={() => applyFormat('backColor', '#e9d5ff')} />
+                            <FormatButton icon={Eraser} label={language === 'es' ? "Borrar" : "Clear"} onClick={() => applyFormat('backColor', 'transparent')} />
+                        </div>
+
+                        {/* Close Button */}
+                        <button
+                            onClick={() => {
+                                (document.activeElement as HTMLElement)?.blur();
+                                setIsKeyboardToolbarVisible(false);
+                            }}
+                            className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-white/10 text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white transition-all active:scale-95 shrink-0 ml-1 border-l border-zinc-200 dark:border-white/10 pl-2.5"
+                            title="Cerrar"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            {fullscreenImageUrl && (
+                <div
+                    className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setFullscreenImageUrl(null)}
+                >
+                    <button
+                        className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white transition-colors"
+                        onClick={() => setFullscreenImageUrl(null)}
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                    <img
+                        src={getLocalImageSrc(fullscreenImageUrl || '')}
+                        alt="Fullscreen attachment"
+                        className="max-w-full max-h-[90vh] object-contain rounded-xl animate-in zoom-in-95 duration-200"
+                    />
+                </div>
+            )}
+        </div>
+    )
+}
+
+function ToolbarButton({ icon: Icon, label, onClick }: { icon: any, label: string, onClick: () => void }) {
+    return (
+        <button
+            onClick={onClick}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-white/10 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+        >
+            <Icon className="w-4 h-4" />
+            {label}
+        </button>
+    )
+}
+
+// Sub-components for blocks (Inline for simplicity now, could separate)
+
+function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange, onImageClick }: any) {
+    const [showControls, setShowControls] = useState(true);
+    const hasImage = typeof block.content === 'string' && block.content;
+    const isDownloading = block.isDownloading;
+    const isSynced = !!(block.driveFileId && hasImage && !isDownloading);
+    const lastTapRef = useRef(0);
+
+    // Memoize the converted src so convertFileSrc doesn't run on every render
+    const imageSrc = React.useMemo(
+        () => hasImage ? getLocalImageSrc(block.content) : '',
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [block.content]
+    );
+
+    const handleImageTap = (e: React.MouseEvent | React.TouchEvent) => {
+        if (!isDownloading) {
+            onImageClick?.(block.content);
+        }
+    };
+
+    useEffect(() => {
+        if (hasImage && !isDownloading) {
+            setShowControls(true);
+            const timer = setTimeout(() => {
+                setShowControls(false);
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [hasImage, block.content, isDownloading]);
+
+    return (
+        <>
+            <div
+                className={`relative group rounded-xl flex flex-col items-center justify-center transition-all ${hasImage || isDownloading
+                        ? 'p-0 bg-transparent border-none min-h-[200px]'
+                        : 'border-2 border-dashed border-white/10 p-4 min-h-[200px] bg-black/20'
+                    }`}
+                onContextMenu={(e) => {
+                    if (hasImage && !isDownloading) {
+                        e.preventDefault();
+                        setShowControls(true);
+                        setTimeout(() => setShowControls(false), 3000);
+                    }
+                }}
+            >
+                {/* Compact floating overlay for mobile image */}
+                {showControls && (hasImage || isDownloading) && (
+                    <div className="absolute top-2 right-2 flex gap-1 md:hidden bg-white/90 dark:bg-zinc-950/80 backdrop-blur rounded-lg p-0.5 border border-zinc-200 dark:border-white/10 z-10 animate-in fade-in duration-200">
+                        <button
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!isFirst) moveBlock(idx, 'up');
+                            }}
+                            disabled={isFirst}
+                            className="p-1 text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white disabled:opacity-30"
+                            title="Subir"
+                        >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!isLast) moveBlock(idx, 'down');
+                            }}
+                            disabled={isLast}
+                            className="p-1 text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white disabled:opacity-30"
+                            title="Bajar"
+                        >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                removeBlock(block.id);
+                            }}
+                            className="p-1 text-red-500 hover:text-red-400"
+                            title="Eliminar"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                )}
+
+                {isDownloading ? (
+                    <div className="flex flex-col items-center justify-center w-full min-h-[200px] bg-black/20 rounded-2xl animate-pulse">
+                        <ImageIcon className="w-12 h-12 text-white/20 mb-3 animate-bounce" />
+                        <span className="text-white/40 text-sm font-medium">Downloading image...</span>
+                    </div>
+                ) : hasImage ? (
+                    <div className="relative flex justify-center w-full">
+                        <img
+                            src={imageSrc}
+                            alt="Note attachment"
+                            className="max-h-[600px] max-w-full rounded-2xl cursor-pointer shadow-sm"
+                            onClick={handleImageTap}
+                        />
+                        {/* Sync status badge */}
+                        {isSynced && (
+                            <div
+                                className="absolute top-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-2 py-0.5 pointer-events-none"
+                                title="Synced with Drive"
+                            >
+                                <Cloud className="w-3 h-3 text-emerald-400" />
+                                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="text-center">
+                        <ImageIcon className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground mb-4">Upload an image</p>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            id={`file-${block.id}`}
+                            onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) {
+                                    const reader = new FileReader()
+                                    reader.onloadend = async () => {
+                                        const base64 = reader.result as string;
+                                        const { saveBase64ImageToFile } = await import('@/lib/image-utils');
+                                        const uri = await saveBase64ImageToFile(base64);
+                                        const finalContent = uri || base64;
+                                        
+                                        // [DEBUG] Log the block exactly as requested by the user
+                                        console.log('[DEBUG] Bloque de imagen insertado. Content:', finalContent, 'URI original:', uri);
+                                        
+                                        onChange(finalContent);
+                                        
+                                        import('@/lib/store').then(({ useStore }) => {
+                                            const token = useStore.getState().googleUser?.accessToken;
+                                            if (token) {
+                                                uploadAttachmentToDrive(base64, file.name, token)
+                                                    .then((driveFileId) => {
+                                                        onChange(finalContent, { driveFileId });
+                                                    })
+                                                    .catch(err => console.error('[Upload] Image drive sync failed:', err));
+                                            }
+                                        });
+                                    }
+                                    reader.readAsDataURL(file)
+                                }
+                            }}
+                        />
+                        <label htmlFor={`file-${block.id}`} className="px-4 py-2 bg-primary/20 text-primary rounded-lg cursor-pointer hover:bg-primary/30 transition-colors">
+                            Choose File
+                        </label>
+                    </div>
+                )}
+            </div>
+        </>
+    )
+}
+
+async function uploadAttachmentToDrive(
+    base64Data: string,
+    fileName: string,
+    accessToken: string
+): Promise<string> {
+    const pureBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+    const byteCharacters = atob(pureBase64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const fileBlob = new Blob([new Uint8Array(byteNumbers)]);
+
+    const metadata = { name: fileName };
+    const boundary = 'mynotes_upload_boundary';
+    const multipartBody =
+        `--${boundary}\r\n` +
+        `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+        `${JSON.stringify(metadata)}\r\n` +
+        `--${boundary}\r\n` +
+        `Content-Type: application/octet-stream\r\n\r\n`;
+
+    const closing = `\r\n--${boundary}--`;
+
+    const fullBody = new Blob([multipartBody, fileBlob, closing]);
+
+    const response = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+        {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': `multipart/related; boundary=${boundary}`,
+            },
+            body: fullBody,
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error(`Drive upload falló: ${response.status} ${await response.text()}`);
+    }
+
+    const result = await response.json();
+    return result.id;
+}
+
+ort { getFileIcon } from "@/lib/file-icons"
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import { useStore, Note, NoteBlock, BlockType } from "@/lib/store"
 import { translations } from "@/lib/translations"
@@ -1017,7 +2018,10 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
     const [isDownloadingState, setIsDownloadingState] = useState(false);
     const isDownloading = block.isDownloading || isDownloadingState;
 
-    const { Icon, imageSrc, color, bg } = getFileIconAndColor(fileData.type, fileData.name);
+    const { Icon, imageSrc, color, bg } = getFileIcon(fileData.type, fileData.name);
+    const isAudio = ['mp3', 'wav', 'ogg', 'm4a', 'audio'].includes(fileData.type?.toLowerCase() || '');
+    const [showAudioPlayer, setShowAudioPlayer] = useState(false);
+    const [audioUrl, setAudioUrl] = useState('');
 
     const handleFileClick = async () => {
         if (isDownloading) return;
@@ -1028,7 +2032,13 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
         if (typeof window !== 'undefined') {
             if (Capacitor.isNativePlatform()) {
                 if (hasFile && currentFileUri) {
-                    if (currentFileUri.startsWith('http://localhost/_capacitor_file_')) {
+                    if (isAudio) {
+                    setAudioUrl(currentFileUri.startsWith('http://localhost/_capacitor_file_') ? currentFileUri.replace('http://localhost/_capacitor_file_', 'file://') : currentFileUri);
+                    setShowAudioPlayer(true);
+                    return;
+                }
+                
+                if (currentFileUri.startsWith('http://localhost/_capacitor_file_')) {
                         currentFileUri = currentFileUri.replace('http://localhost/_capacitor_file_', 'file://');
                     }
                     if (currentFileUri.startsWith('file://')) {
@@ -1183,21 +2193,39 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
                     <span className="text-white/40 text-sm font-medium">Downloading...</span>
                 </div>
             ) : hasFile ? (
-                <div className="flex items-center gap-4 w-full cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors" onClick={handleFileClick}>
-                    <div className={`w-12 h-12 rounded-lg ${bg} ${color} flex items-center justify-center shrink-0 overflow-hidden`}>
+            showAudioPlayer ? (
+                <div className="flex flex-col w-full gap-2 p-3 bg-black/5 dark:bg-white/5 rounded-lg border border-black/10 dark:border-white/10 group">
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium truncate flex-1">{fileData.name}</span>
+                        <button onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeBlock(block.id); }} className="p-1.5 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/10 rounded-md" title="Eliminar archivo">
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    </div>
+                    <audio src={audioUrl.startsWith('file://') ? window.Capacitor.convertFileSrc(audioUrl) : audioUrl} controls autoPlay className="w-full" />
+                </div>
+            ) : (
+                <div className="flex items-center gap-4 w-full cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors group" onClick={handleFileClick}>
+                    <div className={`w-12 h-12 rounded-lg ${bg} ${color} flex items-center justify-center shrink-0 overflow-hidden relative`}>
                         {Icon ? <Icon className="w-6 h-6" /> : <img src={imageSrc} alt="Icon" className="w-10 h-10 object-contain drop-shadow-md" />}
+                        {isAudio && <div className="absolute inset-0 bg-black/20 flex items-center justify-center rounded-lg"><div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm"><span className="text-white text-xs">▶</span></div></div>}
                     </div>
                     <div className="flex flex-col flex-1 min-w-0">
                         <span className="text-sm font-medium text-foreground truncate">{fileData.name || 'Unknown File'}</span>
                         <span className="text-xs text-muted-foreground truncate uppercase">{fileData.type || 'FILE'}</span>
                     </div>
-                    <div className="shrink-0 ml-2">
-                        <button className="px-4 py-1.5 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm font-medium rounded-md shadow-sm border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors">
-                            Open
-                        </button>
-                    </div>
+                    {!isAudio && (
+                        <div className="shrink-0 ml-2">
+                            <button className="px-4 py-1.5 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm font-medium rounded-md shadow-sm border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors">
+                                Open
+                            </button>
+                        </div>
+                    )}
+                    <button onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeBlock(block.id); }} className="p-2 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/10 rounded-md shrink-0" title="Eliminar archivo">
+                        <Trash2 className="w-4 h-4" />
+                    </button>
                 </div>
-            ) : (
+            )
+        ) : (
                 <div className="text-center">
                     <Paperclip className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground mb-4">Upload a file (PDF, Docx, etc.)</p>
