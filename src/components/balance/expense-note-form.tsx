@@ -111,6 +111,16 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
         handleUpdateItem(gasto.id, { confirmado: true });
     };
 
+    const handleClose = () => {
+        const items = expenseNotes || [];
+        items.forEach(item => {
+            if (!item.title || item.title.trim() === '') {
+                deleteExpenseNote(item.id);
+            }
+        });
+        onClose();
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
             <style>{`@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600;700&display=swap');`}</style>
@@ -130,7 +140,7 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                         <span className={`font-sans font-bold text-[16px] ${sumatoriaGastos > 0 ? 'text-red-500' : 'text-[#1a1a1a]'}`}>
                             {projectedBalance}$
                         </span>
-                        <button onClick={onClose} className="ml-2 p-1 text-zinc-400 hover:text-zinc-600 transition-colors" title="Cerrar">
+                        <button onClick={handleClose} className="ml-2 p-1 text-zinc-400 hover:text-zinc-600 transition-colors" title="Cerrar">
                             <X className="w-5 h-5" />
                         </button>
                     </div>
