@@ -614,8 +614,36 @@ public class WidgetSyncPlugin extends Plugin {
             
             android.media.MediaMetadataRetriever retriever = new android.media.MediaMetadataRetriever();
             retriever.setDataSource(resolvedPath);
-            android.graphics.Bitmap bitmap = retriever.getFrameAtTime(1000000); // 1 second
             
+            long durationMs = 0L;
+            String durationStr = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION);
+            if (durationStr != null) {
+                try {
+                    durationMs = Long.parseLong(durationStr);
+                } catch (NumberFormatException e) {
+                    // Ignore
+                }
+            }
+
+            long safeTimeUs;
+            if (durationMs > 1000) {
+                safeTimeUs = 1000000L; // 1 second
+            } else {
+                safeTimeUs = Math.max(0L, (durationMs * 1000L) / 10); // 10% of duration
+            }
+
+            android.graphics.Bitmap bitmap = retriever.getFrameAtTime(safeTimeUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+            
+            // Fallback: if null, explicitly request the first frame (time 0)
+            if (bitmap == null) {
+                android.util.Log.w("WidgetSyncPlugin", "Frame at " + safeTimeUs + " failed, trying frame 0");
+                bitmap = retriever.getFrameAtTime(0);
+            }
+
+            if (bitmap == null) {
+                android.util.Log.e("WidgetSyncPlugin", "No se pudo extraer NINGÚN frame del video en " + resolvedPath);
+            }
+
             if (bitmap != null) {
                 int maxDim = 480;
                 int w = bitmap.getWidth();

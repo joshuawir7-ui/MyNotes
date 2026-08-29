@@ -1161,6 +1161,71 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
     );
 }
 
+function VideoThumbnailWeb({ src }: { src: string }) {
+    const thumbVideoRef = useRef<HTMLVideoElement>(null);
+    const [hasError, setHasError] = useState(false);
+
+    useEffect(() => {
+        const video = thumbVideoRef.current;
+        if (!video) return;
+
+        let timeoutId: any;
+
+        function handleLoadedMetadata() {
+            clearTimeout(timeoutId);
+            const safeTime = Math.min(1, (video!.duration * 0.1) || 0.1);
+            if (video) video.currentTime = safeTime;
+        }
+
+        function handleSeeked() {
+            console.log('[VIDEO] Frame de miniatura listo en el elemento video (web)');
+        }
+
+        function handleError(e: any) {
+            clearTimeout(timeoutId);
+            console.error('[VIDEO] Error cargando video para miniatura:', video?.error || e);
+            setHasError(true);
+        }
+
+        video.addEventListener('loadedmetadata', handleLoadedMetadata);
+        video.addEventListener('seeked', handleSeeked);
+        video.addEventListener('error', handleError);
+
+        // Timeout of 10s if metadata doesn't load
+        timeoutId = setTimeout(() => {
+            console.error('[VIDEO] Timeout esperando loadedmetadata para miniatura (web):', src);
+            setHasError(true);
+        }, 10000);
+
+        return () => {
+            clearTimeout(timeoutId);
+            video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            video.removeEventListener('seeked', handleSeeked);
+            video.removeEventListener('error', handleError);
+        };
+    }, [src]);
+
+    if (hasError) {
+        return (
+            <div className="w-full h-[200px] flex flex-col items-center justify-center bg-black/20 text-red-400">
+                <AlertCircle className="w-12 h-12 mb-2" />
+                <span className="text-xs font-medium">Error de previsualización</span>
+            </div>
+        );
+    }
+
+    return (
+        <video
+            ref={thumbVideoRef}
+            src={src}
+            preload="metadata"
+            muted
+            playsInline
+            className="w-full max-h-[60vh] object-contain opacity-80"
+        />
+    );
+}
+
 function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange, noteId }: any) {
     console.log('[VIDEO] Renderizando thumbnail, path:', block.thumbnailPath);
     const [showControls, setShowControls] = useState(true);
@@ -1376,14 +1441,8 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                     </div>
                 ) : (
                     <div className="relative w-full cursor-pointer bg-black/10 group-hover:bg-black/20 transition-colors" onClick={handlePlayClick}>
-                        {block.thumbnailPath ? (
-                            <img src={getLocalImageSrc(block.thumbnailPath)} alt="Video Thumbnail" className="w-full max-h-[60vh] object-contain opacity-80" />
-                        ) : (
-                            <div className="w-full h-[200px] flex items-center justify-center bg-black/20">
-                                <Film className="w-16 h-16 text-white/30" />
-                            </div>
-                        )}
-                        <div className="absolute inset-0 flex items-center justify-center">
+                        <VideoThumbnailWeb src={getLocalImageSrc(videoData.url)} />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div className="w-16 h-16 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center shadow-xl border border-white/20 group-hover:scale-110 transition-transform">
                                 <div className="w-0 h-0 border-t-8 border-t-transparent border-l-[14px] border-l-white border-b-8 border-b-transparent ml-1"></div>
                             </div>
