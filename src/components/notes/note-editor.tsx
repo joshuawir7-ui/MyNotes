@@ -1234,7 +1234,7 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
             ) : (
                 <div className="flex items-center gap-4 w-full cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors group" onClick={handleFileClick}>
                     <div className={`w-12 h-12 rounded-lg ${bg} ${color} flex items-center justify-center shrink-0 overflow-hidden relative`}>
-                        {Icon ? <Icon className="w-6 h-6" /> : <img src={imageSrc} alt="Icon" className="w-10 h-10 object-contain drop-shadow-md dark:invert" />}
+                        {Icon ? <Icon className="w-6 h-6" /> : <img src={imageSrc} alt="Icon" className="w-10 h-10 object-contain drop-shadow-md" />}
                     </div>
                     <div className="flex flex-col flex-1 min-w-0">
                         <span className="text-sm font-medium text-foreground truncate">{fileData.name || 'Unknown File'}</span>
