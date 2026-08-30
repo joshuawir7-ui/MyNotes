@@ -339,7 +339,7 @@ const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note;
                 {/* Pin button */}
                 <button
                     onClick={onTogglePin}
-                    className={`absolute top-4 right-4 p-1.5 rounded-full transition-colors z-10 ${note.isPinned ? 'text-red-500 hover:text-red-600' : 'text-zinc-300 dark:text-zinc-600 hover:text-zinc-500 hover:bg-black/5 dark:hover:bg-white/5 opacity-0 group-hover:opacity-100'}`}
+                    className={`absolute top-4 right-4 p-1.5 rounded-full transition-colors z-10 ${note.isPinned ? 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200' : 'text-zinc-300 dark:text-zinc-600 hover:text-zinc-500 hover:bg-black/5 dark:hover:bg-white/5 opacity-0 group-hover:opacity-100'}`}
                     title={note.isPinned ? "Desfijar nota" : "Fijar nota"}
                 >
                     <Pin className={`w-4 h-4 ${note.isPinned ? 'fill-current' : ''}`} />
