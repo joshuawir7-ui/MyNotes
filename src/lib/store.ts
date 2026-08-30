@@ -1282,6 +1282,7 @@ export const triggerBackgroundSync = async () => {
                 taskGroups: state.taskGroups,
                 completedOnceHabits: state.completedOnceHabits || [],
                 transactions: state.transactions || [],
+                expenseNotes: state.expenseNotes || [],
                 savingsGoal: state.savingsGoal || 400,
                 dailySnapshots: state.dailySnapshots,
                 user: state.user,
@@ -2211,10 +2212,6 @@ export const useStore = create<AppState>()(
                 addExpenseNote: (note) => {
                     set((state) => {
                         const newNotes = [...(state.expenseNotes || []), note];
-                        WidgetSync.enqueueCloudSync({
-                            token: state.googleUser?.accessToken || '',
-                            payload: JSON.stringify({ expenseNotes: newNotes })
-                        }).catch(() => {});
                         return { expenseNotes: newNotes };
                     });
                 },
@@ -2224,10 +2221,6 @@ export const useStore = create<AppState>()(
                         const newNotes = (state.expenseNotes || []).map(n => 
                             n.id === id ? { ...n, ...noteData, lastUpdated: Date.now() } : n
                         );
-                        WidgetSync.enqueueCloudSync({
-                            token: state.googleUser?.accessToken || '',
-                            payload: JSON.stringify({ expenseNotes: newNotes })
-                        }).catch(() => {});
                         return { expenseNotes: newNotes };
                     });
                 },
@@ -2235,13 +2228,10 @@ export const useStore = create<AppState>()(
                 deleteExpenseNote: (id) => {
                     set((state) => {
                         const newNotes = (state.expenseNotes || []).filter(n => n.id !== id);
-                        WidgetSync.enqueueCloudSync({
-                            token: state.googleUser?.accessToken || '',
-                            payload: JSON.stringify({ expenseNotes: newNotes })
-                        }).catch(() => {});
                         
                         const deletedItems = { ...(state.deletedItems || {}) };
-                        deletedItems[`expenseNote_${id}`] = Date.now();
+                        // FIX: Use plain id (not prefixed) so mergeLists can match it via deletes[item.id]
+                        deletedItems[id] = Date.now();
                         
                         return { expenseNotes: newNotes, deletedItems };
                     });
@@ -2794,6 +2784,7 @@ export const useStore = create<AppState>()(
                             taskGroups: chosenData.taskGroups || [],
                             completedOnceHabits: chosenData.completedOnceHabits || [],
                             transactions: chosenData.transactions || [],
+                            expenseNotes: chosenData.expenseNotes || [],
                             savingsGoal: chosenData.savingsGoal ?? 400,
                             dailySnapshots: chosenData.dailySnapshots || {},
                             user: chosenData.user || get().user,
@@ -3432,10 +3423,12 @@ export const useStore = create<AppState>()(
                         const localLastUpdated = freshState.lastUpdated || 0;
 
                         console.log(`[Sync] Timestamps — Local: ${localLastUpdated}, Drive: ${driveLastUpdated}`);
+                        // DIAG: Log counts to identify which branch executes on mobile
+                        console.log(`[Sync][DIAG] Drive counts — notes:${(driveData.notes||[]).length} tasks:${(driveData.tasks||[]).length} goals:${(driveData.goals||[]).length} appointments:${(driveData.appointments||[]).length} expenseNotes:${(driveData.expenseNotes||[]).length} transactions:${(driveData.transactions||[]).length}`);
 
                         // ── Helper to count real items with content ──────────────────────────
                         const driveHasData = [
-                            driveData.notes, driveData.tasks, driveData.goals, driveData.appointments
+                            driveData.notes, driveData.tasks, driveData.goals, driveData.appointments, driveData.expenseNotes, driveData.transactions
                         ].some(arr => Array.isArray(arr) && arr.length > 0);
 
                         // ── Read disk data to ensure in-memory state didn't miss anything ──────
@@ -3445,10 +3438,14 @@ export const useStore = create<AppState>()(
                         const diskTasks = await readAllTasksFromDisk(freshState.tasks);
 
                         const localHasData = [
-                            diskNotes, diskTasks, freshState.goals, freshState.appointments
+                            diskNotes, diskTasks, freshState.goals, freshState.appointments, freshState.expenseNotes, freshState.transactions
                         ].some(arr => Array.isArray(arr) && arr.length > 0);
 
-                        // ── Case 1: Local is fresh/empty, Drive has real data → pull from Drive ─
+                        // DIAG: Log local state for mobile investigation
+                        console.log(`[Sync][DIAG] Local counts — notes:${diskNotes.length} tasks:${diskTasks.length} goals:${(freshState.goals||[]).length} appointments:${(freshState.appointments||[]).length} expenseNotes:${(freshState.expenseNotes||[]).length} transactions:${(freshState.transactions||[]).length}`);
+                        console.log(`[Sync][DIAG] localHasData=${localHasData}, driveHasData=${driveHasData}, localTS=${localLastUpdated}, driveTS=${driveLastUpdated}`);
+
+                        // ── Case 1: Local is fresh/empty, Drive has real data → pulling from Drive ─
                         if (!localHasData && driveHasData) {
                             console.log('[Sync] Local has no data but Drive does → pulling from Drive.');
                             const mergedDeletedItems = mergeDeletedItems(freshState.deletedItems, driveData.deletedItems);
@@ -3465,6 +3462,7 @@ export const useStore = create<AppState>()(
                                 taskGroups: driveData.taskGroups || [],
                                 completedOnceHabits: driveData.completedOnceHabits || [],
                                 transactions: driveData.transactions || [],
+                                expenseNotes: driveData.expenseNotes || [],
                                 savingsGoal: driveData.savingsGoal ?? 400,
                                 dailySnapshots: driveData.dailySnapshots || {},
                                 user: mergeUser(freshState.user, driveData.user),
@@ -3499,6 +3497,7 @@ export const useStore = create<AppState>()(
                                 taskGroups: freshState.taskGroups,
                                 completedOnceHabits: freshState.completedOnceHabits || [],
                                 transactions: freshState.transactions || [],
+                                expenseNotes: freshState.expenseNotes || [],
                                 savingsGoal: freshState.savingsGoal ?? 400,
                                 dailySnapshots: freshState.dailySnapshots,
                                 user: freshState.user,
@@ -3544,6 +3543,7 @@ export const useStore = create<AppState>()(
                             const mergedTaskGroups = mergeLists(freshState.taskGroups, driveData.taskGroups, useLocalForConflicts, mergedDeletedItems);
                             const mergedCompletedOnceHabits = mergeLists(freshState.completedOnceHabits || [], driveData.completedOnceHabits || [], useLocalForConflicts, mergedDeletedItems);
                             const mergedTransactions = mergeLists(freshState.transactions || [], driveData.transactions || [], useLocalForConflicts, mergedDeletedItems);
+                            const mergedExpenseNotes = mergeLists(freshState.expenseNotes || [], driveData.expenseNotes || [], useLocalForConflicts, mergedDeletedItems);
                             const mergedSavingsGoal = useLocalForConflicts ? (freshState.savingsGoal ?? 400) : (driveData.savingsGoal ?? 400);
                             const mergedSnapshots = mergeDailySnapshots(freshState.dailySnapshots, driveData.dailySnapshots);
                             const mergedUser = mergeUser(freshState.user, driveData.user);
@@ -3561,6 +3561,7 @@ export const useStore = create<AppState>()(
                                 taskGroups: mergedTaskGroups,
                                 completedOnceHabits: mergedCompletedOnceHabits,
                                 transactions: mergedTransactions,
+                                expenseNotes: mergedExpenseNotes,
                                 savingsGoal: mergedSavingsGoal,
                                 dailySnapshots: mergedSnapshots,
                                 user: mergedUser,
@@ -3585,6 +3586,7 @@ export const useStore = create<AppState>()(
                                 taskGroups: mergedTaskGroups,
                                 completedOnceHabits: mergedCompletedOnceHabits,
                                 transactions: mergedTransactions,
+                                expenseNotes: mergedExpenseNotes,
                                 savingsGoal: mergedSavingsGoal,
                                 dailySnapshots: mergedSnapshots,
                                 user: mergedUser,
@@ -3612,7 +3614,7 @@ export const useStore = create<AppState>()(
                         }
 
                         // ── Case 4: Same timestamps AND both have data → check for real differences ──
-                        // If content actually differs, ask the user which version to keep.
+                        // If content actually differs, merge (drive wins for equal-timestamp conflicts).
                         console.log('[Sync] Same timestamp and both have data. Checking for content differences...');
 
                         const localNoteIds = new Set((freshState.notes || []).map((n: any) => n.id));
@@ -3620,39 +3622,95 @@ export const useStore = create<AppState>()(
                         const noteCountDiffers = localNoteIds.size !== driveNoteIds.size;
                         const localTaskCount = (freshState.tasks || []).length;
                         const driveTaskCount = (driveData.tasks || []).length;
+                        // FIX: Also compare expenseNotes and transactions — previously ignored,
+                        // causing mobile to see "identical" when only expenseNotes differed.
+                        const localExpenseCount = (freshState.expenseNotes || []).length;
+                        const driveExpenseCount = (driveData.expenseNotes || []).length;
+                        const localTxCount = (freshState.transactions || []).length;
+                        const driveTxCount = (driveData.transactions || []).length;
 
-                        if (noteCountDiffers || localTaskCount !== driveTaskCount) {
-                            // Real differences found — trigger conflict dialog
-                            console.log('[Sync] Real content differences detected with same timestamp → showing conflict dialog.');
+                        console.log(`[Sync][DIAG] Case 4 compare — notes:${localNoteIds.size}vs${driveNoteIds.size} tasks:${localTaskCount}vs${driveTaskCount} expenses:${localExpenseCount}vs${driveExpenseCount} tx:${localTxCount}vs${driveTxCount}`);
+
+                        if (noteCountDiffers || localTaskCount !== driveTaskCount || localExpenseCount !== driveExpenseCount || localTxCount !== driveTxCount) {
+                            // Real differences found — do a silent merge favouring drive for conflicts
+                            console.log('[Sync] Real content differences detected with same timestamp → silent merge (drive wins conflicts).');
                             const fullNotes = await readAllNotesFromDisk(freshState.notes);
                             const fullTasks = await readAllTasksFromDisk(freshState.tasks);
 
-                            const localSnapshot = {
-                                notes: fullNotes,
-                                tasks: fullTasks,
-                                goals: freshState.goals,
-                                appointments: freshState.appointments,
-                                projects: freshState.projects,
-                                taskGroups: freshState.taskGroups,
-                                completedOnceHabits: freshState.completedOnceHabits || [],
-                                transactions: freshState.transactions || [],
-                                savingsGoal: freshState.savingsGoal ?? 400,
-                                dailySnapshots: freshState.dailySnapshots,
-                                user: freshState.user,
-                                deletedItems: freshState.deletedItems || {},
-                            };
+                            // Same-timestamp merge: drive wins conflicts (useLocalForConflicts = false)
+                            const mergedDeletedItems4 = mergeDeletedItems(freshState.deletedItems, driveData.deletedItems);
+                            const mergedNotes4 = mergeNotesLists(fullNotes, driveData.notes, false, mergedDeletedItems4);
+                            const mergedTasks4 = mergeLists(fullTasks, driveData.tasks, false, mergedDeletedItems4);
+                            const mergedGoals4 = mergeLists(freshState.goals, driveData.goals, false, mergedDeletedItems4);
+                            const mergedAppointments4 = mergeLists(freshState.appointments, driveData.appointments, false, mergedDeletedItems4);
+                            const mergedProjects4 = mergeLists(freshState.projects || [], driveData.projects || [], false, mergedDeletedItems4);
+                            const mergedTaskGroups4 = mergeLists(freshState.taskGroups || [], driveData.taskGroups || [], false, mergedDeletedItems4);
+                            const mergedCompletedOnceHabits4 = mergeLists(freshState.completedOnceHabits || [], driveData.completedOnceHabits || [], false, mergedDeletedItems4);
+                            const mergedTransactions4 = mergeLists(freshState.transactions || [], driveData.transactions || [], false, mergedDeletedItems4);
+                            const mergedExpenseNotes4 = mergeLists(freshState.expenseNotes || [], driveData.expenseNotes || [], false, mergedDeletedItems4);
+                            const mergedSavingsGoal4 = driveData.savingsGoal ?? freshState.savingsGoal ?? 400;
+                            const mergedSnapshots4 = mergeDailySnapshots(freshState.dailySnapshots, driveData.dailySnapshots);
+                            const mergedUser4 = mergeUser(freshState.user, driveData.user);
 
-                            set({
+                            await saveAllNotesToDisk(mergedNotes4);
+                            await saveAllTasksToDisk(mergedTasks4);
+
+                            originalSet({
+                                notes: mergedNotes4,
+                                tasks: mergedTasks4,
+                                goals: mergedGoals4,
+                                appointments: mergedAppointments4,
+                                projects: mergedProjects4,
+                                taskGroups: mergedTaskGroups4,
+                                completedOnceHabits: mergedCompletedOnceHabits4,
+                                transactions: mergedTransactions4,
+                                expenseNotes: mergedExpenseNotes4,
+                                savingsGoal: mergedSavingsGoal4,
+                                dailySnapshots: mergedSnapshots4,
+                                user: mergedUser4,
+                                deletedItems: mergedDeletedItems4,
                                 isSyncingCloud: false,
-                                syncConflict: {
-                                    localData: localSnapshot,
-                                    remoteData: driveData,
-                                    fileId: existingFile.id,
-                                    localTimestamp: localLastUpdated,
-                                    remoteTimestamp: driveLastUpdated,
-                                }
+                                lastCloudSync: new Date().toLocaleString(),
+                                areNotesLoaded: true,
+                                areTasksLoaded: true
                             });
-                            return false; // Awaiting user resolution
+
+                            setTimeout(() => {
+                                syncWidgetData(mergedGoals4, mergedAppointments4, mergedNotes4, mergedTasks4).catch(console.error);
+                            }, 0);
+
+                            // Upload the merged result so both devices converge
+                            const dataToUpload4 = {
+                                notes: stripLargePayloads(mergedNotes4),
+                                tasks: mergedTasks4,
+                                goals: mergedGoals4,
+                                appointments: mergedAppointments4,
+                                projects: mergedProjects4,
+                                taskGroups: mergedTaskGroups4,
+                                completedOnceHabits: mergedCompletedOnceHabits4,
+                                transactions: mergedTransactions4,
+                                expenseNotes: mergedExpenseNotes4,
+                                savingsGoal: mergedSavingsGoal4,
+                                dailySnapshots: mergedSnapshots4,
+                                user: mergedUser4,
+                                deletedItems: mergedDeletedItems4,
+                                lastUpdated: driveLastUpdated
+                            };
+                            const updateRes4 = await fetchWithTimeout(
+                                `https://www.googleapis.com/upload/drive/v3/files/${existingFile.id}?uploadType=media`,
+                                {
+                                    method: 'PATCH',
+                                    headers: {
+                                        Authorization: `Bearer ${token}`,
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify(dataToUpload4)
+                                }
+                            );
+                            if (!updateRes4.ok) {
+                                console.warn(`[Sync] Case 4 upload warning: ${updateRes4.status}`);
+                            }
+                            return true;
                         }
 
                         // Truly identical — no action needed
