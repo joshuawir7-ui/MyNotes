@@ -2912,6 +2912,7 @@ export const useStore = create<AppState>()(
                             const mergedTaskGroups = mergeLists(state.taskGroups, driveData.taskGroups, true, mergedDeletedItems);
                             const mergedCompletedOnceHabits = mergeLists(state.completedOnceHabits || [], driveData.completedOnceHabits || [], true, mergedDeletedItems);
                             const mergedTransactions = mergeLists(state.transactions || [], driveData.transactions || [], true, mergedDeletedItems);
+                            const mergedExpenseNotes = mergeLists(state.expenseNotes || [], driveData.expenseNotes || [], true, mergedDeletedItems);
                             const mergedSavingsGoal = driveData.lastUpdated && state.lastUpdated && state.lastUpdated > driveData.lastUpdated ? (state.savingsGoal ?? 400) : (driveData.savingsGoal ?? 400);
                             const mergedSnapshots = mergeDailySnapshots(state.dailySnapshots, driveData.dailySnapshots);
                             const mergedUser = mergeUser(state.user, driveData.user);
@@ -2930,6 +2931,7 @@ export const useStore = create<AppState>()(
                                 taskGroups: mergedTaskGroups,
                                 completedOnceHabits: mergedCompletedOnceHabits,
                                 transactions: mergedTransactions,
+                                expenseNotes: mergedExpenseNotes,
                                 savingsGoal: mergedSavingsGoal,
                                 dailySnapshots: mergedSnapshots,
                                 user: mergedUser,
@@ -2952,6 +2954,7 @@ export const useStore = create<AppState>()(
                                 taskGroups: mergedTaskGroups,
                                 completedOnceHabits: mergedCompletedOnceHabits,
                                 transactions: mergedTransactions,
+                                expenseNotes: mergedExpenseNotes,
                                 savingsGoal: mergedSavingsGoal,
                                 dailySnapshots: mergedSnapshots,
                                 user: mergedUser,
@@ -2986,6 +2989,7 @@ export const useStore = create<AppState>()(
                                 taskGroups: state.taskGroups,
                                 completedOnceHabits: state.completedOnceHabits || [],
                                 transactions: state.transactions || [],
+                                expenseNotes: state.expenseNotes || [],
                                 savingsGoal: state.savingsGoal || 400,
                                 dailySnapshots: state.dailySnapshots,
                                 user: state.user,
@@ -3162,6 +3166,7 @@ export const useStore = create<AppState>()(
                             const mergedTaskGroups = mergeLists(state.taskGroups, data.taskGroups, false, mergedDeletedItems);
                             const mergedCompletedOnceHabits = mergeLists(state.completedOnceHabits || [], data.completedOnceHabits || [], false, mergedDeletedItems);
                             const mergedTransactions = mergeLists(state.transactions || [], data.transactions || [], false, mergedDeletedItems);
+                            const mergedExpenseNotes = mergeLists(state.expenseNotes || [], data.expenseNotes || [], false, mergedDeletedItems);
                             const mergedSavingsGoal = data.savingsGoal ?? 400;
                             const mergedSnapshots = mergeDailySnapshots(state.dailySnapshots, data.dailySnapshots);
                             const mergedUser = mergeUser(state.user, data.user);
@@ -3273,6 +3278,7 @@ export const useStore = create<AppState>()(
                                 taskGroups: mergedTaskGroups,
                                 completedOnceHabits: mergedCompletedOnceHabits,
                                 transactions: mergedTransactions,
+                                expenseNotes: mergedExpenseNotes,
                                 savingsGoal: mergedSavingsGoal,
                                 dailySnapshots: mergedSnapshots,
                                 user: mergedUser,

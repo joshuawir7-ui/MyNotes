@@ -3,16 +3,18 @@
 import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Trash2, Edit2 } from "lucide-react"
+import { Trash2, Edit2, Pin } from "lucide-react"
 
 interface MobileContextMenuProps {
     onEdit?: () => void
     onDelete: () => void
+    onTogglePin?: () => void
+    isPinned?: boolean
     children: React.ReactNode
     title?: string
 }
 
-export function MobileContextMenu({ onEdit, onDelete, children, title }: MobileContextMenuProps) {
+export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, children, title }: MobileContextMenuProps) {
     const [isOpen, setIsOpen] = useState(false)
     const longPressTimer = useRef<NodeJS.Timeout | null>(null)
     const [isLongPressing, setIsLongPressing] = useState(false)
@@ -119,6 +121,22 @@ export function MobileContextMenu({ onEdit, onDelete, children, title }: MobileC
                                                 <Edit2 className="w-5 h-5" />
                                             </div>
                                             <span className="font-semibold text-lg">Editar</span>
+                                        </button>
+                                    )}
+
+                                    {onTogglePin && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                onTogglePin()
+                                                setIsOpen(false)
+                                            }}
+                                            className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors text-left w-full"
+                                        >
+                                            <div className="w-10 h-10 rounded-full bg-zinc-500/20 flex items-center justify-center text-zinc-400">
+                                                <Pin className={`w-5 h-5 ${isPinned ? 'fill-current' : ''}`} />
+                                            </div>
+                                            <span className="font-semibold text-lg">{isPinned ? 'Desfijar' : 'Fijar'}</span>
                                         </button>
                                     )}
 

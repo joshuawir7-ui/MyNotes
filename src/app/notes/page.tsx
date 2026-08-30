@@ -331,6 +331,8 @@ const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note;
             title={note.title || t.untitled}
             onEdit={onEdit}
             onDelete={onDelete}
+            onTogglePin={() => onTogglePin({ stopPropagation: () => {} } as any)}
+            isPinned={note.isPinned}
         >
             <div
                 onClick={onEdit}
