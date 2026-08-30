@@ -125,22 +125,22 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
             <style>{`@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600;700&display=swap');`}</style>
             
-            <div className="bg-[#FFFFFF] rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] p-4 sm:p-[32px] w-full max-w-[800px] mx-auto relative max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col">
+            <div className="bg-[#FFFFFF] dark:bg-zinc-900 border border-transparent dark:border-zinc-800/80 rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-2xl p-4 sm:p-[32px] w-full max-w-[800px] mx-auto relative max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col transition-colors">
                 
                 {/* 1. Header (fila superior) */}
                 <div className="flex justify-between items-center mb-[24px] shrink-0">
-                    <h2 className="font-['Dancing_Script',cursive] text-[20px] text-[#1a1a1a] font-normal m-0 leading-none">
+                    <h2 className="font-['Dancing_Script',cursive] text-[20px] text-[#1a1a1a] dark:text-zinc-100 font-normal m-0 leading-none">
                         nota de gastos
                     </h2>
                     
                     <div className="flex items-center gap-[12px]">
-                        <span className="font-sans font-bold text-[16px] text-[#6b7280]">
+                        <span className="font-sans font-bold text-[16px] text-[#6b7280] dark:text-zinc-400">
                             Balance actual:
                         </span>
-                        <span className={`font-sans font-bold text-[16px] ${sumatoriaGastos > 0 ? 'text-red-500' : 'text-[#1a1a1a]'}`}>
+                        <span className={`font-sans font-bold text-[16px] ${sumatoriaGastos > 0 ? 'text-red-500 dark:text-red-400' : 'text-[#1a1a1a] dark:text-zinc-100'}`}>
                             {projectedBalance}$
                         </span>
-                        <button onClick={handleClose} className="ml-2 p-1 text-zinc-400 hover:text-zinc-600 transition-colors" title="Cerrar">
+                        <button onClick={handleClose} className="ml-2 p-1 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors" title="Cerrar">
                             <X className="w-5 h-5" />
                         </button>
                     </div>
@@ -157,7 +157,7 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                                     onChange={e => handleUpdateItem(item.id, { title: e.target.value })}
                                     placeholder="¿Título del gasto?"
                                     disabled={item.confirmado}
-                                    className="flex-1 w-full border border-[#e5e7eb] rounded-[12px] px-[18px] py-[14px] text-[15px] placeholder:text-[#9ca3af] bg-transparent outline-none focus:border-zinc-400 text-[#1a1a1a] transition-colors disabled:opacity-60"
+                                    className="flex-1 w-full border border-[#e5e7eb] dark:border-zinc-800 rounded-[12px] px-[18px] py-[14px] text-[15px] placeholder:text-[#9ca3af] dark:placeholder:text-zinc-500 bg-transparent outline-none focus:border-zinc-400 dark:focus:border-zinc-600 text-[#1a1a1a] dark:text-zinc-100 transition-colors disabled:opacity-60"
                                 />
                                 <div className="flex items-center gap-2 w-full sm:w-auto">
                                     <input
@@ -171,12 +171,12 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                                         }}
                                         placeholder="PRECIO"
                                         disabled={item.confirmado}
-                                        className="flex-1 sm:w-[140px] border border-[#e5e7eb] rounded-[12px] px-[18px] py-[14px] text-[15px] font-bold text-center placeholder:text-[#9ca3af] bg-transparent outline-none focus:border-zinc-400 text-[#1a1a1a] transition-colors disabled:opacity-60"
+                                        className="flex-1 sm:w-[140px] border border-[#e5e7eb] dark:border-zinc-800 rounded-[12px] px-[18px] py-[14px] text-[15px] font-bold text-center placeholder:text-[#9ca3af] dark:placeholder:text-zinc-500 bg-transparent outline-none focus:border-zinc-400 dark:focus:border-zinc-600 text-[#1a1a1a] dark:text-zinc-100 transition-colors disabled:opacity-60"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => handleRemoveItem(item.id)}
-                                        className="p-3 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors shrink-0"
+                                        className="p-3 text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/20 rounded-xl transition-colors shrink-0"
                                         title="Eliminar este gasto"
                                     >
                                         <Trash2 className="w-5 h-5" />
@@ -197,13 +197,13 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                                 }}
                                 placeholder="Justificación, o algo que valide por lo que se está gastando"
                                 disabled={item.confirmado}
-                                className="w-full border border-[#e5e7eb] rounded-[12px] px-[18px] py-[16px] min-h-[56px] text-[15px] placeholder:text-[#9ca3af] mb-[16px] resize-none bg-transparent outline-none focus:border-zinc-400 text-[#1a1a1a] transition-colors block overflow-hidden disabled:opacity-60"
+                                className="w-full border border-[#e5e7eb] dark:border-zinc-800 rounded-[12px] px-[18px] py-[16px] min-h-[56px] text-[15px] placeholder:text-[#9ca3af] dark:placeholder:text-zinc-500 mb-[16px] resize-none bg-transparent outline-none focus:border-zinc-400 dark:focus:border-zinc-600 text-[#1a1a1a] dark:text-zinc-100 transition-colors block overflow-hidden disabled:opacity-60"
                             />
 
                             {/* 4. Input "Imagen del producto" */}
                             <div className="mb-[20px] flex">
                                 {item.imageBlock?.localPath ? (
-                                    <div className="relative w-[180px] h-[140px] rounded-[12px] overflow-hidden border border-[#e5e7eb] bg-[#f9fafb] group/img shrink-0">
+                                    <div className="relative w-[180px] h-[140px] rounded-[12px] overflow-hidden border border-[#e5e7eb] dark:border-zinc-800 bg-[#f9fafb] dark:bg-zinc-800/50 group/img shrink-0">
                                         <img src={getLocalImageSrc(item.imageBlock.localPath)} alt="Producto" className="w-full h-full object-contain" />
                                         {!item.confirmado && (
                                             <button
@@ -216,7 +216,7 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                                         )}
                                     </div>
                                 ) : (
-                                    <label className={`w-full border border-[#e5e7eb] rounded-[12px] px-[18px] py-[14px] text-center text-[15px] text-[#9ca3af] flex items-center justify-center gap-2 transition-colors ${item.confirmado ? 'opacity-60' : 'cursor-pointer hover:bg-zinc-50'}`}>
+                                    <label className={`w-full border border-[#e5e7eb] dark:border-zinc-800 rounded-[12px] px-[18px] py-[14px] text-center text-[15px] text-[#9ca3af] dark:text-zinc-400 flex items-center justify-center gap-2 transition-colors ${item.confirmado ? 'opacity-60' : 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}>
                                         <span>Imagen del producto</span>
                                         {!item.confirmado && (
                                             <input
@@ -236,18 +236,18 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                                     <button
                                         type="button"
                                         onClick={handleAddItem}
-                                        className="bg-[#1a1a1a] text-[#FFFFFF] rounded-[10px] px-3 sm:px-[24px] py-3 sm:py-[14px] text-[11px] sm:text-[13px] font-bold tracking-[0.5px] uppercase border-none cursor-pointer whitespace-nowrap hover:opacity-90 active:scale-95 transition-all shrink-0"
+                                        className="bg-[#1a1a1a] dark:bg-zinc-100 text-[#FFFFFF] dark:text-zinc-900 rounded-[10px] px-3 sm:px-[24px] py-3 sm:py-[14px] text-[11px] sm:text-[13px] font-bold tracking-[0.5px] uppercase border-none cursor-pointer whitespace-nowrap hover:opacity-90 active:scale-95 transition-all shrink-0"
                                     >
                                         AGREGAR OTRO GASTO
                                     </button>
                                 ) : null}
-                                <div className="flex-1 border-t-[2px] border-dashed border-[#d1d5db] h-0 min-w-0 hidden sm:block"></div>
+                                <div className="flex-1 border-t-[2px] border-dashed border-[#d1d5db] dark:border-zinc-700 h-0 min-w-0 hidden sm:block"></div>
                                 
                                 {item.confirmado ? (
                                     <button
                                         type="button"
                                         disabled
-                                        className="bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-[10px] px-3 sm:px-[24px] py-2.5 sm:py-[13px] text-[11px] sm:text-[13px] font-bold tracking-[0.5px] uppercase flex items-center gap-1.5 sm:gap-2 cursor-not-allowed shrink-0 ml-auto sm:ml-0"
+                                        className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 rounded-[10px] px-3 sm:px-[24px] py-2.5 sm:py-[13px] text-[11px] sm:text-[13px] font-bold tracking-[0.5px] uppercase flex items-center gap-1.5 sm:gap-2 cursor-not-allowed shrink-0 ml-auto sm:ml-0"
                                     >
                                         <Check className="w-4 h-4" />
                                         CONFIRMADO
@@ -257,7 +257,7 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                                         type="button"
                                         onClick={() => confirmarGasto(item)}
                                         disabled={!item.amount || item.amount <= 0}
-                                        className="bg-[#6b7280] text-[#FFFFFF] rounded-[10px] px-3 sm:px-[24px] py-3 sm:py-[14px] text-[11px] sm:text-[13px] font-bold tracking-[0.5px] uppercase border-none cursor-pointer whitespace-nowrap hover:bg-[#4b5563] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0 ml-auto sm:ml-0"
+                                        className="bg-[#6b7280] dark:bg-zinc-700 text-[#FFFFFF] dark:text-zinc-100 rounded-[10px] px-3 sm:px-[24px] py-3 sm:py-[14px] text-[11px] sm:text-[13px] font-bold tracking-[0.5px] uppercase border-none cursor-pointer whitespace-nowrap hover:bg-[#4b5563] dark:hover:bg-zinc-600 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0 ml-auto sm:ml-0"
                                     >
                                         GASTO
                                     </button>
