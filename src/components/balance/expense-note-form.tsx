@@ -125,7 +125,7 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
             <style>{`@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600;700&display=swap');`}</style>
             
-            <div className="bg-[#FFFFFF] rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] p-[32px] w-full max-w-[800px] mx-auto relative max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col">
+            <div className="bg-[#FFFFFF] rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] p-4 sm:p-[32px] w-full max-w-[800px] mx-auto relative max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col">
                 
                 {/* 1. Header (fila superior) */}
                 <div className="flex justify-between items-center mb-[24px] shrink-0">
@@ -231,23 +231,23 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                             </div>
 
                             {/* 5. Fila inferior (Botón AGREGAR OTRO GASTO + Línea punteada + Botón GASTO) */}
-                            <div className="flex items-center gap-[16px] mb-[32px]">
-                                {index === items.length - 1 && (
+                            <div className="flex items-center justify-between gap-2 sm:gap-[16px] mb-[32px] w-full">
+                                {index === items.length - 1 ? (
                                     <button
                                         type="button"
                                         onClick={handleAddItem}
-                                        className="bg-[#1a1a1a] text-[#FFFFFF] rounded-[10px] px-[24px] py-[14px] text-[13px] font-bold tracking-[0.5px] uppercase border-none cursor-pointer whitespace-nowrap hover:opacity-90 active:scale-95 transition-all"
+                                        className="bg-[#1a1a1a] text-[#FFFFFF] rounded-[10px] px-3 sm:px-[24px] py-3 sm:py-[14px] text-[11px] sm:text-[13px] font-bold tracking-[0.5px] uppercase border-none cursor-pointer whitespace-nowrap hover:opacity-90 active:scale-95 transition-all shrink-0"
                                     >
                                         AGREGAR OTRO GASTO
                                     </button>
-                                )}
-                                <div className="flex-1 border-t-[2px] border-dashed border-[#d1d5db] h-0"></div>
+                                ) : null}
+                                <div className="flex-1 border-t-[2px] border-dashed border-[#d1d5db] h-0 min-w-0 hidden sm:block"></div>
                                 
                                 {item.confirmado ? (
                                     <button
                                         type="button"
                                         disabled
-                                        className="bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-[10px] px-[24px] py-[13px] text-[13px] font-bold tracking-[0.5px] uppercase flex items-center gap-2 cursor-not-allowed"
+                                        className="bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-[10px] px-3 sm:px-[24px] py-2.5 sm:py-[13px] text-[11px] sm:text-[13px] font-bold tracking-[0.5px] uppercase flex items-center gap-1.5 sm:gap-2 cursor-not-allowed shrink-0 ml-auto sm:ml-0"
                                     >
                                         <Check className="w-4 h-4" />
                                         CONFIRMADO
@@ -257,7 +257,7 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                                         type="button"
                                         onClick={() => confirmarGasto(item)}
                                         disabled={!item.amount || item.amount <= 0}
-                                        className="bg-[#6b7280] text-[#FFFFFF] rounded-[10px] px-[24px] py-[14px] text-[13px] font-bold tracking-[0.5px] uppercase border-none cursor-pointer whitespace-nowrap hover:bg-[#4b5563] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="bg-[#6b7280] text-[#FFFFFF] rounded-[10px] px-3 sm:px-[24px] py-3 sm:py-[14px] text-[11px] sm:text-[13px] font-bold tracking-[0.5px] uppercase border-none cursor-pointer whitespace-nowrap hover:bg-[#4b5563] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0 ml-auto sm:ml-0"
                                     >
                                         GASTO
                                     </button>
