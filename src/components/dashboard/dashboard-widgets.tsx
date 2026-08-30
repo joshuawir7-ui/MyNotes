@@ -90,13 +90,62 @@ function NotePreviewRenderer({ note, isPinned = false }: { note: Note; isPinned?
 
 export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => void }) {
     const language = useStore(state => state.language);
+    const pinnedNoteId = useStore(state => state.pinnedNoteId);
     const notes = useStore(state => state.notes);
     const appointments = useStore(state => state.appointments);
     const goals = useStore(state => state.goals);
     const lastPinnedGoalId = useStore(state => state.lastPinnedGoalId);
+    const setPinnedNoteId = useStore(state => state.setPinnedNoteId);
     const t = (translations[language]?.dashboard || translations['en'].dashboard) as any;
     const noteTranslations = (translations[language]?.pages?.notes || translations['en'].pages.notes) as any;
+    const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
+    const [showPinnedActions, setShowPinnedActions] = useState(false);
 
+    const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const isLongPressActive = useRef(false);
+
+    const startLongPress = (e: React.MouseEvent | React.TouchEvent) => {
+        // Only run for left click or touch
+        if ('button' in e && e.button !== 0) return;
+        isLongPressActive.current = false;
+        longPressTimerRef.current = setTimeout(() => {
+            isLongPressActive.current = true;
+            setShowPinnedActions(prev => !prev);
+            if (navigator.vibrate) {
+                try {
+                    navigator.vibrate(50);
+                } catch (err) {
+                    // Ignore haptic feedback errors if unsupported or blocked
+                }
+            }
+        }, 600);
+    };
+
+    const endLongPress = () => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+        }
+        if (isLongPressActive.current) {
+            setTimeout(() => {
+                isLongPressActive.current = false;
+            }, 100);
+        }
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        startLongPress(e);
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (isLongPressActive.current) {
+            e.preventDefault();
+        }
+        endLongPress();
+    };
+
+    const pinnedNote = notes.find(n => n.id === pinnedNoteId);
+    
     // Sort notes by last modified / created
     const recentNote = [...notes].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
@@ -155,10 +204,86 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
 
     return (
         <div className="flex flex-col gap-4 w-full">
-            {/* ROW 1: Calendar Events */}
-            <div className="w-full">
-                {/* Calendar Events Module */}
-                <div className="glass-panel p-3 md:p-5 rounded-3xl flex flex-col h-[150px] md:h-[180px] relative overflow-hidden border border-white/5">
+            {/* ROW 1: Pinned Note (left) and Calendar (right) */}
+            <div className="grid grid-cols-5 gap-3 md:gap-4">
+                
+                {/* Pinned Note Module - Takes 3 columns */}
+                <div 
+                    className="col-span-3 glass-panel p-3 md:p-5 rounded-3xl flex flex-col h-[150px] md:h-[180px] relative overflow-hidden border border-white/5 select-none"
+                    onMouseDown={startLongPress}
+                    onMouseUp={endLongPress}
+                    onMouseLeave={endLongPress}
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                >
+                    <div className="flex items-center justify-between mb-2 md:mb-4 shrink-0">
+                        <div className="flex items-center gap-1.5 md:gap-2">
+                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0">
+                                <StickyNote className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                            </div>
+                        </div>
+                        {showPinnedActions && (
+                            <div className="flex gap-1" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
+                                <button 
+                                    onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        setIsSelectModalOpen(true); 
+                                        setShowPinnedActions(false); 
+                                    }} 
+                                    className="text-[9px] md:text-xs font-bold text-primary hover:text-primary/80 transition-colors bg-primary/10 px-2 md:px-3 py-1 md:py-1.5 rounded-full shrink-0"
+                                >
+                                    Cambiar
+                                </button>
+                                {pinnedNote && (
+                                    <button 
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            setPinnedNoteId(null); 
+                                            setShowPinnedActions(false); 
+                                        }} 
+                                        className="text-[9px] md:text-xs font-bold text-muted-foreground hover:text-red-400 transition-colors bg-white/5 px-2 md:px-3 py-1 md:py-1.5 rounded-full shrink-0"
+                                    >
+                                        Quitar
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div 
+                        className="flex-1 overflow-y-auto custom-scrollbar pr-1 cursor-pointer group" 
+                        onDoubleClick={(e) => {
+                            if (isLongPressActive.current) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                return;
+                            }
+                            if (pinnedNote) onOpenNote(pinnedNote);
+                        }}
+                    >
+                        {!pinnedNote ? (
+                            <div 
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setIsSelectModalOpen(true); 
+                                }}
+                                className="flex flex-col items-center justify-center h-full gap-1.5 text-muted-foreground/50 hover:text-primary transition-colors py-4"
+                            >
+                                <Plus className="w-8 h-8 mb-1 opacity-70" />
+                                <span className="font-bold text-sm text-center">Fijar una nota</span>
+                                <span className="text-[9px] text-center max-w-[90%] opacity-80">Haz clic aquí para seleccionar.</span>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-1 md:gap-1.5 pb-2">
+                                <h3 className="font-bold text-sm md:text-base line-clamp-2 group-hover:text-primary transition-colors">{pinnedNote.title || noteTranslations.untitled}</h3>
+                                <NotePreviewRenderer note={pinnedNote} isPinned={true} />
+                            </div>
+                        )}
+                    </div>
+                </div>
+ 
+                {/* Calendar Events Module - Takes 2 columns */}
+                <div className="col-span-2 glass-panel p-3 md:p-5 rounded-3xl flex flex-col h-[150px] md:h-[180px] relative overflow-hidden border border-white/5">
                     <div className="flex items-center justify-center mb-2 md:mb-4 shrink-0">
                         <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 shrink-0">
                             <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -219,7 +344,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
             </div>
 
             {/* ROW 2: Recent Note (Full width) */}
-            {recentNote && (
+            {recentNote && recentNote.id !== pinnedNoteId && (
                 <div className="glass-panel p-3 md:p-4 rounded-3xl flex flex-col h-[140px] relative overflow-hidden border border-white/5">
                     <div className="flex items-center gap-2 mb-2 shrink-0">
                         <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-500">
@@ -279,6 +404,42 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
                     ))}
                 </div>
             </div>
+
+            {/* Note Selection Modal for Pinned Note */}
+            {isSelectModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="glass-panel w-full max-w-md p-6 rounded-3xl shadow-2xl border border-white/10 flex flex-col max-h-[80vh]">
+                        <h2 className="text-xl font-bold mb-4">Seleccionar Nota para Fijar</h2>
+                        
+                        <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-2 mb-4">
+                            {notes.length === 0 ? (
+                                <p className="text-center text-muted-foreground py-8">No tienes notas creadas.</p>
+                            ) : (
+                                notes.map(note => (
+                                    <button
+                                        key={note.id}
+                                        onClick={() => {
+                                            setPinnedNoteId(note.id);
+                                            setIsSelectModalOpen(false);
+                                        }}
+                                        className="w-full text-left p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/20 transition-all flex flex-col gap-1"
+                                    >
+                                        <span className="font-bold">{note.title || noteTranslations.untitled}</span>
+                                        <span className="text-xs text-muted-foreground">{new Date(note.createdAt).toLocaleDateString()}</span>
+                                    </button>
+                                ))
+                            )}
+                        </div>
+                        
+                        <button
+                            onClick={() => setIsSelectModalOpen(false)}
+                            className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-bold transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            )}
 
         </div>
     );

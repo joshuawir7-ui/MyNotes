@@ -714,42 +714,29 @@ export default function BalancePage() {
                         <div className="p-3 bg-transparent flex flex-col gap-3 w-full border-t border-black/5 dark:border-white/5 pt-3">
                             {/* Meta & Input row */}
                             <div className="relative flex items-center justify-center gap-4 w-full min-h-[40px]">
-                                {/* Savings Goal Info */}
-                                <div className={isEditingGoal ? "relative flex items-center gap-2 shrink-0" : "absolute left-1 flex items-center gap-2 shrink-0"}>
-                                    {isEditingGoal ? (
-                                        <form onSubmit={handleSaveGoal} className="flex items-center gap-2">
-                                            <input
-                                                autoFocus
-                                                type="number"
-                                                value={tempGoalValue}
-                                                onChange={(e) => setTempGoalValue(e.target.value)}
-                                                className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-2 py-1 text-xs w-20 text-foreground focus:outline-none font-bold"
-                                                placeholder="Goal..."
-                                            />
-                                            <button type="submit" className="p-1 text-emerald-500 hover:scale-105 transition-all">
-                                                <Check className="w-4 h-4" />
-                                            </button>
-                                            <button type="button" onClick={() => setIsEditingGoal(false)} className="p-1 text-rose-500 hover:scale-105 transition-all">
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </form>
-                                    ) : (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-black text-purple-650 dark:text-purple-400">
-                                                Meta: {savingsGoal}$
-                                            </span>
-                                            <button
-                                                onClick={() => {
-                                                    setTempGoalValue(savingsGoal.toString())
-                                                    setIsEditingGoal(true)
-                                                }}
-                                                className="p-1 text-muted-foreground hover:text-purple-650 transition-colors"
-                                            >
-                                                <Edit2 className="w-3.5 h-3.5" />
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
+                                {/* Savings Goal Info (label only, no pencil here) */}
+                                {isEditingGoal ? (
+                                    <form onSubmit={handleSaveGoal} className="flex items-center gap-2 shrink-0">
+                                        <input
+                                            autoFocus
+                                            type="number"
+                                            value={tempGoalValue}
+                                            onChange={(e) => setTempGoalValue(e.target.value)}
+                                            className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-2 py-1 text-xs w-20 text-foreground focus:outline-none font-bold"
+                                            placeholder="Goal..."
+                                        />
+                                        <button type="submit" className="p-1 text-emerald-500 hover:scale-105 transition-all">
+                                            <Check className="w-4 h-4" />
+                                        </button>
+                                        <button type="button" onClick={() => setIsEditingGoal(false)} className="p-1 text-rose-500 hover:scale-105 transition-all">
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </form>
+                                ) : (
+                                    <span className="absolute left-1 text-sm font-black text-purple-650 dark:text-purple-400 shrink-0">
+                                        Meta: {savingsGoal}$
+                                    </span>
+                                )}
 
                                 {/* Quick Add Input (allows negative for debt) */}
                                 <div className="flex justify-center w-full">
@@ -762,6 +749,20 @@ export default function BalancePage() {
                                         className="w-full max-w-[100px] bg-black/5 dark:bg-white/5 border border-zinc-300 dark:border-zinc-700 rounded-2xl py-2 px-3 focus:outline-none focus:border-zinc-400 text-center font-bold text-sm text-foreground placeholder:font-normal placeholder:text-muted-foreground/45"
                                     />
                                 </div>
+
+                                {/* Pencil button moved to right of input */}
+                                {!isEditingGoal && (
+                                    <button
+                                        onClick={() => {
+                                            setTempGoalValue(savingsGoal.toString())
+                                            setIsEditingGoal(true)
+                                        }}
+                                        className="absolute right-1 p-1.5 text-muted-foreground hover:text-purple-400 transition-colors shrink-0"
+                                        title={language === 'es' ? 'Editar meta' : 'Edit goal'}
+                                    >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
                             </div>
 
                             {/* Centered Actions Buttons */}
