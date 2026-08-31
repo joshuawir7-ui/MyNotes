@@ -19,7 +19,7 @@ export default function GoalsPage() {
     const addGoal = useStore(state => state.addGoal)
     const showToast = useStore(state => state.showToast)
     const t = (translations[language]?.pages?.goals || translations['en'].pages.goals) as any
-    const { theme } = useTheme()
+    const { resolvedTheme } = useTheme()
     const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
@@ -370,10 +370,11 @@ export default function GoalsPage() {
                     <div className="flex flex-col items-center justify-center text-center relative min-h-[400px] w-full max-w-xl mx-auto">
                         <div className="mb-8">
                             <motion.img
+                                key={mounted ? (resolvedTheme === 'dark' ? 'dark' : 'light') : 'light'}
                                 initial={{ scale: 0.8, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 transition={{ duration: 1.5, ease: "easeOut" }}
-                                src="/goals-empty.png"
+                                src={mounted && resolvedTheme === 'dark' ? '/goals-empty-dark.png' : '/goals-empty.png'}
                                 alt="Goals"
                                 className="w-64 h-auto object-contain"
                                 onError={(e) => {
