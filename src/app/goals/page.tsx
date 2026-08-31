@@ -367,8 +367,8 @@ export default function GoalsPage() {
 
             {goals.length === 0 && (
                 <Reveal delay={0.2}>
-                    <div className="flex flex-col items-center justify-center text-center relative min-h-[400px] w-full max-w-xl mx-auto">
-                        <div className="mb-8">
+                    <div className="flex flex-col items-center justify-center text-center relative min-h-[400px] w-full max-w-2xl mx-auto">
+                        <div className="mb-6 w-full flex justify-center">
                             <motion.img
                                 key={mounted ? (resolvedTheme === 'dark' ? 'dark' : 'light') : 'light'}
                                 initial={{ scale: 0.8, opacity: 0 }}
@@ -376,7 +376,7 @@ export default function GoalsPage() {
                                 transition={{ duration: 1.5, ease: "easeOut" }}
                                 src={mounted && resolvedTheme === 'dark' ? '/goals-empty-dark.png' : '/goals-empty.png'}
                                 alt="Goals"
-                                className="w-64 h-auto object-contain"
+                                className="w-80 sm:w-[440px] md:w-[540px] max-w-full h-auto object-contain"
                                 onError={(e) => {
                                     e.currentTarget.src = "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2000"
                                 }}
