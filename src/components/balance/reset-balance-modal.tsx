@@ -45,7 +45,7 @@ export function ResetBalanceModal({
                                 strokeWidth="2.8"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                className="w-12 h-12 sm:w-14 sm:h-14 text-black dark:text-white"
+                                className="w-8 h-8 sm:w-9 sm:h-9 text-black dark:text-white"
                             >
                                 <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
                                 <path d="M21 3v5h-5" />
@@ -53,10 +53,10 @@ export function ResetBalanceModal({
                         </div>
 
                         {/* Divider Line */}
-                        <div className="w-[82%] h-[1.5px] bg-black dark:bg-white rounded-full mb-4 mt-1" />
+                        <div className="w-[82%] h-[1.5px] bg-black dark:bg-white rounded-full mb-3 mt-1" />
 
                         {/* Title in Dancing Script font */}
-                        <h3 className="font-dancing text-2xl sm:text-[27px] font-bold text-black dark:text-white mb-3 leading-tight">
+                        <h3 className="font-dancing text-lg sm:text-xl font-bold text-black dark:text-white mb-2.5 leading-tight">
                             {language === 'es' ? '¿Reiniciar Balance?' : 'Reset balance?'}
                         </h3>
 
