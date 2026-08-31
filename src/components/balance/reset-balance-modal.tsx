@@ -37,7 +37,7 @@ export function ResetBalanceModal({
                         className="w-full max-w-[340px] sm:max-w-[370px] bg-white dark:bg-[#121212] rounded-[44px] px-7 py-8 sm:px-9 sm:py-9 shadow-2xl border border-black/5 dark:border-white/10 flex flex-col items-center text-center select-none"
                     >
                         {/* Icon: Big thick circular reset arrow */}
-                        <div className="flex justify-center items-center text-black dark:text-white mb-3">
+                        <div className="flex justify-center items-center text-black dark:text-white mb-2">
                             <svg
                                 viewBox="0 0 24 24"
                                 fill="none"
@@ -45,7 +45,7 @@ export function ResetBalanceModal({
                                 strokeWidth="2.8"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                className="w-16 h-16 sm:w-20 sm:h-20 text-black dark:text-white"
+                                className="w-12 h-12 sm:w-14 sm:h-14 text-black dark:text-white"
                             >
                                 <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
                                 <path d="M21 3v5h-5" />
@@ -53,10 +53,10 @@ export function ResetBalanceModal({
                         </div>
 
                         {/* Divider Line */}
-                        <div className="w-[82%] h-[1.5px] bg-black dark:bg-white rounded-full mb-5 mt-1" />
+                        <div className="w-[82%] h-[1.5px] bg-black dark:bg-white rounded-full mb-4 mt-1" />
 
                         {/* Title in Dancing Script font */}
-                        <h3 className="font-dancing text-3xl sm:text-[34px] font-bold text-black dark:text-white mb-3.5 leading-tight">
+                        <h3 className="font-dancing text-2xl sm:text-[27px] font-bold text-black dark:text-white mb-3 leading-tight">
                             {language === 'es' ? '¿Reiniciar Balance?' : 'Reset balance?'}
                         </h3>
 
