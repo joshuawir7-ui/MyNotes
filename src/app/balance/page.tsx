@@ -13,6 +13,7 @@ import { ExpenseNoteForm } from "@/components/balance/expense-note-form"
 import { ExpenseNoteCard } from "@/components/balance/expense-note-card"
 import { motion, AnimatePresence } from "framer-motion"
 import { BalanceOnboarding } from "@/components/balance/balance-onboarding"
+import { ResetBalanceModal } from "@/components/balance/reset-balance-modal"
 
 // Custom Calendar component matching the user's mockup design
 interface CustomCalendarProps {
@@ -1161,75 +1162,12 @@ export default function BalancePage() {
             </AnimatePresence>
 
             {/* ── RESET BALANCE TO ZERO CONFIRMATION MODAL ── */}
-            <AnimatePresence>
-                {isResetConfirmOpen && (
-                    <motion.div
-                        key="reset-balance-backdrop"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-                        onClick={() => setIsResetConfirmOpen(false)}
-                    >
-                        <motion.div
-                            key="reset-balance-modal"
-                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl"
-                        >
-                            {/* Header naranja/ámbar */}
-                            <div className="bg-gradient-to-br from-orange-500 to-rose-500 px-6 pt-6 pb-4 flex flex-col items-center gap-3">
-                                <motion.div
-                                    initial={{ rotate: 0 }}
-                                    animate={{ rotate: [0, -15, 15, -10, 10, 0] }}
-                                    transition={{ duration: 0.6, delay: 0.1 }}
-                                    className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center"
-                                >
-                                    <RotateCcw className="w-8 h-8 text-white" />
-                                </motion.div>
-                                <h3 className="text-white font-black text-lg tracking-tight text-center">
-                                    {language === 'es' ? '¿Reiniciar el balance?' : 'Reset balance?'}
-                                </h3>
-                            </div>
-                            {/* Body */}
-                            <div className="bg-white dark:bg-zinc-900 px-6 py-5 flex flex-col gap-4">
-                                <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 rounded-2xl p-4 text-center">
-                                    <p className="text-orange-700 dark:text-orange-400 font-bold text-sm">
-                                        {language === 'es' ? 'Balance actual:' : 'Current balance:'}
-                                    </p>
-                                    <p className="text-orange-600 dark:text-orange-300 font-black text-2xl mt-1">
-                                        {balance.toLocaleString()}$
-                                    </p>
-                                </div>
-                                <p className="text-zinc-500 dark:text-zinc-400 text-sm text-center leading-relaxed">
-                                    {language === 'es'
-                                        ? 'Se agregará una transacción de ajuste para llevar tu balance a $0. El historial se conserva.'
-                                        : 'An adjustment transaction will be added to bring your balance to $0. History is preserved.'}
-                                </p>
-                                <div className="flex gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsResetConfirmOpen(false)}
-                                        className="flex-1 py-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
-                                    >
-                                        {language === 'es' ? 'Cancelar' : 'Cancel'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={confirmResetBalance}
-                                        className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white font-black text-sm transition-all hover:scale-[1.02] active:scale-95 shadow-md"
-                                    >
-                                        {language === 'es' ? 'Sí, reiniciar a $0' : 'Yes, reset to $0'}
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <ResetBalanceModal
+                isOpen={isResetConfirmOpen}
+                onClose={() => setIsResetConfirmOpen(false)}
+                onConfirm={confirmResetBalance}
+                language={language}
+            />
 
             {/* ── DELETE SINGLE TRANSACTION CONFIRMATION MODAL ── */}
             <AnimatePresence>

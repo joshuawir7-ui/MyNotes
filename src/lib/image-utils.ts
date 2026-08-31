@@ -1,5 +1,6 @@
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
+import { saveBlobToIndexedDB } from './blob-storage';
 
 /**
  * Saves a base64 image string to the device filesystem.
@@ -7,7 +8,10 @@ import { Capacitor } from '@capacitor/core';
  */
 export async function saveBase64ImageToFile(base64Data: string, fileName?: string): Promise<string | null> {
     if (typeof window === 'undefined') return null;
-    if (!Capacitor.isNativePlatform()) return null; // Fallback to base64 on Web/Desktop
+    if (!Capacitor.isNativePlatform()) {
+        // En Web, guardar en IndexedDB para no meter 10MB en el Store
+        return await saveBlobToIndexedDB(base64Data, 'jpg');
+    }
     // However, to unify the API, we can use Filesystem plugin which falls back to IndexedDB on web
     try {
         const name = fileName || `img_${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
@@ -42,8 +46,8 @@ export async function saveBase64ImageToFile(base64Data: string, fileName?: strin
 export function getLocalImageSrc(uriOrBase64: string): string {
     if (!uriOrBase64) return '';
     
-    // If it's already a base64 or http URL, just return it
-    if (uriOrBase64.startsWith('data:') || uriOrBase64.startsWith('http')) {
+    // If it's already a base64, http URL, or indexeddb URI, just return it
+    if (uriOrBase64.startsWith('data:') || uriOrBase64.startsWith('http') || uriOrBase64.startsWith('indexeddb://')) {
         return uriOrBase64;
     }
 
@@ -183,7 +187,10 @@ export async function getOrCreateThumbnail(originalPathOrBase64: string): Promis
  */
 export async function saveBase64File(base64Data: string, originalName: string): Promise<string | null> {
     if (typeof window === 'undefined') return null;
-    if (!Capacitor.isNativePlatform()) return null; // Fallback to base64 on Web
+    if (!Capacitor.isNativePlatform()) {
+        const ext = originalName.split('.').pop() || 'bin';
+        return await saveBlobToIndexedDB(base64Data, ext);
+    }
     try {
         const ext = originalName.split('.').pop() || 'file';
         const name = `file_${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;

@@ -1181,6 +1181,8 @@ export const stripLargePayloads = (notes: Note[]): Note[] => {
     }));
 };
 
+import { getBlobFromIndexedDB } from './blob-storage';
+
 // Helper to upload attachments that don't have a driveFileId yet
 export const uploadMissingAttachments = async (token: string, notes: Note[]): Promise<Note[]> => {
     let hasChanges = false;
@@ -1188,48 +1190,139 @@ export const uploadMissingAttachments = async (token: string, notes: Note[]): Pr
         const note = notes[i];
         for (let j = 0; j < note.blocks.length; j++) {
             const block = note.blocks[j];
-            if (['image', 'video', 'file'].includes(block.type) && !block.driveFileId && block.content?.url && block.content.url.startsWith('data:')) {
+            const url = block.content?.url;
+            if (['image', 'video', 'file'].includes(block.type) && !block.driveFileId && url && (url.startsWith('data:') || url.startsWith('indexeddb://'))) {
                 try {
                     console.log(`[Sync] Subiendo archivo faltante de bloque ${block.id}...`);
-                    const base64Data = block.content.url;
                     const fileName = block.content.name || `file_${Date.now()}`;
-                    const pureBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
-                    const byteCharacters = atob(pureBase64);
-                    const byteNumbers = new Array(byteCharacters.length);
-                    for (let k = 0; k < byteCharacters.length; k++) {
-                        byteNumbers[k] = byteCharacters.charCodeAt(k);
-                    }
-                    const fileBlob = new Blob([new Uint8Array(byteNumbers)]);
-                    const metadata = { name: fileName };
-                    const boundary = 'mynotes_upload_boundary';
-                    const multipartBody =
-                        `--${boundary}\r\n` +
-                        `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-                        `${JSON.stringify(metadata)}\r\n` +
-                        `--${boundary}\r\n` +
-                        `Content-Type: application/octet-stream\r\n\r\n`;
-                    const closing = `\r\n--${boundary}--`;
-                    const fullBody = new Blob([multipartBody, fileBlob, closing]);
+                    let fileBlob: Blob | null = null;
+                    let mimeType = 'application/octet-stream';
 
-                    const uploadRes = await fetch(
-                        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-                        {
-                            method: 'POST',
-                            headers: {
-                                Authorization: `Bearer ${token}`,
-                                'Content-Type': `multipart/related; boundary=${boundary}`,
-                            },
-                            body: fullBody,
+                    if (url.startsWith('indexeddb://')) {
+                        const data = await getBlobFromIndexedDB(url);
+                        if (!data) {
+                            console.error(`[Sync] Blob no encontrado en IndexedDB: ${url}`);
+                            continue;
                         }
-                    );
-                    
-                    if (uploadRes.ok) {
-                        const data = await uploadRes.json();
-                        if (data.id) {
-                            block.driveFileId = data.id;
-                            hasChanges = true;
-                            console.log(`[Sync] Archivo subido exitosamente: ${data.id}`);
+                        if (data instanceof Blob) {
+                            fileBlob = data;
+                            mimeType = fileBlob.type || 'application/octet-stream';
+                        } else if (typeof data === 'string' && data.startsWith('data:')) {
+                            // Fallback if it was stored as Base64 string in IndexedDB
+                            const pureBase64 = data.includes(',') ? data.split(',')[1] : data;
+                            const byteCharacters = atob(pureBase64);
+                            const byteArray = new Uint8Array(byteCharacters.length);
+                            for (let k = 0; k < byteCharacters.length; k++) {
+                                byteArray[k] = byteCharacters.charCodeAt(k);
+                            }
+                            const match = data.match(/^data:([^;]+);/);
+                            if (match) mimeType = match[1];
+                            fileBlob = new Blob([byteArray], { type: mimeType });
                         }
+                    } else if (url.startsWith('data:')) {
+                        const pureBase64 = url.includes(',') ? url.split(',')[1] : url;
+                        const byteCharacters = atob(pureBase64);
+                        const byteArray = new Uint8Array(byteCharacters.length);
+                        for (let k = 0; k < byteCharacters.length; k++) {
+                            byteArray[k] = byteCharacters.charCodeAt(k);
+                        }
+                        const match = url.match(/^data:([^;]+);/);
+                        if (match) mimeType = match[1];
+                        fileBlob = new Blob([byteArray], { type: mimeType });
+                    }
+
+                    if (!fileBlob) continue;
+
+                    const fileSizeMB = fileBlob.size / (1024 * 1024);
+                    // Determine extension for mimetype fallback if empty
+                    if (mimeType === 'application/octet-stream') {
+                        const ext = fileName.split('.').pop()?.toLowerCase() || '';
+                        const mimeMap: Record<string, string> = {
+                            mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
+                            mp3: 'audio/mpeg', wav: 'audio/wav',
+                            pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg',
+                            jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+                        };
+                        mimeType = mimeMap[ext] || 'application/octet-stream';
+                    }
+
+                    const metadata = { name: fileName, mimeType };
+                    let driveFileId: string | null = null;
+
+                    if (fileSizeMB < 4) {
+                        // Small file: multipart upload
+                        const boundary = 'mynotes_upload_boundary';
+                        const multipartBody =
+                            `--${boundary}\r\n` +
+                            `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+                            `${JSON.stringify(metadata)}\r\n` +
+                            `--${boundary}\r\n` +
+                            `Content-Type: ${mimeType}\r\n\r\n`;
+                        const closing = `\r\n--${boundary}--`;
+                        const fullBody = new Blob([multipartBody, fileBlob, closing]);
+
+                        const uploadRes = await fetch(
+                            'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+                            {
+                                method: 'POST',
+                                headers: {
+                                    Authorization: `Bearer ${token}`,
+                                    'Content-Type': `multipart/related; boundary=${boundary}`,
+                                },
+                                body: fullBody,
+                            }
+                        );
+
+                        if (uploadRes.ok) {
+                            const data = await uploadRes.json();
+                            driveFileId = data.id || null;
+                        } else {
+                            console.error(`[Sync] Multipart upload failed: ${uploadRes.status}`);
+                        }
+                    } else {
+                        // Large file: resumable upload
+                        console.log(`[Sync] Archivo grande (${fileSizeMB.toFixed(1)} MB) — usando Resumable Upload`);
+                        const initiateRes = await fetch(
+                            'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
+                            {
+                                method: 'POST',
+                                headers: {
+                                    Authorization: `Bearer ${token}`,
+                                    'Content-Type': 'application/json; charset=UTF-8',
+                                    'X-Upload-Content-Type': mimeType,
+                                    'X-Upload-Content-Length': String(fileBlob.size),
+                                },
+                                body: JSON.stringify(metadata),
+                            }
+                        );
+
+                        if (initiateRes.ok) {
+                            const uploadUrl = initiateRes.headers.get('Location');
+                            if (uploadUrl) {
+                                const putRes = await fetch(uploadUrl, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': mimeType,
+                                        'Content-Length': String(fileBlob.size),
+                                    },
+                                    body: fileBlob,
+                                });
+                                if (putRes.ok) {
+                                    const data = await putRes.json();
+                                    driveFileId = data.id || null;
+                                } else {
+                                    console.error(`[Sync] Resumable PUT failed: ${putRes.status}`);
+                                }
+                            }
+                        } else {
+                            console.error(`[Sync] Resumable initiate failed: ${initiateRes.status}`);
+                        }
+                    }
+
+                    if (driveFileId) {
+                        block.driveFileId = driveFileId;
+                        hasChanges = true;
+                        console.log(`[Sync] Archivo subido exitosamente: ${driveFileId}`);
                     }
                 } catch (e) {
                     console.error('[Sync] Error subiendo archivo faltante:', e);
@@ -3790,6 +3883,11 @@ export const useStore = create<AppState>()(
                     }
                     // Set isHydrated to true when hydration finishes
                     useStore.setState({ isHydrated: true });
+                    
+                    // Run legacy base64 migration asynchronously
+                    setTimeout(() => {
+                        migrateLegacyBase64Attachments().catch(console.error);
+                    }, 1000);
                 };
             },
             partialize: (state) => {
@@ -4080,3 +4178,59 @@ export const recoverImagesFromDriveRevisions = async (): Promise<{ recovered: nu
 
 // Also expose the recovery function through the store for component access
 useStore.setState(s => ({ ...s, recoverImagesFromDriveRevisions }));
+
+/**
+ * Migrates any legacy Base64 attachments currently residing in Zustand 
+ * into IndexedDB to free up memory (Web only).
+ */
+export const migrateLegacyBase64Attachments = async () => {
+    if (isNative) return; // Native already uses file:// paths
+    const state = useStore.getState();
+    let hasChanges = false;
+    const newNotes = [...state.notes];
+    
+    for (let i = 0; i < newNotes.length; i++) {
+        const note = { ...newNotes[i], blocks: [...(newNotes[i].blocks || [])] };
+        let noteChanged = false;
+        
+        for (let j = 0; j < note.blocks.length; j++) {
+            const block = { ...note.blocks[j] };
+            
+            // 1. File / Video block format { url: 'data:...', name: '...' }
+            if (block.content && typeof block.content === 'object' && block.content.url && typeof block.content.url === 'string' && block.content.url.startsWith('data:')) {
+                try {
+                    const ext = block.content.name ? block.content.name.split('.').pop() : 'bin';
+                    const uri = await saveBlobToIndexedDB(block.content.url, ext);
+                    block.content = { ...block.content, url: uri };
+                    note.blocks[j] = block;
+                    noteChanged = true;
+                    hasChanges = true;
+                } catch (e) {
+                    console.error('[Migration] Failed for object block', block.id, e);
+                }
+            } 
+            // 2. Image block format (string content)
+            else if (typeof block.content === 'string' && block.content.startsWith('data:')) {
+                try {
+                    const uri = await saveBlobToIndexedDB(block.content, 'jpg');
+                    block.content = uri;
+                    note.blocks[j] = block;
+                    noteChanged = true;
+                    hasChanges = true;
+                } catch (e) {
+                    console.error('[Migration] Failed for string block', block.id, e);
+                }
+            }
+        }
+        
+        if (noteChanged) {
+            newNotes[i] = note;
+        }
+    }
+    
+    if (hasChanges) {
+        console.log('[Migration] Migrated legacy Base64 attachments to IndexedDB.');
+        useStore.setState({ notes: newNotes });
+        await saveAllNotesToDisk(newNotes);
+    }
+};

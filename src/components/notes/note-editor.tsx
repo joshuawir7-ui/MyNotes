@@ -1,6 +1,7 @@
 "use client"
 
 import { getLocalImageSrc } from "@/lib/image-utils"
+import { useLocalUrl } from "@/hooks/use-local-url"
 import { getFileIcon } from "@/lib/file-icons"
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import { useStore, Note, NoteBlock, BlockType } from "@/lib/store"
@@ -87,6 +88,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
     const [activeBlockId, setActiveBlockId] = useState<string | null>(null)
     const [viewportOffset, setViewportOffset] = useState(0)
     const [fullscreenImageUrl, setFullscreenImageUrl] = useState<string | null>(null)
+    const fullscreenResolvedSrc = useLocalUrl(fullscreenImageUrl)
 
     const [isLandscape, setIsLandscape] = useState(false)
     const [showHeader, setShowHeader] = useState(true)
@@ -773,7 +775,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                         <X className="w-6 h-6" />
                     </button>
                     <img
-                        src={getLocalImageSrc(fullscreenImageUrl || '')}
+                        src={fullscreenResolvedSrc || ''}
                         alt="Fullscreen attachment"
                         className="max-w-full max-h-[90vh] object-contain rounded-xl animate-in zoom-in-95 duration-200"
                     />
@@ -804,12 +806,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
     const isSynced = !!(block.driveFileId && hasImage && !isDownloading);
     const lastTapRef = useRef(0);
 
-    // Memoize the converted src so convertFileSrc doesn't run on every render
-    const imageSrc = React.useMemo(
-        () => hasImage ? getLocalImageSrc(block.content) : '',
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [block.content]
-    );
+    const imageSrc = useLocalUrl(hasImage ? block.content : null);
 
     const handleImageTap = (e: React.MouseEvent | React.TouchEvent) => {
         if (!isDownloading) {
@@ -963,42 +960,112 @@ async function uploadAttachmentToDrive(
 ): Promise<string> {
     const pureBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
     const byteCharacters = atob(pureBase64);
-    const byteNumbers = new Array(byteCharacters.length);
+    const byteArray = new Uint8Array(byteCharacters.length);
     for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
+        byteArray[i] = byteCharacters.charCodeAt(i);
     }
-    const fileBlob = new Blob([new Uint8Array(byteNumbers)]);
+    const fileBlob = new Blob([byteArray]);
+    const fileSizeMB = fileBlob.size / (1024 * 1024);
 
-    const metadata = { name: fileName };
-    const boundary = 'mynotes_upload_boundary';
-    const multipartBody =
-        `--${boundary}\r\n` +
-        `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-        `${JSON.stringify(metadata)}\r\n` +
-        `--${boundary}\r\n` +
-        `Content-Type: application/octet-stream\r\n\r\n`;
+    // Detect MIME type from the data URI prefix (fallback to octet-stream)
+    let mimeType = 'application/octet-stream';
+    if (base64Data.startsWith('data:')) {
+        const match = base64Data.match(/^data:([^;]+);/);
+        if (match) mimeType = match[1];
+    } else {
+        const ext = fileName.split('.').pop()?.toLowerCase() || '';
+        const mimeMap: Record<string, string> = {
+            mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
+            mp3: 'audio/mpeg', wav: 'audio/wav',
+            pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg',
+            jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+        };
+        mimeType = mimeMap[ext] || 'application/octet-stream';
+    }
 
-    const closing = `\r\n--${boundary}--`;
+    const metadata = { name: fileName, mimeType };
 
-    const fullBody = new Blob([multipartBody, fileBlob, closing]);
+    // ──────────────────────────────────────────────────────
+    // SMALL FILES (<4 MB): fast multipart upload
+    // ──────────────────────────────────────────────────────
+    if (fileSizeMB < 4) {
+        const boundary = 'mynotes_upload_boundary';
+        const multipartBody =
+            `--${boundary}\r\n` +
+            `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+            `${JSON.stringify(metadata)}\r\n` +
+            `--${boundary}\r\n` +
+            `Content-Type: ${mimeType}\r\n\r\n`;
+        const closing = `\r\n--${boundary}--`;
+        const fullBody = new Blob([multipartBody, fileBlob, closing]);
 
-    const response = await fetch(
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+        const response = await fetch(
+            'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+            {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': `multipart/related; boundary=${boundary}`,
+                },
+                body: fullBody,
+            }
+        );
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Drive multipart upload failed (${response.status}): ${errText}`);
+        }
+        const result = await response.json();
+        return result.id;
+    }
+
+    // ──────────────────────────────────────────────────────
+    // LARGE FILES (≥4 MB): resumable upload (bypasses 5MB limit)
+    // Step 1 – Initiate session, get upload URL
+    // ──────────────────────────────────────────────────────
+    console.log(`[Upload] Archivo grande (${fileSizeMB.toFixed(1)} MB), usando Resumable Upload...`);
+
+    const initiateRes = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
         {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${accessToken}`,
-                'Content-Type': `multipart/related; boundary=${boundary}`,
+                'Content-Type': 'application/json; charset=UTF-8',
+                'X-Upload-Content-Type': mimeType,
+                'X-Upload-Content-Length': String(fileBlob.size),
             },
-            body: fullBody,
+            body: JSON.stringify(metadata),
         }
     );
 
-    if (!response.ok) {
-        throw new Error(`Drive upload falló: ${response.status} ${await response.text()}`);
+    if (!initiateRes.ok) {
+        const errText = await initiateRes.text();
+        throw new Error(`Drive resumable initiate failed (${initiateRes.status}): ${errText}`);
     }
 
-    const result = await response.json();
+    const uploadUrl = initiateRes.headers.get('Location');
+    if (!uploadUrl) {
+        throw new Error('Drive resumable: no Location header returned from initiation.');
+    }
+
+    // Step 2 – Upload the binary content
+    const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': mimeType,
+            'Content-Length': String(fileBlob.size),
+        },
+        body: fileBlob,
+    });
+
+    if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        throw new Error(`Drive resumable PUT failed (${uploadRes.status}): ${errText}`);
+    }
+
+    const result = await uploadRes.json();
+    console.log(`[Upload] Resumable upload completado. driveFileId: ${result.id}`);
     return result.id;
 }
 
@@ -1302,9 +1369,34 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
     );
 }
 
-function VideoThumbnailWeb({ src }: { src: string }) {
+// Checks whether a URL string is safe to load in a <video> element
+function isPlayableVideoUrl(url: string): boolean {
+    if (!url) return false;
+    if (url.startsWith('drive://')) return false;  // placeholder, not a real URL
+    if (url.startsWith('data:')) return false;      // data URIs can crash mobile WebView for large videos
+    if (url.startsWith('indexeddb://')) return false; // must be resolved first
+    return true;
+}
+
+// Video-thumbnail placeholder shown when no playable URL / no thumbnail image is available
+function VideoPlaceholder({ name }: { name?: string }) {
+    return (
+        <div className="w-full h-[200px] flex flex-col items-center justify-center bg-black/30 text-white/40">
+            <Film className="w-12 h-12 mb-2 opacity-40" />
+            {name && <span className="text-xs font-medium text-center px-4 opacity-60 truncate max-w-full">{name}</span>}
+            <span className="text-[10px] mt-1 opacity-40">Toca ▶ para reproducir</span>
+        </div>
+    );
+}
+
+function VideoThumbnailWeb({ src, name }: { src: string; name?: string }) {
     const thumbVideoRef = useRef<HTMLVideoElement>(null);
     const [hasError, setHasError] = useState(false);
+
+    // Skip the video element entirely for non-playable URLs to avoid "Error de previsualización"
+    if (!isPlayableVideoUrl(src)) {
+        return <VideoPlaceholder name={name} />;
+    }
 
     useEffect(() => {
         const video = thumbVideoRef.current;
@@ -1332,11 +1424,11 @@ function VideoThumbnailWeb({ src }: { src: string }) {
         video.addEventListener('seeked', handleSeeked);
         video.addEventListener('error', handleError);
 
-        // Timeout of 10s if metadata doesn't load
+        // 8s timeout – if metadata doesn't arrive, show placeholder instead of spinner forever
         timeoutId = setTimeout(() => {
-            console.error('[VIDEO] Timeout esperando loadedmetadata para miniatura (web):', src);
+            console.warn('[VIDEO] Timeout loadedmetadata — switching to placeholder:', src);
             setHasError(true);
-        }, 10000);
+        }, 8000);
 
         return () => {
             clearTimeout(timeoutId);
@@ -1347,12 +1439,7 @@ function VideoThumbnailWeb({ src }: { src: string }) {
     }, [src]);
 
     if (hasError) {
-        return (
-            <div className="w-full h-[200px] flex flex-col items-center justify-center bg-black/20 text-red-400">
-                <AlertCircle className="w-12 h-12 mb-2" />
-                <span className="text-xs font-medium">Error de previsualización</span>
-            </div>
-        );
+        return <VideoPlaceholder name={name} />;
     }
 
     return (
@@ -1372,6 +1459,9 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
     const [showControls, setShowControls] = useState(true);
     const videoData = block.content || { url: '', name: '', type: '' };
     const hasVideo = !!videoData.url;
+    const resolvedVideoSrc = useLocalUrl(videoData.url);
+    const resolvedThumbSrc = useLocalUrl(block.thumbnailPath);
+
     const [isDownloadingState, setIsDownloadingState] = useState(false);
     const isDownloading = block.isDownloading || isDownloadingState;
     const [isPlaying, setIsPlaying] = useState(false);
@@ -1573,13 +1663,13 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                     <div className="relative w-full group/video bg-black flex items-center justify-center">
                         <video
                             ref={videoRef}
-                            src={getLocalImageSrc(videoData.url)}
+                            src={resolvedVideoSrc}
                             controls
                             autoPlay
                             playsInline
                             className="w-full max-h-[60vh] object-contain bg-black"
                             preload="none"
-                            poster={block.thumbnailPath ? getLocalImageSrc(block.thumbnailPath) : undefined}
+                            poster={resolvedThumbSrc || undefined}
                         />
                         {supportsPip && (
                             <button
@@ -1592,16 +1682,34 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                             </button>
                         )}
                     </div>
-                ) : (
-                    <div className="relative w-full cursor-pointer bg-black/10 group-hover:bg-black/20 transition-colors" onClick={handlePlayClick}>
-                        <VideoThumbnailWeb src={getLocalImageSrc(videoData.url)} />
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-16 h-16 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center shadow-xl border border-white/20 group-hover:scale-110 transition-transform">
-                                <div className="w-0 h-0 border-t-8 border-t-transparent border-l-[14px] border-l-white border-b-8 border-b-transparent ml-1"></div>
+                ) : (() => {
+                    // On native, prefer the pre-generated thumbnailPath image (never errors).
+                    // On web, use VideoThumbnailWeb only if the URL is playable (not drive://).
+                    const hasThumbnailImg = !!block.thumbnailPath;
+                    const useImgThumb = hasThumbnailImg && !!resolvedThumbSrc;
+                    const canUseVideoThumb = !useImgThumb && isPlayableVideoUrl(resolvedVideoSrc);
+
+                    return (
+                        <div className="relative w-full cursor-pointer bg-black/10 group-hover:bg-black/20 transition-colors" onClick={handlePlayClick}>
+                            {useImgThumb ? (
+                                <img
+                                    src={resolvedThumbSrc}
+                                    alt={videoData.name || 'video'}
+                                    className="w-full max-h-[60vh] object-contain opacity-80"
+                                />
+                            ) : canUseVideoThumb ? (
+                                <VideoThumbnailWeb src={resolvedVideoSrc} name={videoData.name} />
+                            ) : (
+                                <VideoPlaceholder name={videoData.name} />
+                            )}
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-16 h-16 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center shadow-xl border border-white/20 group-hover:scale-110 transition-transform">
+                                    <div className="w-0 h-0 border-t-8 border-t-transparent border-l-[14px] border-l-white border-b-8 border-b-transparent ml-1"></div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )
+                    );
+                })()
             ) : (
                 <div className="text-center w-full">
                     <Film className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
