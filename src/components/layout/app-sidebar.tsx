@@ -394,7 +394,7 @@ export function AppSidebar() {
 
     return (
         <aside className="fixed z-50 transition-all duration-300 ease-in-out
-            bottom-6 left-4 right-4 mx-auto w-[94%] max-w-md h-16 flex flex-row items-center px-2 py-0 
+            bottom-4 left-3 right-3 mx-auto w-[88%] max-w-xs sm:max-w-sm h-12 flex flex-row items-center px-1.5 py-0 
             rounded-full border border-black/10 dark:border-white/10 shadow-2xl
             bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md
             md:top-4 md:bottom-4 md:left-4 md:right-auto md:mx-0 md:w-60 md:h-auto md:border md:flex-col md:pt-8 md:pb-8 md:px-4 md:overflow-y-auto md:bg-white/90 dark:md:bg-zinc-900/90 md:shadow-2xl md:rounded-[2.5rem] no-scrollbar">
@@ -444,7 +444,7 @@ export function AppSidebar() {
             </div>
 
             {/* Mobile Navigation Row */}
-            <nav className="flex md:hidden items-center justify-between w-full h-full px-4">
+            <nav className="flex md:hidden items-center justify-between w-full h-full px-2.5">
                 <div className="flex items-center justify-around flex-1 gap-0.5">
                     {navItems.map((item) => {
                         const isActive = pathname === item.href
@@ -454,7 +454,7 @@ export function AppSidebar() {
                                 key={item.href}
                                 href={item.href}
                                 id={item.href === '/tasks' ? "nav-item-tasks" : undefined}
-                                className={`relative flex items-center justify-center p-1.5 rounded-full transition-all duration-300 group shrink-0 ${isBlinking ? 'animate-pulse-green border border-green-500 bg-green-500/20' : ''
+                                className={`relative flex items-center justify-center p-1 rounded-full transition-all duration-300 group shrink-0 ${isBlinking ? 'animate-pulse-green border border-green-500 bg-green-500/20' : ''
                                     }`}
                                 title={isMounted ? item.label : ""}
                             >
