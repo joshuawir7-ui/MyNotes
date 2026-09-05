@@ -51,6 +51,22 @@ export function getLocalImageSrc(uriOrBase64: string): string {
         return uriOrBase64;
     }
 
+    if (uriOrBase64.startsWith('drive://')) {
+        const fileId = uriOrBase64.replace('drive://', '');
+        if (fileId && typeof window !== 'undefined') {
+            try {
+                const { useStore } = require('./store');
+                const token = useStore?.getState?.()?.googleUser?.accessToken;
+                if (token) {
+                    return `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${token}`;
+                }
+            } catch (e) {
+                // store not ready or require unavailable
+            }
+        }
+        return uriOrBase64;
+    }
+
     // Attempt to use convertFileSrc if we are in a browser environment with Capacitor
     if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
         let path = uriOrBase64;

@@ -14,6 +14,7 @@ import { PageDescription } from "@/components/ui/page-description"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { MobileContextMenu } from "@/components/ui/mobile-context-menu"
 import { getLocalImageSrc } from "@/lib/image-utils"
+import { useLocalUrl } from "@/hooks/use-local-url"
 
 export default function NotesPage() {
     const notes = useStore(useShallow(state => state.notes))
@@ -313,18 +314,73 @@ const NoteCardSkeleton = () => (
     </div>
 )
 
-const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note; onEdit: () => void; onDelete: () => void; onTogglePin: (e: React.MouseEvent) => void; t: any }) => {
-    // Compute thumbnail src synchronously from note blocks.
-    // IMPORTANT: thumbSrc is derived only from already-stored data (no async fetch),
-    // so it is either a string or null from the very first render — no state update needed.
-    const thumbSrc = useMemo(() => {
-        if (!note.blocks) return null;
-        const imageBlocks = note.blocks.filter(
-            (b): b is any => b.type === 'image' && typeof b.content === 'string' && b.content !== ''
+function getRawNoteThumbnail(blocks: any[] | undefined): string | null {
+    if (!blocks || !Array.isArray(blocks)) return null;
+    for (const b of blocks) {
+        if (!b || typeof b !== 'object') continue;
+        if (b.type === 'image' || b.type === 'drawing') {
+            if (typeof b.content === 'string' && b.content.trim() !== '') {
+                if (b.content === 'drive://' && b.driveFileId) {
+                    return `drive://${b.driveFileId}`;
+                }
+                return b.content;
+            }
+            if (b.content && typeof b.content === 'object' && typeof b.content.url === 'string' && b.content.url.trim() !== '') {
+                return b.content.url;
+            }
+            if (b.driveFileId && typeof b.driveFileId === 'string' && b.driveFileId.trim() !== '') {
+                return `drive://${b.driveFileId}`;
+            }
+        }
+    }
+    return null;
+}
+
+const NoteThumbnail = memo(({ rawSrc }: { rawSrc: string | null }) => {
+    const resolvedUrl = useLocalUrl(rawSrc);
+    const [isLoaded, setIsLoaded] = useState(false);
+    const [hasError, setHasError] = useState(false);
+
+    useEffect(() => {
+        setIsLoaded(false);
+        setHasError(false);
+    }, [rawSrc, resolvedUrl]);
+
+    const showImage = !!resolvedUrl && !hasError && isLoaded && !resolvedUrl.startsWith('indexeddb://') && !resolvedUrl.startsWith('drive://');
+
+    if (!rawSrc) {
+        return (
+            <div
+                className="flex-none w-[72px] h-[72px] rounded-xl overflow-hidden self-start mt-1 shrink-0 opacity-0 pointer-events-none"
+                aria-hidden="true"
+            />
         );
-        const lastContent = imageBlocks.length > 0 ? imageBlocks[imageBlocks.length - 1].content : null;
-        return lastContent ? getLocalImageSrc(lastContent) : null;
-    }, [note.blocks]);
+    }
+
+    return (
+        <div
+            className={`flex-none w-[72px] h-[72px] rounded-xl overflow-hidden self-start mt-1 shrink-0 bg-black/10 dark:bg-white/5 transition-opacity duration-300 ${
+                showImage ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+            aria-hidden={!showImage}
+        >
+            {resolvedUrl && !hasError && (
+                <img
+                    src={resolvedUrl}
+                    alt="Note thumbnail"
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onLoad={() => setIsLoaded(true)}
+                    onError={() => setHasError(true)}
+                />
+            )}
+        </div>
+    );
+});
+NoteThumbnail.displayName = "NoteThumbnail";
+
+const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note; onEdit: () => void; onDelete: () => void; onTogglePin: (e: React.MouseEvent) => void; t: any }) => {
+    const rawThumb = useMemo(() => getRawNoteThumbnail(note.blocks), [note.blocks]);
 
     return (
         <MobileContextMenu
@@ -389,38 +445,7 @@ const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note;
                     </div>
                 </div>
 
-                {/*
-                  * FIX — Layout-shift prevention:
-                  * The thumbnail slot is ALWAYS rendered at 72×72, whether or not this note
-                  * has an image. This locks the card's total height from the very first render.
-                  *
-                  * Before: {thumbSrc && <div ...><img /></div>}
-                  *   → card grew by 72px the moment the image src resolved → layout shift
-                  *   → VirtuosoGrid detected the changed row height and corrected scroll position
-                  *   → visible jump/flicker.
-                  *
-                  * After: the slot is always in the DOM; when thumbSrc is null the slot is
-                  * invisible (opacity-0) but still occupies 72×72. The card height never changes
-                  * after mount → no layout shift → no scroll correction needed.
-                  *
-                  * The image fades in (opacity transition) after the browser fires onLoad —
-                  * a pure compositor animation that does not affect layout at all.
-                  */}
-                <div
-                    className="flex-none w-[72px] h-[72px] rounded-xl overflow-hidden self-start mt-1 shrink-0 bg-black/10 dark:bg-white/5"
-                    style={{ opacity: thumbSrc ? 1 : 0, pointerEvents: thumbSrc ? 'auto' : 'none' }}
-                    aria-hidden={!thumbSrc}
-                >
-                    {thumbSrc && (
-                        <img
-                            src={thumbSrc}
-                            alt="Note thumbnail"
-                            className="note-thumb w-full h-full object-cover"
-                            loading="lazy"
-                            onLoad={(e) => (e.currentTarget as HTMLImageElement).classList.add('note-thumb--loaded')}
-                        />
-                    )}
-                </div>
+                <NoteThumbnail rawSrc={rawThumb} />
             </div>
         </MobileContextMenu>
     )
