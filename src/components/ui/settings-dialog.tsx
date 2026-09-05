@@ -28,11 +28,11 @@ export function SettingsDialog() {
     const googleSessionExpired = useStore(state => state.googleSessionExpired)
     const isSyncingCloud = useStore(state => state.isSyncingCloud)
     const restoreProgress = useStore(state => state.restoreProgress)
+    const cloudRestoreProgress = useStore(state => state.cloudRestoreProgress)
     const syncError = useStore(state => state.syncError)
     const lastCloudSync = useStore(state => state.lastCloudSync)
     const syncWithGoogleDrive = useStore(state => state.syncWithGoogleDrive)
-    const restoreFromGoogleDrive = useStore(state => state.restoreFromGoogleDrive)
-    const autoSyncGoogleDrive = useStore(state => state.autoSyncGoogleDrive)
+    const syncCycle = useStore(state => state.syncCycle)
     const showToast = useStore(state => state.showToast)
     const startTourManually = useStore(state => state.startTourManually)
     const t = translations[language] as any
@@ -265,7 +265,7 @@ export function SettingsDialog() {
         if (result) {
             const accessToken = ((result as any).authentication?.accessToken || (result as any).accessToken) || undefined;
             setGoogleUser({
-                name: result.displayName || '',
+                name: (result as any).name || (result as any).displayName || '',
                 email: result.email || '',
                 imageUrl: result.imageUrl || '',
                 accessToken,
@@ -283,7 +283,7 @@ export function SettingsDialog() {
             }
             showNotif(
                 language === 'es' ? "Sesión Iniciada" : "Logged In",
-                language === 'es' ? `Bienvenido, ${result.displayName}` : `Welcome, ${result.displayName}`,
+                language === 'es' ? `Bienvenido, ${(result as any).name || (result as any).displayName}` : `Welcome, ${(result as any).name || (result as any).displayName}`,
                 "success"
             );
             setTimeout(() => {
@@ -373,7 +373,7 @@ export function SettingsDialog() {
     const handleCloudRestore = async () => {
         setLocalRestoring(true);
         try {
-            const success = await restoreFromGoogleDrive();
+            const success = await syncCycle(true);
             if (success) {
                 showToast(language === 'es' ? "Elementos de la nube restaurados" : "Cloud elements restored", "success");
             } else {
@@ -1080,7 +1080,7 @@ export function SettingsDialog() {
                                                         </div>
                                                     ) : (
                                                         <div className="flex flex-col gap-2">
-                                                            <div className="flex gap-2">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                                 <motion.button
                                                                     onClick={handleCloudSync}
                                                                     disabled={isSyncingCloud || localSyncing || localRestoring}
@@ -1098,22 +1098,27 @@ export function SettingsDialog() {
                                                                 </motion.button>
                                                                 <motion.button
                                                                     onClick={handleCloudRestore}
-                                                                    disabled={isSyncingCloud || localSyncing || localRestoring}
+                                                                    disabled={isSyncingCloud || localSyncing || localRestoring || !!cloudRestoreProgress}
                                                                     whileHover={{ scale: 1.02 }}
                                                                     whileTap={{ scale: 0.98 }}
                                                                     className="flex-1 flex items-center justify-center gap-2 p-3 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 disabled:opacity-50 text-foreground rounded-xl font-bold transition-all text-xs"
                                                                 >
                                                                     <motion.div
-                                                                        animate={localRestoring ? { rotate: 360 } : undefined}
-                                                                        transition={localRestoring ? { duration: 1, ease: "linear", repeat: Infinity } : undefined}
+                                                                        animate={localRestoring || !!cloudRestoreProgress ? { rotate: 360 } : undefined}
+                                                                        transition={localRestoring || !!cloudRestoreProgress ? { duration: 1, ease: "linear", repeat: Infinity } : undefined}
                                                                     >
-                                                                        {localRestoring ? (
+                                                                        {localRestoring || cloudRestoreProgress ? (
                                                                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                                                         ) : (
                                                                             <Cloud className="w-3.5 h-3.5" />
                                                                         )}
                                                                     </motion.div>
-                                                                    {t.restoreFromCloud || "Restore"}
+                                                                    {cloudRestoreProgress && cloudRestoreProgress.total > 0
+                                                                        ? (language === 'es'
+                                                                            ? `Videos: ${cloudRestoreProgress.done}/${cloudRestoreProgress.total}`
+                                                                            : `Videos: ${cloudRestoreProgress.done}/${cloudRestoreProgress.total}`)
+                                                                        : (t.restoreFromCloud || "Restore")
+                                                                    }
                                                                 </motion.button>
                                                             </div>
 

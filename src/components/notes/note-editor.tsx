@@ -9,7 +9,7 @@ import { translations } from "@/lib/translations"
 import { motion, AnimatePresence } from "framer-motion"
 import { App as CapacitorApp } from "@capacitor/app"
 import { Capacitor } from "@capacitor/core"
-import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation, Film, PictureInPicture } from "lucide-react"
+import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation, Film, PictureInPicture, Download, Loader2 } from "lucide-react"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 
 export const isNoteEmpty = (titleStr: any, blocksList: NoteBlock[]) => {
@@ -1105,7 +1105,7 @@ function NoteAudioBlock({ block, removeBlock }: any) {
                 </button>
             </div>
             <audio
-                src={audioUrl.startsWith('file://') ? window.Capacitor.convertFileSrc(audioUrl) : audioUrl}
+                src={audioUrl.startsWith('file://') ? (window as any).Capacitor.convertFileSrc(audioUrl) : audioUrl}
                 controls
                 autoPlay
                 className="w-full note-audio-player"
@@ -1378,24 +1378,69 @@ function isPlayableVideoUrl(url: string): boolean {
     return true;
 }
 
-// Video-thumbnail placeholder shown when no playable URL / no thumbnail image is available
-function VideoPlaceholder({ name }: { name?: string }) {
+// Video-thumbnail placeholder shown when no playable URL / no thumbnail image is available.
+// If noteId, blockId and driveFileId are provided, shows a manual download button for when
+// automatic reconciliation failed or the user opens the note before the background download finishes.
+function VideoPlaceholder({ name, noteId, blockId, driveFileId }: {
+    name?: string;
+    noteId?: string;
+    blockId?: string;
+    driveFileId?: string;
+}) {
+    const [isDownloading, setIsDownloading] = useState(false);
+    const canDownload = !!(noteId && blockId && driveFileId);
+
+    const handleManualDownload = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!canDownload || isDownloading) return;
+        setIsDownloading(true);
+        try {
+            const { useStore } = await import('@/lib/store');
+            const success = await useStore.getState().downloadAttachment(noteId!, blockId!);
+            if (!success) {
+                useStore.getState().showToast('No se pudo descargar el video.', 'error');
+            }
+        } catch (e) {
+            console.error('[VideoPlaceholder] Error al descargar:', e);
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     return (
-        <div className="w-full h-[200px] flex flex-col items-center justify-center bg-black/30 text-white/40">
-            <Film className="w-12 h-12 mb-2 opacity-40" />
+        <div className="w-full h-[200px] flex flex-col items-center justify-center bg-black/30 text-white/40 gap-2">
+            {isDownloading ? (
+                <Loader2 className="w-12 h-12 mb-1 animate-spin opacity-60" />
+            ) : (
+                <Film className="w-12 h-12 mb-1 opacity-40" />
+            )}
             {name && <span className="text-xs font-medium text-center px-4 opacity-60 truncate max-w-full">{name}</span>}
-            <span className="text-[10px] mt-1 opacity-40">Toca ▶ para reproducir</span>
+            {canDownload && !isDownloading && (
+                <button
+                    onClick={handleManualDownload}
+                    className="mt-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/70 text-xs font-semibold rounded-lg border border-white/20 transition-all active:scale-95 flex items-center gap-1.5"
+                >
+                    <Download className="w-3 h-3" />
+                    Descargar video
+                </button>
+            )}
+            {!canDownload && !isDownloading && (
+                <span className="text-[10px] mt-1 opacity-40">Toca ▶ para reproducir</span>
+            )}
+            {isDownloading && (
+                <span className="text-[10px] opacity-60">Descargando...</span>
+            )}
         </div>
     );
 }
 
-function VideoThumbnailWeb({ src, name }: { src: string; name?: string }) {
+function VideoThumbnailWeb({ src, name, noteId, blockId, driveFileId }: { src: string; name?: string; noteId?: string; blockId?: string; driveFileId?: string }) {
     const thumbVideoRef = useRef<HTMLVideoElement>(null);
     const [hasError, setHasError] = useState(false);
 
     // Skip the video element entirely for non-playable URLs to avoid "Error de previsualización"
     if (!isPlayableVideoUrl(src)) {
-        return <VideoPlaceholder name={name} />;
+        return <VideoPlaceholder name={name} noteId={noteId} blockId={blockId} driveFileId={driveFileId} />;
     }
 
     useEffect(() => {
@@ -1439,7 +1484,7 @@ function VideoThumbnailWeb({ src, name }: { src: string; name?: string }) {
     }, [src]);
 
     if (hasError) {
-        return <VideoPlaceholder name={name} />;
+        return <VideoPlaceholder name={name} noteId={noteId} blockId={blockId} driveFileId={driveFileId} />;
     }
 
     return (
@@ -1698,9 +1743,9 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                                     className="w-full max-h-[60vh] object-contain opacity-80"
                                 />
                             ) : canUseVideoThumb ? (
-                                <VideoThumbnailWeb src={resolvedVideoSrc} name={videoData.name} />
+                        <VideoThumbnailWeb src={resolvedVideoSrc} name={videoData.name} noteId={noteId} blockId={block.id} driveFileId={block.driveFileId} />
                             ) : (
-                                <VideoPlaceholder name={videoData.name} />
+                                <VideoPlaceholder name={videoData.name} noteId={noteId} blockId={block.id} driveFileId={block.driveFileId} />
                             )}
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                 <div className="w-16 h-16 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center shadow-xl border border-white/20 group-hover:scale-110 transition-transform">
@@ -1751,7 +1796,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
     isLast: boolean,
     moveBlock: (idx: number, direction: 'up' | 'down') => void,
     removeBlock: (id: string) => void,
-    onChange: (c: any) => void,
+    onChange: (c: any, extraProps?: any) => void,
     autoFocus?: boolean,
     onFocus?: () => void,
     onBlur?: () => void,

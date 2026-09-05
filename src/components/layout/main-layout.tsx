@@ -307,23 +307,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             }).then((l: any) => stateListener = l).catch(console.error);
         }
 
-        // Web periodic sync (every 30 seconds)
-        let webSyncInterval: NodeJS.Timeout | undefined;
-        if (!Capacitor.isNativePlatform()) {
-            webSyncInterval = setInterval(async () => {
-                if (document.visibilityState !== 'visible') return;
-                const state = useStore.getState();
-                if (state.googleUser && !state.googleSessionExpired && !state.isSyncingCloud) {
-                    console.log("[Web Sync] Triggering periodic auto-sync...");
-                    import('../../lib/store').then(({ triggerBackgroundSync }) => triggerBackgroundSync());
-                }
-            }, 30000);
-        }
+        // Periodic sync (every 30 seconds) for both Web and Native
+        let syncCycleInterval: NodeJS.Timeout | undefined;
+        syncCycleInterval = setInterval(async () => {
+            if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+            const state = useStore.getState();
+            if (state.googleUser && !state.googleSessionExpired) {
+                console.log("[Sync] Triggering periodic syncCycle...");
+                state.syncCycle().catch(console.error);
+            }
+        }, 30000);
 
         return () => {
             clearInterval(interval)
-            if (webSyncInterval) {
-                clearInterval(webSyncInterval);
+            if (syncCycleInterval) {
+                clearInterval(syncCycleInterval);
             }
             document.removeEventListener('visibilitychange', handleVisibilityChange)
             if (stateListener && stateListener.remove) {
@@ -355,9 +353,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         let cancelStage3: (() => void) | undefined;
 
         const triggerStartupSync = async () => {
-            // Stage 3 (6000ms): Run heavier operations: local filesystem backup and autoSyncGoogleDrive
+            // Stage 3 (6000ms): Run heavier operations: local filesystem backup and syncCycle
             cancelStage3 = runIdle(async () => {
-                console.log("[Startup] Running Stage 3: Local backup and Google Drive sync");
+                const storeState = useStore.getState();
+                if (storeState.googleUser && !storeState.googleSessionExpired) {
+                    storeState.syncCycle().catch(console.error);
+                }
                 // On native (Android), first save locally, then sync cloud
                 if (isNative) {
                     try {
@@ -412,9 +413,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 const currentStore = useStore.getState();
                 if (currentStore.googleUser && !currentStore.googleSessionExpired) {
                     console.log("Startup auto-sync triggered after hydration");
-                    import('../../lib/store').then(({ triggerBackgroundSync }) => triggerBackgroundSync());
+                    currentStore.syncCycle().catch(console.error);
                 }
-            }, 6000);
+            }, 1000);
         };
 
         const runStage1And2 = () => {

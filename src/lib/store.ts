@@ -2,12 +2,13 @@ import { create } from 'zustand'
 // Force HMR Update para balance en tiempo real
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { Language, translations } from './translations'
-import { migrateBase64Images } from './image-utils';
 import { NotificationManager } from './notifications';
+import { saveBlobToIndexedDB } from './blob-storage';
 import { Preferences } from '@capacitor/preferences'
 import { registerPlugin, Capacitor } from '@capacitor/core'
 import { get, set as idbSet, del } from 'idb-keyval'
 import { App } from '@capacitor/app'
+import { BackgroundTask } from '@capawesome/capacitor-background-task'
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -32,7 +33,7 @@ export const WidgetSync = registerPlugin<{
 }>('WidgetSync');
 
 if (isNative) {
-    WidgetSync.addListener('imageDownloaded', (data: { driveFileId: string, noteId: string, blockId: string, localUri: string }) => {
+    (WidgetSync as any).addListener('imageDownloaded', (data: { driveFileId: string, noteId: string, blockId: string, localUri: string }) => {
         const state = useStore.getState();
         if (state.updateNoteBlockContent) {
             const note = state.notes.find(n => n.id === data.noteId);
@@ -241,7 +242,8 @@ export const saveAllNotesToDisk = async (notes: Note[]) => {
 // AppStateChange listener is placed at the end of the file to ensure all store functions are fully hoisted and initialized
 
 // Custom storage for Capacitor to avoid SharedPreferences size limits (1-2MB)
-let syncInProgress = false;
+let isSyncing = false;
+let syncQueued = false;
 let syncWorker: Worker | null = null;
 if (typeof window !== 'undefined') {
     syncWorker = new Worker(new URL('./sync-worker.ts', import.meta.url));
@@ -1011,6 +1013,7 @@ interface AppState {
     lastCloudSync?: string
     lastUpdated?: number
     restoreProgress?: string | null
+    cloudRestoreProgress: { done: number; total: number } | null
     toast: { message: string; type: 'success' | 'error' | 'info' | 'warning' } | null
     showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void
     clearToast: () => void
@@ -1044,8 +1047,7 @@ interface AppState {
     // Actions
     setGoogleUser: (user: GoogleUser | null) => void
     syncWithGoogleDrive: () => Promise<boolean>
-    restoreFromGoogleDrive: () => Promise<boolean>
-    autoSyncGoogleDrive: () => Promise<boolean>
+    syncCycle: (force?: boolean) => Promise<boolean>
     downloadAttachment: (noteId: string, blockId: string) => Promise<boolean>
     inAppNotificationDates: number[]
     notificationsEnabled: boolean
@@ -1121,7 +1123,7 @@ interface AppState {
     stopTaskGroupReminder: () => void
     syncHabitsNotification: () => void
     pullOfflineCompletedTasks: () => Promise<void>
-    pullOfflineNotes: () => Promise<void>
+    pullOfflineNotes: (force?: boolean) => Promise<void>
     pullOfflineAppointments: () => Promise<void>
     incrementAppOpenCount: () => void
     handleNotificationPromptResponse: (response: 'accepted' | 'rejected') => void
@@ -1181,6 +1183,240 @@ export const stripLargePayloads = (notes: Note[]): Note[] => {
     }));
 };
 
+
+// ─── Attachment Sync Manifest ─────────────────────────────────────────────────
+export type AttachmentManifestEntry = {
+    driveFileId: string;
+    noteId: string;
+    blockId: string;
+    type: 'video' | 'image' | 'file';
+    localPath: string;      // file:// path tras descarga exitosa
+    sizeBytes: number;
+    lastSyncedAt: number;   // epoch ms
+};
+export type AttachmentManifest = Record<string /*driveFileId*/, AttachmentManifestEntry>;
+
+const MANIFEST_KEY = 'mynotes_attachment_manifest';
+
+export const getAttachmentManifest = async (): Promise<AttachmentManifest> => {
+    try {
+        if (isNative) {
+            const { value } = await Preferences.get({ key: MANIFEST_KEY });
+            return value ? JSON.parse(value) : {};
+        } else {
+            const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(MANIFEST_KEY) : null;
+            return raw ? JSON.parse(raw) : {};
+        }
+    } catch { return {}; }
+};
+
+export const setAttachmentManifest = async (manifest: AttachmentManifest): Promise<void> => {
+    try {
+        const str = JSON.stringify(manifest);
+        if (isNative) {
+            await Preferences.set({ key: MANIFEST_KEY, value: str });
+        } else {
+            if (typeof localStorage !== 'undefined') localStorage.setItem(MANIFEST_KEY, str);
+        }
+    } catch (e) { console.error('[Manifest] Error saving manifest', e); }
+};
+
+export const upsertManifestEntry = async (entry: AttachmentManifestEntry): Promise<void> => {
+    const manifest = await getAttachmentManifest();
+    manifest[entry.driveFileId] = entry;
+    await setAttachmentManifest(manifest);
+};
+
+export const removeManifestEntry = async (driveFileId: string): Promise<void> => {
+    const manifest = await getAttachmentManifest();
+    delete manifest[driveFileId];
+    await setAttachmentManifest(manifest);
+};
+
+// ─── Reconciliacion inteligente de 3 vias para adjuntos ──────────────────────
+// Compara el estado remoto vs. manifest local vs. estado local actual para:
+//   A) Descargar los adjuntos nuevos o localmente perdidos/corruptos.
+//   B) Eliminar archivos locales cuyos driveFileIds ya no existen en la nube.
+// Disenado para video, image y file. No toca bloques sin driveFileId.
+export const reconcileCloudAttachments = async (
+    remoteNotes: Note[],
+    token: string,
+    onProgress?: (done: number, total: number) => void
+): Promise<Note[]> => {
+    if (!isNative) return remoteNotes;
+
+    const manifest = await getAttachmentManifest();
+    const ATTACHMENT_TYPES = ['image', 'video', 'file'];
+    const CONCURRENCY = 3;
+    const MAX_RETRIES = 2;
+
+    // Coleccionar todos los driveFileIds remotos
+    const remoteIdSet = new Set<string>();
+    for (const note of remoteNotes) {
+        for (const block of note.blocks) {
+            if (ATTACHMENT_TYPES.includes(block.type) && block.driveFileId) {
+                remoteIdSet.add(block.driveFileId);
+            }
+        }
+    }
+
+    // A) Determinar que hay que descargar
+    type DownloadJob = { driveFileId: string; noteId: string; blockId: string; fileName: string; motivo: string };
+    const toDownload: DownloadJob[] = [];
+
+    for (const note of remoteNotes) {
+        for (const block of note.blocks) {
+            if (!ATTACHMENT_TYPES.includes(block.type) || !block.driveFileId) continue;
+            const entry = manifest[block.driveFileId];
+            const fileName = (block.type === 'file' || block.type === 'video')
+                ? (block.content?.name || 'file')
+                : 'image.png';
+
+            if (!entry) {
+                toDownload.push({ driveFileId: block.driveFileId, noteId: note.id, blockId: block.id, fileName, motivo: 'nuevo' });
+            } else {
+                let needsRedownload = false;
+                try {
+                    const stat = await Filesystem.stat({ path: entry.localPath.replace('file://', '') });
+                    if (!stat || stat.size === 0 || stat.type === 'directory') needsRedownload = true;
+                } catch { needsRedownload = true; }
+
+                if (needsRedownload) {
+                    toDownload.push({ driveFileId: block.driveFileId, noteId: note.id, blockId: block.id, fileName, motivo: 'archivo local perdido/corrupto' });
+                } else {
+                    if (entry.noteId !== note.id || entry.blockId !== block.id) {
+                        await upsertManifestEntry({ ...entry, noteId: note.id, blockId: block.id });
+                    }
+                    const noteToFix = remoteNotes.find(n => n.id === note.id);
+                    if (noteToFix) {
+                        const blockToFix = noteToFix.blocks.find(b => b.id === block.id);
+                        if (blockToFix) {
+                            if (blockToFix.type === 'file' || blockToFix.type === 'video') {
+                                blockToFix.content = { ...blockToFix.content, url: entry.localPath };
+                            } else {
+                                blockToFix.content = entry.localPath;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // B) Determinar que hay que eliminar
+    const toDelete: string[] = [];
+    for (const driveFileId of Object.keys(manifest)) {
+        if (!remoteIdSet.has(driveFileId)) {
+            toDelete.push(driveFileId);
+        }
+    }
+
+    // Ejecutar eliminaciones
+    for (const driveFileId of toDelete) {
+        const entry = manifest[driveFileId];
+        try {
+            if (entry?.localPath) {
+                await Filesystem.deleteFile({ path: entry.localPath.replace('file://', '') });
+            }
+        } catch { /* Ignorar si ya no existe */ }
+        await removeManifestEntry(driveFileId);
+        console.log('[Manifest] Eliminado archivo local obsoleto: ' + driveFileId);
+    }
+
+    // Ejecutar descargas con concurrencia limitada
+    const total = toDownload.length;
+    let done = 0;
+    onProgress?.(done, total);
+
+    const downloadWithRetry = async (job: DownloadJob): Promise<void> => {
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            if (attempt > 0) {
+                await new Promise(r => setTimeout(r, attempt === 1 ? 1000 : 3000));
+            }
+            try {
+                const safeFileName = job.fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+                const localFileName = 'attachment_' + job.driveFileId + '_' + safeFileName;
+
+                const dlResult = await Filesystem.downloadFile({
+                    url: 'https://www.googleapis.com/drive/v3/files/' + job.driveFileId + '?alt=media',
+                    path: localFileName,
+                    directory: Directory.Data,
+                    headers: { Authorization: 'Bearer ' + token }
+                });
+
+                if (!dlResult.path) throw new Error('No path returned from downloadFile');
+
+                let fileUri = dlResult.path;
+                if (!fileUri.startsWith('file://') && !fileUri.startsWith('/')) {
+                    const uriRes = await Filesystem.getUri({ path: localFileName, directory: Directory.Data });
+                    fileUri = uriRes.uri;
+                } else if (fileUri.startsWith('/')) {
+                    fileUri = 'file://' + fileUri;
+                }
+
+                let sizeBytes = 0;
+                try {
+                    const stat = await Filesystem.stat({ path: fileUri.replace('file://', '') });
+                    sizeBytes = stat.size || 0;
+                } catch {}
+
+                const noteToUpdate = remoteNotes.find(n => n.id === job.noteId);
+                let blockType: 'video' | 'image' | 'file' = 'file';
+                if (noteToUpdate) {
+                    const blockToUpdate = noteToUpdate.blocks.find(b => b.id === job.blockId);
+                    if (blockToUpdate) {
+                        blockType = blockToUpdate.type as 'video' | 'image' | 'file';
+                        if (blockToUpdate.type === 'file' || blockToUpdate.type === 'video') {
+                            blockToUpdate.content = { ...blockToUpdate.content, url: fileUri };
+                        } else {
+                            blockToUpdate.content = fileUri;
+                        }
+                    }
+                }
+
+                await upsertManifestEntry({
+                    driveFileId: job.driveFileId,
+                    noteId: job.noteId,
+                    blockId: job.blockId,
+                    type: blockType,
+                    localPath: fileUri,
+                    sizeBytes,
+                    lastSyncedAt: Date.now()
+                });
+
+                console.log('[Manifest] Descargado (' + job.motivo + '): ' + job.driveFileId);
+                return;
+            } catch (e) {
+                console.warn('[Manifest] Intento ' + (attempt + 1) + '/' + (MAX_RETRIES + 1) + ' fallido para ' + job.driveFileId + ':', e);
+                if (attempt === MAX_RETRIES) {
+                    console.error('[Manifest] Fallaron todos los reintentos para ' + job.driveFileId + '. El bloque quedara con drive:// para descarga manual.');
+                }
+            }
+        }
+    };
+
+    const runWithConcurrency = async (jobs: DownloadJob[], concurrency: number): Promise<void> => {
+        const queue = [...jobs];
+        const workers = Array.from({ length: Math.min(concurrency, jobs.length) }, async () => {
+            while (queue.length > 0) {
+                const job = queue.shift()!;
+                await downloadWithRetry(job);
+                done++;
+                onProgress?.(done, total);
+            }
+        });
+        await Promise.all(workers);
+    };
+
+    if (toDownload.length > 0) {
+        console.log('[Manifest] Reconciliacion: ' + toDownload.length + ' descarga(s) pendiente(s), ' + toDelete.length + ' eliminacion(es)');
+        await runWithConcurrency(toDownload, CONCURRENCY);
+    } else {
+        console.log('[Manifest] Reconciliacion: nada que descargar, ' + toDelete.length + ' eliminacion(es)');
+    }
+
+    return remoteNotes;
+};
 import { getBlobFromIndexedDB } from './blob-storage';
 
 // Helper to upload attachments that don't have a driveFileId yet
@@ -1341,6 +1577,7 @@ export const uploadMissingAttachments = async (token: string, notes: Note[]): Pr
 
 export let isCloudSyncDirty = false;
 let cloudSyncDebounceTimeout: any = null;
+let syncInProgress = false;
 
 export const markCloudSyncDirty = () => {
     isCloudSyncDirty = true;
@@ -1359,44 +1596,9 @@ export const triggerBackgroundSync = async () => {
     
     if (!user || state.googleSessionExpired) return;
     
-    // Llamar al WorkManager Nativo para hacer la subida
-    if (isNative) {
-        console.log("[Background Sync] Triggering native WorkManager sync...");
-        try {
-            const { readAllNotesFromDisk, readAllTasksFromDisk } = await import('./store');
-            const fullNotes = await readAllNotesFromDisk(state.notes);
-            const fullTasks = await readAllTasksFromDisk(state.tasks);
-            const dataToSync = {
-                notes: stripLargePayloads(fullNotes),
-                tasks: fullTasks,
-                goals: state.goals,
-                appointments: state.appointments,
-                projects: state.projects,
-                taskGroups: state.taskGroups,
-                completedOnceHabits: state.completedOnceHabits || [],
-                transactions: state.transactions || [],
-                expenseNotes: state.expenseNotes || [],
-                savingsGoal: state.savingsGoal || 400,
-                dailySnapshots: state.dailySnapshots,
-                user: state.user,
-                deletedItems: state.deletedItems || {},
-                lastUpdated: state.lastUpdated || 0
-            };
-            const jsonStr = JSON.stringify(dataToSync);
-            
-            await WidgetSync.enqueueCloudSync({
-                token: user.accessToken || "",
-                payload: jsonStr
-            });
-            console.log("[Background Sync] Enqueued in WorkManager successfully.");
-        } catch (err) {
-            console.error("[Background Sync] Failed to enqueue native sync", err);
-        }
-    } else {
-        // En web, hacemos la subida normal si no está en progreso
-        console.log("[Background Sync] Triggering web auto sync...");
-        state.autoSyncGoogleDrive().catch(console.error);
-    }
+    // En todas las plataformas, usamos el ciclo unificado de sincronización (3-way merge)
+    console.log("[Background Sync] Triggering unified syncCycle...");
+    state.syncCycle().catch(console.error);
     
     // Asumimos exito inmediato para el flag (el reintento lo maneja el Worker o la próxima acción)
     isCloudSyncDirty = false;
@@ -1503,6 +1705,7 @@ export const useStore = create<AppState>()(
                 lastCloudSync: undefined,
                 lastUpdated: 0,
                 restoreProgress: null,
+                cloudRestoreProgress: null,
                 toast: null,
                 showToast: (message, type = 'info') => set({ toast: { message, type } }),
                 clearToast: () => set({ toast: null }),
@@ -2838,6 +3041,22 @@ export const useStore = create<AppState>()(
                                 });
                                 return { notes: stateNotes };
                             });
+
+                            // Actualizar manifest tras descarga manual exitosa
+                            try {
+                                let sizeBytes = 0;
+                                try { const st = await Filesystem.stat({ path: fileUri.replace('file://', '') }); sizeBytes = st.size || 0; } catch {}
+                                await upsertManifestEntry({
+                                    driveFileId: block.driveFileId!,
+                                    noteId,
+                                    blockId,
+                                    type: block.type as 'video' | 'image' | 'file',
+                                    localPath: fileUri,
+                                    sizeBytes,
+                                    lastSyncedAt: Date.now()
+                                });
+                            } catch (mErr) { console.warn('[Manifest] Error actualizando manifest en downloadAttachment', mErr); }
+
                             return true;
                         }
                     } catch (e) {
@@ -3134,284 +3353,41 @@ export const useStore = create<AppState>()(
                         return false;
                     }
                     } finally {
-                        syncInProgress = false;
+                        isSyncing = false;
                     }
                 },
 
-                restoreFromGoogleDrive: async () => {
-                    if (syncInProgress) {
-                        console.log("[Sync] Ya hay una sincronización en curso, se omite esta llamada");
+                syncCycle: async (force: boolean = false) => {
+                    if (isSyncing) {
+                        console.log("[Sync] Ya hay una sincronización en curso, se encola (queued).");
+                        syncQueued = true;
                         return false;
                     }
-                    syncInProgress = true;
-                    try {
-                        if (get().isSyncingCloud) {
-                            console.log("Cloud sync already in progress, skipping restoreFromGoogleDrive.");
-                            return false;
-                        }
-                    const user = get().googleUser;
-                    if (!user) return false;
+                    
+                    const state = get();
+                    const now = Date.now();
+                    
+                    // Parse lastCloudSync
+                    let lastSyncTime = 0;
+                    if (state.lastCloudSync) {
+                        // Assuming lastCloudSync is a string like Date().toLocaleString(), wait!
+                        // In store.ts it's set as: lastCloudSync: new Date().toLocaleString()
+                        // Date.parse might fail depending on locale. It's safer to use a new timestamp field, but we can try parsing.
+                        const parsed = Date.parse(state.lastCloudSync);
+                        if (!isNaN(parsed)) lastSyncTime = parsed;
+                    }
+                    const timeSinceLastSync = now - lastSyncTime;
 
-                    set({ isSyncingCloud: true, syncError: null });
-
-                    if (user.isDemo) {
-                        await new Promise(resolve => setTimeout(resolve, 1500));
-
-                        const today = getLocalDateString();
-                        set((state) => {
-                            const demoTask = {
-                                id: 'demo-task-1',
-                                title: 'Sincronización completada ☁️',
-                                completed: false,
-                                energyLevel: 'Low' as const,
-                                projectId: 'p1',
-                                dueDate: today,
-                                recurrence: 'None' as const,
-                                completedDates: [],
-                                photos: [],
-                                completionTimes: [],
-                            };
-
-                            const demoNote = {
-                                id: 'demo-note-1',
-                                title: '☁️ Bienvenido a MyNotes Cloud',
-                                createdAt: new Date().toISOString(),
-                                tags: ['Cloud'],
-                                blocks: [
-                                    { id: 'b1', type: 'text' as const, content: 'Tus datos se sincronizaron con éxito. Esta es una nota de demostración cargada desde la nube de forma segura.' }
-                                ]
-                            };
-
-                            const cleanTasks = state.tasks.filter(t => t.id !== 'demo-task-1');
-                            const cleanNotes = state.notes.filter(n => n.id !== 'demo-note-1');
-
-                            const newTasks = [...cleanTasks, demoTask];
-                            const newNotes = [...cleanNotes, demoNote];
-
-                            setTimeout(() => {
-                                syncWidgetData(state.goals, state.appointments, newNotes, newTasks).catch(console.error);
-                            }, 0);
-
-                            return {
-                                tasks: newTasks,
-                                notes: newNotes,
-                                isSyncingCloud: false,
-                                lastCloudSync: new Date().toLocaleString()
-                            };
-                        });
+                    if (!force && !isCloudSyncDirty && timeSinceLastSync < 25000 && !state.syncError) {
+                        console.log("[Sync] Saltando ciclo de red: sin cambios locales y sincronizado recientemente.");
                         return true;
                     }
 
-                    try {
-                        const token = user.accessToken;
-                        if (!token) throw new Error("No access token");
-                        await uploadMissingAttachments(token, get().notes);
-
-                        const searchRes = await fetchWithTimeout(
-                            `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false`,
-                            {
-                                headers: { Authorization: `Bearer ${token}` }
-                            }
-                        );
-                        if (!searchRes.ok) {
-                            const errBody = await searchRes.text().catch(() => "Unknown error");
-                            throw new Error(`Search failed (${searchRes.status}): ${errBody}`);
-                        }
-                        const searchData = await searchRes.json();
-                        const existingFile = searchData.files?.[0];
-                        if (!existingFile) {
-                            set({ isSyncingCloud: false });
-                            return false;
-                        }
-
-                        const downloadRes = await fetchWithTimeout(
-                            `https://www.googleapis.com/drive/v3/files/${existingFile.id}?alt=media`,
-                            {
-                                headers: { Authorization: `Bearer ${token}` }
-                            }
-                        );
-                        if (!downloadRes.ok) {
-                            const errBody = await downloadRes.text().catch(() => "Unknown error");
-                            throw new Error(`Download failed (${downloadRes.status}): ${errBody}`);
-                        }
-
-                        const data = await downloadRes.json();
-                        if (data && typeof data === 'object') {
-                            const state = get();
-                            const fullNotes = await readAllNotesFromDisk(state.notes);
-                            const fullTasks = await readAllTasksFromDisk(state.tasks);
-
-                            const mergedDeletedItems = mergeDeletedItems(state.deletedItems, data.deletedItems);
-                            const mergedNotes = mergeNotesLists(fullNotes, data.notes, false, mergedDeletedItems);
-                            const mergedTasks = mergeLists(fullTasks, data.tasks, false, mergedDeletedItems);
-                            const mergedGoals = mergeLists(state.goals, data.goals, false, mergedDeletedItems);
-                            const mergedAppointments = mergeLists(state.appointments, data.appointments, false, mergedDeletedItems);
-                            const mergedProjects = mergeLists(state.projects, data.projects, false, mergedDeletedItems);
-                            const mergedTaskGroups = mergeLists(state.taskGroups, data.taskGroups, false, mergedDeletedItems);
-                            const mergedCompletedOnceHabits = mergeLists(state.completedOnceHabits || [], data.completedOnceHabits || [], false, mergedDeletedItems);
-                            const mergedTransactions = mergeLists(state.transactions || [], data.transactions || [], false, mergedDeletedItems);
-                            const mergedExpenseNotes = mergeLists(state.expenseNotes || [], data.expenseNotes || [], false, mergedDeletedItems);
-                            const mergedSavingsGoal = data.savingsGoal ?? 400;
-                            const mergedSnapshots = mergeDailySnapshots(state.dailySnapshots, data.dailySnapshots);
-                            const mergedUser = mergeUser(state.user, data.user);
-
-                            // Identify missing attachments
-                            const missingAttachments: { noteId: string, blockId: string, driveFileId: string, fileName: string }[] = [];
-                            if (isNative) {
-                                for (const note of mergedNotes) {
-                                    for (const block of note.blocks) {
-                                        if ((block.type === 'image' || block.type === 'drawing' || block.type === 'file') && block.driveFileId) {
-                                            let localPath = '';
-                                            let fileName = 'attachment';
-                                            if (block.type === 'file' && block.content) {
-                                                localPath = block.content.url;
-                                                fileName = block.content.name || 'file';
-                                            } else if (typeof block.content === 'string') {
-                                                localPath = block.content;
-                                                fileName = 'image.png';
-                                            }
-                                            
-                                            let needsDownload = false;
-                                            if (!localPath || !localPath.startsWith('file://')) {
-                                                needsDownload = true;
-                                            } else {
-                                                try {
-                                                    const res = await Filesystem.stat({ path: localPath.replace('file://', '') });
-                                                    if (!res || res.type === 'directory') needsDownload = true;
-                                                } catch(e) {
-                                                    needsDownload = true;
-                                                }
-                                            }
-                                            
-                                            if (needsDownload) {
-                                                missingAttachments.push({ noteId: note.id, blockId: block.id, driveFileId: block.driveFileId, fileName });
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Download missing attachments sequentially with progress
-                            let downloadedCount = 0;
-                            const totalToDownload = missingAttachments.length;
-                            for (const attachment of missingAttachments) {
-                                downloadedCount++;
-                                const lang = get().language;
-                                const progressMsg = lang === 'es' 
-                                    ? `Restaurando adjuntos... ${downloadedCount}/${totalToDownload}`
-                                    : `Restoring attachments... ${downloadedCount}/${totalToDownload}`;
-                                set({ restoreProgress: progressMsg });
-                                
-                                try {
-                                    const safeFileName = attachment.fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-                                    const localFileName = `attachment_${attachment.driveFileId}_${safeFileName}`;
-                                    
-                                    const dlResult = await Filesystem.downloadFile({
-                                        url: `https://www.googleapis.com/drive/v3/files/${attachment.driveFileId}?alt=media`,
-                                        path: localFileName,
-                                        directory: Directory.Data,
-                                        headers: {
-                                            Authorization: `Bearer ${token}`
-                                        }
-                                    });
-
-                                    if (dlResult.path) {
-                                        let fileUri = dlResult.path;
-                                        if (!fileUri.startsWith('file://') && !fileUri.startsWith('/')) {
-                                            const uriRes = await Filesystem.getUri({ path: localFileName, directory: Directory.Data });
-                                            fileUri = uriRes.uri;
-                                        } else if (fileUri.startsWith('/')) {
-                                            fileUri = 'file://' + fileUri;
-                                        }
-
-                                        // Update block content in mergedNotes
-                                        const noteToUpdate = mergedNotes.find(n => n.id === attachment.noteId);
-                                        if (noteToUpdate) {
-                                            const blockToUpdate = noteToUpdate.blocks.find(b => b.id === attachment.blockId);
-                                            if (blockToUpdate) {
-                                                if (blockToUpdate.type === 'file') {
-                                                    blockToUpdate.content = { ...blockToUpdate.content, url: fileUri };
-                                                } else {
-                                                    blockToUpdate.content = fileUri;
-                                                }
-                                            }
-                                        }
-                                    }
-                                } catch (e) {
-                                    console.error('Failed to download attachment during restore:', e);
-                                }
-                            }
-                            if (totalToDownload > 0) {
-                                set({ restoreProgress: null });
-                            }
-
-                            await saveAllNotesToDisk(mergedNotes);
-                            await saveAllTasksToDisk(mergedTasks);
-
-                            setTimeout(() => {
-                                syncWidgetData(mergedGoals, mergedAppointments, mergedNotes, mergedTasks).catch(console.error);
-                            }, 0);
-
-                            // Use originalSet to bypass lastUpdated wrapper override
-                            originalSet({
-                                notes: mergedNotes,
-                                tasks: mergedTasks,
-                                goals: mergedGoals,
-                                appointments: mergedAppointments,
-                                projects: mergedProjects,
-                                taskGroups: mergedTaskGroups,
-                                completedOnceHabits: mergedCompletedOnceHabits,
-                                transactions: mergedTransactions,
-                                expenseNotes: mergedExpenseNotes,
-                                savingsGoal: mergedSavingsGoal,
-                                dailySnapshots: mergedSnapshots,
-                                user: mergedUser,
-                                deletedItems: mergedDeletedItems,
-                                isSyncingCloud: false,
-                                lastCloudSync: new Date().toLocaleString(),
-                                lastUpdated: data.lastUpdated || Date.now(),
-                                areNotesLoaded: true,
-                                areTasksLoaded: true
-                            });
-                            return true;
-                        }
-                        set({ isSyncingCloud: false });
-                        return false;
-                    } catch (err: any) {
-                        console.error("Google Drive restore error", err);
-                        const msg = String(err).toLowerCase();
-                        const isAuthError = msg.includes("401") || msg.includes("unauthenticated") || msg.includes("invalid credentials") || msg.includes("autherror") || msg.includes("auth_error");
-                        if (isAuthError) {
-                            // Intentar renovar el token silenciosamente antes de mostrar error al usuario
-                            const newToken = await silentRefreshGoogleToken();
-                            if (newToken) {
-                                set({ isSyncingCloud: false });
-                                return get().restoreFromGoogleDrive();
-                            }
-                            const errMsg = get().language === 'es'
-                                ? "Sesión de Google expirada. Por favor, inicia sesión nuevamente."
-                                : "Google session expired. Please sign in again.";
-                            set({ googleSessionExpired: true, isSyncingCloud: false, syncError: errMsg });
-                            get().showToast(get().language === 'es' ? "Debe reconectar su cuenta" : "Please reconnect your account", "error");
-                        } else {
-                            set({ isSyncingCloud: false, syncError: err?.message || String(err) });
-                        }
-                        return false;
-                    }
-                    } finally {
-                        syncInProgress = false;
-                    }
-                },
-
-                autoSyncGoogleDrive: async () => {
-                    if (syncInProgress) {
-                        console.log("[Sync] Ya hay una sincronización en curso, se omite esta llamada");
-                        return false;
-                    }
-                    syncInProgress = true;
+                    isSyncing = true;
+                    syncQueued = false;
                     try {
                         if (get().isSyncingCloud) {
-                            console.log("Cloud sync already in progress, skipping autoSyncGoogleDrive.");
+                            console.log("Cloud sync already in progress (zustand lock).");
                             return false;
                         }
                     const user = get().googleUser;
@@ -3448,7 +3424,6 @@ export const useStore = create<AppState>()(
                             const freshState = get();
                             const fullNotes = await readAllNotesFromDisk(freshState.notes);
                             const fullTasks = await readAllTasksFromDisk(freshState.tasks);
-                            const localLastUpdated = freshState.lastUpdated || 0;
                             const dataToSync = {
                                 notes: stripLargePayloads(fullNotes),
                                 tasks: fullTasks,
@@ -3462,7 +3437,7 @@ export const useStore = create<AppState>()(
                                 dailySnapshots: freshState.dailySnapshots,
                                 user: freshState.user,
                                 deletedItems: freshState.deletedItems || {},
-                                lastUpdated: localLastUpdated
+                                lastUpdated: Date.now()
                             };
                             const jsonStr = JSON.stringify(dataToSync);
 
@@ -3820,7 +3795,7 @@ export const useStore = create<AppState>()(
                             const newToken = await silentRefreshGoogleToken();
                             if (newToken) {
                                 set({ isSyncingCloud: false });
-                                return get().autoSyncGoogleDrive();
+                                return get().syncCycle();
                             }
                             const errMsg = get().language === 'es'
                                 ? "Sesión de Google expirada. Por favor, inicia sesión nuevamente."
@@ -3911,53 +3886,47 @@ export const useStore = create<AppState>()(
 if (isNative) {
     App.addListener('appStateChange', async (state) => {
         if (!state.isActive) {
-            // Flush widget sync immediately
-            try {
-                await syncWidgetData(undefined, undefined, undefined, undefined, true);
-            } catch (err) {
-                console.error("Flush widget sync on pause error", err);
-            }
-
-            // App is going to background, flush all pending writes immediately to prevent data loss
-            for (const name of Object.keys(pendingWrites)) {
-                if (writeDebounces[name]) {
-                    clearTimeout(writeDebounces[name]);
-                    delete writeDebounces[name];
-                }
-                const dataToWrite = pendingWrites[name];
-                if (dataToWrite && dataToWrite !== '{}') {
-                    try {
-                        // 1. Backup the current file before overwriting
+            console.log("[AppState] App is going to background. Starting BackgroundTask for sync...");
+            const taskId = await BackgroundTask.beforeExit(async () => {
+                // Flush local writes
+                for (const name of Object.keys(pendingWrites)) {
+                    if (writeDebounces[name]) {
+                        clearTimeout(writeDebounces[name]);
+                        delete writeDebounces[name];
+                    }
+                    const dataToWrite = pendingWrites[name];
+                    if (dataToWrite && dataToWrite !== '{}') {
                         try {
-                            const existing = await Filesystem.readFile({
+                            const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+                            await Filesystem.writeFile({
                                 path: `${name}.json`,
                                 directory: Directory.Data,
+                                data: dataToWrite,
                                 encoding: Encoding.UTF8,
                             });
-                            if (existing.data) {
-                                await Filesystem.writeFile({
-                                    path: `${name}.bak.json`,
-                                    data: existing.data,
-                                    directory: Directory.Data,
-                                    encoding: Encoding.UTF8,
-                                });
-                            }
-                        } catch (e) { }
-
-                        // 2. Write the new data
-                        await Filesystem.writeFile({
-                            path: `${name}.json`,
-                            data: dataToWrite,
-                            directory: Directory.Data,
-                            encoding: Encoding.UTF8,
-                        });
-                    } catch (e) {
-                        console.error('Flush on pause error', e);
+                            delete pendingWrites[name];
+                        } catch (e) {
+                            console.error(`Flush write failed for ${name}:`, e);
+                        }
                     }
                 }
-            }
+                
+                // Flush widget
+                try {
+                    await syncWidgetData(undefined, undefined, undefined, undefined, true);
+                } catch (e) {}
+
+                // Trigger cloud sync
+                const storeState = useStore.getState();
+                if (storeState.googleUser && !storeState.googleSessionExpired) {
+                    console.log("[AppState] Running syncCycle in background...");
+                    await storeState.syncCycle();
+                }
+                
+                BackgroundTask.finish({ taskId });
+            });
         }
-    });
+    });;
 }
 
 export const checkAndEnqueueMissingImages = async () => {
@@ -4030,19 +3999,46 @@ useStore.subscribe((state, prevState) => {
  */
 export const recoverImagesFromDriveRevisions = async (): Promise<{ recovered: number; failed: number; message: string }> => {
     const state = useStore.getState();
-    const token = state.googleUser?.accessToken;
+    let token = state.googleUser?.accessToken;
 
     if (!token) {
-        return { recovered: 0, failed: 0, message: 'No Google session active. Please sign in first.' };
+        return { recovered: 0, failed: 0, message: state.language === 'es' ? 'No hay sesión de Google activa. Por favor, inicia sesión.' : 'No Google session active. Please sign in first.' };
     }
+
+    const fetchWithTokenRetry = async (url: string, options: RequestInit = {}, timeoutMs?: number) => {
+        let currentToken = useStore.getState().googleUser?.accessToken;
+        if (!currentToken) throw new Error("No access token");
+
+        const makeRequest = (t: string) => fetchWithTimeout(url, {
+            ...options,
+            headers: {
+                ...(options.headers || {}),
+                Authorization: `Bearer ${t}`
+            }
+        }, timeoutMs);
+
+        let res = await makeRequest(currentToken);
+        if (res.status === 401) {
+            console.warn('[Recovery] Got 401. Attempting silent token refresh...');
+            const newToken = await silentRefreshGoogleToken();
+            if (newToken) {
+                res = await makeRequest(newToken);
+            } else {
+                useStore.setState({ googleSessionExpired: true });
+                throw new Error(useStore.getState().language === 'es'
+                    ? "Sesión de Google expirada. Por favor, re-conecta tu cuenta de Google."
+                    : "Google session expired. Please re-connect your Google account.");
+            }
+        }
+        return res;
+    };
 
     // 1. Find the backup file in Drive
     console.log('[Recovery] Searching for mynotes_backup.json in Drive...');
     let fileId: string | null = null;
     try {
-        const searchRes = await fetchWithTimeout(
-            `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false&fields=files(id,name)`,
-            { headers: { Authorization: `Bearer ${token}` } }
+        const searchRes = await fetchWithTokenRetry(
+            `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false&fields=files(id,name)`
         );
         if (!searchRes.ok) throw new Error(`Drive search failed: ${searchRes.status}`);
         const searchData = await searchRes.json();
@@ -4060,9 +4056,8 @@ export const recoverImagesFromDriveRevisions = async (): Promise<{ recovered: nu
     console.log(`[Recovery] Listing revisions for file ${fileId}...`);
     let revisions: any[] = [];
     try {
-        const revRes = await fetchWithTimeout(
-            `https://www.googleapis.com/drive/v3/files/${fileId}/revisions?fields=revisions(id,modifiedTime)`,
-            { headers: { Authorization: `Bearer ${token}` } }
+        const revRes = await fetchWithTokenRetry(
+            `https://www.googleapis.com/drive/v3/files/${fileId}/revisions?fields=revisions(id,modifiedTime)`
         );
         if (!revRes.ok) throw new Error(`Revisions fetch failed: ${revRes.status}`);
         const revData = await revRes.json();
@@ -4115,9 +4110,9 @@ export const recoverImagesFromDriveRevisions = async (): Promise<{ recovered: nu
         let revisionData: any = null;
 
         try {
-            const dlRes = await fetchWithTimeout(
+            const dlRes = await fetchWithTokenRetry(
                 `https://www.googleapis.com/drive/v3/files/${fileId}/revisions/${revision.id}?alt=media`,
-                { headers: { Authorization: `Bearer ${token}` } },
+                {},
                 30000 // Larger timeout for potentially big files
             );
             if (!dlRes.ok) {
@@ -4165,7 +4160,7 @@ export const recoverImagesFromDriveRevisions = async (): Promise<{ recovered: nu
     // 6. Persist recovered state
     if (recovered > 0) {
         const latestState = useStore.getState();
-        await latestState.autoSyncGoogleDrive();
+        await latestState.syncCycle();
     }
 
     const message = recovered > 0

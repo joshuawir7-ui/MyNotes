@@ -360,8 +360,6 @@ export function AppSidebar() {
         { href: "/", label: t.today, icon: AnimatedSun },
         { href: "/tasks", label: t.tasks, icon: AnimatedTasks },
         { href: "/calendar", label: t.calendar, icon: AnimatedCalendar },
-        { href: "/anytime", label: t.anytime, icon: AnimatedLayers },
-        { href: "/someday", label: t.someday, icon: AnimatedArchive },
         { href: "/notes", label: t.notes, icon: AnimatedNotes },
     ]
 

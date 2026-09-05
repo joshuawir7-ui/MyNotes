@@ -2,11 +2,18 @@
 
 import { useStore, getLocalDateString } from "@/lib/store"
 import { useEffect, useState, useMemo } from "react"
+import { useShallow } from 'zustand/react/shallow'
 import { translations } from "@/lib/translations"
 import { Trophy } from "lucide-react"
 
 export function DailyFocusWidget() {
-    const user = useStore(state => state.user)
+    // Atomic selector: only reads focusTimeMinutes and streak from user, not the whole object
+    const { focusTimeMinutes, streak } = useStore(
+        useShallow((state) => ({
+            focusTimeMinutes: state.user.focusTimeMinutes,
+            streak: state.user.streak,
+        }))
+    )
     const tasks = useStore(state => state.tasks)
     const language = useStore(state => state.language)
     const t = translations[language].dashboard
@@ -89,13 +96,13 @@ export function DailyFocusWidget() {
 
                 <div className="flex items-center gap-4">
                     <div className="flex flex-col">
-                        <span className="text-sm sm:text-base lg:text-lg font-bold text-green-400">+{Math.round(user.focusTimeMinutes / 60)}h</span>
+                        <span className="text-sm sm:text-base lg:text-lg font-bold text-green-400">+{Math.round(focusTimeMinutes / 60)}h</span>
                         <span className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold">{t.velocity}</span>
                     </div>
                     <div className="flex flex-col">
                         <span className="text-sm sm:text-base lg:text-lg font-bold text-orange-400 flex items-center gap-1">
                             <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            {user.streak}
+                            {streak}
                         </span>
                         <span className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold">{t.dayStreak}</span>
                     </div>

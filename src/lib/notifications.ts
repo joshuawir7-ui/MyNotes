@@ -47,7 +47,7 @@ export const NotificationManager = {
         try {
             // Cancel all previously scheduled habits to avoid duplicates when state changes
             const pending = await LocalNotifications.getPending();
-            const habitNotifs = pending.notifications.filter(n => n.channelId === CHANNEL_ID);
+            const habitNotifs = pending.notifications.filter(n => (n as any).channelId === CHANNEL_ID || (n.extra && n.extra.channelId === CHANNEL_ID));
             if (habitNotifs.length > 0) {
                 await LocalNotifications.cancel({ notifications: habitNotifs });
             }
@@ -82,7 +82,8 @@ export const NotificationManager = {
                     schedule: {
                         at: fireAt,
                         allowWhileIdle: true, // crucial for Doze mode
-                    }
+                    },
+                    extra: { channelId: CHANNEL_ID }
                 });
             }
 

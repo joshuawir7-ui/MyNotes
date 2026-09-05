@@ -61,12 +61,12 @@ export function getLocalImageSrc(uriOrBase64: string): string {
     }
     
     // Fallback if isNativePlatform fails but window.Capacitor exists
-    if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.convertFileSrc) {
+    if (typeof window !== 'undefined' && (window as any).Capacitor && (window as any).Capacitor.convertFileSrc) {
         let path = uriOrBase64;
         if (path.startsWith('/')) {
             path = 'file://' + path;
         }
-        return window.Capacitor.convertFileSrc(path);
+        return (window as any).Capacitor.convertFileSrc(path);
     }
 
     return uriOrBase64;

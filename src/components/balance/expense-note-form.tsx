@@ -98,13 +98,11 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
 
         // Add real transaction
         addTransaction({
-            id: Math.random().toString(36).substring(7),
             type: 'expense',
             amount: gasto.amount,
             currency: '$',
             description: gasto.title || 'Gasto planeado',
-            date: new Date().toISOString().split('T')[0],
-            createdAt: Date.now()
+            date: new Date().toISOString().split('T')[0]
         });
 
         // Mark as confirmed

@@ -1,6 +1,7 @@
 "use client"
 
 import { useStore, getLocalDateString } from "@/lib/store";
+import { useShallow } from 'zustand/react/shallow';
 import { translations } from "@/lib/translations";
 import { Reveal } from "@/components/ui/reveal";
 import dynamic from "next/dynamic";
@@ -23,10 +24,11 @@ const DashboardWidgets = dynamic(() => import("@/components/dashboard/dashboard-
 export default function Home() {
   const language = useStore(state => state.language);
   const addNote = useStore(state => state.addNote);
-  const tasks = useStore(state => state.tasks);
-  const goals = useStore(state => state.goals || []);
+  // Atomic selectors: tasks and goals use shallow to prevent re-render cascades
+  const tasks = useStore(useShallow((state) => state.tasks));
+  const goals = useStore(useShallow((state) => state.goals || []));
   const showToast = useStore(state => state.showToast);
-  const transactions = useStore(state => state.transactions ?? []);
+  const transactions = useStore(useShallow((state) => state.transactions ?? []));
   const balance = useMemo(() => {
     return transactions.reduce((sum, t) => {
       const amt = Number(t.amount) || 0;

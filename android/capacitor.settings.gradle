@@ -17,5 +17,8 @@ project(':capacitor-preferences').projectDir = new File('../node_modules/@capaci
 include ':capacitor-share'
 project(':capacitor-share').projectDir = new File('../node_modules/@capacitor/share/android')
 
+include ':capawesome-capacitor-background-task'
+project(':capawesome-capacitor-background-task').projectDir = new File('../node_modules/@capawesome/capacitor-background-task/android')
+
 include ':codetrix-studio-capacitor-google-auth'
 project(':codetrix-studio-capacitor-google-auth').projectDir = new File('../node_modules/@codetrix-studio/capacitor-google-auth/android')

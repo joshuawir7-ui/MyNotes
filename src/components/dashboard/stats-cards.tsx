@@ -1,15 +1,27 @@
 "use client"
 
 import { useStore } from "@/lib/store"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
+import { useShallow } from 'zustand/react/shallow'
 import { translations } from "@/lib/translations"
 import { Flame, CheckCircle2, Timer, X, Trophy, Zap, Check, ArrowRight, Play } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { FocusTimer } from "./focus-timer"
 
 export function StatsCards() {
-    const user = useStore(state => state.user)
-    const tasks = useStore(state => state.tasks)
+    // Atomic selectors: only subscribes to the specific fields used, not the entire user or tasks array
+    const { focusTimeMinutes, streak, xp, level } = useStore(
+        useShallow((state) => ({
+            focusTimeMinutes: state.user.focusTimeMinutes,
+            streak: state.user.streak,
+            xp: state.user.xp,
+            level: state.user.level,
+        }))
+    )
+    // Selector granular: re-renders only when a task's completed status or title changes
+    const completedTasks = useStore(
+        useShallow((state) => state.tasks.filter(t => t.completed))
+    )
     const toggleTask = useStore(state => state.toggleTask)
     const language = useStore(state => state.language)
     const [mounted, setMounted] = useState(false)
@@ -24,7 +36,6 @@ export function StatsCards() {
 
     if (!mounted) return null
 
-    const completedTasks = tasks.filter(t => t.completed)
     const completedCount = completedTasks.length
 
     const stats = [
@@ -40,7 +51,7 @@ export function StatsCards() {
         {
             id: 'focus' as const,
             label: t.focusTime,
-            value: `${Math.floor(user.focusTimeMinutes / 60)}h ${user.focusTimeMinutes % 60}m`,
+            value: `${Math.floor(focusTimeMinutes / 60)}h ${focusTimeMinutes % 60}m`,
             icon: Timer,
             color: "text-blue-400",
             bg: "from-blue-500/20 to-cyan-500/20",
@@ -49,7 +60,7 @@ export function StatsCards() {
         {
             id: 'streak' as const,
             label: t.streak,
-            value: `${user.streak} ${t.days}`,
+            value: `${streak} ${t.days}`,
             icon: Flame,
             color: "text-orange-400",
             bg: "from-orange-500/20 to-red-500/20",
@@ -202,7 +213,7 @@ export function StatsCards() {
 
                             <div>
                                 <h3 className="text-2xl font-black text-foreground">
-                                    {user.streak} {language === 'es' ? "Días de Racha" : "Day Streak"}
+                                    {streak} {language === 'es' ? "Días de Racha" : "Day Streak"}
                                 </h3>
                                 <p className="text-xs text-muted-foreground mt-1 px-4 leading-relaxed">
                                     {language === 'es'
@@ -214,12 +225,12 @@ export function StatsCards() {
                             <div className="w-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl p-4 flex justify-around items-center">
                                 <div className="flex flex-col items-center">
                                     <span className="text-xs text-muted-foreground font-semibold uppercase">{language === 'es' ? "Nivel" : "Level"}</span>
-                                    <span className="text-xl font-bold text-foreground mt-0.5">{user.level}</span>
+                                    <span className="text-xl font-bold text-foreground mt-0.5">{level}</span>
                                 </div>
                                 <div className="h-8 w-px bg-black/10 dark:bg-white/10" />
                                 <div className="flex flex-col items-center">
                                     <span className="text-xs text-muted-foreground font-semibold uppercase">XP Total</span>
-                                    <span className="text-xl font-bold text-purple-500 mt-0.5">{user.xp} XP</span>
+                                    <span className="text-xl font-bold text-purple-500 mt-0.5">{xp} XP</span>
                                 </div>
                             </div>
                         </motion.div>

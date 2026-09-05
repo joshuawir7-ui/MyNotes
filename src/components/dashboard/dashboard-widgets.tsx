@@ -2,6 +2,7 @@
 import { getLocalImageSrc } from "@/lib/image-utils";
 
 import { useStore, Note } from "@/lib/store";
+import { useShallow } from 'zustand/react/shallow';
 import { translations } from "@/lib/translations";
 import { Calendar, StickyNote, Plus, Clock, History, Target, Check } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
@@ -91,10 +92,19 @@ function NotePreviewRenderer({ note, isPinned = false }: { note: Note; isPinned?
 export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => void }) {
     const language = useStore(state => state.language);
     const pinnedNoteId = useStore(state => state.pinnedNoteId);
-    const notes = useStore(state => state.notes);
-    const appointments = useStore(state => state.appointments);
-    const goals = useStore(state => state.goals);
+    // For the pinned note and recent note we need full Note objects, but use shallow to avoid
+    // re-renders when unrelated notes change their lastUpdated or internal state
+    const notes = useStore(useShallow((state) => state.notes));
+    const appointments = useStore(useShallow((state) => state.appointments));
     const lastPinnedGoalId = useStore(state => state.lastPinnedGoalId);
+    // Granular goal selector: only re-renders when pinned/photos/description/title changes
+    const goals = useStore(useShallow((state) => state.goals?.map(g => ({
+        id: g.id,
+        title: g.title,
+        description: g.description,
+        pinned: g.pinned,
+        photos: g.photos,
+    }))));
     const setPinnedNoteId = useStore(state => state.setPinnedNoteId);
     const t = (translations[language]?.dashboard || translations['en'].dashboard) as any;
     const noteTranslations = (translations[language]?.pages?.notes || translations['en'].pages.notes) as any;
