@@ -62,6 +62,7 @@
         <receiver android:name=".EventsReminderReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="com.iunico.mynotes.ACTION_SHOW_EVENT_REMINDERS" />
+                <action android:name="com.iunico.mynotes.ACTION_SHOW_SINGLE_EVENT" />
                 <action android:name="com.iunico.mynotes.ACTION_COMPLETE_EVENT" />
                 <action android:name="com.iunico.mynotes.ACTION_DISMISS_EVENT" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

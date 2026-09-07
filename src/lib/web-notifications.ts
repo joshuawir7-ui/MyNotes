@@ -12,6 +12,7 @@
 
 import { Capacitor } from '@capacitor/core';
 import type { Task, Appointment } from './store';
+import { assignSlot, DEFAULT_SLOTS } from './notification-slots';
 
 const SW_PATH = '/sw.js';
 let swRegistration: ServiceWorkerRegistration | null = null;
@@ -107,16 +108,23 @@ function checkTaskReminders(tasks: Task[], language: string) {
 }
 
 // ─────────────────────────────────────────────────
-// Check Daily Habits: remind if not completed today at 9 AM
+// Check Daily Habits: remind at each item's assigned slot
 // ─────────────────────────────────────────────────
+
+/**
+ * Tolerance window in minutes around the assigned slot hour.
+ * The polling runs every 60 s, so ±30 min ensures we never miss a slot.
+ */
+const SLOT_WINDOW_MINUTES = 30;
 
 function checkHabitReminders(tasks: Task[], language: string) {
     const now = new Date();
     const hour = now.getHours();
-    // Only remind for habits between 9:00 and 22:00
-    if (hour < 9 || hour >= 22) return;
+    // Only remind between 8:00 and 22:00
+    if (hour < 8 || hour >= 22) return;
 
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const nowMinutes = hour * 60 + now.getMinutes();
 
     for (const task of tasks) {
         if (!task.isHabit) continue;
@@ -126,17 +134,22 @@ function checkHabitReminders(tasks: Task[], language: string) {
         const completedToday = task.completedDates?.includes(todayStr);
         if (completedToday) continue;
 
-        // Only fire once per day per habit (keyed to day)
-        const key = `habit-${task.id}-${todayStr}-h${hour}`;
-        // Fire at 9 AM, 14 PM, and 19 PM (remind 3 times max per day)
-        const reminderHours = [9, 14, 19];
-        const hourKey = `habit-${task.id}-${todayStr}-${reminderHours.find(h => h === hour)}`;
-        if (!reminderHours.includes(hour)) continue;
-        if (notifiedIds.has(hourKey)) continue;
+        // Each habit gets its own deterministic slot based on its ID.
+        // Same habit → same slot on every polling run, so the deduplication key is stable.
+        const slot = assignSlot(task.id, DEFAULT_SLOTS);
+        const slotTotalMinutes = slot.hour * 60 + slot.minute;
+
+        // Fire if we are within ±SLOT_WINDOW_MINUTES of the habit's assigned slot
+        if (Math.abs(nowMinutes - slotTotalMinutes) > SLOT_WINDOW_MINUTES) continue;
+
+        // Deduplication key: tied to the specific slot hour of this habit on this day.
+        // Different habits assigned to the same slot get different keys because the ID is in the key.
+        const slotKey = `habit-${task.id}-${todayStr}-slot${slot.hour}`;
+        if (notifiedIds.has(slotKey)) continue;
 
         const title = language === 'es' ? '🔁 Recordatorio de hábito' : '🔁 Habit reminder';
-        sendNotification(title, task.title, hourKey);
-        notifiedIds.add(hourKey);
+        sendNotification(title, task.title, slotKey);
+        notifiedIds.add(slotKey);
     }
 }
 
@@ -197,6 +210,76 @@ function checkAppointmentReminders(appointments: Appointment[], language: string
     }
 }
 
+
+// ─────────────────────────────────────────────────
+// Check Priority Tasks: fire at configured reminder slots
+// ─────────────────────────────────────────────────
+
+function checkPriorityTaskReminders(
+    tasks: Task[],
+    settings: { enabled: boolean; slots: string[] },
+    language: string
+) {
+    if (!settings.enabled) return;
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Gather pending high-priority tasks
+    const pendingHighPriority: Task[] = [];
+    const dayOfWeek = now.getDay(); // 0 = Sunday
+
+    for (const task of tasks) {
+        // Skip disabled tasks
+        if (task.enabled === false) continue;
+        // Only high-priority
+        if (task.energyLevel !== 'High') continue;
+
+        // Check active days (for habits)
+        if (task.activeDays && task.activeDays.length > 0) {
+            if (!task.activeDays.includes(dayOfWeek)) continue;
+        }
+
+        // Check if completed today
+        const recurrence = task.recurrence ?? 'None';
+        let isCompleted: boolean;
+        if (recurrence !== 'None') {
+            isCompleted = task.completedDates?.includes(todayStr) ?? false;
+        } else {
+            isCompleted = task.completed ?? false;
+        }
+
+        if (!isCompleted) {
+            pendingHighPriority.push(task);
+        }
+    }
+
+    if (pendingHighPriority.length === 0) return;
+
+    // Check each configured slot
+    for (const slotStr of settings.slots) {
+        const [h, m] = slotStr.split(':').map(Number);
+        if (isNaN(h) || isNaN(m)) continue;
+        const slotMinutes = h * 60 + m;
+        const diff = slotMinutes - nowMinutes;
+
+        if (diff >= -2 && diff <= 2) {
+            const key = `priority-slot-${h}-${m}-${todayStr}`;
+            if (!notifiedIds.has(key)) {
+                const title = language === 'es' ? '🎯 Tareas prioritarias pendientes' : '🎯 Priority tasks pending';
+                const body = pendingHighPriority.length === 1
+                    ? pendingHighPriority[0].title
+                    : language === 'es'
+                        ? `${pendingHighPriority.length} tareas de alta prioridad pendientes`
+                        : `${pendingHighPriority.length} high-priority tasks pending`;
+                sendNotification(title, body, key);
+                notifiedIds.add(key);
+            }
+        }
+    }
+}
+
 // ─────────────────────────────────────────────────
 // Main polling loop: run every 60 seconds
 // ─────────────────────────────────────────────────
@@ -208,6 +291,7 @@ export function startWebNotificationPolling(
     getAppointments: () => Appointment[],
     getLanguage: () => string,
     notificationsEnabled: () => boolean,
+    getPriorityReminderSettings?: () => { enabled: boolean; slots: string[] },
 ) {
     if (Capacitor.isNativePlatform()) return;
     if (pollingInterval) clearInterval(pollingInterval);
@@ -223,6 +307,11 @@ export function startWebNotificationPolling(
         checkTaskReminders(tasks, language);
         checkHabitReminders(tasks, language);
         checkAppointmentReminders(appointments, language);
+
+        if (getPriorityReminderSettings) {
+            const settings = getPriorityReminderSettings();
+            checkPriorityTaskReminders(tasks, settings, language);
+        }
     };
 
     // Run immediately on start, then every 60s

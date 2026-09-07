@@ -35,6 +35,12 @@ public class HighPriorityReminderReceiver extends BroadcastReceiver {
             return;
         }
 
+        boolean priorityEnabled = prefs.getBoolean("priority_reminders_enabled", true);
+        if (!priorityEnabled) {
+            android.util.Log.d("HighPriorityReminder", "Priority reminders are disabled in preferences.");
+            return;
+        }
+
         String tasksJson = prefs.getString("tasks", "[]");
         String language = prefs.getString("language", "es");
 
@@ -169,19 +175,65 @@ public class HighPriorityReminderReceiver extends BroadcastReceiver {
     }
 
     private void rescheduleAlarm(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
+        
+        boolean enabled = prefs.getBoolean("priority_reminders_enabled", true);
+        if (!enabled) {
+            return;
+        }
+
+        String slotsJson = prefs.getString("priority_reminder_slots", "[\"12:00\", \"19:00\", \"22:00\"]");
+        List<String> slots = new ArrayList<>();
+        try {
+            JSONArray arr = new JSONArray(slotsJson);
+            for (int i=0; i<arr.length(); i++) {
+                slots.add(arr.getString(i));
+            }
+        } catch(Exception e) {
+            slots.add("12:00");
+            slots.add("19:00");
+            slots.add("22:00");
+        }
+
+        java.util.Calendar now = java.util.Calendar.getInstance();
+        now.setTimeInMillis(System.currentTimeMillis());
+
+        long nextTrigger = Long.MAX_VALUE;
+
+        for (String slot : slots) {
+            try {
+                String[] parts = slot.split(":");
+                int h = Integer.parseInt(parts[0]);
+                int m = Integer.parseInt(parts[1]);
+
+                java.util.Calendar c = java.util.Calendar.getInstance();
+                c.setTimeInMillis(System.currentTimeMillis());
+                c.set(java.util.Calendar.HOUR_OF_DAY, h);
+                c.set(java.util.Calendar.MINUTE, m);
+                c.set(java.util.Calendar.SECOND, 0);
+                c.set(java.util.Calendar.MILLISECOND, 0);
+
+                if (c.getTimeInMillis() <= now.getTimeInMillis()) {
+                    c.add(java.util.Calendar.DAY_OF_YEAR, 1);
+                }
+
+                if (c.getTimeInMillis() < nextTrigger) {
+                    nextTrigger = c.getTimeInMillis();
+                }
+            } catch(Exception e) {
+                // ignore invalid slot
+            }
+        }
+
+        if (nextTrigger == Long.MAX_VALUE) {
+            return;
+        }
+
         android.app.AlarmManager alarmManager = (android.app.AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(context, HighPriorityReminderReceiver.class);
         android.app.PendingIntent pendingIntent = android.app.PendingIntent.getBroadcast(
             context, 1, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
         );
-
-        java.util.Calendar calendar = java.util.Calendar.getInstance();
-        calendar.setTimeInMillis(System.currentTimeMillis());
-        // Schedule for tomorrow at 8:00 PM (20:00)
-        calendar.add(java.util.Calendar.DAY_OF_YEAR, 1);
-        calendar.set(java.util.Calendar.HOUR_OF_DAY, 20);
-        calendar.set(java.util.Calendar.MINUTE, 0);
-        calendar.set(java.util.Calendar.SECOND, 0);
 
         if (alarmManager != null) {
             try {
@@ -189,26 +241,26 @@ public class HighPriorityReminderReceiver extends BroadcastReceiver {
                     if (alarmManager.canScheduleExactAlarms()) {
                         alarmManager.setExactAndAllowWhileIdle(
                             android.app.AlarmManager.RTC_WAKEUP,
-                            calendar.getTimeInMillis(),
+                            nextTrigger,
                             pendingIntent
                         );
                     } else {
                         alarmManager.setAndAllowWhileIdle(
                             android.app.AlarmManager.RTC_WAKEUP,
-                            calendar.getTimeInMillis(),
+                            nextTrigger,
                             pendingIntent
                         );
                     }
                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     alarmManager.setExactAndAllowWhileIdle(
                         android.app.AlarmManager.RTC_WAKEUP,
-                        calendar.getTimeInMillis(),
+                        nextTrigger,
                         pendingIntent
                     );
                 } else {
                     alarmManager.setExact(
                         android.app.AlarmManager.RTC_WAKEUP,
-                        calendar.getTimeInMillis(),
+                        nextTrigger,
                         pendingIntent
                     );
                 }
@@ -217,13 +269,13 @@ public class HighPriorityReminderReceiver extends BroadcastReceiver {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     alarmManager.setAndAllowWhileIdle(
                         android.app.AlarmManager.RTC_WAKEUP,
-                        calendar.getTimeInMillis(),
+                        nextTrigger,
                         pendingIntent
                     );
                 } else {
                     alarmManager.set(
                         android.app.AlarmManager.RTC_WAKEUP,
-                        calendar.getTimeInMillis(),
+                        nextTrigger,
                         pendingIntent
                     );
                 }

@@ -13,7 +13,7 @@ import { BackgroundTask } from '@capawesome/capacitor-background-task'
 const isNative = Capacitor.isNativePlatform();
 
 export const WidgetSync = registerPlugin<{
-    updateWidgetData: (data: { goals: string, appointments: string, notes: string, tasks: string, dailySnapshots?: string, notificationsEnabled?: string }) => Promise<void>;
+    updateWidgetData: (data: { goals?: string, appointments?: string, notes?: string, tasks?: string, dailySnapshots?: string, notificationsEnabled?: string, isDarkMode?: string, pinnedNoteId?: string, priorityRemindersEnabled?: boolean, priorityReminderSlots?: string }) => Promise<void>;
     showHabitNotification: (data: { tasks: string }) => Promise<void>;
     getTasks: () => Promise<{ tasks: string }>;
     getNotes: () => Promise<{ notes: string }>;
@@ -724,6 +724,8 @@ let lastSyncedSnapshots: any = null;
 let lastSyncedNotificationsEnabled: string | null = null;
 let lastSyncedIsDarkMode: string | null = null;
 let lastSyncedPinnedNoteId: string | null = null;
+let lastSyncedPriorityRemindersEnabled: boolean | null = null;
+let lastSyncedPriorityReminderSlots: string | null = null;
 
 export const syncWidgetData = async (goals?: any[], appointments?: any[], notes?: any[], tasks?: any[], immediate = false) => {
     if (!isNative) return;
@@ -800,6 +802,18 @@ export const syncWidgetData = async (goals?: any[], appointments?: any[], notes?
             if (currentPinnedNoteId !== lastSyncedPinnedNoteId) {
                 updatePayload.pinnedNoteId = currentPinnedNoteId || "";
                 lastSyncedPinnedNoteId = currentPinnedNoteId;
+            }
+
+            if (state.priorityReminderSettings) {
+                if (state.priorityReminderSettings.enabled !== lastSyncedPriorityRemindersEnabled) {
+                    updatePayload.priorityRemindersEnabled = state.priorityReminderSettings.enabled;
+                    lastSyncedPriorityRemindersEnabled = state.priorityReminderSettings.enabled;
+                }
+                const slotsStr = JSON.stringify(state.priorityReminderSettings.slots);
+                if (slotsStr !== lastSyncedPriorityReminderSlots) {
+                    updatePayload.priorityReminderSlots = slotsStr;
+                    lastSyncedPriorityReminderSlots = slotsStr;
+                }
             }
 
             // Only update if there's actually something new
@@ -1056,6 +1070,10 @@ interface AppState {
     taskGroups: TaskGroup[]
     celebration: { groupId: string, title: string } | null
     focusEffectEnabled: boolean
+    priorityReminderSettings: {
+        enabled: boolean
+        slots: string[] // ["12:00", "19:00", "22:00"] in HH:mm 24h format
+    }
     completedOnceHabits?: { id: string; title: string; completedAt: string }[]
     timer: {
         timeLeft: number,
@@ -1130,6 +1148,9 @@ interface AppState {
     addInAppNotificationDate: () => void
     setNotificationsEnabled: (enabled: boolean) => void
     setFocusEffectEnabled: (enabled: boolean) => void
+    setPriorityReminderSlot: (index: number, time: string) => void
+    togglePriorityReminders: (enabled: boolean) => void
+    resetPriorityReminderDefaults: () => void
 
     addTransaction: (tx: Omit<Transaction, 'id' | 'lastUpdated'>) => void
     deleteTransaction: (id: string) => void
@@ -1643,7 +1664,7 @@ export const useStore = create<AppState>()(
                         if (partialState) {
                             const keys = Object.keys(partialState);
                             const isTimerOnly = keys.length === 1 && keys[0] === 'timer';
-                            const isSyncOnly = keys.every(k => k === 'isSyncingCloud' || k === 'lastCloudSync' || k === 'timer' || k === 'googleUser' || k === 'googleSessionExpired' || k === 'toast');
+                            const isSyncOnly = keys.every(k => k === 'isSyncingCloud' || k === 'lastCloudSync' || k === 'timer' || k === 'googleUser' || k === 'googleSessionExpired' || k === 'toast' || k === 'priorityReminderSettings');
                             if (!isTimerOnly && !isSyncOnly) {
                                 markCloudSyncDirty();
                                 return { ...partialState, lastUpdated: Date.now() };
@@ -1656,7 +1677,7 @@ export const useStore = create<AppState>()(
                     if (partialState) {
                         const keys = Object.keys(partialState);
                         const isTimerOnly = keys.length === 1 && keys[0] === 'timer';
-                        const isSyncOnly = keys.every(k => k === 'isSyncingCloud' || k === 'lastCloudSync' || k === 'timer' || k === 'googleUser' || k === 'googleSessionExpired' || k === 'toast');
+                        const isSyncOnly = keys.every(k => k === 'isSyncingCloud' || k === 'lastCloudSync' || k === 'timer' || k === 'googleUser' || k === 'googleSessionExpired' || k === 'toast' || k === 'priorityReminderSettings');
                         if (!isTimerOnly && !isSyncOnly) {
                             markCloudSyncDirty();
                             (originalSet as any)({ ...partialState, lastUpdated: Date.now() }, replace);
@@ -1696,6 +1717,10 @@ export const useStore = create<AppState>()(
                 taskGroups: [],
                 celebration: null,
                 focusEffectEnabled: true,
+                priorityReminderSettings: {
+                    enabled: true,
+                    slots: ['12:00', '19:00', '22:00'],
+                },
                 isHydrated: false,
                 googleUser: null,
                 googleSessionExpired: false,
@@ -2925,6 +2950,20 @@ export const useStore = create<AppState>()(
 
                 setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
                 setFocusEffectEnabled: (enabled) => set({ focusEffectEnabled: enabled }),
+
+                setPriorityReminderSlot: (index, time) => set((state) => {
+                    const slots = [...state.priorityReminderSettings.slots];
+                    slots[index] = time;
+                    return { priorityReminderSettings: { ...state.priorityReminderSettings, slots } };
+                }),
+
+                togglePriorityReminders: (enabled) => set((state) => ({
+                    priorityReminderSettings: { ...state.priorityReminderSettings, enabled }
+                })),
+
+                resetPriorityReminderDefaults: () => set((state) => ({
+                    priorityReminderSettings: { ...state.priorityReminderSettings, slots: ['12:00', '19:00', '22:00'] }
+                })),
 
                 startTaskGroupReminder: () => {
                     if (isNative) WidgetSync.startTaskGroupReminder().catch(console.error);

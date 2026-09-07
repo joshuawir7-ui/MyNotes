@@ -27,20 +27,48 @@ import java.util.TimeZone;
 public class EventsReminderReceiver extends BroadcastReceiver {
     private static final String CHANNEL_ID = "events_reminder_channel";
     public static final String ACTION_SHOW_EVENT_REMINDERS = "com.iunico.mynotes.ACTION_SHOW_EVENT_REMINDERS";
-    public static final String ACTION_COMPLETE_EVENT = "com.iunico.mynotes.ACTION_COMPLETE_EVENT";
-    public static final String ACTION_DISMISS_EVENT = "com.iunico.mynotes.ACTION_DISMISS_EVENT";
+    public static final String ACTION_SHOW_SINGLE_EVENT    = "com.iunico.mynotes.ACTION_SHOW_SINGLE_EVENT";
+    public static final String ACTION_COMPLETE_EVENT       = "com.iunico.mynotes.ACTION_COMPLETE_EVENT";
+    public static final String ACTION_DISMISS_EVENT        = "com.iunico.mynotes.ACTION_DISMISS_EVENT";
 
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
         if (action == null || ACTION_SHOW_EVENT_REMINDERS.equals(action) || Intent.ACTION_BOOT_COMPLETED.equals(action)) {
+            // Full scan: cancel stale notifications and reschedule all per-event alarms
             checkAndShowEventNotifications(context);
-            if (ACTION_SHOW_EVENT_REMINDERS.equals(action) || Intent.ACTION_BOOT_COMPLETED.equals(action)) {
-                rescheduleAlarm(context);
+            scheduleAllEventAlarms(context);
+        } else if (ACTION_SHOW_SINGLE_EVENT.equals(action)) {
+            // Per-event alarm: show the notification for one specific event
+            String appointmentId = intent.getStringExtra("appointment_id");
+            String title         = intent.getStringExtra("appointment_title");
+            String date          = intent.getStringExtra("appointment_date");
+            String color         = intent.getStringExtra("appointment_color");
+            boolean isTomorrow   = intent.getBooleanExtra("is_tomorrow", false);
+            int notificationId   = intent.getIntExtra("notification_id", -1);
+            if (appointmentId != null && notificationId != -1) {
+                // Only show if the event is still pending
+                SharedPreferences prefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
+                String notificationsEnabled = prefs.getString("notificationsEnabled", "true");
+                if (!"true".equals(notificationsEnabled)) return;
+                if (!isEventStillPending(context, appointmentId)) return;
+
+                // Dedup: only one notification per event per day
+                SharedPreferences notifPrefs = context.getSharedPreferences("EventNotificationsSent", Context.MODE_PRIVATE);
+                String todayStr = getTodayString();
+                String alreadySent = notifPrefs.getString(appointmentId, "");
+                if (todayStr.equals(alreadySent)) return;
+
+                if (isTomorrow) {
+                    showTomorrowNotification(context, title != null ? title : "Evento", color != null ? color : "#7f0df2", notificationId);
+                } else {
+                    showTodayNotification(context, appointmentId, title != null ? title : "Evento", color != null ? color : "#7f0df2", notificationId);
+                }
+                notifPrefs.edit().putString(appointmentId, todayStr).apply();
             }
         } else if (ACTION_COMPLETE_EVENT.equals(action)) {
             String appointmentId = intent.getStringExtra("appointment_id");
-            int notificationId = intent.getIntExtra("notification_id", -1);
+            int notificationId   = intent.getIntExtra("notification_id", -1);
             completeEvent(context, appointmentId, notificationId);
         } else if (ACTION_DISMISS_EVENT.equals(action)) {
             int notificationId = intent.getIntExtra("notification_id", -1);
@@ -49,6 +77,10 @@ public class EventsReminderReceiver extends BroadcastReceiver {
             }
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Full scan — cancel stale, used as fallback and on boot
+    // ─────────────────────────────────────────────────────────────────────────
 
     public static void checkAndShowEventNotifications(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
@@ -60,21 +92,12 @@ public class EventsReminderReceiver extends BroadcastReceiver {
         String appointmentsJson = prefs.getString("appointments", "[]");
         try {
             JSONArray arr = new JSONArray(appointmentsJson);
-            
-            // Get today and tomorrow date strings
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
-            sdf.setTimeZone(TimeZone.getDefault());
-            String todayStr = sdf.format(new Date());
-
-            Calendar cal = Calendar.getInstance();
-            cal.add(Calendar.DAY_OF_YEAR, 1);
-            String tomorrowStr = sdf.format(cal.getTime());
 
             // 1. Cancel notifications for events that are no longer pending or no longer exist
             SharedPreferences notificationPrefs = context.getSharedPreferences("EventNotificationsSent", Context.MODE_PRIVATE);
             String sentJsonStr = notificationPrefs.getString("sent", "{}");
             JSONObject sentJson = new JSONObject(sentJsonStr);
-            
+
             java.util.Set<String> pendingIds = new java.util.HashSet<>();
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject apt = arr.getJSONObject(i);
@@ -84,7 +107,7 @@ public class EventsReminderReceiver extends BroadcastReceiver {
                     pendingIds.add(id);
                 }
             }
-            
+
             java.util.Iterator<String> keys = sentJson.keys();
             List<String> keysToRemove = new ArrayList<>();
             while (keys.hasNext()) {
@@ -95,40 +118,8 @@ public class EventsReminderReceiver extends BroadcastReceiver {
                     keysToRemove.add(keyId);
                 }
             }
-            
             for (String keyId : keysToRemove) {
                 sentJson.remove(keyId);
-            }
-            
-            // 2. Scan and trigger notifications for today and tomorrow
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject apt = arr.getJSONObject(i);
-                String id = apt.optString("id", "");
-                String title = apt.optString("title", "Evento");
-                String date = apt.optString("date", "");
-                String status = apt.optString("status", "pending");
-                String color = apt.optString("color", "#7f0df2"); // Default purple
-
-                if (id.isEmpty() || date.isEmpty()) continue;
-
-                // Only notify if event is pending
-                if (!"pending".equals(status)) continue;
-
-                // Avoid sending duplicate notifications for this event today
-                String alreadySentToday = sentJson.optString(id, "");
-                if (alreadySentToday.equals(todayStr)) {
-                    continue; // Already sent a notification for this event today
-                }
-
-                int notificationId = id.hashCode();
-
-                if (date.equals(todayStr)) {
-                    showTodayNotification(context, id, title, color, notificationId);
-                    sentJson.put(id, todayStr);
-                } else if (date.equals(tomorrowStr)) {
-                    showTomorrowNotification(context, title, color, notificationId);
-                    sentJson.put(id, todayStr);
-                }
             }
 
             notificationPrefs.edit().putString("sent", sentJson.toString()).apply();
@@ -138,10 +129,113 @@ public class EventsReminderReceiver extends BroadcastReceiver {
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Schedule individual per-event alarms using NotificationSlots
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Replaces the old single 08:00 scan alarm with N individual alarms, one per
+     * pending event. Each event fires at its own deterministic slot (from NotificationSlots)
+     * so notifications are distributed throughout the day instead of bursting at once.
+     */
+    public static void scheduleAllEventAlarms(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
+        String notificationsEnabled = prefs.getString("notificationsEnabled", "true");
+        if (!"true".equals(notificationsEnabled)) return;
+
+        String appointmentsJson = prefs.getString("appointments", "[]");
+        android.app.AlarmManager alarmManager =
+                (android.app.AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) return;
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+        sdf.setTimeZone(TimeZone.getDefault());
+        String todayStr    = sdf.format(new Date());
+        Calendar cal       = Calendar.getInstance();
+        cal.add(Calendar.DAY_OF_YEAR, 1);
+        String tomorrowStr = sdf.format(cal.getTime());
+
+        try {
+            JSONArray arr = new JSONArray(appointmentsJson);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject apt = arr.getJSONObject(i);
+                String id     = apt.optString("id", "");
+                String title  = apt.optString("title", "Evento");
+                String date   = apt.optString("date", "");
+                String status = apt.optString("status", "pending");
+                String color  = apt.optString("color", "#7f0df2");
+
+                if (id.isEmpty() || date.isEmpty()) continue;
+                if (!"pending".equals(status)) continue;
+
+                boolean isToday    = date.equals(todayStr);
+                boolean isTomorrow = date.equals(tomorrowStr);
+                if (!isToday && !isTomorrow) continue;
+
+                // Deterministic slot based on the event's ID (same event → same slot always)
+                long triggerMillis = NotificationSlots.buildTriggerMillis(id, 5);
+
+                int notificationId = id.hashCode();
+
+                Intent alarmIntent = new Intent(context, EventsReminderReceiver.class);
+                alarmIntent.setAction(ACTION_SHOW_SINGLE_EVENT);
+                alarmIntent.putExtra("appointment_id",    id);
+                alarmIntent.putExtra("appointment_title", title);
+                alarmIntent.putExtra("appointment_date",  date);
+                alarmIntent.putExtra("appointment_color", color);
+                alarmIntent.putExtra("is_tomorrow",       isTomorrow);
+                alarmIntent.putExtra("notification_id",   notificationId);
+
+                int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    flags |= PendingIntent.FLAG_IMMUTABLE;
+                }
+
+                // Use the event's hashCode as the unique PendingIntent requestCode
+                PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                        context, notificationId, alarmIntent, flags);
+
+                scheduleExactAlarm(alarmManager, triggerMillis, pendingIntent);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Keep rescheduleAlarm for backward-compat (boot receiver, legacy callers)
+    // Now it just delegates to scheduleAllEventAlarms.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public static void rescheduleAlarm(Context context) {
+        scheduleAllEventAlarms(context);
+    }
+
+    public static void cancelAlarm(Context context) {
+        // Cancel the legacy single-scan alarm (requestCode 2026) if still present
+        android.app.AlarmManager alarmManager =
+                (android.app.AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(context, EventsReminderReceiver.class);
+        intent.setAction(ACTION_SHOW_EVENT_REMINDERS);
+
+        int alarmFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmFlags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context, 2026, intent, alarmFlags);
+        if (alarmManager != null) {
+            alarmManager.cancel(pendingIntent);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Notification builders
+    // ─────────────────────────────────────────────────────────────────────────
+
     private static void showTodayNotification(Context context, String appointmentId, String title, String color, int notificationId) {
         createNotificationChannel(context);
 
-        // Html styled text for "Hoy tienes [Nombre del evento] ¿ya lo haz completado?"
         String textHtml = "Hoy tienes <font color=\"" + color + "\"><b>" + title + "</b></font> ¿ya lo has completado?";
         CharSequence contentText;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -150,40 +244,33 @@ public class EventsReminderReceiver extends BroadcastReceiver {
             contentText = Html.fromHtml(textHtml);
         }
 
-        // Action: Completado
         Intent completeIntent = new Intent(context, EventsReminderReceiver.class);
         completeIntent.setAction(ACTION_COMPLETE_EVENT);
         completeIntent.putExtra("appointment_id", appointmentId);
         completeIntent.putExtra("notification_id", notificationId);
-        
+
         int completeFlags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             completeFlags |= PendingIntent.FLAG_IMMUTABLE;
         }
         PendingIntent completePendingIntent = PendingIntent.getBroadcast(
-            context, notificationId * 2, completeIntent, completeFlags
-        );
+                context, notificationId * 2, completeIntent, completeFlags);
 
-        // Purple styled text for "Completado" button
         SpannableString completeButtonText = new SpannableString("Completado");
         completeButtonText.setSpan(new ForegroundColorSpan(Color.parseColor("#7f0df2")), 0, completeButtonText.length(), 0);
 
-        // Action: Aún no
         Intent dismissIntent = new Intent(context, EventsReminderReceiver.class);
         dismissIntent.setAction(ACTION_DISMISS_EVENT);
         dismissIntent.putExtra("notification_id", notificationId);
-        
+
         int dismissFlags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             dismissFlags |= PendingIntent.FLAG_IMMUTABLE;
         }
         PendingIntent dismissPendingIntent = PendingIntent.getBroadcast(
-            context, notificationId * 2 + 1, dismissIntent, dismissFlags
-        );
+                context, notificationId * 2 + 1, dismissIntent, dismissFlags);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                // ic_notification_small: silueta monócroma de la "n" en Dancing Script.
-                // Android aplana a blanco; NO usar ic_launcher aquí.
                 .setSmallIcon(R.drawable.ic_notification_small)
                 .setContentTitle("Recordatorio de Evento")
                 .setContentText(contentText)
@@ -201,8 +288,7 @@ public class EventsReminderReceiver extends BroadcastReceiver {
                 openFlags |= PendingIntent.FLAG_IMMUTABLE;
             }
             PendingIntent contentIntent = PendingIntent.getActivity(
-                context, notificationId, openAppIntent, openFlags
-            );
+                    context, notificationId, openAppIntent, openFlags);
             builder.setContentIntent(contentIntent);
         }
 
@@ -212,7 +298,6 @@ public class EventsReminderReceiver extends BroadcastReceiver {
     private static void showTomorrowNotification(Context context, String title, String color, int notificationId) {
         createNotificationChannel(context);
 
-        // Html styled text for "Mañana tienes [nombre del evento] no te olvides"
         String textHtml = "Mañana tienes <font color=\"" + color + "\"><b>" + title + "</b></font> no te olvides";
         CharSequence contentText;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -222,8 +307,6 @@ public class EventsReminderReceiver extends BroadcastReceiver {
         }
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                // ic_notification_small: silueta monócroma de la "n" en Dancing Script.
-                // Android aplana a blanco; NO usar ic_launcher aquí.
                 .setSmallIcon(R.drawable.ic_notification_small)
                 .setContentTitle("Recordatorio de Evento")
                 .setContentText(contentText)
@@ -239,13 +322,16 @@ public class EventsReminderReceiver extends BroadcastReceiver {
                 openFlags |= PendingIntent.FLAG_IMMUTABLE;
             }
             PendingIntent contentIntent = PendingIntent.getActivity(
-                context, notificationId, openAppIntent2, openFlags
-            );
+                    context, notificationId, openAppIntent2, openFlags);
             builder.setContentIntent(contentIntent);
         }
 
         NotificationManagerCompat.from(context).notify(notificationId, builder.build());
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Complete event action
+    // ─────────────────────────────────────────────────────────────────────────
 
     private void completeEvent(Context context, String appointmentId, int notificationId) {
         if (appointmentId == null) return;
@@ -264,13 +350,11 @@ public class EventsReminderReceiver extends BroadcastReceiver {
             }
 
             prefs.edit()
-                .putString("appointments", arr.toString())
-                .commit();
+                    .putString("appointments", arr.toString())
+                    .commit();
 
-            // Notify capacitor frontend
             WidgetSyncPlugin.notifyAppointmentsChanged();
 
-            // Refresh calendar widget
             android.appwidget.AppWidgetManager appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context);
             android.content.ComponentName calendarWidget = new android.content.ComponentName(context, CalendarWidgetProvider.class);
             int[] calendarIds = appWidgetManager.getAppWidgetIds(calendarWidget);
@@ -290,92 +374,65 @@ public class EventsReminderReceiver extends BroadcastReceiver {
         }
     }
 
-    public static void rescheduleAlarm(Context context) {
-        android.app.AlarmManager alarmManager = (android.app.AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        Intent intent = new Intent(context, EventsReminderReceiver.class);
-        intent.setAction(ACTION_SHOW_EVENT_REMINDERS);
-        
-        int alarmFlags = PendingIntent.FLAG_UPDATE_CURRENT;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmFlags |= PendingIntent.FLAG_IMMUTABLE;
-        }
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
-            context, 2026, intent, alarmFlags
-        );
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────────────────
 
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(System.currentTimeMillis());
-        // Schedule for today/tomorrow at 8:00 AM (08:00)
-        calendar.set(Calendar.HOUR_OF_DAY, 8);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-
-        if (calendar.getTimeInMillis() <= System.currentTimeMillis()) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1);
-        }
-
-        if (alarmManager != null) {
-            try {
-                if (Build.VERSION.SDK_INT >= 31) {
-                    if (alarmManager.canScheduleExactAlarms()) {
-                        alarmManager.setExactAndAllowWhileIdle(
-                            android.app.AlarmManager.RTC_WAKEUP,
-                            calendar.getTimeInMillis(),
-                            pendingIntent
-                        );
-                    } else {
-                        alarmManager.setAndAllowWhileIdle(
-                            android.app.AlarmManager.RTC_WAKEUP,
-                            calendar.getTimeInMillis(),
-                            pendingIntent
-                        );
-                    }
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    alarmManager.setExactAndAllowWhileIdle(
-                        android.app.AlarmManager.RTC_WAKEUP,
-                        calendar.getTimeInMillis(),
-                        pendingIntent
-                    );
-                } else {
-                    alarmManager.setExact(
-                        android.app.AlarmManager.RTC_WAKEUP,
-                        calendar.getTimeInMillis(),
-                        pendingIntent
-                    );
-                }
-            } catch (SecurityException se) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    alarmManager.setAndAllowWhileIdle(
-                        android.app.AlarmManager.RTC_WAKEUP,
-                        calendar.getTimeInMillis(),
-                        pendingIntent
-                    );
-                } else {
-                    alarmManager.set(
-                        android.app.AlarmManager.RTC_WAKEUP,
-                        calendar.getTimeInMillis(),
-                        pendingIntent
-                    );
+    /** Returns true if the event with the given ID is still pending in WidgetData. */
+    private static boolean isEventStillPending(Context context, String appointmentId) {
+        SharedPreferences prefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
+        String json = prefs.getString("appointments", "[]");
+        try {
+            JSONArray arr = new JSONArray(json);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject apt = arr.getJSONObject(i);
+                if (appointmentId.equals(apt.optString("id"))) {
+                    return "pending".equals(apt.optString("status", "pending"));
                 }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+        return false;
     }
 
-    public static void cancelAlarm(Context context) {
-        android.app.AlarmManager alarmManager = (android.app.AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        Intent intent = new Intent(context, EventsReminderReceiver.class);
-        intent.setAction(ACTION_SHOW_EVENT_REMINDERS);
-        
-        int alarmFlags = PendingIntent.FLAG_UPDATE_CURRENT;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmFlags |= PendingIntent.FLAG_IMMUTABLE;
-        }
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
-            context, 2026, intent, alarmFlags
-        );
+    private static String getTodayString() {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+        sdf.setTimeZone(TimeZone.getDefault());
+        return sdf.format(new Date());
+    }
 
-        if (alarmManager != null) {
-            alarmManager.cancel(pendingIntent);
+    /**
+     * Schedules an exact alarm compatible with all Android API levels (including 12+
+     * which requires SCHEDULE_EXACT_ALARM or USE_EXACT_ALARM permission).
+     */
+    private static void scheduleExactAlarm(android.app.AlarmManager alarmManager,
+                                            long triggerMillis,
+                                            PendingIntent pendingIntent) {
+        try {
+            if (Build.VERSION.SDK_INT >= 31) {
+                if (alarmManager.canScheduleExactAlarms()) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                            android.app.AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent);
+                } else {
+                    alarmManager.setAndAllowWhileIdle(
+                            android.app.AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent);
+                }
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                        android.app.AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent);
+            } else {
+                alarmManager.setExact(
+                        android.app.AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent);
+            }
+        } catch (SecurityException se) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setAndAllowWhileIdle(
+                        android.app.AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent);
+            } else {
+                alarmManager.set(
+                        android.app.AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent);
+            }
         }
     }
 

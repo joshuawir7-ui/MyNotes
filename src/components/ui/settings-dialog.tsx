@@ -10,6 +10,7 @@ import { ModeToggle } from "@/components/ui/mode-toggle"
 import { LanguageToggle } from "@/components/ui/language-toggle"
 import { Capacitor } from "@capacitor/core"
 import { NotificationDialog } from "@/components/ui/notification-dialog"
+import { PriorityReminderSettings } from "@/components/ui/priority-reminder-settings"
 import { useRouter } from "next/navigation"
 
 export function SettingsDialog() {
@@ -794,7 +795,9 @@ export function SettingsDialog() {
                                             </button>
                                         </motion.div>
 
-                                        {/* Focus Effect Toggle */}
+                                        {/* Priority task reminder time slots */}
+                                        <PriorityReminderSettings />
+
                                         <motion.div 
                                             onClick={() => {
                                                 setFocusEffectEnabled(!focusEffectEnabled);

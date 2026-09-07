@@ -473,6 +473,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         () => useStore.getState().appointments,
                         () => useStore.getState().language,
                         () => useStore.getState().notificationsEnabled,
+                        () => useStore.getState().priorityReminderSettings
                     );
                 }
             });
