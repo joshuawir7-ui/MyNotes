@@ -653,9 +653,9 @@ export default function BalancePage() {
                                 <div className="relative w-56 h-56 flex items-center justify-center select-none">
                                     <svg className="w-full h-full transform rotate-90 scale-x-[-1]" viewBox="0 0 200 200">
                                         <defs>
-                                            <linearGradient id="blueProgressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" stopColor="currentColor" className="text-[#3b82f6] dark:text-white" />
-                                                <stop offset="100%" stopColor="currentColor" className="text-[#1d4ed8] dark:text-white" />
+                                            <linearGradient id="balanceProgressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                <stop offset="0%" stopColor="currentColor" className="text-black dark:text-white" />
+                                                <stop offset="100%" stopColor="currentColor" className="text-zinc-900 dark:text-white" />
                                             </linearGradient>
                                         </defs>
 
@@ -672,7 +672,7 @@ export default function BalancePage() {
                                             cx="100"
                                             cy="100"
                                             r={radius}
-                                            stroke="url(#blueProgressGradient)"
+                                            stroke="url(#balanceProgressGradient)"
                                             strokeWidth={strokeWidth}
                                             fill="transparent"
                                             strokeDasharray={circumference}
