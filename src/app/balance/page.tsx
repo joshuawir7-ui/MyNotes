@@ -223,6 +223,8 @@ export default function BalancePage() {
 
     // Toggle between 'donut' and 'line' (wavy line)
     const [chartType, setChartType] = useState<"donut" | "line">("donut")
+    const [lineTimeRange, setLineTimeRange] = useState<"7d" | "30d" | "all">("all")
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
     // Custom deletion modal states
     const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false)
@@ -290,7 +292,7 @@ export default function BalancePage() {
     const circumference = 2 * Math.PI * radius
     const strokeDashoffset = circumference - (boundedPercentage / 100) * circumference
 
-    // Builds full balance history from the very first transaction date up to today
+    // Builds full balance history from the very first transaction date up to today (with time range filter)
     const getFullBalanceHistory = () => {
         if (transactions.length === 0) {
             const todayStr2 = new Date().toISOString().split('T')[0]
@@ -306,10 +308,22 @@ export default function BalancePage() {
         const todayVal = new Date()
         const todayDateStr = todayVal.toISOString().split('T')[0]
 
-        // Enumerate every calendar day from firstDate to today
-        const history: { date: string; label: string; balance: number }[] = []
-        const cursor = new Date(firstDateStr + 'T12:00:00')
+        let startDate = new Date(firstDateStr + 'T12:00:00')
         const end = new Date(todayDateStr + 'T12:00:00')
+
+        if (lineTimeRange === '7d') {
+            const d7 = new Date(todayVal)
+            d7.setDate(todayVal.getDate() - 6)
+            if (d7 > startDate) startDate = d7
+        } else if (lineTimeRange === '30d') {
+            const d30 = new Date(todayVal)
+            d30.setDate(todayVal.getDate() - 29)
+            if (d30 > startDate) startDate = d30
+        }
+
+        // Enumerate calendar days
+        const history: { date: string; label: string; balance: number }[] = []
+        const cursor = new Date(startDate)
 
         while (cursor <= end) {
             const dateStr = cursor.toISOString().split('T')[0]
@@ -336,7 +350,7 @@ export default function BalancePage() {
         return history
     }
 
-    const weeklyHistory = useMemo(() => getFullBalanceHistory(), [transactions, balance, language])
+    const weeklyHistory = useMemo(() => getFullBalanceHistory(), [transactions, balance, language, lineTimeRange])
 
     const handleSaveGoal = (e: React.FormEvent) => {
         e.preventDefault()
@@ -512,133 +526,270 @@ export default function BalancePage() {
         </div>
     )
 
-    // Renders the sharp pointed SVG line chart (representing full capital history)
+    // Renders high-definition SVG line chart with glowing curves, crisp badges, and time range filters
     const renderLineChart = () => {
         const balances = weeklyHistory.map(h => h.balance)
         const rawMax = Math.max(...balances)
         const rawMin = Math.min(...balances)
 
-        // Amplify the visible range so peaks/dips are very pronounced
+        // Amplify visible range so peaks/dips are very pronounced
         const dataMid = (rawMax + rawMin) / 2
         const halfSpan = Math.max((rawMax - rawMin) * 0.55, 1)
         const maxB = dataMid + halfSpan
         const minB = dataMid - halfSpan
         const range = maxB - minB
 
-        const svgW = 500
-        const svgH = 160
-        const padL = 30
-        const padR = 30
-        const padTop = 22
-        const padBot = 28
+        const svgW = 540
+        const svgH = 200
+        const padL = 40
+        const padR = 40
+        const padTop = 36
+        const padBot = 36
         const chartW = svgW - padL - padR
         const chartH = svgH - padTop - padBot
         const n = weeklyHistory.length
 
         const points = weeklyHistory.map((pt, idx) => {
             const x = padL + (n <= 1 ? chartW / 2 : (idx / (n - 1)) * chartW)
-            // Clamp y so extreme outliers don't overflow
             const norm = Math.min(Math.max((pt.balance - minB) / range, 0), 1)
             const y = padTop + chartH - norm * chartH
-            return { x, y, label: pt.label, val: pt.balance, idx }
+            return { x, y, label: pt.label, val: pt.balance, date: pt.date, idx }
         })
 
-        // Draw straight line paths for a sharp-edged style
-        let dPath = `M ${points[0].x} ${points[0].y}`
-        for (let i = 1; i < points.length; i++) {
-            dPath += ` L ${points[i].x} ${points[i].y}`
+        // Generate smooth cubic bezier curve path
+        let dPath = ""
+        if (points.length === 1) {
+            dPath = `M ${points[0].x} ${points[0].y}`
+        } else if (points.length === 2) {
+            dPath = `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
+        } else {
+            dPath = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`
+            for (let i = 0; i < points.length - 1; i++) {
+                const p0 = points[i === 0 ? i : i - 1]
+                const p1 = points[i]
+                const p2 = points[i + 1]
+                const p3 = points[i + 2 < points.length ? i + 2 : i + 1]
+
+                const cp1x = p1.x + (p2.x - p0.x) / 5
+                const cp1y = p1.y + (p2.y - p0.y) / 5
+                const cp2x = p2.x - (p3.x - p1.x) / 5
+                const cp2y = p2.y - (p3.y - p1.y) / 5
+
+                dPath += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`
+            }
         }
 
-        // Area fill under the line
+        // Area fill under line
         const areaPath = dPath
-            + ` L ${points[points.length - 1].x} ${svgH - padBot}`
-            + ` L ${points[0].x} ${svgH - padBot} Z`
+            + ` L ${points[points.length - 1].x.toFixed(1)} ${(svgH - padBot).toFixed(1)}`
+            + ` L ${points[0].x.toFixed(1)} ${(svgH - padBot).toFixed(1)} Z`
 
-        // Decimate labels & dots: show at most ~7 evenly spaced
+        // Decimate labels: show at most ~7 evenly spaced
         const maxLabels = 7
-        const step = n <= maxLabels ? 1 : Math.ceil(n / maxLabels)
+        const step = n <= maxLabels ? 1 : Math.ceil((n - 1) / (maxLabels - 1))
         const visibleIndices = new Set<number>()
         for (let i = 0; i < n; i += step) visibleIndices.add(i)
-        visibleIndices.add(n - 1) // always show last
+        visibleIndices.add(n - 1) // Always include latest day
+
+        const activeHoverPoint = hoveredIndex !== null ? points[hoveredIndex] : null
 
         return (
-            <div className="relative w-full flex flex-col items-center justify-center select-none bg-transparent" style={{ height: '14rem' }}>
-                <svg className="w-full h-full" viewBox={`0 0 ${svgW} ${svgH}`} preserveAspectRatio="none">
-                    {/* Gradient defs */}
-                    <defs>
-                        <linearGradient id="lineAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.25" />
-                            <stop offset="100%" stopColor="#ef4444" stopOpacity="0.01" />
-                        </linearGradient>
-                    </defs>
+            <div className="w-full flex flex-col items-center select-none bg-transparent gap-2 my-1">
+                {/* Time Range Filter Selector */}
+                <div className="flex items-center justify-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-2xl border border-black/5 dark:border-white/10 text-[11px] font-bold">
+                    <button
+                        type="button"
+                        onClick={() => setLineTimeRange("7d")}
+                        className={`px-3 py-0.5 rounded-xl transition-all ${
+                            lineTimeRange === "7d"
+                                ? "bg-rose-500 text-white shadow-sm font-black"
+                                : "text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                        {language === 'es' ? '7 Días' : '7 Days'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setLineTimeRange("30d")}
+                        className={`px-3 py-0.5 rounded-xl transition-all ${
+                            lineTimeRange === "30d"
+                                ? "bg-rose-500 text-white shadow-sm font-black"
+                                : "text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                        {language === 'es' ? '30 Días' : '30 Days'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setLineTimeRange("all")}
+                        className={`px-3 py-0.5 rounded-xl transition-all ${
+                            lineTimeRange === "all"
+                                ? "bg-rose-500 text-white shadow-sm font-black"
+                                : "text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                        {language === 'es' ? 'Todo' : 'All'}
+                    </button>
+                </div>
 
-                    {/* Horizontal grid lines */}
-                    {[0.25, 0.5, 0.75].map(f => (
-                        <line
-                            key={f}
-                            x1={padL} y1={padTop + chartH * (1 - f)}
-                            x2={svgW - padR} y2={padTop + chartH * (1 - f)}
-                            stroke="currentColor"
-                            strokeOpacity="0.08"
-                            strokeWidth="1"
-                            strokeDasharray="4,4"
+                {/* SVG Container */}
+                <div className="relative w-full max-w-[500px]">
+                    <svg
+                        className="w-full h-auto overflow-visible"
+                        viewBox={`0 0 ${svgW} ${svgH}`}
+                        style={{ shapeRendering: "geometricPrecision", textRendering: "geometricPrecision" }}
+                    >
+                        <defs>
+                            {/* Glowing drop shadow filter */}
+                            <filter id="glowRed" x="-20%" y="-20%" width="140%" height="140%">
+                                <feDropShadow dx="0" dy="3" stdDeviation="3.5" floodColor="#ef4444" floodOpacity="0.45" />
+                            </filter>
+                            {/* Smooth gradient fill */}
+                            <linearGradient id="lineAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity="0.32" />
+                                <stop offset="70%" stopColor="#ef4444" stopOpacity="0.05" />
+                                <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
+                            </linearGradient>
+                            <linearGradient id="lineStrokeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#f43f5e" />
+                                <stop offset="50%" stopColor="#ef4444" />
+                                <stop offset="100%" stopColor="#e11d48" />
+                            </linearGradient>
+                        </defs>
+
+                        {/* Background Grid Lines */}
+                        {[0.2, 0.5, 0.8].map((f) => (
+                            <line
+                                key={f}
+                                x1={padL}
+                                y1={padTop + chartH * (1 - f)}
+                                x2={svgW - padR}
+                                y2={padTop + chartH * (1 - f)}
+                                stroke="currentColor"
+                                className="text-zinc-200 dark:text-zinc-800"
+                                strokeWidth="1"
+                                strokeDasharray="4,4"
+                            />
+                        ))}
+
+                        {/* Gradient Area Fill */}
+                        <path d={areaPath} fill="url(#lineAreaGrad)" />
+
+                        {/* Smooth Red Line Path with Glow */}
+                        <path
+                            d={dPath}
+                            fill="none"
+                            stroke="url(#lineStrokeGrad)"
+                            strokeWidth="3.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            filter="url(#glowRed)"
                         />
-                    ))}
 
-                    {/* Area fill */}
-                    <path d={areaPath} fill="url(#lineAreaGrad)" />
+                        {/* Points & Labels */}
+                        {points.map((pt) => {
+                            const isVisible = visibleIndices.has(pt.idx)
+                            const isLatest = pt.idx === points.length - 1
+                            const isHovered = hoveredIndex === pt.idx
 
-                    {/* Main line */}
-                    <path
-                        d={dPath}
-                        fill="none"
-                        stroke="#ef4444"
-                        strokeWidth="2.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
+                            const valStr = pt.val % 1 === 0 ? pt.val.toLocaleString() : pt.val.toFixed(1)
+                            const textWidth = Math.max(valStr.length * 6.5 + 8, 22)
 
-                    {/* Dots + labels only for decimated points */}
-                    {points.map((pt) => {
-                        if (!visibleIndices.has(pt.idx)) return null
-                        return (
-                            <g key={pt.idx}>
-                                <circle
-                                    cx={pt.x}
-                                    cy={pt.y}
-                                    r={n <= 7 ? 4.5 : 3.5}
-                                    fill="#ef4444"
-                                    stroke="white"
-                                    strokeWidth="1.8"
-                                />
-                                {/* Value label above dot */}
-                                <text
-                                    x={pt.x}
-                                    y={pt.y - 8}
-                                    textAnchor="middle"
-                                    fontSize="8"
-                                    fontWeight="800"
-                                    fill="currentColor"
-                                    fillOpacity="0.85"
+                            return (
+                                <g
+                                    key={pt.idx}
+                                    className="cursor-pointer group"
+                                    onMouseEnter={() => setHoveredIndex(pt.idx)}
+                                    onMouseLeave={() => setHoveredIndex(null)}
                                 >
-                                    {pt.val % 1 === 0 ? pt.val.toLocaleString() : pt.val.toFixed(1)}
-                                </text>
-                                {/* Date label below baseline */}
-                                <text
-                                    x={pt.x}
-                                    y={svgH - 4}
-                                    textAnchor="middle"
-                                    fontSize="7.5"
-                                    fontWeight="700"
-                                    fill="currentColor"
-                                    fillOpacity="0.5"
-                                >
-                                    {pt.label}
-                                </text>
-                            </g>
-                        )
-                    })}
-                </svg>
+                                    {/* Invisible larger target for easy hover/touch */}
+                                    <circle cx={pt.x} cy={pt.y} r="14" fill="transparent" />
+
+                                    {/* Pulsing aura on latest point */}
+                                    {isLatest && (
+                                        <circle
+                                            cx={pt.x}
+                                            cy={pt.y}
+                                            r="9"
+                                            fill="#ef4444"
+                                            opacity="0.35"
+                                            className="animate-ping"
+                                        />
+                                    )}
+
+                                    {/* Point node */}
+                                    <circle
+                                        cx={pt.x}
+                                        cy={pt.y}
+                                        r={isHovered ? 6 : 4.5}
+                                        fill="#ef4444"
+                                        stroke="#ffffff"
+                                        strokeWidth="2"
+                                        className="transition-all duration-200"
+                                    />
+
+                                    {/* Value badge pill + text */}
+                                    {(isVisible || isHovered) && (
+                                        <g transform={`translate(${pt.x}, ${pt.y - 13})`} className="pointer-events-none">
+                                            {/* Badge background pill */}
+                                            <rect
+                                                x={-textWidth / 2}
+                                                y="-11"
+                                                width={textWidth}
+                                                height="14"
+                                                rx="7"
+                                                fill="#18181b"
+                                                className="dark:fill-zinc-100 shadow-md"
+                                                opacity={isHovered ? "1" : "0.9"}
+                                            />
+                                            {/* Text value */}
+                                            <text
+                                                x="0"
+                                                y="-0.5"
+                                                textAnchor="middle"
+                                                fontSize="8.5"
+                                                fontWeight="800"
+                                                fill="#ffffff"
+                                                className="dark:fill-zinc-950"
+                                            >
+                                                {valStr}$
+                                            </text>
+                                        </g>
+                                    )}
+
+                                    {/* Date label at bottom baseline */}
+                                    {isVisible && (
+                                        <text
+                                            x={pt.x}
+                                            y={svgH - 8}
+                                            textAnchor="middle"
+                                            fontSize="9"
+                                            fontWeight="700"
+                                            className="fill-zinc-600 dark:fill-zinc-400 font-sans"
+                                        >
+                                            {pt.label}
+                                        </text>
+                                    )}
+                                </g>
+                            )
+                        })}
+                    </svg>
+
+                    {/* Floating Tooltip Card on Hover */}
+                    <AnimatePresence>
+                        {activeHoverPoint && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 5 }}
+                                className="absolute -top-10 left-1/2 -translate-x-1/2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xl border border-zinc-800 dark:border-zinc-200 pointer-events-none z-20 whitespace-nowrap flex items-center gap-1.5"
+                            >
+                                <span className="opacity-70">{activeHoverPoint.date}:</span>
+                                <span className="text-rose-400 dark:text-rose-600 font-black">${activeHoverPoint.val.toLocaleString()}</span>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
         )
     }
