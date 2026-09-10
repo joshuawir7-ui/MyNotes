@@ -196,14 +196,6 @@ export default function BalancePage() {
         }, 0);
     }, [transactions])
 
-    const totalIncome = useMemo(() => {
-        return transactions.reduce((sum, t) => sum + (t.type === 'income' ? (Number(t.amount) || 0) : 0), 0);
-    }, [transactions])
-
-    const totalExpense = useMemo(() => {
-        return transactions.reduce((sum, t) => sum + (t.type === 'expense' ? (Number(t.amount) || 0) : 0), 0);
-    }, [transactions])
-
     const rawExpenseNotes = useStore(useShallow(state => state.expenseNotes ?? []))
     const expenseNotes = Array.isArray(rawExpenseNotes) ? rawExpenseNotes : []
     const totalDocumentedExpenses = useMemo(() => {
@@ -264,7 +256,7 @@ export default function BalancePage() {
     useEffect(() => {
         setMounted(true)
         setTxDate(new Date().toISOString().split('T')[0])
-        
+
         // Check if onboarding has been seen
         const hasSeenOnboarding = localStorage.getItem('balanceOnboardingSeen')
         if (!hasSeenOnboarding) {
@@ -600,33 +592,30 @@ export default function BalancePage() {
                     <button
                         type="button"
                         onClick={() => setLineTimeRange("7d")}
-                        className={`px-3 py-0.5 rounded-xl transition-all ${
-                            lineTimeRange === "7d"
+                        className={`px-3 py-0.5 rounded-xl transition-all ${lineTimeRange === "7d"
                                 ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm font-black"
                                 : "text-muted-foreground hover:text-foreground"
-                        }`}
+                            }`}
                     >
                         {language === 'es' ? '7 Días' : '7 Days'}
                     </button>
                     <button
                         type="button"
                         onClick={() => setLineTimeRange("30d")}
-                        className={`px-3 py-0.5 rounded-xl transition-all ${
-                            lineTimeRange === "30d"
+                        className={`px-3 py-0.5 rounded-xl transition-all ${lineTimeRange === "30d"
                                 ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm font-black"
                                 : "text-muted-foreground hover:text-foreground"
-                        }`}
+                            }`}
                     >
                         {language === 'es' ? '30 Días' : '30 Days'}
                     </button>
                     <button
                         type="button"
                         onClick={() => setLineTimeRange("all")}
-                        className={`px-3 py-0.5 rounded-xl transition-all ${
-                            lineTimeRange === "all"
+                        className={`px-3 py-0.5 rounded-xl transition-all ${lineTimeRange === "all"
                                 ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm font-black"
                                 : "text-muted-foreground hover:text-foreground"
-                        }`}
+                            }`}
                     >
                         {language === 'es' ? 'Todo' : 'All'}
                     </button>
@@ -835,24 +824,24 @@ export default function BalancePage() {
         )
     }
 
-    // Renders clean circular Donut chart matching user mockup (single thin grey ring next to black arc)
+    // Renders clean circular Donut chart matching user mockup (wide grey background track + black progress arc)
     const renderDonutChart = () => {
-        const blackArcRadius = 75
-        const blackArcStrokeWidth = 14
-        const circumference = 2 * Math.PI * blackArcRadius
+        const radius = 78
+        const strokeWidth = 16
+        const circumference = 2 * Math.PI * radius
         const boundedPercentage = savingsGoal > 0 ? Math.min(Math.max((balance / savingsGoal) * 100, 8), 100) : 50
         const strokeDashoffset = circumference - (boundedPercentage / 100) * circumference
 
         return (
             <div className="relative w-56 h-56 flex items-center justify-center select-none bg-transparent mx-auto my-2">
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 220 220">
-                    {/* Single Thin Grey Ring Track (Next to the black arc) */}
+                    {/* Wide Grey Background Circular Track Band */}
                     <circle
                         cx="110"
                         cy="110"
-                        r="84"
-                        className="stroke-zinc-200/70 dark:stroke-zinc-800/80"
-                        strokeWidth="3"
+                        r={radius}
+                        className="stroke-zinc-100 dark:stroke-zinc-800/60"
+                        strokeWidth={strokeWidth}
                         fill="none"
                     />
 
@@ -860,9 +849,9 @@ export default function BalancePage() {
                     <motion.circle
                         cx="110"
                         cy="110"
-                        r={blackArcRadius}
+                        r={radius}
                         className="stroke-zinc-950 dark:stroke-zinc-100"
-                        strokeWidth={blackArcStrokeWidth}
+                        strokeWidth={strokeWidth}
                         fill="none"
                         strokeDasharray={circumference}
                         initial={{ strokeDashoffset: circumference }}
@@ -888,7 +877,7 @@ export default function BalancePage() {
 
     return (
         <div className="p-6 max-w-4xl mx-auto space-y-6 pb-16">
-            
+
             {showOnboarding && <BalanceOnboarding onClose={handleCloseOnboarding} />}
 
             {/* Warning Banners for Due Capital Recovery Reminders */}
@@ -1109,68 +1098,68 @@ export default function BalancePage() {
                                             WebkitMaskImage: 'linear-gradient(to bottom, transparent 0px, black 12px, black calc(100% - 16px), transparent 100%)'
                                         }}
                                     >
-                                     <Virtuoso
-                                         style={{ height: '100%', minHeight: '360px' }}
-                                         data={sortedTransactions}
-                                         itemContent={(index, tx) => (
-                                             <div
-                                                 key={tx.id}
-                                                 onClick={() => setSelectedTxDetails(tx)}
-                                                 className={`mb-3 flex items-center justify-between p-4 rounded-3xl text-white shadow-md relative group overflow-hidden w-full cursor-pointer hover:brightness-105 active:scale-[0.99] transition-all
+                                        <Virtuoso
+                                            style={{ height: '100%', minHeight: '360px' }}
+                                            data={sortedTransactions}
+                                            itemContent={(index, tx) => (
+                                                <div
+                                                    key={tx.id}
+                                                    onClick={() => setSelectedTxDetails(tx)}
+                                                    className={`mb-3 flex items-center justify-between p-4 rounded-3xl text-white shadow-md relative group overflow-hidden w-full cursor-pointer hover:brightness-105 active:scale-[0.99] transition-all
                                                      ${tx.type === 'income'
-                                                         ? 'bg-[#00b050] dark:bg-[#7030a0]'
-                                                         : 'bg-[#e60000]'
-                                                     }`}
-                                             >
-                                                 <div className="flex items-center gap-3 w-full pr-8">
-                                                     <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-                                                         {tx.type === 'income'
-                                                             ? <ArrowUpRight className="w-5 h-5 text-[#00b050] dark:text-[#7030a0]" />
-                                                             : <ArrowDownRight className="w-5 h-5 text-[#e60000]" />
-                                                         }
-                                                     </div>
+                                                            ? 'bg-[#00b050] dark:bg-[#7030a0]'
+                                                            : 'bg-[#e60000]'
+                                                        }`}
+                                                >
+                                                    <div className="flex items-center gap-3 w-full pr-8">
+                                                        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+                                                            {tx.type === 'income'
+                                                                ? <ArrowUpRight className="w-5 h-5 text-[#00b050] dark:text-[#7030a0]" />
+                                                                : <ArrowDownRight className="w-5 h-5 text-[#e60000]" />
+                                                            }
+                                                        </div>
 
-                                                     <div className="flex-1 min-w-0 pr-2">
-                                                         <div className="flex flex-col">
-                                                             <span className="font-extrabold text-sm tracking-tight sm:text-base">
-                                                                 {tx.type === 'income'
-                                                                     ? (tx.amount < 0
-                                                                         ? (language === 'es' ? `Gane ${tx.amount}${tx.currency || '$'}` : `Earned ${tx.amount}${tx.currency || '$'}`)
-                                                                         : (language === 'es' ? `Gane +${tx.amount}${tx.currency || '$'}` : `Earned +${tx.amount}${tx.currency || '$'}`)
-                                                                     )
-                                                                     : (tx.amount < 0
-                                                                         ? (language === 'es' ? `Gaste ${tx.amount}${tx.currency || '$'}` : `Spent ${tx.amount}${tx.currency || '$'}`)
-                                                                         : (language === 'es' ? `Gaste -${tx.amount}${tx.currency || '$'}` : `Spent -${tx.amount}${tx.currency || '$'}`)
-                                                                     )
-                                                                 }
-                                                             </span>
-                                                             <span className="text-xs text-white/90 truncate block mt-0.5 font-medium">
-                                                                 {tx.description}
-                                                             </span>
-                                                         </div>
-                                                     </div>
+                                                        <div className="flex-1 min-w-0 pr-2">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-extrabold text-sm tracking-tight sm:text-base">
+                                                                    {tx.type === 'income'
+                                                                        ? (tx.amount < 0
+                                                                            ? (language === 'es' ? `Gane ${tx.amount}${tx.currency || '$'}` : `Earned ${tx.amount}${tx.currency || '$'}`)
+                                                                            : (language === 'es' ? `Gane +${tx.amount}${tx.currency || '$'}` : `Earned +${tx.amount}${tx.currency || '$'}`)
+                                                                        )
+                                                                        : (tx.amount < 0
+                                                                            ? (language === 'es' ? `Gaste ${tx.amount}${tx.currency || '$'}` : `Spent ${tx.amount}${tx.currency || '$'}`)
+                                                                            : (language === 'es' ? `Gaste -${tx.amount}${tx.currency || '$'}` : `Spent -${tx.amount}${tx.currency || '$'}`)
+                                                                        )
+                                                                    }
+                                                                </span>
+                                                                <span className="text-xs text-white/90 truncate block mt-0.5 font-medium">
+                                                                    {tx.description}
+                                                                </span>
+                                                            </div>
+                                                        </div>
 
-                                                     <div className="text-[10px] sm:text-xs font-black uppercase text-white/95 shrink-0 text-right self-center wallet-history-date">
-                                                         {formatTransactionDate(tx.date)}
-                                                     </div>
-                                                 </div>
+                                                        <div className="text-[10px] sm:text-xs font-black uppercase text-white/95 shrink-0 text-right self-center wallet-history-date">
+                                                            {formatTransactionDate(tx.date)}
+                                                        </div>
+                                                    </div>
 
-                                                 <button
-                                                     onClick={(e) => {
-                                                         e.stopPropagation()
-                                                         handleDeleteTransaction(tx.id)
-                                                     }}
-                                                     className="absolute top-1/2 right-2.5 -translate-y-1/2 p-2 bg-black/25 hover:bg-black/45 rounded-xl transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0 z-10"
-                                                     title={t.deleteTransactionConfirm}
-                                                 >
-                                                     <Trash2 className="w-3.5 h-3.5 text-white" />
-                                                 </button>
-                                             </div>
-                                         )}
-                                     />
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            handleDeleteTransaction(tx.id)
+                                                        }}
+                                                        className="absolute top-1/2 right-2.5 -translate-y-1/2 p-2 bg-black/25 hover:bg-black/45 rounded-xl transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0 z-10"
+                                                        title={t.deleteTransactionConfirm}
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5 text-white" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        />
                                     </div>
-                            </div>
-                        )}
+                                </div>
+                            )}
                         </div>
                     </Reveal>
 
@@ -1523,11 +1512,10 @@ export default function BalancePage() {
                             {/* Header bar */}
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2.5">
-                                    <div className={`p-2.5 rounded-2xl ${
-                                        selectedTxDetails.type === 'income'
+                                    <div className={`p-2.5 rounded-2xl ${selectedTxDetails.type === 'income'
                                             ? 'bg-emerald-500/10 text-emerald-500 dark:bg-purple-500/10 dark:text-purple-400'
                                             : 'bg-rose-500/10 text-rose-500'
-                                    }`}>
+                                        }`}>
                                         {selectedTxDetails.type === 'income'
                                             ? <ArrowUpRight className="w-5 h-5 stroke-[2.5]" />
                                             : <ArrowDownRight className="w-5 h-5 stroke-[2.5]" />
@@ -1549,11 +1537,10 @@ export default function BalancePage() {
                             </div>
 
                             {/* Amount card */}
-                            <div className={`p-5 rounded-2xl flex flex-col items-center justify-center text-center text-white shadow-md ${
-                                selectedTxDetails.type === 'income'
+                            <div className={`p-5 rounded-2xl flex flex-col items-center justify-center text-center text-white shadow-md ${selectedTxDetails.type === 'income'
                                     ? 'bg-[#00b050] dark:bg-[#7030a0]'
                                     : 'bg-[#e60000]'
-                            }`}>
+                                }`}>
                                 <span className="text-xs uppercase font-extrabold text-white/80 tracking-wider">
                                     {language === 'es' ? 'Monto Registrado' : 'Amount Recorded'}
                                 </span>
