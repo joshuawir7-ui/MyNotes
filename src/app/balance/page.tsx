@@ -292,60 +292,80 @@ export default function BalancePage() {
     const circumference = 2 * Math.PI * radius
     const strokeDashoffset = circumference - (boundedPercentage / 100) * circumference
 
-    // Builds full balance history from the very first transaction date up to today (with time range filter)
+    // Builds transaction-by-transaction balance history (refreshes for EVERY income and expense)
     const getFullBalanceHistory = () => {
         if (transactions.length === 0) {
             const todayStr2 = new Date().toISOString().split('T')[0]
-            return [{ date: todayStr2, label: todayStr2.slice(5), balance: 0 }]
+            return [{ id: 'empty', date: todayStr2, label: todayStr2.slice(5), balance: 0, delta: 0, isUp: true, desc: 'Sin datos' }]
         }
 
-        // Find the earliest transaction date
-        const allDates = transactions
-            .filter(tx => tx.date)
-            .map(tx => tx.date as string)
-            .sort()
-        const firstDateStr = allDates[0]
-        const todayVal = new Date()
-        const todayDateStr = todayVal.toISOString().split('T')[0]
+        // Sort all transactions chronologically ascending (oldest first to newest last)
+        const sortedTx = [...transactions].sort((a, b) => {
+            const dateA = a.date || ''
+            const dateB = b.date || ''
+            if (dateA !== dateB) return dateA.localeCompare(dateB)
+            return (a.lastUpdated || 0) - (b.lastUpdated || 0)
+        })
 
-        let startDate = new Date(firstDateStr + 'T12:00:00')
-        const end = new Date(todayDateStr + 'T12:00:00')
+        const todayVal = new Date()
+        let startDateStr = sortedTx[0].date || todayVal.toISOString().split('T')[0]
 
         if (lineTimeRange === '7d') {
             const d7 = new Date(todayVal)
             d7.setDate(todayVal.getDate() - 6)
-            if (d7 > startDate) startDate = d7
+            startDateStr = d7.toISOString().split('T')[0]
         } else if (lineTimeRange === '30d') {
             const d30 = new Date(todayVal)
             d30.setDate(todayVal.getDate() - 29)
-            if (d30 > startDate) startDate = d30
+            startDateStr = d30.toISOString().split('T')[0]
         }
 
-        // Enumerate calendar days
-        const history: { date: string; label: string; balance: number }[] = []
-        const cursor = new Date(startDate)
+        // Calculate initial balance before startDate
+        let runningBalance = 0
+        sortedTx.forEach(tx => {
+            if (tx.date && tx.date < startDateStr) {
+                const amt = Number(tx.amount) || 0
+                runningBalance += tx.type === 'expense' ? -amt : amt
+            }
+        })
 
-        while (cursor <= end) {
-            const dateStr = cursor.toISOString().split('T')[0]
+        const activeTxList = sortedTx.filter(tx => !tx.date || tx.date >= startDateStr)
 
-            // Reconstruct balance as of end-of-day 'dateStr'
-            let tempBalance = 0
-            transactions.forEach(tx => {
-                if (tx.date && tx.date <= dateStr) {
-                    const txAmt = Number(tx.amount) || 0
-                    tempBalance += tx.type === 'expense' ? -txAmt : txAmt
-                }
+        const history: { id: string; date: string; label: string; balance: number; delta: number; isUp: boolean; desc: string }[] = []
+
+        // Base start point
+        const dParts = startDateStr.split('-')
+        const startLabel = dParts.length === 3 ? `${dParts[2]}/${dParts[1]}` : startDateStr
+        history.push({
+            id: 'start-point',
+            date: startDateStr,
+            label: startLabel,
+            balance: runningBalance,
+            delta: 0,
+            isUp: true,
+            desc: language === 'es' ? 'Balance inicial' : 'Initial balance'
+        })
+
+        // Process each transaction as an explicit step
+        activeTxList.forEach((tx, idx) => {
+            const amt = Number(tx.amount) || 0
+            const delta = tx.type === 'expense' ? -amt : amt
+            runningBalance += delta
+            const isUp = delta >= 0
+
+            const txDateParts = (tx.date || '').split('-')
+            const label = txDateParts.length === 3 ? `${txDateParts[2]}/${txDateParts[1]}` : tx.date || ''
+
+            history.push({
+                id: tx.id || `tx-${idx}`,
+                date: tx.date || '',
+                label,
+                balance: runningBalance,
+                delta,
+                isUp,
+                desc: tx.description || (tx.type === 'income' ? (language === 'es' ? 'Ingreso' : 'Income') : (language === 'es' ? 'Gasto' : 'Expense'))
             })
-
-            // Short label: DD/MM
-            const d = new Date(dateStr + 'T12:00:00')
-            const dd = String(d.getDate()).padStart(2, '0')
-            const mm = String(d.getMonth() + 1).padStart(2, '0')
-            const label = `${dd}/${mm}`
-
-            history.push({ date: dateStr, label, balance: tempBalance })
-            cursor.setDate(cursor.getDate() + 1)
-        }
+        })
 
         return history
     }
@@ -526,7 +546,7 @@ export default function BalancePage() {
         </div>
     )
 
-    // Renders high-definition SVG line chart with glowing curves, crisp badges, and time range filters
+    // Renders high-definition SVG line chart with green/red transaction steps
     const renderLineChart = () => {
         const balances = weeklyHistory.map(h => h.balance)
         const rawMax = Math.max(...balances)
@@ -553,43 +573,15 @@ export default function BalancePage() {
             const x = padL + (n <= 1 ? chartW / 2 : (idx / (n - 1)) * chartW)
             const norm = Math.min(Math.max((pt.balance - minB) / range, 0), 1)
             const y = padTop + chartH - norm * chartH
-            return { x, y, label: pt.label, val: pt.balance, date: pt.date, idx }
+            return { x, y, label: pt.label, val: pt.balance, date: pt.date, delta: pt.delta, isUp: pt.isUp, desc: pt.desc, idx, id: pt.id }
         })
-
-        // Generate smooth cubic bezier curve path
-        let dPath = ""
-        if (points.length === 1) {
-            dPath = `M ${points[0].x} ${points[0].y}`
-        } else if (points.length === 2) {
-            dPath = `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
-        } else {
-            dPath = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`
-            for (let i = 0; i < points.length - 1; i++) {
-                const p0 = points[i === 0 ? i : i - 1]
-                const p1 = points[i]
-                const p2 = points[i + 1]
-                const p3 = points[i + 2 < points.length ? i + 2 : i + 1]
-
-                const cp1x = p1.x + (p2.x - p0.x) / 5
-                const cp1y = p1.y + (p2.y - p0.y) / 5
-                const cp2x = p2.x - (p3.x - p1.x) / 5
-                const cp2y = p2.y - (p3.y - p1.y) / 5
-
-                dPath += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`
-            }
-        }
-
-        // Area fill under line
-        const areaPath = dPath
-            + ` L ${points[points.length - 1].x.toFixed(1)} ${(svgH - padBot).toFixed(1)}`
-            + ` L ${points[0].x.toFixed(1)} ${(svgH - padBot).toFixed(1)} Z`
 
         // Decimate labels: show at most ~7 evenly spaced
         const maxLabels = 7
         const step = n <= maxLabels ? 1 : Math.ceil((n - 1) / (maxLabels - 1))
         const visibleIndices = new Set<number>()
         for (let i = 0; i < n; i += step) visibleIndices.add(i)
-        visibleIndices.add(n - 1) // Always include latest day
+        visibleIndices.add(n - 1) // Always include latest point
 
         const activeHoverPoint = hoveredIndex !== null ? points[hoveredIndex] : null
 
@@ -602,7 +594,7 @@ export default function BalancePage() {
                         onClick={() => setLineTimeRange("7d")}
                         className={`px-3 py-0.5 rounded-xl transition-all ${
                             lineTimeRange === "7d"
-                                ? "bg-rose-500 text-white shadow-sm font-black"
+                                ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm font-black"
                                 : "text-muted-foreground hover:text-foreground"
                         }`}
                     >
@@ -613,7 +605,7 @@ export default function BalancePage() {
                         onClick={() => setLineTimeRange("30d")}
                         className={`px-3 py-0.5 rounded-xl transition-all ${
                             lineTimeRange === "30d"
-                                ? "bg-rose-500 text-white shadow-sm font-black"
+                                ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm font-black"
                                 : "text-muted-foreground hover:text-foreground"
                         }`}
                     >
@@ -624,7 +616,7 @@ export default function BalancePage() {
                         onClick={() => setLineTimeRange("all")}
                         className={`px-3 py-0.5 rounded-xl transition-all ${
                             lineTimeRange === "all"
-                                ? "bg-rose-500 text-white shadow-sm font-black"
+                                ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm font-black"
                                 : "text-muted-foreground hover:text-foreground"
                         }`}
                     >
@@ -640,20 +632,23 @@ export default function BalancePage() {
                         style={{ shapeRendering: "geometricPrecision", textRendering: "geometricPrecision" }}
                     >
                         <defs>
-                            {/* Glowing drop shadow filter */}
-                            <filter id="glowRed" x="-20%" y="-20%" width="140%" height="140%">
-                                <feDropShadow dx="0" dy="3" stdDeviation="3.5" floodColor="#ef4444" floodOpacity="0.45" />
+                            {/* Green glow filter */}
+                            <filter id="glowGreen" x="-20%" y="-20%" width="140%" height="140%">
+                                <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#10b981" floodOpacity="0.5" />
                             </filter>
-                            {/* Smooth gradient fill */}
-                            <linearGradient id="lineAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#ef4444" stopOpacity="0.32" />
-                                <stop offset="70%" stopColor="#ef4444" stopOpacity="0.05" />
-                                <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
+                            {/* Red glow filter */}
+                            <filter id="glowRed" x="-20%" y="-20%" width="140%" height="140%">
+                                <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#ef4444" floodOpacity="0.5" />
+                            </filter>
+                            {/* Green area gradient */}
+                            <linearGradient id="areaGreen" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#10b981" stopOpacity="0.22" />
+                                <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
                             </linearGradient>
-                            <linearGradient id="lineStrokeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#f43f5e" />
-                                <stop offset="50%" stopColor="#ef4444" />
-                                <stop offset="100%" stopColor="#e11d48" />
+                            {/* Red area gradient */}
+                            <linearGradient id="areaRed" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity="0.22" />
+                                <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
                             </linearGradient>
                         </defs>
 
@@ -672,32 +667,65 @@ export default function BalancePage() {
                             />
                         ))}
 
-                        {/* Gradient Area Fill */}
-                        <path d={areaPath} fill="url(#lineAreaGrad)" />
+                        {/* Draw Line Segments (Green when going up, Red when going down) */}
+                        {points.slice(1).map((pt, i) => {
+                            const prevPt = points[i]
+                            const isUp = pt.isUp
+                            const strokeColor = isUp ? "#10b981" : "#ef4444"
+                            const filterId = isUp ? "url(#glowGreen)" : "url(#glowRed)"
 
-                        {/* Smooth Red Line Path with Glow */}
-                        <path
-                            d={dPath}
-                            fill="none"
-                            stroke="url(#lineStrokeGrad)"
-                            strokeWidth="3.2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            filter="url(#glowRed)"
-                        />
+                            // Smooth Bezier segment calculation
+                            const p0 = points[Math.max(0, i - 1)]
+                            const p1 = prevPt
+                            const p2 = pt
+                            const p3 = points[Math.min(points.length - 1, i + 2)]
 
-                        {/* Points & Labels */}
+                            const cp1x = p1.x + (p2.x - p0.x) / 5
+                            const cp1y = p1.y + (p2.y - p0.y) / 5
+                            const cp2x = p2.x - (p3.x - p1.x) / 5
+                            const cp2y = p2.y - (p3.y - p1.y) / 5
+
+                            const d = `M ${p1.x.toFixed(1)} ${p1.y.toFixed(1)} C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`
+
+                            // Polygon fill under segment
+                            const segAreaPath = `${d} L ${p2.x.toFixed(1)} ${(svgH - padBot).toFixed(1)} L ${p1.x.toFixed(1)} ${(svgH - padBot).toFixed(1)} Z`
+                            const areaGrad = isUp ? "url(#areaGreen)" : "url(#areaRed)"
+
+                            return (
+                                <g key={`segment-${pt.id}-${i}`}>
+                                    {/* Sub-area fill */}
+                                    <path d={segAreaPath} fill={areaGrad} />
+                                    {/* Segment stroke */}
+                                    <path
+                                        d={d}
+                                        fill="none"
+                                        stroke={strokeColor}
+                                        strokeWidth="3.5"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        filter={filterId}
+                                    />
+                                </g>
+                            )
+                        })}
+
+                        {/* Node Dots & Badges */}
                         {points.map((pt) => {
                             const isVisible = visibleIndices.has(pt.idx)
                             const isLatest = pt.idx === points.length - 1
                             const isHovered = hoveredIndex === pt.idx
+                            const isUp = pt.isUp
 
                             const valStr = pt.val % 1 === 0 ? pt.val.toLocaleString() : pt.val.toFixed(1)
-                            const textWidth = Math.max(valStr.length * 6.5 + 8, 22)
+                            const textWidth = Math.max(valStr.length * 6.5 + 10, 24)
+
+                            const mainColor = isUp ? "#10b981" : "#ef4444"
+                            const badgeBg = isUp ? "#064e3b" : "#4c0519"
+                            const badgeText = isUp ? "#34d399" : "#fb7185"
 
                             return (
                                 <g
-                                    key={pt.idx}
+                                    key={`node-${pt.id}-${pt.idx}`}
                                     className="cursor-pointer group"
                                     onMouseEnter={() => setHoveredIndex(pt.idx)}
                                     onMouseLeave={() => setHoveredIndex(null)}
@@ -711,7 +739,7 @@ export default function BalancePage() {
                                             cx={pt.x}
                                             cy={pt.y}
                                             r="9"
-                                            fill="#ef4444"
+                                            fill={mainColor}
                                             opacity="0.35"
                                             className="animate-ping"
                                         />
@@ -721,8 +749,8 @@ export default function BalancePage() {
                                     <circle
                                         cx={pt.x}
                                         cy={pt.y}
-                                        r={isHovered ? 6 : 4.5}
-                                        fill="#ef4444"
+                                        r={isHovered ? 6.5 : 4.5}
+                                        fill={mainColor}
                                         stroke="#ffffff"
                                         strokeWidth="2"
                                         className="transition-all duration-200"
@@ -736,11 +764,13 @@ export default function BalancePage() {
                                                 x={-textWidth / 2}
                                                 y="-11"
                                                 width={textWidth}
-                                                height="14"
-                                                rx="7"
-                                                fill="#18181b"
-                                                className="dark:fill-zinc-100 shadow-md"
-                                                opacity={isHovered ? "1" : "0.9"}
+                                                height="15"
+                                                rx="7.5"
+                                                fill={badgeBg}
+                                                stroke={mainColor}
+                                                strokeWidth="1"
+                                                className="shadow-md"
+                                                opacity={isHovered ? "1" : "0.95"}
                                             />
                                             {/* Text value */}
                                             <text
@@ -749,8 +779,7 @@ export default function BalancePage() {
                                                 textAnchor="middle"
                                                 fontSize="8.5"
                                                 fontWeight="800"
-                                                fill="#ffffff"
-                                                className="dark:fill-zinc-950"
+                                                fill={badgeText}
                                             >
                                                 {valStr}$
                                             </text>
@@ -782,10 +811,14 @@ export default function BalancePage() {
                                 initial={{ opacity: 0, y: 5 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: 5 }}
-                                className="absolute -top-10 left-1/2 -translate-x-1/2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xl border border-zinc-800 dark:border-zinc-200 pointer-events-none z-20 whitespace-nowrap flex items-center gap-1.5"
+                                className="absolute -top-12 left-1/2 -translate-x-1/2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xl border border-zinc-800 dark:border-zinc-200 pointer-events-none z-20 whitespace-nowrap flex items-center gap-1.5"
                             >
-                                <span className="opacity-70">{activeHoverPoint.date}:</span>
-                                <span className="text-rose-400 dark:text-rose-600 font-black">${activeHoverPoint.val.toLocaleString()}</span>
+                                <span className="opacity-70">{activeHoverPoint.desc} ({activeHoverPoint.date}):</span>
+                                <span className={`font-black ${activeHoverPoint.isUp ? 'text-emerald-400 dark:text-emerald-600' : 'text-rose-400 dark:text-rose-600'}`}>
+                                    {activeHoverPoint.delta >= 0 ? `+${activeHoverPoint.delta}$` : `${activeHoverPoint.delta}$`}
+                                </span>
+                                <span className="opacity-50">|</span>
+                                <span className="opacity-80">Bal: ${activeHoverPoint.val.toLocaleString()}</span>
                             </motion.div>
                         )}
                     </AnimatePresence>
