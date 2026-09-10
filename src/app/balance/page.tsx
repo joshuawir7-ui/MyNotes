@@ -835,53 +835,23 @@ export default function BalancePage() {
         )
     }
 
-    // Renders custom circular Donut chart matching user mockup
+    // Renders clean circular Donut chart matching user mockup
     const renderDonutChart = () => {
-        const radius = 75
-        const strokeWidth = 24
+        const radius = 78
+        const strokeWidth = 14
         const circumference = 2 * Math.PI * radius
         const boundedPercentage = savingsGoal > 0 ? Math.min(Math.max((balance / savingsGoal) * 100, 8), 100) : 50
         const strokeDashoffset = circumference - (boundedPercentage / 100) * circumference
 
-        // Income & Expense totals for pills
-        const incDisplay = totalIncome > 0 ? `+ $${totalIncome.toLocaleString()}` : '+ $0'
-        const expDisplay = totalExpense > 0 ? `- $${totalExpense.toLocaleString()}` : '- $0'
-
         return (
-            <div className="relative w-64 h-64 flex items-center justify-center select-none bg-transparent mx-auto my-2">
-                {/* SVG for Outer Red Accents & Inner Rings */}
+            <div className="relative w-56 h-56 flex items-center justify-center select-none bg-transparent mx-auto my-2">
+                {/* SVG for Inner Rings and Progress Arc */}
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 220 220">
                     <defs>
                         <filter id="donutShadow" x="-20%" y="-20%" width="140%" height="140%">
-                            <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#000000" floodOpacity="0.08" />
+                            <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#000000" floodOpacity="0.06" />
                         </filter>
                     </defs>
-
-                    {/* Outer Hand-Drawn Red Accent Curves */}
-                    {/* Top-Left Red Arc */}
-                    <path
-                        d="M 45 42 C 30 55, 20 75, 18 95"
-                        fill="none"
-                        stroke="#ef4444"
-                        strokeWidth="3.5"
-                        strokeLinecap="round"
-                    />
-                    {/* Bottom-Left Red Arc */}
-                    <path
-                        d="M 32 165 C 45 185, 68 198, 92 200"
-                        fill="none"
-                        stroke="#ef4444"
-                        strokeWidth="3.5"
-                        strokeLinecap="round"
-                    />
-                    {/* Bottom-Right Red Arc */}
-                    <path
-                        d="M 165 190 C 185 180, 198 165, 202 145"
-                        fill="none"
-                        stroke="#ef4444"
-                        strokeWidth="3.5"
-                        strokeLinecap="round"
-                    />
 
                     {/* Outer Light Disc / Ring Container */}
                     <circle
@@ -889,7 +859,7 @@ export default function BalancePage() {
                         cy="110"
                         r="92"
                         className="fill-white dark:fill-zinc-900 stroke-zinc-100 dark:stroke-zinc-800"
-                        strokeWidth="4"
+                        strokeWidth="3"
                         filter="url(#donutShadow)"
                     />
 
@@ -903,7 +873,7 @@ export default function BalancePage() {
                         fill="none"
                     />
 
-                    {/* Main Thick Black/Dark Progress Arc (Counter-Clockwise / Sweeping from Top-Right) */}
+                    {/* Main Sleek Dark Progress Arc */}
                     <motion.circle
                         cx="110"
                         cy="110"
@@ -920,31 +890,12 @@ export default function BalancePage() {
                     />
                 </svg>
 
-                {/* Floating Pills at Top-Right and Bottom-Left */}
-                {/* Top-Right Income Pill */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="absolute top-2 right-0 translate-x-2 bg-white dark:bg-zinc-850 text-emerald-500 font-extrabold text-xs px-3 py-1.5 rounded-2xl shadow-lg border border-zinc-100 dark:border-zinc-700/60 flex items-center justify-center whitespace-nowrap z-10"
-                >
-                    {incDisplay}
-                </motion.div>
-
-                {/* Bottom-Left Expense Pill */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="absolute bottom-4 left-0 -translate-x-2 bg-white dark:bg-zinc-850 text-rose-500 font-extrabold text-xs px-3 py-1.5 rounded-2xl shadow-lg border border-zinc-100 dark:border-zinc-700/60 flex items-center justify-center whitespace-nowrap z-10"
-                >
-                    {expDisplay}
-                </motion.div>
-
-                {/* Center Content: "Balance" text + "$1,250" money amount */}
+                {/* Center Content: "Balance" text + Money amount */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
-                    <span className="text-zinc-500 dark:text-zinc-400 font-semibold text-xs sm:text-sm tracking-wide">
+                    <span className="text-zinc-400 dark:text-zinc-500 font-semibold text-xs tracking-wide">
                         {language === 'es' ? 'Balance' : 'Balance'}
                     </span>
-                    <span className="text-zinc-950 dark:text-white font-extrabold text-2xl sm:text-3xl tracking-tight mt-0.5">
+                    <span className="text-zinc-950 dark:text-white font-extrabold text-xl sm:text-2xl tracking-tight mt-0.5">
                         ${balance.toLocaleString()}
                     </span>
                 </div>
