@@ -835,51 +835,45 @@ export default function BalancePage() {
         )
     }
 
-    // Renders clean circular Donut chart matching user mockup
+    // Renders clean circular Donut chart matching user mockup (exterior grey ring, inner black progress arc, no shadow)
     const renderDonutChart = () => {
-        const radius = 78
-        const strokeWidth = 14
-        const circumference = 2 * Math.PI * radius
+        const blackArcRadius = 70
+        const blackArcStrokeWidth = 14
+        const circumference = 2 * Math.PI * blackArcRadius
         const boundedPercentage = savingsGoal > 0 ? Math.min(Math.max((balance / savingsGoal) * 100, 8), 100) : 50
         const strokeDashoffset = circumference - (boundedPercentage / 100) * circumference
 
         return (
             <div className="relative w-56 h-56 flex items-center justify-center select-none bg-transparent mx-auto my-2">
-                {/* SVG for Inner Rings and Progress Arc */}
+                {/* SVG for Concentric Rings and Progress Arc (No Shadow) */}
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 220 220">
-                    <defs>
-                        <filter id="donutShadow" x="-20%" y="-20%" width="140%" height="140%">
-                            <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#000000" floodOpacity="0.06" />
-                        </filter>
-                    </defs>
-
-                    {/* Outer Light Disc / Ring Container */}
+                    {/* Outer Thin Boundary Ring */}
                     <circle
                         cx="110"
                         cy="110"
-                        r="92"
-                        className="fill-white dark:fill-zinc-900 stroke-zinc-100 dark:stroke-zinc-800"
-                        strokeWidth="3"
-                        filter="url(#donutShadow)"
-                    />
-
-                    {/* Outer Light Inner Track */}
-                    <circle
-                        cx="110"
-                        cy="110"
-                        r={radius}
-                        className="stroke-zinc-100 dark:stroke-zinc-800/60"
-                        strokeWidth={strokeWidth}
+                        r="96"
+                        className="stroke-zinc-200/80 dark:stroke-zinc-800/80"
+                        strokeWidth="1.5"
                         fill="none"
                     />
 
-                    {/* Main Sleek Dark Progress Arc */}
+                    {/* Exterior Light Grey Circular Track (Outside the black arc) */}
+                    <circle
+                        cx="110"
+                        cy="110"
+                        r="86"
+                        className="stroke-zinc-100 dark:stroke-zinc-800/60"
+                        strokeWidth="12"
+                        fill="none"
+                    />
+
+                    {/* Inner Black Progress Arc (Concentric INSIDE the exterior grey track) */}
                     <motion.circle
                         cx="110"
                         cy="110"
-                        r={radius}
+                        r={blackArcRadius}
                         className="stroke-zinc-950 dark:stroke-zinc-100"
-                        strokeWidth={strokeWidth}
+                        strokeWidth={blackArcStrokeWidth}
                         fill="none"
                         strokeDasharray={circumference}
                         initial={{ strokeDashoffset: circumference }}
