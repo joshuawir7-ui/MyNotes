@@ -835,9 +835,9 @@ export default function BalancePage() {
         )
     }
 
-    // Renders clean circular Donut chart matching user mockup (exterior grey ring, inner black progress arc, no shadow)
+    // Renders clean circular Donut chart matching user mockup (single thin grey ring next to black arc)
     const renderDonutChart = () => {
-        const blackArcRadius = 70
+        const blackArcRadius = 75
         const blackArcStrokeWidth = 14
         const circumference = 2 * Math.PI * blackArcRadius
         const boundedPercentage = savingsGoal > 0 ? Math.min(Math.max((balance / savingsGoal) * 100, 8), 100) : 50
@@ -845,29 +845,18 @@ export default function BalancePage() {
 
         return (
             <div className="relative w-56 h-56 flex items-center justify-center select-none bg-transparent mx-auto my-2">
-                {/* SVG for Concentric Rings and Progress Arc (No Shadow) */}
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 220 220">
-                    {/* Outer Thin Boundary Ring */}
+                    {/* Single Thin Grey Ring Track (Next to the black arc) */}
                     <circle
                         cx="110"
                         cy="110"
-                        r="96"
-                        className="stroke-zinc-200/80 dark:stroke-zinc-800/80"
-                        strokeWidth="1.5"
+                        r="84"
+                        className="stroke-zinc-200/70 dark:stroke-zinc-800/80"
+                        strokeWidth="3"
                         fill="none"
                     />
 
-                    {/* Exterior Light Grey Circular Track (Outside the black arc) */}
-                    <circle
-                        cx="110"
-                        cy="110"
-                        r="86"
-                        className="stroke-zinc-100 dark:stroke-zinc-800/60"
-                        strokeWidth="12"
-                        fill="none"
-                    />
-
-                    {/* Inner Black Progress Arc (Concentric INSIDE the exterior grey track) */}
+                    {/* Main Sleek Dark Progress Arc */}
                     <motion.circle
                         cx="110"
                         cy="110"
