@@ -290,41 +290,53 @@ export default function BalancePage() {
     const circumference = 2 * Math.PI * radius
     const strokeDashoffset = circumference - (boundedPercentage / 100) * circumference
 
-    // Backtracks transactions to calculate daily balances over the last 7 days for the line chart
-    const getWeeklyBalanceHistory = () => {
-        const history = []
+    // Builds full balance history from the very first transaction date up to today
+    const getFullBalanceHistory = () => {
+        if (transactions.length === 0) {
+            const todayStr2 = new Date().toISOString().split('T')[0]
+            return [{ date: todayStr2, label: todayStr2.slice(5), balance: 0 }]
+        }
+
+        // Find the earliest transaction date
+        const allDates = transactions
+            .filter(tx => tx.date)
+            .map(tx => tx.date as string)
+            .sort()
+        const firstDateStr = allDates[0]
         const todayVal = new Date()
+        const todayDateStr = todayVal.toISOString().split('T')[0]
 
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date()
-            d.setDate(todayVal.getDate() - i)
-            const dateStr = d.toISOString().split('T')[0]
+        // Enumerate every calendar day from firstDate to today
+        const history: { date: string; label: string; balance: number }[] = []
+        const cursor = new Date(firstDateStr + 'T12:00:00')
+        const end = new Date(todayDateStr + 'T12:00:00')
 
-            let tempBalance = balance
+        while (cursor <= end) {
+            const dateStr = cursor.toISOString().split('T')[0]
+
+            // Reconstruct balance as of end-of-day 'dateStr'
+            let tempBalance = 0
             transactions.forEach(tx => {
-                if (tx.date && tx.date > dateStr) {
-                    const txAmt = tx.amount
-                    const delta = tx.type === 'expense'
-                        ? (txAmt > 0 ? -txAmt : txAmt)
-                        : txAmt
-                    tempBalance -= delta
+                if (tx.date && tx.date <= dateStr) {
+                    const txAmt = Number(tx.amount) || 0
+                    tempBalance += tx.type === 'expense' ? -txAmt : txAmt
                 }
             })
 
-            const weekdaysEs = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
-            const weekdaysEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-            const label = language === 'es' ? weekdaysEs[d.getDay()] : weekdaysEn[d.getDay()]
+            // Short label: DD/MM
+            const d = new Date(dateStr + 'T12:00:00')
+            const dd = String(d.getDate()).padStart(2, '0')
+            const mm = String(d.getMonth() + 1).padStart(2, '0')
+            const label = `${dd}/${mm}`
 
-            history.push({
-                date: dateStr,
-                label,
-                balance: tempBalance
-            })
+            history.push({ date: dateStr, label, balance: tempBalance })
+            cursor.setDate(cursor.getDate() + 1)
         }
+
         return history
     }
 
-    const weeklyHistory = useMemo(() => getWeeklyBalanceHistory(), [transactions, balance, language])
+    const weeklyHistory = useMemo(() => getFullBalanceHistory(), [transactions, balance, language])
 
     const handleSaveGoal = (e: React.FormEvent) => {
         e.preventDefault()
@@ -500,72 +512,132 @@ export default function BalancePage() {
         </div>
     )
 
-    // Renders the sharp pointed SVG line chart (representing capital breakdown)
+    // Renders the sharp pointed SVG line chart (representing full capital history)
     const renderLineChart = () => {
         const balances = weeklyHistory.map(h => h.balance)
-        const maxB = Math.max(...balances, savingsGoal)
-        const minB = Math.min(...balances, 0)
-        const range = Math.max(maxB - minB, 1)
+        const rawMax = Math.max(...balances)
+        const rawMin = Math.min(...balances)
 
-        const width = 500
-        const height = 140
+        // Amplify the visible range so peaks/dips are very pronounced
+        const dataMid = (rawMax + rawMin) / 2
+        const halfSpan = Math.max((rawMax - rawMin) * 0.55, 1)
+        const maxB = dataMid + halfSpan
+        const minB = dataMid - halfSpan
+        const range = maxB - minB
 
-        // Stretch points all the way to the edges (25 to 475)
+        const svgW = 500
+        const svgH = 160
+        const padL = 30
+        const padR = 30
+        const padTop = 22
+        const padBot = 28
+        const chartW = svgW - padL - padR
+        const chartH = svgH - padTop - padBot
+        const n = weeklyHistory.length
+
         const points = weeklyHistory.map((pt, idx) => {
-            const x = 25 + (idx / 6) * 450
-            const y = height - 35 - ((pt.balance - minB) / range) * 75
-            return { x, y, label: pt.label, val: pt.balance }
+            const x = padL + (n <= 1 ? chartW / 2 : (idx / (n - 1)) * chartW)
+            // Clamp y so extreme outliers don't overflow
+            const norm = Math.min(Math.max((pt.balance - minB) / range, 0), 1)
+            const y = padTop + chartH - norm * chartH
+            return { x, y, label: pt.label, val: pt.balance, idx }
         })
 
-        // Draw straight line paths for a pointed, sharp-edged style
+        // Draw straight line paths for a sharp-edged style
         let dPath = `M ${points[0].x} ${points[0].y}`
         for (let i = 1; i < points.length; i++) {
             dPath += ` L ${points[i].x} ${points[i].y}`
         }
 
-        return (
-            <div className="relative w-full h-56 flex flex-col items-center justify-center select-none bg-transparent">
-                <svg className="w-full h-full max-w-[480px]" viewBox="0 0 500 140">
-                    <line x1="20" y1="30" x2="480" y2="30" className="stroke-zinc-100 dark:stroke-zinc-800/60" strokeWidth="1" strokeDasharray="3,3" />
-                    <line x1="20" y1="70" x2="480" y2="70" className="stroke-zinc-100 dark:stroke-zinc-800/60" strokeWidth="1" strokeDasharray="3,3" />
-                    <line x1="20" y1="110" x2="480" y2="110" className="stroke-zinc-100 dark:stroke-zinc-800/60" strokeWidth="1" strokeDasharray="3,3" />
+        // Area fill under the line
+        const areaPath = dPath
+            + ` L ${points[points.length - 1].x} ${svgH - padBot}`
+            + ` L ${points[0].x} ${svgH - padBot} Z`
 
+        // Decimate labels & dots: show at most ~7 evenly spaced
+        const maxLabels = 7
+        const step = n <= maxLabels ? 1 : Math.ceil(n / maxLabels)
+        const visibleIndices = new Set<number>()
+        for (let i = 0; i < n; i += step) visibleIndices.add(i)
+        visibleIndices.add(n - 1) // always show last
+
+        return (
+            <div className="relative w-full flex flex-col items-center justify-center select-none bg-transparent" style={{ height: '14rem' }}>
+                <svg className="w-full h-full" viewBox={`0 0 ${svgW} ${svgH}`} preserveAspectRatio="none">
+                    {/* Gradient defs */}
+                    <defs>
+                        <linearGradient id="lineAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.25" />
+                            <stop offset="100%" stopColor="#ef4444" stopOpacity="0.01" />
+                        </linearGradient>
+                    </defs>
+
+                    {/* Horizontal grid lines */}
+                    {[0.25, 0.5, 0.75].map(f => (
+                        <line
+                            key={f}
+                            x1={padL} y1={padTop + chartH * (1 - f)}
+                            x2={svgW - padR} y2={padTop + chartH * (1 - f)}
+                            stroke="currentColor"
+                            strokeOpacity="0.08"
+                            strokeWidth="1"
+                            strokeDasharray="4,4"
+                        />
+                    ))}
+
+                    {/* Area fill */}
+                    <path d={areaPath} fill="url(#lineAreaGrad)" />
+
+                    {/* Main line */}
                     <path
                         d={dPath}
                         fill="none"
                         stroke="#ef4444"
-                        strokeWidth="3.5"
+                        strokeWidth="2.8"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                     />
 
-                    {points.map((pt, idx) => (
-                        <g key={idx}>
-                            <circle
-                                cx={pt.x}
-                                cy={pt.y}
-                                r="4.5"
-                                className="fill-[#ef4444] stroke-white dark:stroke-zinc-950"
-                                strokeWidth="2"
-                            />
-                            <text
-                                x={pt.x}
-                                y={pt.y - 12}
-                                textAnchor="middle"
-                                className="fill-foreground font-black text-[10px]"
-                            >
-                                {pt.val.toLocaleString()}$
-                            </text>
-                            <text
-                                x={pt.x}
-                                y={130}
-                                textAnchor="middle"
-                                className="fill-muted-foreground text-[9px] font-extrabold uppercase"
-                            >
-                                {pt.label}
-                            </text>
-                        </g>
-                    ))}
+                    {/* Dots + labels only for decimated points */}
+                    {points.map((pt) => {
+                        if (!visibleIndices.has(pt.idx)) return null
+                        return (
+                            <g key={pt.idx}>
+                                <circle
+                                    cx={pt.x}
+                                    cy={pt.y}
+                                    r={n <= 7 ? 4.5 : 3.5}
+                                    fill="#ef4444"
+                                    stroke="white"
+                                    strokeWidth="1.8"
+                                />
+                                {/* Value label above dot */}
+                                <text
+                                    x={pt.x}
+                                    y={pt.y - 8}
+                                    textAnchor="middle"
+                                    fontSize="8"
+                                    fontWeight="800"
+                                    fill="currentColor"
+                                    fillOpacity="0.85"
+                                >
+                                    {pt.val % 1 === 0 ? pt.val.toLocaleString() : pt.val.toFixed(1)}
+                                </text>
+                                {/* Date label below baseline */}
+                                <text
+                                    x={pt.x}
+                                    y={svgH - 4}
+                                    textAnchor="middle"
+                                    fontSize="7.5"
+                                    fontWeight="700"
+                                    fill="currentColor"
+                                    fillOpacity="0.5"
+                                >
+                                    {pt.label}
+                                </text>
+                            </g>
+                        )
+                    })}
                 </svg>
             </div>
         )
