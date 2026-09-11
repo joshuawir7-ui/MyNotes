@@ -824,34 +824,36 @@ export default function BalancePage() {
         )
     }
 
-    // Renders clean circular Donut chart matching user mockup (exterior grey background track + interior dark progress arc)
+    // Renders clean circular Donut chart matching user mockup (exterior grey background track FLUSH touching interior dark progress arc)
     const renderDonutChart = () => {
-        const radiusBlack = 74
-        const strokeWidthBlack = 20
+        // Black progress arc: inner 66, outer 90 (stroke 24, radius 78)
+        const radiusBlack = 78
+        const strokeWidthBlack = 24
         const circumferenceBlack = 2 * Math.PI * radiusBlack
         const boundedPercentage = savingsGoal > 0 ? Math.min(Math.max((balance / savingsGoal) * 100, 8), 100) : 50
         const strokeDashoffset = circumferenceBlack - (boundedPercentage / 100) * circumferenceBlack
 
-        const radiusGrey = 96
-        const strokeWidthGrey = 12
+        // Grey exterior track: inner 90 (EXACT TOUCH with black arc 90), outer 104 (stroke 14, radius 97)
+        const radiusGrey = 97
+        const strokeWidthGrey = 14
 
         return (
-            <div className="relative w-56 h-56 flex items-center justify-center select-none bg-transparent mx-auto my-2">
-                <svg className="w-full h-full overflow-visible" viewBox="0 0 220 220">
-                    {/* Exterior Grey Background Circular Track Band */}
+            <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center select-none bg-transparent mx-auto my-3">
+                <svg className="w-full h-full overflow-visible" viewBox="0 0 240 240">
+                    {/* Exterior Grey Background Circular Track Band (Flush touching black arc at r=90) */}
                     <circle
-                        cx="110"
-                        cy="110"
+                        cx="120"
+                        cy="120"
                         r={radiusGrey}
-                        className="stroke-zinc-200/80 dark:stroke-zinc-800/80"
+                        className="stroke-zinc-200/90 dark:stroke-zinc-800/90"
                         strokeWidth={strokeWidthGrey}
                         fill="none"
                     />
 
-                    {/* Main Sleek Dark Progress Arc (Concentric interior) */}
+                    {/* Main Sleek Dark Progress Arc (Concentric interior touching grey track) */}
                     <motion.circle
-                        cx="110"
-                        cy="110"
+                        cx="120"
+                        cy="120"
                         r={radiusBlack}
                         className="stroke-zinc-950 dark:stroke-zinc-100"
                         strokeWidth={strokeWidthBlack}
@@ -861,16 +863,16 @@ export default function BalancePage() {
                         animate={{ strokeDashoffset }}
                         transition={{ duration: 1.2, ease: "easeOut" }}
                         strokeLinecap="round"
-                        transform="rotate(-90 110 110)"
+                        transform="rotate(-90 120 120)"
                     />
                 </svg>
 
                 {/* Center Content: "Balance" text + Money amount */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
-                    <span className="text-zinc-400 dark:text-zinc-500 font-semibold text-xs tracking-wide">
+                    <span className="text-zinc-400 dark:text-zinc-500 font-bold text-xs sm:text-sm tracking-widest uppercase">
                         {language === 'es' ? 'Balance' : 'Balance'}
                     </span>
-                    <span className="text-zinc-950 dark:text-white font-extrabold text-xl sm:text-2xl tracking-tight mt-0.5">
+                    <span className="text-zinc-950 dark:text-white font-black text-2xl sm:text-3xl tracking-tight mt-1">
                         ${balance.toLocaleString()}
                     </span>
                 </div>
@@ -930,7 +932,7 @@ export default function BalancePage() {
                         <div className="flex flex-col items-center justify-center p-3 pb-1 bg-transparent relative overflow-hidden w-full">
 
                             {/* Header containing title and chart variation toggle */}
-                            <div className="flex items-center justify-between w-full mb-2 px-2 max-w-[280px]">
+                            <div className="flex items-center justify-between w-full mb-2 px-2 max-w-[320px]">
                                 <div className="w-8 h-8" />
                                 <h1 className="text-3xl font-bold tracking-tight text-foreground font-dancing text-center flex-1">
                                     Balance
@@ -945,10 +947,10 @@ export default function BalancePage() {
                                     </button>
                                     <button
                                         onClick={() => setChartType(prev => prev === 'donut' ? 'line' : 'donut')}
-                                        className="p-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all text-muted-foreground hover:text-foreground active:scale-95 shrink-0"
+                                        className="p-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-all active:scale-95 shrink-0"
                                         title={chartType === 'donut' ? (language === 'es' ? "Ver gráfico de líneas" : "Show line chart") : (language === 'es' ? "Ver gráfico circular" : "Show circular chart")}
                                     >
-                                        {chartType === 'donut' ? <TrendingUp className="w-4 h-4" /> : <PieChart className="w-4 h-4" />}
+                                        {chartType === 'donut' ? <TrendingUp className="w-5 h-5" /> : <PieChart className="w-5 h-5" />}
                                     </button>
                                 </div>
                             </div>
@@ -962,17 +964,17 @@ export default function BalancePage() {
                             {/* Flanked Balance display */}
                             <div className="flex flex-col items-center justify-center gap-2 mt-2 w-full px-4">
                                 <div className="flex items-center justify-center gap-4 w-full relative">
-                                    <div className="h-[1px] bg-black/10 dark:bg-white/10 flex-1" />
-                                    <span className="text-sm font-extrabold tracking-wider uppercase text-foreground shrink-0 whitespace-nowrap">
+                                    <div className="h-[1.5px] bg-black/10 dark:bg-white/10 flex-1" />
+                                    <span className="text-base sm:text-lg font-black tracking-wider uppercase text-foreground shrink-0 whitespace-nowrap">
                                         {language === 'es' ? 'Tienes' : 'You have'}: {balance.toLocaleString()}$
                                     </span>
-                                    <div className="h-[1px] bg-black/10 dark:bg-white/10 flex-1" />
+                                    <div className="h-[1.5px] bg-black/10 dark:bg-white/10 flex-1" />
                                     <button
                                         onClick={() => setShowExpenseNoteModal(true)}
-                                        className="absolute right-0 text-zinc-500 dark:text-zinc-400 hover:text-foreground transition-all active:scale-95 p-1"
+                                        className="absolute right-0 text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-all active:scale-95 p-1"
                                         title={language === 'es' ? "Nueva Nota de Gasto" : "New Expense Note"}
                                     >
-                                        <FileText className="w-5 h-5" />
+                                        <FileText className="w-6 h-6" />
                                     </button>
                                 </div>
                             </div>
