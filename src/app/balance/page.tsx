@@ -904,7 +904,7 @@ export default function BalancePage() {
                             animate={{ opacity: 1, scale: 1, filter: "blur(0px)", y: 0 }}
                             exit={{ opacity: 0, scale: 1.15, filter: "blur(14px)", y: -12 }}
                             transition={{ duration: 0.35, ease: "easeOut" }}
-                            className="absolute top-2 -right-1 sm:top-3 sm:right-0 bg-white/95 dark:bg-zinc-900/95 border border-emerald-500/30 shadow-xl rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-black text-emerald-500 flex items-center gap-1 z-30 pointer-events-none backdrop-blur-md"
+                            className="absolute top-4 right-3 sm:top-5 sm:right-4 bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 shadow-md rounded-full px-3 py-1 text-xs sm:text-sm font-bold text-emerald-500 flex items-center gap-1 z-30 pointer-events-none"
                         >
                             + ${recentFeedback.amount.toLocaleString()}
                         </motion.div>
@@ -916,7 +916,7 @@ export default function BalancePage() {
                             animate={{ opacity: 1, scale: 1, filter: "blur(0px)", y: 0 }}
                             exit={{ opacity: 0, scale: 1.15, filter: "blur(14px)", y: 12 }}
                             transition={{ duration: 0.35, ease: "easeOut" }}
-                            className="absolute bottom-2 -left-1 sm:bottom-3 sm:left-0 bg-white/95 dark:bg-zinc-900/95 border border-rose-500/30 shadow-xl rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-black text-rose-500 flex items-center gap-1 z-30 pointer-events-none backdrop-blur-md"
+                            className="absolute bottom-4 left-3 sm:bottom-5 sm:left-4 bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 shadow-md rounded-full px-3 py-1 text-xs sm:text-sm font-bold text-rose-500 flex items-center gap-1 z-30 pointer-events-none"
                         >
                             - ${recentFeedback.amount.toLocaleString()}
                         </motion.div>
