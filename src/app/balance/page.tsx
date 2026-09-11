@@ -196,6 +196,16 @@ export default function BalancePage() {
         }, 0);
     }, [transactions])
 
+    const lastIncome = useMemo(() => {
+        const inc = transactions.find(t => t.type === 'income');
+        return inc ? Number(inc.amount) || 0 : null;
+    }, [transactions]);
+
+    const lastExpense = useMemo(() => {
+        const exp = transactions.find(t => t.type === 'expense');
+        return exp ? Number(exp.amount) || 0 : null;
+    }, [transactions]);
+
     const rawExpenseNotes = useStore(useShallow(state => state.expenseNotes ?? []))
     const expenseNotes = Array.isArray(rawExpenseNotes) ? rawExpenseNotes : []
     const totalDocumentedExpenses = useMemo(() => {
@@ -535,7 +545,7 @@ export default function BalancePage() {
     if (!mounted || !isHydrated) return (
         <div className="flex flex-col h-[calc(100vh-5rem)] md:h-screen p-4 md:p-8 w-full max-w-5xl mx-auto">
             <div className="animate-pulse">
-                <div className="h-40 bg-zinc-200 dark:bg-zinc-800 rounded-3xl mb-6"></div>
+                <div className="h-40 bg-zinc-200 dark:bg-zinc-800 rounded-3model mb-6"></div>
                 <div className="h-8 w-48 bg-zinc-200 dark:bg-zinc-800 rounded mb-4"></div>
                 <div className="space-y-3">
                     {[1, 2, 3, 4].map(i => (
@@ -593,7 +603,7 @@ export default function BalancePage() {
                         type="button"
                         onClick={() => setLineTimeRange("7d")}
                         className={`px-3 py-0.5 rounded-xl transition-all ${lineTimeRange === "7d"
-                                ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm font-black"
+                                ? "bg-zinc-900 dark:bg-zinc-105 text-white dark:text-zinc-900 shadow-sm font-black"
                                 : "text-muted-foreground hover:text-foreground"
                             }`}
                     >
@@ -603,7 +613,7 @@ export default function BalancePage() {
                         type="button"
                         onClick={() => setLineTimeRange("30d")}
                         className={`px-3 py-0.5 rounded-xl transition-all ${lineTimeRange === "30d"
-                                ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm font-black"
+                                ? "bg-zinc-900 dark:bg-zinc-105 text-white dark:text-zinc-900 shadow-sm font-black"
                                 : "text-muted-foreground hover:text-foreground"
                             }`}
                     >
@@ -613,7 +623,7 @@ export default function BalancePage() {
                         type="button"
                         onClick={() => setLineTimeRange("all")}
                         className={`px-3 py-0.5 rounded-xl transition-all ${lineTimeRange === "all"
-                                ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm font-black"
+                                ? "bg-zinc-900 dark:bg-zinc-105 text-white dark:text-zinc-900 shadow-sm font-black"
                                 : "text-muted-foreground hover:text-foreground"
                             }`}
                     >
@@ -730,7 +740,7 @@ export default function BalancePage() {
                                     {/* Invisible larger target for easy hover/touch */}
                                     <circle cx={pt.x} cy={pt.y} r="14" fill="transparent" />
 
-                                    {/* Pulsing aura on latest point */}
+                                    {/* Pulsaltion aura on latest point */}
                                     {isLatest && (
                                         <circle
                                             cx={pt.x}
@@ -808,7 +818,7 @@ export default function BalancePage() {
                                 initial={{ opacity: 0, y: 5 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: 5 }}
-                                className="absolute -top-12 left-1/2 -translate-x-1/2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xl border border-zinc-800 dark:border-zinc-200 pointer-events-none z-20 whitespace-nowrap flex items-center gap-1.5"
+                                className="absolute -top-12 left-1/2 -translate-x-1/2 bg-zinc-900 dark:bg-zinc-105 text-white dark:text-zinc-900 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xl border border-zinc-800 dark:border-zinc-200 pointer-events-none z-20 whitespace-nowrap flex items-center gap-1.5"
                             >
                                 <span className="opacity-70">{activeHoverPoint.desc} ({activeHoverPoint.date}):</span>
                                 <span className={`font-black ${activeHoverPoint.isUp ? 'text-emerald-400 dark:text-emerald-600' : 'text-rose-400 dark:text-rose-600'}`}>
@@ -824,7 +834,7 @@ export default function BalancePage() {
         )
     }
 
-    // Renders clean circular Donut chart matching user mockup (exterior grey background track FLUSH touching interior dark progress arc)
+    // Renders clean circular Donut chart matching user mockup (exterior thin grey track FLUSH touching interior dark progress arc + income/expense floating badges)
     const renderDonutChart = () => {
         // Black progress arc: inner 66, outer 90 (stroke 24, radius 78)
         const radiusBlack = 78
@@ -833,19 +843,22 @@ export default function BalancePage() {
         const boundedPercentage = savingsGoal > 0 ? Math.min(Math.max((balance / savingsGoal) * 100, 8), 100) : 50
         const strokeDashoffset = circumferenceBlack - (boundedPercentage / 100) * circumferenceBlack
 
-        // Grey exterior track: inner 90 (EXACT TOUCH with black arc 90), outer 104 (stroke 14, radius 97)
-        const radiusGrey = 97
-        const strokeWidthGrey = 14
+        // Grey exterior track: inner 90 (EXACT FLUSH TOUCH with black arc 90), outer 98 (thinner stroke 8, radius 94)
+        const radiusGrey = 94
+        const strokeWidthGrey = 8
+
+        const displayIncome = lastIncome !== null ? lastIncome : 500
+        const displayExpense = lastExpense !== null ? lastExpense : 120
 
         return (
             <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center select-none bg-transparent mx-auto my-3">
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 240 240">
-                    {/* Exterior Grey Background Circular Track Band (Flush touching black arc at r=90) */}
+                    {/* Exterior Grey Background Circular Track Band (Thinner 8px, flush touching black arc at r=90) */}
                     <circle
                         cx="120"
                         cy="120"
                         r={radiusGrey}
-                        className="stroke-zinc-100 dark:stroke-zinc-800/40"
+                        className="stroke-zinc-200/80 dark:stroke-zinc-800/40"
                         strokeWidth={strokeWidthGrey}
                         fill="none"
                     />
@@ -866,6 +879,16 @@ export default function BalancePage() {
                         transform="rotate(-90 120 120)"
                     />
                 </svg>
+
+                {/* Floating Green Income Badge (+ $500 / + $X) */}
+                <div className="absolute top-2 -right-1 sm:top-3 sm:right-0 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-md rounded-full px-3 py-1 text-xs sm:text-sm font-extrabold text-emerald-500 flex items-center gap-1 z-10 pointer-events-none">
+                    + ${displayIncome.toLocaleString()}
+                </div>
+
+                {/* Floating Red Expense Badge (- $120 / - $Y) */}
+                <div className="absolute bottom-2 -left-1 sm:bottom-3 sm:left-0 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-md rounded-full px-3 py-1 text-xs sm:text-sm font-extrabold text-rose-500 flex items-center gap-1 z-10 pointer-events-none">
+                    - ${displayExpense.toLocaleString()}
+                </div>
 
                 {/* Center Content: "Balance" text + Money amount */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
@@ -947,7 +970,7 @@ export default function BalancePage() {
                                     </button>
                                     <button
                                         onClick={() => setChartType(prev => prev === 'donut' ? 'line' : 'donut')}
-                                        className="p-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-all active:scale-95 shrink-0"
+                                        className="p-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all text-muted-foreground hover:text-foreground active:scale-95 shrink-0"
                                         title={chartType === 'donut' ? (language === 'es' ? "Ver gráfico de líneas" : "Show line chart") : (language === 'es' ? "Ver gráfico circular" : "Show circular chart")}
                                     >
                                         {chartType === 'donut' ? <TrendingUp className="w-5 h-5" /> : <PieChart className="w-5 h-5" />}
@@ -971,7 +994,7 @@ export default function BalancePage() {
                                     <div className="h-[1.5px] bg-black/10 dark:bg-white/10 flex-1" />
                                     <button
                                         onClick={() => setShowExpenseNoteModal(true)}
-                                        className="absolute right-0 text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-all active:scale-95 p-1"
+                                        className="absolute right-0 text-zinc-500 dark:text-zinc-400 hover:text-foreground transition-all active:scale-95 p-1"
                                         title={language === 'es' ? "Nueva Nota de Gasto" : "New Expense Note"}
                                     >
                                         <FileText className="w-6 h-6" />
