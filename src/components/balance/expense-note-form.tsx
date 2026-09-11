@@ -126,19 +126,19 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
             <div className="bg-[#FFFFFF] dark:bg-zinc-900 border border-transparent dark:border-zinc-800/80 rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-2xl p-4 sm:p-[32px] w-full max-w-[800px] mx-auto relative max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col transition-colors">
                 
                 {/* 1. Header (fila superior) */}
-                <div className="flex justify-between items-center mb-[24px] shrink-0">
+                <div className="flex justify-between items-center mb-[24px] shrink-0 gap-2">
                     <h2 className="font-['Dancing_Script',cursive] text-[20px] text-[#1a1a1a] dark:text-zinc-100 font-normal m-0 leading-none">
                         nota de gastos
                     </h2>
                     
-                    <div className="flex items-center gap-[12px]">
-                        <span className="font-sans font-bold text-[16px] text-[#6b7280] dark:text-zinc-400">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                        <span className="font-sans font-medium text-[11px] sm:text-[13px] text-[#6b7280] dark:text-zinc-400">
                             Balance actual:
                         </span>
-                        <span className={`font-sans font-bold text-[16px] ${sumatoriaGastos > 0 ? 'text-red-500 dark:text-red-400' : 'text-[#1a1a1a] dark:text-zinc-100'}`}>
+                        <span className={`font-sans font-bold text-[11px] sm:text-[13px] ${sumatoriaGastos > 0 ? 'text-red-500 dark:text-red-400' : 'text-[#1a1a1a] dark:text-zinc-100'}`}>
                             {projectedBalance}$
                         </span>
-                        <button onClick={handleClose} className="ml-2 p-1 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors" title="Cerrar">
+                        <button onClick={handleClose} className="ml-1 sm:ml-2 p-1 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors" title="Cerrar">
                             <X className="w-5 h-5" />
                         </button>
                     </div>

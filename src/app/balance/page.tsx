@@ -866,7 +866,7 @@ export default function BalancePage() {
         const strokeWidthGrey = 8
 
         return (
-            <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center select-none bg-transparent mx-auto my-3">
+            <div className="relative w-56 h-56 sm:w-64 sm:h-64 lg:w-72 lg:h-72 flex items-center justify-center select-none bg-transparent mx-auto my-3 shrink-0 max-w-full">
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 240 240">
                     {/* Exterior Grey Background Circular Track Band (Thinner 8px, flush touching black arc at r=90) */}
                     <circle
@@ -979,10 +979,10 @@ export default function BalancePage() {
             </AnimatePresence>
 
             {/* Split Desktop Responsive Grid (Left column: Donut/Line + Meta details | Right column: History list + Actions) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start min-w-0">
 
                 {/* LEFT COLUMN: Chart + Tienes Balance Text + Meta Details */}
-                <div className="space-y-3 flex flex-col items-center w-full">
+                <div className="space-y-3 flex flex-col items-center w-full min-w-0">
 
                     <Reveal margin="0px" duration={0.8} className="w-full">
                         <div className="flex flex-col items-center justify-center p-3 pb-1 bg-transparent relative overflow-hidden w-full">
@@ -1122,7 +1122,7 @@ export default function BalancePage() {
                 </div>
 
                 {/* RIGHT COLUMN: Wallet History List */}
-                <div className="space-y-5 w-full flex flex-col justify-start">
+                <div className="space-y-5 w-full flex flex-col justify-start min-w-0">
 
                     <Reveal margin="0px" duration={0.8} delay={0.2} className="w-full">
                         <div className="flex flex-col space-y-4 w-full">
