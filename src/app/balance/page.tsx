@@ -1151,7 +1151,7 @@ export default function BalancePage() {
                                     </p>
                                 </div>
                             ) : (
-                                <div className="relative w-full overflow-hidden py-1">
+                                <div className="relative w-full py-1">
                                     {/* Top soft fade overlay (only active when scrolled down from top) */}
                                     <div className={`absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-background via-background/70 to-transparent pointer-events-none z-20 transition-opacity duration-300 ${!isScrolledTop ? 'opacity-100' : 'opacity-0'}`} />
 
@@ -1159,7 +1159,7 @@ export default function BalancePage() {
                                     <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-background via-background/70 to-transparent pointer-events-none z-20" />
 
                                     <div
-                                        className="w-full max-h-[380px] md:max-h-[540px] px-3 py-3"
+                                        className="w-full max-h-[380px] md:max-h-[540px] px-1 py-3"
                                         style={{
                                             maskImage: !isScrolledTop
                                                 ? 'linear-gradient(to bottom, transparent 0px, black 36px, black calc(100% - 36px), transparent 100%)'
@@ -1174,58 +1174,60 @@ export default function BalancePage() {
                                             atTopStateChange={(atTop) => setIsScrolledTop(atTop)}
                                             data={sortedTransactions}
                                             itemContent={(index, tx) => (
-                                                <div
-                                                    key={tx.id}
-                                                    onClick={() => setSelectedTxDetails(tx)}
-                                                    className={`mb-4 flex items-center justify-between p-4 rounded-3xl text-white border border-transparent relative group overflow-hidden w-full cursor-pointer hover:brightness-105 active:scale-[0.99] transition-all
-                                                        ${tx.type === 'income'
-                                                            ? 'bg-[#00b050] dark:bg-[#7030a0] dark:border-purple-400/40 dark:shadow-[0_0_18px_rgba(168,85,247,0.5),0_0_35px_rgba(112,48,160,0.3)] hover:dark:shadow-[0_0_25px_rgba(192,132,252,0.75),0_0_45px_rgba(147,51,234,0.45)]'
-                                                            : 'bg-[#e60000] dark:bg-[#e60000] dark:border-rose-400/50 dark:shadow-[0_0_18px_rgba(255,40,40,0.55),0_0_35px_rgba(230,0,0,0.3)] hover:dark:shadow-[0_0_25px_rgba(255,80,80,0.85),0_0_45px_rgba(239,68,68,0.45)]'
-                                                        }`}
-                                                >
-                                                    <div className="flex items-center gap-3 w-full pr-8">
-                                                        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-                                                            {tx.type === 'income'
-                                                                ? <ArrowUpRight className="w-5 h-5 text-[#00b050] dark:text-[#7030a0]" />
-                                                                : <ArrowDownRight className="w-5 h-5 text-[#e60000]" />
-                                                            }
-                                                        </div>
+                                                <div className="px-3.5 py-1.5 w-full">
+                                                    <div
+                                                        key={tx.id}
+                                                        onClick={() => setSelectedTxDetails(tx)}
+                                                        className={`flex items-center justify-between p-4 rounded-3xl text-white border border-transparent relative group overflow-hidden w-full cursor-pointer hover:brightness-105 active:scale-[0.99] transition-all
+                                                            ${tx.type === 'income'
+                                                                ? 'bg-[#00b050] dark:bg-[#7030a0] dark:border-purple-400/40 dark:shadow-[0_0_18px_rgba(168,85,247,0.5),0_0_35px_rgba(112,48,160,0.3)] hover:dark:shadow-[0_0_25px_rgba(192,132,252,0.75),0_0_45px_rgba(147,51,234,0.45)]'
+                                                                : 'bg-[#e60000] dark:bg-[#e60000] dark:border-rose-400/50 dark:shadow-[0_0_18px_rgba(255,40,40,0.55),0_0_35px_rgba(230,0,0,0.3)] hover:dark:shadow-[0_0_25px_rgba(255,80,80,0.85),0_0_45px_rgba(239,68,68,0.45)]'
+                                                            }`}
+                                                    >
+                                                        <div className="flex items-center gap-3 w-full pr-8">
+                                                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+                                                                {tx.type === 'income'
+                                                                    ? <ArrowUpRight className="w-5 h-5 text-[#00b050] dark:text-[#7030a0]" />
+                                                                    : <ArrowDownRight className="w-5 h-5 text-[#e60000]" />
+                                                                }
+                                                            </div>
 
-                                                        <div className="flex-1 min-w-0 pr-2">
-                                                            <div className="flex flex-col">
-                                                                <span className="font-extrabold text-sm tracking-tight sm:text-base">
-                                                                    {tx.type === 'income'
-                                                                        ? (tx.amount < 0
-                                                                            ? (language === 'es' ? `Gane ${tx.amount}${tx.currency || '$'}` : `Earned ${tx.amount}${tx.currency || '$'}`)
-                                                                            : (language === 'es' ? `Gane +${tx.amount}${tx.currency || '$'}` : `Earned +${tx.amount}${tx.currency || '$'}`)
-                                                                        )
-                                                                        : (tx.amount < 0
-                                                                            ? (language === 'es' ? `Gaste ${tx.amount}${tx.currency || '$'}` : `Spent ${tx.amount}${tx.currency || '$'}`)
-                                                                            : (language === 'es' ? `Gaste -${tx.amount}${tx.currency || '$'}` : `Spent -${tx.amount}${tx.currency || '$'}`)
-                                                                        )
-                                                                    }
-                                                                </span>
-                                                                <span className="text-xs text-white/90 truncate block mt-0.5 font-medium">
-                                                                    {tx.description}
-                                                                </span>
+                                                            <div className="flex-1 min-w-0 pr-2">
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-extrabold text-sm tracking-tight sm:text-base">
+                                                                        {tx.type === 'income'
+                                                                            ? (tx.amount < 0
+                                                                                ? (language === 'es' ? `Gane ${tx.amount}${tx.currency || '$'}` : `Earned ${tx.amount}${tx.currency || '$'}`)
+                                                                                : (language === 'es' ? `Gane +${tx.amount}${tx.currency || '$'}` : `Earned +${tx.amount}${tx.currency || '$'}`)
+                                                                            )
+                                                                            : (tx.amount < 0
+                                                                                ? (language === 'es' ? `Gaste ${tx.amount}${tx.currency || '$'}` : `Spent ${tx.amount}${tx.currency || '$'}`)
+                                                                                : (language === 'es' ? `Gaste -${tx.amount}${tx.currency || '$'}` : `Spent -${tx.amount}${tx.currency || '$'}`)
+                                                                            )
+                                                                        }
+                                                                    </span>
+                                                                    <span className="text-xs text-white/90 truncate block mt-0.5 font-medium">
+                                                                        {tx.description}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="text-[10px] sm:text-xs font-black uppercase text-white/95 shrink-0 text-right self-center wallet-history-date">
+                                                                {formatTransactionDate(tx.date)}
                                                             </div>
                                                         </div>
 
-                                                        <div className="text-[10px] sm:text-xs font-black uppercase text-white/95 shrink-0 text-right self-center wallet-history-date">
-                                                            {formatTransactionDate(tx.date)}
-                                                        </div>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                handleDeleteTransaction(tx.id)
+                                                            }}
+                                                            className="absolute top-1/2 right-2.5 -translate-y-1/2 p-2 bg-black/25 hover:bg-black/45 rounded-xl transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0 z-10"
+                                                            title={t.deleteTransactionConfirm}
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5 text-white" />
+                                                        </button>
                                                     </div>
-
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation()
-                                                            handleDeleteTransaction(tx.id)
-                                                        }}
-                                                        className="absolute top-1/2 right-2.5 -translate-y-1/2 p-2 bg-black/25 hover:bg-black/45 rounded-xl transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0 z-10"
-                                                        title={t.deleteTransactionConfirm}
-                                                    >
-                                                        <Trash2 className="w-3.5 h-3.5 text-white" />
-                                                    </button>
                                                 </div>
                                             )}
                                         />
