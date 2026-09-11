@@ -148,6 +148,30 @@
             android:name=".CalendarWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS"
             android:exported="false" />
+
+        <!-- Balance Widget -->
+        <receiver android:name=".BalanceWidgetProvider" android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/balance_widget_info" />
+        </receiver>
+
+        <receiver android:name=".BalanceActionReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="com.iunico.mynotes.BALANCE_ACTION_INCOME" />
+                <action android:name="com.iunico.mynotes.BALANCE_ACTION_EXPENSE" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:name=".BalanceWidgetInputActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:launchMode="singleTop" />
+
     </application>
 
     <queries>

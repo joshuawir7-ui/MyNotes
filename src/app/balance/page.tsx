@@ -278,6 +278,42 @@ export default function BalancePage() {
         }
     }, [])
 
+    // ── Widget sync: push transactions to Android widget whenever they change ──
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const { Capacitor } = require('@capacitor/core');
+        if (!Capacitor.isNativePlatform()) return;
+        const { WidgetSync } = require('@/lib/store');
+        try {
+            WidgetSync.updateBalanceTransactions({ transactions: JSON.stringify(transactions) }).catch(console.error);
+        } catch (e) { /* ignore */ }
+    }, [transactions])
+
+    // ── Widget listener: receive transactions added from the Balance widget ──
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const { Capacitor } = require('@capacitor/core');
+        if (!Capacitor.isNativePlatform()) return;
+        const { WidgetSync } = require('@/lib/store');
+        let listener: any = null;
+        try {
+            (WidgetSync as any).addListener('balanceTransactionAdded', (data: { transaction: string }) => {
+                try {
+                    const tx = JSON.parse(data.transaction);
+                    // Re-map to the expected Transaction shape (strip widget-specific id prefix)
+                    addTransaction({
+                        amount: Number(tx.amount) || 0,
+                        type: tx.type === 'income' ? 'income' : 'expense',
+                        description: tx.description || (tx.type === 'income' ? 'Ingreso (widget)' : 'Gasto (widget)'),
+                        date: tx.date || new Date().toISOString().split('T')[0],
+                        currency: tx.currency || '$',
+                    });
+                } catch (e) { console.error('Balance widget tx parse error', e); }
+            }).then((l: any) => { listener = l; }).catch(console.error);
+        } catch (e) { /* ignore */ }
+        return () => { if (listener) listener.remove().catch(console.error); };
+    }, [addTransaction])
+
     const handleCloseOnboarding = () => {
         setShowOnboarding(false)
         localStorage.setItem('balanceOnboardingSeen', 'true')
@@ -423,24 +459,28 @@ export default function BalancePage() {
             return
         }
 
-        const fallbackDesc = type === 'income'
+        // If value is negative, force it to be an expense regardless of button pressed
+        const effectiveType: "income" | "expense" = val < 0 ? 'expense' : type
+        const absVal = Math.abs(val)
+
+        const fallbackDesc = effectiveType === 'income'
             ? (language === 'es' ? 'Ingreso' : 'Income')
             : (language === 'es' ? 'Gasto' : 'Expense')
 
         addTransaction({
-            amount: val,
-            type: type,
+            amount: absVal,
+            type: effectiveType,
             description: fallbackDesc,
             date: todayStr,
             currency: "$"
         })
 
-        triggerFeedback(type, val)
+        triggerFeedback(effectiveType, absVal)
 
         showToast(
             language === 'es'
-                ? (type === 'income' ? `Registrado: +${val}$` : `Registrado: ${val}$`)
-                : (type === 'income' ? `Registered: +${val}$` : `Registered: ${val}$`),
+                ? (effectiveType === 'income' ? `Registrado: +${absVal}$` : `Registrado: -${absVal}$`)
+                : (effectiveType === 'income' ? `Registered: +${absVal}$` : `Registered: -${absVal}$`),
             "success"
         )
         setQuickAmount("")
@@ -454,31 +494,35 @@ export default function BalancePage() {
             return
         }
 
-        const fallbackDesc = txType === 'income'
+        // If value is negative, force it to be expense regardless of which modal was opened
+        const effectiveTxType: "income" | "expense" = amountNum < 0 ? 'expense' : txType
+        const absAmountNum = Math.abs(amountNum)
+
+        const fallbackDesc = effectiveTxType === 'income'
             ? (language === 'es' ? 'Ingreso' : 'Income')
             : (language === 'es' ? 'Gasto' : 'Expense')
 
         const txPayload: any = {
-            amount: amountNum,
-            type: txType,
+            amount: absAmountNum,
+            type: effectiveTxType,
             description: txDescription.trim() || fallbackDesc,
             date: txDate || todayStr,
             currency: txCurrency
         }
 
-        if (txType === 'expense' && txReminderDate) {
+        if (effectiveTxType === 'expense' && txReminderDate) {
             txPayload.recoveryDate = txReminderDate
-        } else if (txType === 'income' && txReminderDate) {
+        } else if (effectiveTxType === 'income' && txReminderDate) {
             txPayload.conservationGoalDate = txReminderDate
         }
 
         addTransaction(txPayload)
-        triggerFeedback(txType, amountNum)
+        triggerFeedback(effectiveTxType, absAmountNum)
 
         showToast(
             language === 'es'
-                ? (txType === 'income' ? "Ingreso agregado exitosamente" : "Gasto registrado exitosamente")
-                : (txType === 'income' ? "Income added successfully" : "Expense registered successfully"),
+                ? (effectiveTxType === 'income' ? "Ingreso agregado exitosamente" : "Gasto registrado exitosamente")
+                : (effectiveTxType === 'income' ? "Income added successfully" : "Expense registered successfully"),
             "success"
         )
 
@@ -1345,7 +1389,9 @@ export default function BalancePage() {
                                     <textarea
                                         value={txDescription}
                                         onChange={(e) => setTxDescription(e.target.value)}
-                                        placeholder={language === 'es' ? "¿En que gastaste?" : "What did you spend on?"}
+                                        placeholder={txType === 'income'
+                                            ? (language === 'es' ? "¿Quieres especificar en que ganaste ese capital?" : "Want to specify what you earned this capital from?")
+                                            : (language === 'es' ? "¿En que gastaste?" : "What did you spend on?")}
                                         rows={3}
                                         className="w-full bg-white border border-zinc-200 dark:border-zinc-800 dark:bg-zinc-900 rounded-2xl px-4 py-3 focus:outline-none focus:border-zinc-400 focus:ring-0 text-sm text-foreground placeholder:text-zinc-400"
                                     />

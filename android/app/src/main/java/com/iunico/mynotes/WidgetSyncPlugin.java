@@ -108,6 +108,15 @@ public class WidgetSyncPlugin extends Plugin {
         }
     }
 
+    public static void notifyBalanceTransactionAdded(String txJson) {
+        if (instance != null) {
+            JSObject data = new JSObject();
+            data.put("transaction", txJson);
+            data.put("timestamp", System.currentTimeMillis());
+            instance.notifyListeners("balanceTransactionAdded", data);
+        }
+    }
+
     @PluginMethod
     public void updateWidgetData(PluginCall call) {
         String goalsJson = call.getString("goals");
@@ -152,6 +161,27 @@ public class WidgetSyncPlugin extends Plugin {
         }
 
         broadcastWidgetUpdate();
+
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void updateBalanceTransactions(PluginCall call) {
+        String transactionsJson = call.getString("transactions");
+        if (transactionsJson == null) {
+            call.reject("transactions JSON is required");
+            return;
+        }
+        Context context = getContext();
+        SharedPreferences prefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
+        prefs.edit().putString("balance_transactions", transactionsJson).apply();
+
+        // Refresh all Balance widget instances
+        android.appwidget.AppWidgetManager manager = android.appwidget.AppWidgetManager.getInstance(context);
+        int[] ids = manager.getAppWidgetIds(new android.content.ComponentName(context, BalanceWidgetProvider.class));
+        for (int id : ids) {
+            BalanceWidgetProvider.updateAppWidget(context, manager, id);
+        }
 
         call.resolve();
     }
@@ -212,6 +242,14 @@ public class WidgetSyncPlugin extends Plugin {
                     intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
                     intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, calendarIds);
                     context.sendBroadcast(intent);
+                }
+
+                // Notify Balance widget
+                int[] balanceIds = appWidgetManager.getAppWidgetIds(new ComponentName(context, BalanceWidgetProvider.class));
+                if (balanceIds != null && balanceIds.length > 0) {
+                    for (int id : balanceIds) {
+                        BalanceWidgetProvider.updateAppWidget(context, appWidgetManager, id);
+                    }
                 }
             }
         }).start();

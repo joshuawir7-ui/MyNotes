@@ -30,6 +30,7 @@ export const WidgetSync = registerPlugin<{
     requestNotificationPermission: () => Promise<void>;
     openFile: (data: { url: string, mimeType?: string }) => Promise<void>;
     generateVideoThumbnailNative: (data: { videoPath: string }) => Promise<{ base64: string }>;
+    updateBalanceTransactions: (data: { transactions: string }) => Promise<void>;
 }>('WidgetSync');
 
 if (isNative) {
