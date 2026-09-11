@@ -1118,16 +1118,22 @@ export default function BalancePage() {
                                     </p>
                                 </div>
                             ) : (
-                                <div className="relative w-full">
+                                <div className="relative w-full overflow-hidden py-1">
+                                    {/* Top soft fade overlay */}
+                                    <div className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-background via-background/70 to-transparent pointer-events-none z-20" />
+
+                                    {/* Bottom soft fade overlay */}
+                                    <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-background via-background/70 to-transparent pointer-events-none z-20" />
+
                                     <div
-                                        className="grid grid-cols-1 w-full max-h-[360px] md:max-h-[540px] pr-1 pt-3 pb-4"
+                                        className="w-full max-h-[380px] md:max-h-[540px] px-1 py-3"
                                         style={{
-                                            maskImage: 'linear-gradient(to bottom, transparent 0px, black 12px, black calc(100% - 16px), transparent 100%)',
-                                            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0px, black 12px, black calc(100% - 16px), transparent 100%)'
+                                            maskImage: 'linear-gradient(to bottom, transparent 0px, black 36px, black calc(100% - 36px), transparent 100%)',
+                                            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0px, black 36px, black calc(100% - 36px), transparent 100%)'
                                         }}
                                     >
                                         <Virtuoso
-                                            style={{ height: '100%', minHeight: '360px' }}
+                                            style={{ height: '380px', maxHeight: '540px' }}
                                             data={sortedTransactions}
                                             itemContent={(index, tx) => (
                                                 <div
