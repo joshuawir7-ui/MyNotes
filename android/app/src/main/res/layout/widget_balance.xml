@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_balance_background"
-    android:padding="16dp"
+    android:padding="12dp"
     android:gravity="center_horizontal">
 
     <!-- Title -->
@@ -13,26 +13,96 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Balance"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="#1a1a1a"
+        android:textSize="17sp"
+        android:textStyle="bold|italic"
+        android:textColor="#111827"
         android:fontFamily="serif"
-        android:layout_marginBottom="8dp" />
+        android:layout_marginBottom="4dp" />
 
-    <!-- Balance Amount -->
-    <TextView
-        android:id="@+id/widget_balance_amount"
-        android:layout_width="wrap_content"
+    <!-- Circular Donut Chart Area -->
+    <FrameLayout
+        android:layout_width="140dp"
+        android:layout_height="140dp"
+        android:layout_marginBottom="8dp">
+
+        <!-- Donut Chart Canvas Image -->
+        <ImageView
+            android:id="@+id/widget_balance_chart"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter" />
+
+        <!-- Center text inside Donut Chart -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/widget_balance_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BALANCE"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:textColor="#9CA3AF" />
+
+            <TextView
+                android:id="@+id/widget_balance_amount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="$0"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#111827"
+                android:gravity="center" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <!-- Middle Row: Divider lines + Pill Input -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="$0"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:textColor="#1a1a1a"
-        android:layout_marginBottom="12dp" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="10dp">
 
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"
+            android:background="#E5E7EB" />
 
+        <TextView
+            android:id="@+id/widget_balance_input_pill"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/widget_input_background"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:text="0.00 $"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#6B7280"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true" />
 
-    <!-- Buttons Row -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"
+            android:background="#E5E7EB" />
+
+    </LinearLayout>
+
+    <!-- Action Buttons Row (AGREGAR / GASTÉ) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -40,27 +110,25 @@
         android:gravity="center"
         android:weightSum="2">
 
-        <!-- GANÉ button -->
         <Button
             android:id="@+id/widget_balance_btn_income"
             android:layout_width="0dp"
-            android:layout_height="36dp"
+            android:layout_height="34dp"
             android:layout_weight="1"
-            android:layout_marginEnd="6dp"
-            android:text="GANÉ"
+            android:layout_marginEnd="4dp"
+            android:text="AGREGAR"
             android:textSize="11sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"
             android:background="@drawable/widget_btn_income_background"
             android:gravity="center" />
 
-        <!-- GASTÉ button -->
         <Button
             android:id="@+id/widget_balance_btn_expense"
             android:layout_width="0dp"
-            android:layout_height="36dp"
+            android:layout_height="34dp"
             android:layout_weight="1"
-            android:layout_marginStart="6dp"
+            android:layout_marginStart="4dp"
             android:text="GASTÉ"
             android:textSize="11sp"
             android:textStyle="bold"

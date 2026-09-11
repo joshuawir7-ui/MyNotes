@@ -6,6 +6,11 @@ import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.os.Bundle;
 import android.widget.RemoteViews;
 
@@ -13,16 +18,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
- * Balance Widget — lets the user record income/expense directly from the home screen.
- *
- * Data flow:
- *  1. WidgetSyncPlugin.updateWidgetData() stores the current balance JSON under
- *     SharedPreferences("WidgetData") → key "balance_transactions".
- *  2. BalanceWidgetProvider reads that JSON to display the running total.
- *  3. When the user taps GANÉ / GASTÉ, BalanceActionReceiver is called.
- *     It appends a new transaction to "balance_transactions" and fires
- *     notifyListeners("balanceTransactionAdded", ...) so the JS layer can
- *     pick it up and persist it into the app's real storage.
+ * Balance Widget — displays the balance donut chart, amount, 0.00 $ pill input,
+ * and AGREGAR / GASTÉ buttons matching the design mockup.
  */
 public class BalanceWidgetProvider extends AppWidgetProvider {
 
@@ -51,20 +48,26 @@ public class BalanceWidgetProvider extends AppWidgetProvider {
 
         // ── Compute current balance from stored transactions JSON ─────────
         double balance = computeBalance(prefs);
-        String formattedBalance = formatBalance(balance, lang);
+        boolean isNegative = balance < 0;
+
+        String formattedBalance = formatBalance(balance);
         views.setTextViewText(R.id.widget_balance_amount, formattedBalance);
+        views.setTextColor(R.id.widget_balance_amount, isNegative ? Color.parseColor("#DC2626") : Color.parseColor("#111827"));
+
+        // ── Render Donut Chart Bitmap ────────────────────────────────────
+        Bitmap chartBitmap = createDonutChartBitmap(balance);
+        views.setImageViewBitmap(R.id.widget_balance_chart, chartBitmap);
 
         // ── Localised labels ─────────────────────────────────────────────
-        String titleText   = "es".equals(lang) ? "Balance" : "Balance";
-        String btnIncome   = "es".equals(lang) ? "GANÉ"   : "EARNED";
-        String btnExpense  = "es".equals(lang) ? "GASTÉ"  : "SPENT";
-        String hintText    = "es".equals(lang) ? "0.00"   : "0.00";
+        String titleText  = "es".equals(lang) ? "Balance" : "Balance";
+        String btnIncome  = "es".equals(lang) ? "AGREGAR" : "ADD";
+        String btnExpense = "es".equals(lang) ? "GASTÉ"   : "SPENT";
 
         views.setTextViewText(R.id.widget_balance_title, titleText);
         views.setTextViewText(R.id.widget_balance_btn_income,  btnIncome);
         views.setTextViewText(R.id.widget_balance_btn_expense, btnExpense);
 
-        // ── GANÉ PendingIntent ────────────────────────────────────────────
+        // ── AGREGAR PendingIntent ────────────────────────────────────────
         Intent incomeIntent = new Intent(context, BalanceActionReceiver.class);
         incomeIntent.setAction(ACTION_INCOME);
         incomeIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
@@ -76,7 +79,7 @@ public class BalanceWidgetProvider extends AppWidgetProvider {
         );
         views.setOnClickPendingIntent(R.id.widget_balance_btn_income, incomePi);
 
-        // ── GASTÉ PendingIntent ───────────────────────────────────────────
+        // ── GASTÉ PendingIntent ──────────────────────────────────────────
         Intent expenseIntent = new Intent(context, BalanceActionReceiver.class);
         expenseIntent.setAction(ACTION_EXPENSE);
         expenseIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
@@ -88,7 +91,10 @@ public class BalanceWidgetProvider extends AppWidgetProvider {
         );
         views.setOnClickPendingIntent(R.id.widget_balance_btn_expense, expensePi);
 
-        // ── Tap on balance amount → open app ──────────────────────────────
+        // ── 0.00 $ Pill PendingIntent → launch input dialog ─────────────
+        views.setOnClickPendingIntent(R.id.widget_balance_input_pill, incomePi);
+
+        // ── Tap on balance chart or title → open main app ───────────────
         Intent appIntent = new Intent(context, MainActivity.class);
         PendingIntent appPi = PendingIntent.getActivity(
             context,
@@ -98,13 +104,61 @@ public class BalanceWidgetProvider extends AppWidgetProvider {
         );
         views.setOnClickPendingIntent(R.id.widget_balance_amount, appPi);
         views.setOnClickPendingIntent(R.id.widget_balance_title,  appPi);
+        views.setOnClickPendingIntent(R.id.widget_balance_chart,  appPi);
 
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────────────────────────────
+    /**
+     * Draws a high-DPI donut chart bitmap with thin exterior grey track and
+     * top-starting progress arc (black for positive, intense red counter-clockwise for negative).
+     */
+    private static Bitmap createDonutChartBitmap(double balance) {
+        int width = 280;
+        int height = 280;
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+
+        float cx = width / 2f;
+        float cy = height / 2f;
+
+        // Thin outer grey track
+        float radiusGrey = 118f;
+        Paint greyPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        greyPaint.setStyle(Paint.Style.STROKE);
+        greyPaint.setStrokeWidth(6f);
+        greyPaint.setColor(Color.parseColor("#E5E7EB"));
+        canvas.drawCircle(cx, cy, radiusGrey, greyPaint);
+
+        // Progress arc
+        if (balance != 0) {
+            float radiusArc = 102f;
+            float strokeArc = 26f;
+
+            Paint arcPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            arcPaint.setStyle(Paint.Style.STROKE);
+            arcPaint.setStrokeWidth(strokeArc);
+            arcPaint.setStrokeCap(Paint.Cap.ROUND);
+
+            boolean isNegative = balance < 0;
+            if (isNegative) {
+                arcPaint.setColor(Color.parseColor("#DC2626")); // intense red
+            } else {
+                arcPaint.setColor(Color.parseColor("#18181B")); // zinc-900 / black
+            }
+
+            double absVal = Math.abs(balance);
+            float pct = (float) Math.min(Math.max((absVal / 100.0) * 360.0, 40.0), 355.0);
+
+            RectF oval = new RectF(cx - radiusArc, cy - radiusArc, cx + radiusArc, cy + radiusArc);
+            float startAngle = -90f; // 12 o'clock top
+            float actualSweep = isNegative ? -pct : pct;
+
+            canvas.drawArc(oval, startAngle, actualSweep, false, arcPaint);
+        }
+
+        return bitmap;
+    }
 
     /**
      * Sums all transactions stored under "balance_transactions" to get
@@ -131,10 +185,11 @@ public class BalanceWidgetProvider extends AppWidgetProvider {
         return total;
     }
 
-    private static String formatBalance(double balance, String lang) {
-        String sign = balance >= 0 ? "+" : "";
-        // Two decimal places
-        String formatted = String.format("%.2f", balance);
-        return "$" + (balance >= 0 ? sign : "") + formatted;
+    private static String formatBalance(double balance) {
+        if (balance == (long) balance) {
+            return "$" + String.format("%d", (long) balance);
+        } else {
+            return "$" + String.format("%.2f", balance);
+        }
     }
 }
