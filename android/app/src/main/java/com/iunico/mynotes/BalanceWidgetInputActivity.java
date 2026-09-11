@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -38,6 +39,13 @@ public class BalanceWidgetInputActivity extends Activity {
         TextView btnClose     = findViewById(R.id.btn_close_dialog);
         EditText inputAmount  = findViewById(R.id.input_amount);
         View     rootView     = findViewById(R.id.balance_input_root);
+
+        // Apply Dancing Script font to dialog title
+        try {
+            Typeface tf = Typeface.createFromAsset(getAssets(), "fonts/dancing_script.ttf");
+            titleView.setTypeface(tf);
+            titleView.setTextSize(26);
+        } catch (Exception ignored) {}
 
         // Localise titles and button labels
         if ("es".equals(lang)) {

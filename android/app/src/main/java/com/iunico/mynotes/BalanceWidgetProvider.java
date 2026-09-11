@@ -11,6 +11,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.widget.RemoteViews;
 
@@ -21,7 +22,7 @@ import java.util.Locale;
 
 /**
  * Balance Widget — displays the balance donut chart, amount, 0.00 $ pill input,
- * and AGREGAR / GASTÉ buttons matching the design mockup strictly adhering to RemoteViews API rules.
+ * AGREGAR / GASTÉ buttons, and top title rendered in Dancing Script font.
  */
 public class BalanceWidgetProvider extends AppWidgetProvider {
 
@@ -63,12 +64,17 @@ public class BalanceWidgetProvider extends AppWidgetProvider {
                 views.setImageViewBitmap(R.id.widget_balance_chart, chartBitmap);
             }
 
-            // ── Localised labels ─────────────────────────────────────────────
-            String titleText  = "es".equals(lang) ? "Balance" : "Balance";
+            // ── Render Title "Balance" in Dancing Script font ───────────────
+            String titleText = "es".equals(lang) ? "Balance" : "Balance";
+            Bitmap titleBitmap = renderTitleToBitmap(context, titleText);
+            if (titleBitmap != null) {
+                views.setImageViewBitmap(R.id.widget_balance_title_image, titleBitmap);
+            }
+
+            // ── Localised button labels ──────────────────────────────────────
             String btnIncome  = "es".equals(lang) ? "AGREGAR" : "ADD";
             String btnExpense = "es".equals(lang) ? "GASTÉ"   : "SPENT";
 
-            views.setTextViewText(R.id.widget_balance_title, titleText);
             views.setTextViewText(R.id.widget_balance_btn_income,  btnIncome);
             views.setTextViewText(R.id.widget_balance_btn_expense, btnExpense);
 
@@ -108,12 +114,47 @@ public class BalanceWidgetProvider extends AppWidgetProvider {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
             views.setOnClickPendingIntent(R.id.widget_balance_amount, appPi);
-            views.setOnClickPendingIntent(R.id.widget_balance_title,  appPi);
+            views.setOnClickPendingIntent(R.id.widget_balance_title_image, appPi);
             views.setOnClickPendingIntent(R.id.widget_balance_chart,  appPi);
 
             appWidgetManager.updateAppWidget(appWidgetId, views);
         } catch (Exception e) {
             android.util.Log.e("BalanceWidget", "Error updating app widget", e);
+        }
+    }
+
+    /**
+     * Renders title text using Dancing Script font to a Bitmap.
+     */
+    private static Bitmap renderTitleToBitmap(Context context, String text) {
+        try {
+            int width = 320;
+            int height = 72;
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+
+            Typeface tf = null;
+            try {
+                tf = Typeface.createFromAsset(context.getAssets(), "fonts/dancing_script.ttf");
+            } catch (Exception ignored) {}
+            if (tf == null) {
+                tf = Typeface.create(Typeface.SERIF, Typeface.BOLD);
+            }
+
+            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            paint.setColor(Color.parseColor("#111827"));
+            paint.setTypeface(tf);
+            paint.setTextSize(44f);
+            paint.setTextAlign(Paint.Align.CENTER);
+
+            float x = width / 2f;
+            float y = (height / 2f) - ((paint.descent() + paint.ascent()) / 2f);
+
+            canvas.drawText(text, x, y, paint);
+            return bitmap;
+        } catch (Exception e) {
+            android.util.Log.e("BalanceWidget", "Error rendering title bitmap", e);
+            return null;
         }
     }
 

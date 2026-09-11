@@ -7,17 +7,13 @@
     android:padding="12dp"
     android:gravity="center_horizontal">
 
-    <!-- Title -->
-    <TextView
-        android:id="@+id/widget_balance_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Balance"
-        android:textSize="17sp"
-        android:textStyle="bold"
-        android:textColor="#111827"
-        android:fontFamily="serif"
-        android:layout_marginBottom="4dp" />
+    <!-- Title in Dancing Script font (rendered via Bitmap) -->
+    <ImageView
+        android:id="@+id/widget_balance_title_image"
+        android:layout_width="160dp"
+        android:layout_height="36dp"
+        android:layout_marginBottom="4dp"
+        android:scaleType="fitCenter" />
 
     <!-- Circular Donut Chart Area -->
     <FrameLayout
@@ -71,7 +67,6 @@
         android:gravity="center_vertical"
         android:layout_marginBottom="10dp">
 
-        <!-- ImageView line instead of View (View is prohibited in RemoteViews) -->
         <ImageView
             android:layout_width="0dp"
             android:layout_height="1dp"
