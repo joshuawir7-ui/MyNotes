@@ -824,37 +824,40 @@ export default function BalancePage() {
         )
     }
 
-    // Renders clean circular Donut chart matching user mockup (wide grey background track + black progress arc)
+    // Renders clean circular Donut chart matching user mockup (exterior grey background track + interior dark progress arc)
     const renderDonutChart = () => {
-        const radius = 78
-        const strokeWidth = 16
-        const circumference = 2 * Math.PI * radius
+        const radiusBlack = 74
+        const strokeWidthBlack = 20
+        const circumferenceBlack = 2 * Math.PI * radiusBlack
         const boundedPercentage = savingsGoal > 0 ? Math.min(Math.max((balance / savingsGoal) * 100, 8), 100) : 50
-        const strokeDashoffset = circumference - (boundedPercentage / 100) * circumference
+        const strokeDashoffset = circumferenceBlack - (boundedPercentage / 100) * circumferenceBlack
+
+        const radiusGrey = 96
+        const strokeWidthGrey = 12
 
         return (
             <div className="relative w-56 h-56 flex items-center justify-center select-none bg-transparent mx-auto my-2">
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 220 220">
-                    {/* Wide Grey Background Circular Track Band */}
+                    {/* Exterior Grey Background Circular Track Band */}
                     <circle
                         cx="110"
                         cy="110"
-                        r={radius}
-                        className="stroke-zinc-100 dark:stroke-zinc-800/60"
-                        strokeWidth={strokeWidth}
+                        r={radiusGrey}
+                        className="stroke-zinc-200/80 dark:stroke-zinc-800/80"
+                        strokeWidth={strokeWidthGrey}
                         fill="none"
                     />
 
-                    {/* Main Sleek Dark Progress Arc */}
+                    {/* Main Sleek Dark Progress Arc (Concentric interior) */}
                     <motion.circle
                         cx="110"
                         cy="110"
-                        r={radius}
+                        r={radiusBlack}
                         className="stroke-zinc-950 dark:stroke-zinc-100"
-                        strokeWidth={strokeWidth}
+                        strokeWidth={strokeWidthBlack}
                         fill="none"
-                        strokeDasharray={circumference}
-                        initial={{ strokeDashoffset: circumference }}
+                        strokeDasharray={circumferenceBlack}
+                        initial={{ strokeDashoffset: circumferenceBlack }}
                         animate={{ strokeDashoffset }}
                         transition={{ duration: 1.2, ease: "easeOut" }}
                         strokeLinecap="round"
