@@ -246,6 +246,7 @@ export default function BalancePage() {
 
     // Managing 1-second floating blur feedback when adding income/expense
     const [recentFeedback, setRecentFeedback] = useState<{ id: string; type: 'income' | 'expense'; amount: number } | null>(null)
+    const [isScrolledTop, setIsScrolledTop] = useState(true)
 
     // Form inputs & modal control
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -924,10 +925,10 @@ export default function BalancePage() {
 
                 {/* Center Content: "Balance" text + Money amount */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
-                    <span className="text-zinc-400 dark:text-zinc-500 font-bold text-xs sm:text-sm tracking-widest uppercase">
+                    <span className="text-zinc-400 dark:text-zinc-500 font-bold text-[11px] sm:text-xs tracking-widest uppercase">
                         {language === 'es' ? 'Balance' : 'Balance'}
                     </span>
-                    <span className="text-zinc-950 dark:text-white font-black text-2xl sm:text-3xl tracking-tight mt-1">
+                    <span className="text-zinc-950 dark:text-white font-extrabold text-xl sm:text-2xl tracking-tight mt-0.5">
                         ${balance.toLocaleString()}
                     </span>
                 </div>
@@ -1151,8 +1152,8 @@ export default function BalancePage() {
                                 </div>
                             ) : (
                                 <div className="relative w-full overflow-hidden py-1">
-                                    {/* Top soft fade overlay */}
-                                    <div className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-background via-background/70 to-transparent pointer-events-none z-20" />
+                                    {/* Top soft fade overlay (only active when scrolled down from top) */}
+                                    <div className={`absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-background via-background/70 to-transparent pointer-events-none z-20 transition-opacity duration-300 ${!isScrolledTop ? 'opacity-100' : 'opacity-0'}`} />
 
                                     {/* Bottom soft fade overlay */}
                                     <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-background via-background/70 to-transparent pointer-events-none z-20" />
@@ -1160,12 +1161,17 @@ export default function BalancePage() {
                                     <div
                                         className="w-full max-h-[380px] md:max-h-[540px] px-1 py-3"
                                         style={{
-                                            maskImage: 'linear-gradient(to bottom, transparent 0px, black 36px, black calc(100% - 36px), transparent 100%)',
-                                            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0px, black 36px, black calc(100% - 36px), transparent 100%)'
+                                            maskImage: !isScrolledTop
+                                                ? 'linear-gradient(to bottom, transparent 0px, black 36px, black calc(100% - 36px), transparent 100%)'
+                                                : 'linear-gradient(to bottom, black 0px, black calc(100% - 36px), transparent 100%)',
+                                            WebkitMaskImage: !isScrolledTop
+                                                ? 'linear-gradient(to bottom, transparent 0px, black 36px, black calc(100% - 36px), transparent 100%)'
+                                                : 'linear-gradient(to bottom, black 0px, black calc(100% - 36px), transparent 100%)'
                                         }}
                                     >
                                         <Virtuoso
                                             style={{ height: '380px', maxHeight: '540px' }}
+                                            atTopStateChange={(atTop) => setIsScrolledTop(atTop)}
                                             data={sortedTransactions}
                                             itemContent={(index, tx) => (
                                                 <div
