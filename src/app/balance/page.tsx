@@ -925,7 +925,7 @@ export default function BalancePage() {
 
                 {/* Center Content: "Balance" text + Money amount */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
-                    <span className="text-zinc-400 dark:text-zinc-500 font-bold text-[11px] sm:text-xs tracking-widest uppercase">
+                    <span className="text-zinc-400 dark:text-zinc-500 font-bold text-[9px] sm:text-[10px] tracking-widest uppercase">
                         {language === 'es' ? 'Balance' : 'Balance'}
                     </span>
                     <span className="text-zinc-950 dark:text-white font-extrabold text-xl sm:text-2xl tracking-tight mt-0.5">
