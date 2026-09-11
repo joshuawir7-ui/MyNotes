@@ -845,7 +845,7 @@ export default function BalancePage() {
                         cx="120"
                         cy="120"
                         r={radiusGrey}
-                        className="stroke-zinc-200/90 dark:stroke-zinc-800/90"
+                        className="stroke-zinc-100 dark:stroke-zinc-800/40"
                         strokeWidth={strokeWidthGrey}
                         fill="none"
                     />
