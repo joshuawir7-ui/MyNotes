@@ -898,21 +898,42 @@ export default function BalancePage() {
 
     // Renders clean circular Donut chart matching user mockup (exterior thin grey track FLUSH touching interior dark progress arc + 1-second blur animated floating badges)
     const renderDonutChart = () => {
-        // Black progress arc: inner 66, outer 90 (stroke 24, radius 78)
         const radiusBlack = 78
         const strokeWidthBlack = 24
         const circumferenceBlack = 2 * Math.PI * radiusBlack
-        const boundedPercentage = savingsGoal > 0 ? Math.min(Math.max((balance / savingsGoal) * 100, 8), 100) : 50
-        const strokeDashoffset = circumferenceBlack - (boundedPercentage / 100) * circumferenceBlack
 
         // Grey exterior track: inner 90 (EXACT FLUSH TOUCH with black arc 90), outer 98 (thinner stroke 8, radius 94)
         const radiusGrey = 94
         const strokeWidthGrey = 8
 
+        // Determine arc state:
+        // balance = 0 → empty (no arc)
+        // balance > 0 → black arc clockwise (to the right), proportional to savingsGoal
+        // balance < 0 → red arc counter-clockwise (to the left), proportional to savingsGoal
+        const isNegative = balance < 0
+        const isZero = balance === 0
+
+        // For positive: how much of the goal is filled (min 8% so it's visible, max 100%)
+        // For negative: how much is owed (min 8%, max 100%)
+        const absPct = savingsGoal > 0
+            ? Math.min(Math.max((Math.abs(balance) / savingsGoal) * 100, 8), 100)
+            : 50
+
+        // clockwise offset: full circle minus filled portion (standard SVG trick)
+        const clockwiseOffset = circumferenceBlack - (absPct / 100) * circumferenceBlack
+        // counter-clockwise: we flip the dasharray so it draws going left
+        // achieved by rotating +90 instead of -90 and reversing the dashoffset direction
+        const ccwOffset = -(circumferenceBlack - (absPct / 100) * circumferenceBlack)
+
+        const arcColor = isNegative ? "#ef4444" : undefined  // undefined → use className (black/white)
+        const arcRotation = isNegative ? "rotate(90 120 120)" : "rotate(-90 120 120)"
+        const animateOffset = isZero ? circumferenceBlack : (isNegative ? ccwOffset : clockwiseOffset)
+        const initialOffset = isNegative ? -circumferenceBlack : circumferenceBlack
+
         return (
             <div className="relative w-56 h-56 sm:w-64 sm:h-64 lg:w-72 lg:h-72 flex items-center justify-center select-none bg-transparent mx-auto my-3 shrink-0 max-w-full">
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 240 240">
-                    {/* Exterior Grey Background Circular Track Band (Thinner 8px, flush touching black arc at r=90) */}
+                    {/* Exterior Grey Background Circular Track */}
                     <circle
                         cx="120"
                         cy="120"
@@ -922,21 +943,24 @@ export default function BalancePage() {
                         fill="none"
                     />
 
-                    {/* Main Sleek Dark Progress Arc (Concentric interior touching grey track) */}
-                    <motion.circle
-                        cx="120"
-                        cy="120"
-                        r={radiusBlack}
-                        className="stroke-zinc-950 dark:stroke-zinc-100"
-                        strokeWidth={strokeWidthBlack}
-                        fill="none"
-                        strokeDasharray={circumferenceBlack}
-                        initial={{ strokeDashoffset: circumferenceBlack }}
-                        animate={{ strokeDashoffset }}
-                        transition={{ duration: 1.2, ease: "easeOut" }}
-                        strokeLinecap="round"
-                        transform="rotate(-90 120 120)"
-                    />
+                    {/* Progress arc — hidden when balance is 0, red+left when negative, black+right when positive */}
+                    {!isZero && (
+                        <motion.circle
+                            cx="120"
+                            cy="120"
+                            r={radiusBlack}
+                            stroke={isNegative ? "#ef4444" : undefined}
+                            className={isNegative ? undefined : "stroke-zinc-950 dark:stroke-zinc-100"}
+                            strokeWidth={strokeWidthBlack}
+                            fill="none"
+                            strokeDasharray={circumferenceBlack}
+                            initial={{ strokeDashoffset: initialOffset }}
+                            animate={{ strokeDashoffset: animateOffset }}
+                            transition={{ duration: 1.2, ease: "easeOut" }}
+                            strokeLinecap="round"
+                            transform={arcRotation}
+                        />
+                    )}
                 </svg>
 
                 {/* 1-second Blur Animated Floating Feedback Badges on Income / Expense */}
@@ -972,7 +996,7 @@ export default function BalancePage() {
                     <span className="text-zinc-400 dark:text-zinc-500 font-bold text-[9px] sm:text-[10px] tracking-widest uppercase">
                         {language === 'es' ? 'Balance' : 'Balance'}
                     </span>
-                    <span className="text-zinc-950 dark:text-white font-extrabold text-xl sm:text-2xl tracking-tight mt-0.5">
+                    <span className={`font-extrabold text-xl sm:text-2xl tracking-tight mt-0.5 ${isNegative ? 'text-red-500' : 'text-zinc-950 dark:text-white'}`}>
                         ${balance.toLocaleString()}
                     </span>
                 </div>
