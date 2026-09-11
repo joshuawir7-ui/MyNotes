@@ -244,6 +244,9 @@ export default function BalancePage() {
     // Quick-add input on main dashboard
     const [quickAmount, setQuickAmount] = useState("")
 
+    // Managing 1-second floating blur feedback when adding income/expense
+    const [recentFeedback, setRecentFeedback] = useState<{ id: string; type: 'income' | 'expense'; amount: number } | null>(null)
+
     // Form inputs & modal control
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [showExpenseNoteModal, setShowExpenseNoteModal] = useState(false)
@@ -394,6 +397,17 @@ export default function BalancePage() {
         setIsEditingGoal(false)
     }
 
+    const triggerFeedback = (type: "income" | "expense", amount: number) => {
+        setRecentFeedback({
+            id: Date.now().toString(),
+            type,
+            amount: Math.abs(amount)
+        })
+        setTimeout(() => {
+            setRecentFeedback(null)
+        }, 1000)
+    }
+
     const handleQuickAction = (type: "income" | "expense") => {
         const val = parseFloat(quickAmount)
         if (isNaN(val) || val === 0) { // Allows negative values!
@@ -419,6 +433,8 @@ export default function BalancePage() {
             date: todayStr,
             currency: "$"
         })
+
+        triggerFeedback(type, val)
 
         showToast(
             language === 'es'
@@ -456,6 +472,7 @@ export default function BalancePage() {
         }
 
         addTransaction(txPayload)
+        triggerFeedback(txType, amountNum)
 
         showToast(
             language === 'es'
@@ -545,7 +562,7 @@ export default function BalancePage() {
     if (!mounted || !isHydrated) return (
         <div className="flex flex-col h-[calc(100vh-5rem)] md:h-screen p-4 md:p-8 w-full max-w-5xl mx-auto">
             <div className="animate-pulse">
-                <div className="h-40 bg-zinc-200 dark:bg-zinc-800 rounded-3model mb-6"></div>
+                <div className="h-40 bg-zinc-200 dark:bg-zinc-800 rounded-3xl mb-6"></div>
                 <div className="h-8 w-48 bg-zinc-200 dark:bg-zinc-800 rounded mb-4"></div>
                 <div className="space-y-3">
                     {[1, 2, 3, 4].map(i => (
@@ -603,7 +620,7 @@ export default function BalancePage() {
                         type="button"
                         onClick={() => setLineTimeRange("7d")}
                         className={`px-3 py-0.5 rounded-xl transition-all ${lineTimeRange === "7d"
-                                ? "bg-zinc-900 dark:bg-zinc-105 text-white dark:text-zinc-900 shadow-sm font-black"
+                                ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm font-black"
                                 : "text-muted-foreground hover:text-foreground"
                             }`}
                     >
@@ -613,7 +630,7 @@ export default function BalancePage() {
                         type="button"
                         onClick={() => setLineTimeRange("30d")}
                         className={`px-3 py-0.5 rounded-xl transition-all ${lineTimeRange === "30d"
-                                ? "bg-zinc-900 dark:bg-zinc-105 text-white dark:text-zinc-900 shadow-sm font-black"
+                                ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm font-black"
                                 : "text-muted-foreground hover:text-foreground"
                             }`}
                     >
@@ -623,7 +640,7 @@ export default function BalancePage() {
                         type="button"
                         onClick={() => setLineTimeRange("all")}
                         className={`px-3 py-0.5 rounded-xl transition-all ${lineTimeRange === "all"
-                                ? "bg-zinc-900 dark:bg-zinc-105 text-white dark:text-zinc-900 shadow-sm font-black"
+                                ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm font-black"
                                 : "text-muted-foreground hover:text-foreground"
                             }`}
                     >
@@ -740,7 +757,7 @@ export default function BalancePage() {
                                     {/* Invisible larger target for easy hover/touch */}
                                     <circle cx={pt.x} cy={pt.y} r="14" fill="transparent" />
 
-                                    {/* Pulsaltion aura on latest point */}
+                                    {/* Pulsating aura on latest point */}
                                     {isLatest && (
                                         <circle
                                             cx={pt.x}
@@ -818,7 +835,7 @@ export default function BalancePage() {
                                 initial={{ opacity: 0, y: 5 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: 5 }}
-                                className="absolute -top-12 left-1/2 -translate-x-1/2 bg-zinc-900 dark:bg-zinc-105 text-white dark:text-zinc-900 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xl border border-zinc-800 dark:border-zinc-200 pointer-events-none z-20 whitespace-nowrap flex items-center gap-1.5"
+                                className="absolute -top-12 left-1/2 -translate-x-1/2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xl border border-zinc-800 dark:border-zinc-200 pointer-events-none z-20 whitespace-nowrap flex items-center gap-1.5"
                             >
                                 <span className="opacity-70">{activeHoverPoint.desc} ({activeHoverPoint.date}):</span>
                                 <span className={`font-black ${activeHoverPoint.isUp ? 'text-emerald-400 dark:text-emerald-600' : 'text-rose-400 dark:text-rose-600'}`}>
@@ -834,7 +851,7 @@ export default function BalancePage() {
         )
     }
 
-    // Renders clean circular Donut chart matching user mockup (exterior thin grey track FLUSH touching interior dark progress arc + income/expense floating badges)
+    // Renders clean circular Donut chart matching user mockup (exterior thin grey track FLUSH touching interior dark progress arc + 1-second blur animated floating badges)
     const renderDonutChart = () => {
         // Black progress arc: inner 66, outer 90 (stroke 24, radius 78)
         const radiusBlack = 78
@@ -846,9 +863,6 @@ export default function BalancePage() {
         // Grey exterior track: inner 90 (EXACT FLUSH TOUCH with black arc 90), outer 98 (thinner stroke 8, radius 94)
         const radiusGrey = 94
         const strokeWidthGrey = 8
-
-        const displayIncome = lastIncome !== null ? lastIncome : 500
-        const displayExpense = lastExpense !== null ? lastExpense : 120
 
         return (
             <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center select-none bg-transparent mx-auto my-3">
@@ -880,15 +894,33 @@ export default function BalancePage() {
                     />
                 </svg>
 
-                {/* Floating Green Income Badge (+ $500 / + $X) */}
-                <div className="absolute top-2 -right-1 sm:top-3 sm:right-0 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-md rounded-full px-3 py-1 text-xs sm:text-sm font-extrabold text-emerald-500 flex items-center gap-1 z-10 pointer-events-none">
-                    + ${displayIncome.toLocaleString()}
-                </div>
-
-                {/* Floating Red Expense Badge (- $120 / - $Y) */}
-                <div className="absolute bottom-2 -left-1 sm:bottom-3 sm:left-0 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-md rounded-full px-3 py-1 text-xs sm:text-sm font-extrabold text-rose-500 flex items-center gap-1 z-10 pointer-events-none">
-                    - ${displayExpense.toLocaleString()}
-                </div>
+                {/* 1-second Blur Animated Floating Feedback Badges on Income / Expense */}
+                <AnimatePresence mode="wait">
+                    {recentFeedback && recentFeedback.type === 'income' && (
+                        <motion.div
+                            key={`feedback-${recentFeedback.id}`}
+                            initial={{ opacity: 0, scale: 0.75, filter: "blur(12px)", y: 12 }}
+                            animate={{ opacity: 1, scale: 1, filter: "blur(0px)", y: 0 }}
+                            exit={{ opacity: 0, scale: 1.15, filter: "blur(14px)", y: -12 }}
+                            transition={{ duration: 0.35, ease: "easeOut" }}
+                            className="absolute top-2 -right-1 sm:top-3 sm:right-0 bg-white/95 dark:bg-zinc-900/95 border border-emerald-500/30 shadow-xl rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-black text-emerald-500 flex items-center gap-1 z-30 pointer-events-none backdrop-blur-md"
+                        >
+                            + ${recentFeedback.amount.toLocaleString()}
+                        </motion.div>
+                    )}
+                    {recentFeedback && recentFeedback.type === 'expense' && (
+                        <motion.div
+                            key={`feedback-${recentFeedback.id}`}
+                            initial={{ opacity: 0, scale: 0.75, filter: "blur(12px)", y: -12 }}
+                            animate={{ opacity: 1, scale: 1, filter: "blur(0px)", y: 0 }}
+                            exit={{ opacity: 0, scale: 1.15, filter: "blur(14px)", y: 12 }}
+                            transition={{ duration: 0.35, ease: "easeOut" }}
+                            className="absolute bottom-2 -left-1 sm:bottom-3 sm:left-0 bg-white/95 dark:bg-zinc-900/95 border border-rose-500/30 shadow-xl rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-black text-rose-500 flex items-center gap-1 z-30 pointer-events-none backdrop-blur-md"
+                        >
+                            - ${recentFeedback.amount.toLocaleString()}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Center Content: "Balance" text + Money amount */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
