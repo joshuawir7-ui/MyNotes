@@ -107,7 +107,7 @@ export function PulseChart() {
     }, [tasks, displayHours, timeframe, language])
 
     if (!mounted) {
-        return <div className="w-full h-[260px] glass-panel rounded-2xl p-6 relative overflow-hidden group animate-pulse" />
+        return <div className="w-full h-[170px] glass-panel rounded-2xl p-4 relative overflow-hidden group animate-pulse" />
     }
 
     // If no data yet, provide a skeleton/placeholder curve for better UX
@@ -115,33 +115,33 @@ export function PulseChart() {
     const finalData = hasData ? chartData : chartData.map(d => ({ ...d, value: 0 }))
 
     return (
-        <div className="w-full h-[260px] glass-panel rounded-2xl p-6 relative overflow-hidden group">
+        <div className="w-full h-[170px] glass-panel rounded-2xl p-4 relative overflow-hidden group">
             {/* Dynamic background glow */}
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl group-hover:bg-purple-500/30 transition-colors duration-500" />
             <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl group-hover:bg-blue-500/30 transition-colors duration-500" />
 
-            <div className="flex justify-between items-center mb-6 relative z-10">
-                <h3 className="text-base font-semibold text-foreground/90 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_10px_rgba(74,222,128,0.5)]" />
-                    {t.productivityPulse}
+            <div className="flex justify-between items-center mb-2 relative z-10 gap-2">
+                <h3 className="text-sm sm:text-base font-semibold text-foreground/90 flex items-center gap-2 whitespace-nowrap shrink-0">
+                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_10px_rgba(74,222,128,0.5)] shrink-0" />
+                    <span className="whitespace-nowrap">{t.productivityPulse}</span>
                 </h3>
                 
-                {/* Better timeframe toggle replacing the select element */}
-                <div className="flex bg-black/5 dark:bg-white/5 rounded-lg p-0.5 relative">
+                {/* Timeframe toggle */}
+                <div className="flex bg-black/5 dark:bg-white/5 rounded-lg p-0.5 relative shrink-0">
                     <button
                         onClick={() => setTimeframe('today')}
-                        className={`relative z-10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${timeframe === 'today' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'}`}
+                        className={`relative z-10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors whitespace-nowrap ${timeframe === 'today' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'}`}
                     >
-                        {t.today}
+                        <span className="whitespace-nowrap">{t.today}</span>
                         {timeframe === 'today' && (
                             <motion.div layoutId="pulse-time-indicator" className="absolute inset-0 bg-white dark:bg-zinc-800 rounded-md shadow-sm -z-10" />
                         )}
                     </button>
                     <button
                         onClick={() => setTimeframe('week')}
-                        className={`relative z-10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${timeframe === 'week' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'}`}
+                        className={`relative z-10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors whitespace-nowrap ${timeframe === 'week' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'}`}
                     >
-                        {t.thisWeek}
+                        <span className="whitespace-nowrap">{t.thisWeek}</span>
                         {timeframe === 'week' && (
                             <motion.div layoutId="pulse-time-indicator" className="absolute inset-0 bg-white dark:bg-zinc-800 rounded-md shadow-sm -z-10" />
                         )}
@@ -149,7 +149,7 @@ export function PulseChart() {
                 </div>
             </div>
 
-            <div className="h-[180px] w-full relative z-10">
+            <div className="h-[105px] w-full relative z-10">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={finalData}>
                         <defs>
@@ -189,3 +189,4 @@ export function PulseChart() {
         </div>
     )
 }
+
