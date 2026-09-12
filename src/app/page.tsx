@@ -5,6 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { translations } from "@/lib/translations";
 import { Reveal } from "@/components/ui/reveal";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import { NoteEditor } from "@/components/notes/note-editor";
 import { Note } from "@/lib/store";
@@ -15,13 +16,14 @@ import { Coins, AlertTriangle, X } from "lucide-react";
 const QuoteSection = dynamic(() => import("@/components/dashboard/quote-section").then(mod => mod.QuoteSection), { ssr: false, loading: () => <div className="h-20 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
 const PulseChart = dynamic(() => import("@/components/dashboard/pulse-chart").then(mod => mod.PulseChart), { ssr: false, loading: () => <div className="h-48 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
 const StatsCards = dynamic(() => import("@/components/dashboard/stats-cards").then(mod => mod.StatsCards), { ssr: false, loading: () => <div className="h-24 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
-const ProjectList = dynamic(() => import("@/components/dashboard/project-list").then(mod => mod.ProjectList), { ssr: false, loading: () => <div className="h-32 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
+const BalanceMiniChart = dynamic(() => import("@/components/dashboard/balance-mini-chart").then(mod => mod.BalanceMiniChart), { ssr: false, loading: () => <div className="h-[140px] animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-2xl" /> });
 const DailyFocusWidget = dynamic(() => import("@/components/dashboard/daily-focus").then(mod => mod.DailyFocusWidget), { ssr: false, loading: () => <div className="h-40 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
 const EnhancedTaskList = dynamic(() => import("@/components/dashboard/enhanced-task-list").then(mod => mod.EnhancedTaskList), { ssr: false, loading: () => <div className="h-48 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
 const WeeklyProgressChart = dynamic(() => import("@/components/dashboard/weekly-progress-chart").then(mod => mod.WeeklyProgressChart), { ssr: false, loading: () => <div className="h-40 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
 const DashboardWidgets = dynamic(() => import("@/components/dashboard/dashboard-widgets").then(mod => mod.DashboardWidgets), { ssr: false, loading: () => <div className="h-36 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
 
 export default function Home() {
+  const router = useRouter();
   const language = useStore(state => state.language);
   const addNote = useStore(state => state.addNote);
   // Atomic selectors: tasks and goals use shallow to prevent re-render cascades
@@ -379,11 +381,11 @@ export default function Home() {
 
           <Reveal delay={0.6} margin="0px">
             <section className="w-full mt-2">
-              <div className="flex justify-between items-center mb-3 px-1">
-                <h2 className="text-sm font-semibold tracking-tight uppercase">{translations[language].nav.projects}</h2>
-                <button className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors uppercase tracking-wider">{t.seeAll}</button>
+              <div className="flex justify-between items-center mb-2 px-1">
+                <h2 className="text-sm font-semibold tracking-tight uppercase">{translations[language].nav.balance}</h2>
+                <button onClick={() => router.push('/balance')} className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors uppercase tracking-wider">{t.seeAll}</button>
               </div>
-              <ProjectList />
+              <BalanceMiniChart />
             </section>
           </Reveal>
 
@@ -567,11 +569,11 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Reveal delay={0.7} margin="0px">
               <section className="w-full">
-                <div className="flex justify-between items-center mb-4 px-1">
-                  <h2 className="text-lg font-semibold tracking-tight">{translations[language].nav.projects}</h2>
-                  <button className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors uppercase tracking-wider">{t.seeAll}</button>
+                <div className="flex justify-between items-center mb-3 px-1">
+                  <h2 className="text-lg font-semibold tracking-tight">{translations[language].nav.balance}</h2>
+                  <button onClick={() => router.push('/balance')} className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors uppercase tracking-wider">{t.seeAll}</button>
                 </div>
-                <ProjectList />
+                <BalanceMiniChart />
               </section>
             </Reveal>
 
