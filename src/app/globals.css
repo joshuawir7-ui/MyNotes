@@ -451,9 +451,49 @@
 
 /* Fix browser-injected text color bugs inside editors for both light and dark themes */
 .rich-text-editor,
-.rich-text-editor *:not(a),
+.rich-text-editor *:not(a):not([style*="background-color"]):not([style*="BACKGROUND-COLOR"]),
 [contenteditable],
-[contenteditable] *:not(a) {
+[contenteditable] *:not(a):not([style*="background-color"]):not([style*="BACKGROUND-COLOR"]) {
+  color: var(--foreground) !important;
+}
+
+/* Dark mode text color enforcement: ensure text is bright white/foreground in dark mode */
+.dark .rich-text-editor,
+.dark .rich-text-editor *:not(a):not([style*="background-color"]):not([style*="BACKGROUND-COLOR"]),
+.dark [contenteditable],
+.dark [contenteditable] *:not(a):not([style*="background-color"]):not([style*="BACKGROUND-COLOR"]),
+.dark .rich-task-title,
+.dark .rich-task-title * {
+  color: var(--foreground) !important;
+}
+
+/* Override any dark inline styles (black, dark rgb, dark hex) in dark mode */
+.dark [style*="color: black"],
+.dark [style*="color:black"],
+.dark [style*="color: #000"],
+.dark [style*="color:#000"],
+.dark [style*="color: #000000"],
+.dark [style*="color:#000000"],
+.dark [style*="color: rgb(0"],
+.dark [style*="color:rgb(0"],
+.dark [style*="color: rgb(1"],
+.dark [style*="color:rgb(1"],
+.dark [style*="color: rgb(2"],
+.dark [style*="color:rgb(2"],
+.dark [style*="color: rgb(3"],
+.dark [style*="color:rgb(3"],
+.dark [style*="color: rgb(4"],
+.dark [style*="color:rgb(4"],
+.dark [style*="color: rgb(5"],
+.dark [style*="color:rgb(5"],
+.dark [style*="color: #1"],
+.dark [style*="color:#1"],
+.dark [style*="color: #2"],
+.dark [style*="color:#2"],
+.dark [style*="color: #3"],
+.dark [style*="color:#3"],
+.dark [style*="color: #4"],
+.dark [style*="color:#4"] {
   color: var(--foreground) !important;
 }
 

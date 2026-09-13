@@ -2305,16 +2305,20 @@ function stripInlineColors(html: string): string {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        // Remove color styles from all elements, preserving others like background-color
-        const styledElements = doc.querySelectorAll('[style]');
-        styledElements.forEach(el => {
+        // Remove color styles and color attributes from all elements, preserving background-color
+        const allElements = doc.querySelectorAll('*');
+        allElements.forEach(el => {
+            if (el.hasAttribute('color')) {
+                el.removeAttribute('color');
+            }
             const style = el.getAttribute('style');
             if (style) {
                 const cleanStyles = style.split(';')
                     .map(s => s.trim())
                     .filter(s => {
-                        const lower = s.toLowerCase();
-                        return !lower.startsWith('color') && !lower.includes('text-decoration-color') && !lower.includes('-webkit-text-fill-color');
+                        if (!s) return false;
+                        const propName = s.split(':')[0].trim().toLowerCase();
+                        return propName !== 'color' && propName !== 'font-color' && propName !== 'text-decoration-color' && propName !== '-webkit-text-fill-color';
                     })
                     .join('; ');
                 if (cleanStyles) {
@@ -2345,13 +2349,15 @@ function stripInlineColors(html: string): string {
 function cleanContainerStyle(el: HTMLDivElement | null) {
     if (!el) return;
     try {
+        if (el.hasAttribute('color')) el.removeAttribute('color');
         const style = el.getAttribute('style');
         if (style) {
             const cleanStyles = style.split(';')
                 .map(s => s.trim())
                 .filter(s => {
-                    const lower = s.toLowerCase();
-                    return !lower.startsWith('color') && !lower.includes('text-decoration-color');
+                    if (!s) return false;
+                    const propName = s.split(':')[0].trim().toLowerCase();
+                    return propName !== 'color' && propName !== 'font-color' && propName !== 'text-decoration-color' && propName !== '-webkit-text-fill-color';
                 })
                 .join('; ');
             if (cleanStyles) {
