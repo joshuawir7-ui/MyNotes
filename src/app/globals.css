@@ -449,51 +449,23 @@
   color: #0f172a !important;
 }
 
-/* Fix browser-injected text color bugs inside editors for both light and dark themes */
-.rich-text-editor,
-.rich-text-editor *:not(a):not([style*="background-color"]):not([style*="BACKGROUND-COLOR"]),
-[contenteditable],
-[contenteditable] *:not(a):not([style*="background-color"]):not([style*="BACKGROUND-COLOR"]) {
-  color: var(--foreground) !important;
+/* Fix browser-injected text color bugs inside editors for light theme */
+:not(.dark) .rich-text-editor,
+:not(.dark) .rich-text-editor *,
+:not(.dark) [contenteditable],
+:not(.dark) [contenteditable] * {
+  color: var(--foreground);
 }
 
-/* Dark mode text color enforcement: ensure text is bright white/foreground in dark mode */
+/* Dark mode text color enforcement: EVERYTHING inside editors/contenteditables/tasks in dark mode is bright white */
 .dark .rich-text-editor,
-.dark .rich-text-editor *:not(a):not([style*="background-color"]):not([style*="BACKGROUND-COLOR"]),
+.dark .rich-text-editor *,
 .dark [contenteditable],
-.dark [contenteditable] *:not(a):not([style*="background-color"]):not([style*="BACKGROUND-COLOR"]),
+.dark [contenteditable] *,
 .dark .rich-task-title,
-.dark .rich-task-title * {
-  color: var(--foreground) !important;
-}
-
-/* Override any dark inline styles (black, dark rgb, dark hex) in dark mode */
-.dark [style*="color: black"],
-.dark [style*="color:black"],
-.dark [style*="color: #000"],
-.dark [style*="color:#000"],
-.dark [style*="color: #000000"],
-.dark [style*="color:#000000"],
-.dark [style*="color: rgb(0"],
-.dark [style*="color:rgb(0"],
-.dark [style*="color: rgb(1"],
-.dark [style*="color:rgb(1"],
-.dark [style*="color: rgb(2"],
-.dark [style*="color:rgb(2"],
-.dark [style*="color: rgb(3"],
-.dark [style*="color:rgb(3"],
-.dark [style*="color: rgb(4"],
-.dark [style*="color:rgb(4"],
-.dark [style*="color: rgb(5"],
-.dark [style*="color:rgb(5"],
-.dark [style*="color: #1"],
-.dark [style*="color:#1"],
-.dark [style*="color: #2"],
-.dark [style*="color:#2"],
-.dark [style*="color: #3"],
-.dark [style*="color:#3"],
-.dark [style*="color: #4"],
-.dark [style*="color:#4"] {
+.dark .rich-task-title *,
+.dark .rich-task-item,
+.dark .rich-task-item * {
   color: var(--foreground) !important;
 }
 
