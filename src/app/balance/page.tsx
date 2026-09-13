@@ -1703,14 +1703,14 @@ export default function BalancePage() {
                             }}
                             className="w-full max-w-[360px] sm:max-w-[400px] bg-white rounded-[40px] p-8 sm:p-9 shadow-2xl relative flex flex-col text-center select-none"
                         >
-                            <div className="text-[40px] sm:text-[46px] font-normal text-black mb-1 capitalize" style={{ fontFamily: 'var(--font-dancing-script), cursive' }}>
+                            <div className="text-[28px] sm:text-[32px] font-normal text-black mb-0.5 capitalize" style={{ fontFamily: 'var(--font-dancing-script), cursive' }}>
                                 {selectedTxDetails.type === 'income' 
                                     ? (language === 'es' ? 'Ingreso' : 'Income')
                                     : (language === 'es' ? 'Egreso' : 'Expense')
                                 }
                             </div>
                             
-                            <div className="text-[48px] sm:text-[56px] font-black text-black leading-none mb-4 tracking-tight flex items-center justify-center">
+                            <div className="text-[34px] sm:text-[38px] font-black text-black leading-none mb-3 tracking-tight flex items-center justify-center">
                                 {Math.abs(selectedTxDetails.amount)}
                                 {selectedTxDetails.type === 'expense' ? '-' : (selectedTxDetails.currency || '$')}
                             </div>
