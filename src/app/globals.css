@@ -465,7 +465,9 @@
 .dark .rich-task-title,
 .dark .rich-task-title *,
 .dark .rich-task-item,
-.dark .rich-task-item * {
+.dark .rich-task-item *,
+.dark font,
+.dark font * {
   color: var(--foreground) !important;
 }
 

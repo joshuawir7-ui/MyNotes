@@ -2297,7 +2297,7 @@ function linkifyHTML(html: string): string {
     }).join('');
 }
 
-function stripInlineColors(html: string): string {
+export function sanitizeNoteHtml(html: string): string {
     if (!html) return '';
     if (typeof window === 'undefined') return html;
 
@@ -2305,7 +2305,7 @@ function stripInlineColors(html: string): string {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        // Remove color styles and color attributes from all elements, preserving background-color
+        // Remove color styles and color attributes from all elements, preserving background-color for highlighters
         const allElements = doc.querySelectorAll('*');
         allElements.forEach(el => {
             if (el.hasAttribute('color')) {
@@ -2318,7 +2318,10 @@ function stripInlineColors(html: string): string {
                     .filter(s => {
                         if (!s) return false;
                         const propName = s.split(':')[0].trim().toLowerCase();
-                        return propName !== 'color' && propName !== 'font-color' && propName !== 'text-decoration-color' && propName !== '-webkit-text-fill-color';
+                        return propName !== 'color' &&
+                               propName !== 'font-color' &&
+                               propName !== 'text-decoration-color' &&
+                               propName !== '-webkit-text-fill-color';
                     })
                     .join('; ');
                 if (cleanStyles) {
@@ -2344,6 +2347,10 @@ function stripInlineColors(html: string): string {
         console.error("Error sanitizing HTML colors:", e);
         return html;
     }
+}
+
+function stripInlineColors(html: string): string {
+    return sanitizeNoteHtml(html);
 }
 
 function cleanContainerStyle(el: HTMLDivElement | null) {
