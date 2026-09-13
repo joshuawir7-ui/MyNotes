@@ -958,6 +958,7 @@ export interface Transaction {
     recoveryDate?: string // YYYY-MM-DD
     conservationGoalDate?: string // YYYY-MM-DD
     conservationStartBalance?: number
+    isRecovered?: boolean
     lastUpdated?: number
 }
 
@@ -1154,6 +1155,7 @@ interface AppState {
     resetPriorityReminderDefaults: () => void
 
     addTransaction: (tx: Omit<Transaction, 'id' | 'lastUpdated'>) => void
+    updateTransaction: (id: string, updates: Partial<Transaction>) => void
     deleteTransaction: (id: string) => void
     clearAllTransactions: () => void
 
@@ -2595,6 +2597,16 @@ export const useStore = create<AppState>()(
                             transactions: newTransactions,
                             appointments: newAppointments
                         };
+                    });
+                    flushStorage().catch(console.error);
+                },
+
+                updateTransaction: (id, updates) => {
+                    set((state) => {
+                        const newTransactions = (state.transactions || []).map(t =>
+                            t.id === id ? { ...t, ...updates, lastUpdated: Date.now() } : t
+                        );
+                        return { transactions: newTransactions };
                     });
                     flushStorage().catch(console.error);
                 },

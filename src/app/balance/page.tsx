@@ -217,6 +217,7 @@ export default function BalancePage() {
     const appointments = Array.isArray(rawAppointments) ? rawAppointments : []
     const savingsGoal = useStore(state => state.savingsGoal ?? 400)
     const addTransaction = useStore(state => state.addTransaction)
+    const updateTransaction = useStore(state => state.updateTransaction)
     const deleteTransaction = useStore(state => state.deleteTransaction)
     const clearAllTransactions = useStore(state => state.clearAllTransactions)
     const setSavingsGoal = useStore(state => state.setSavingsGoal)
@@ -569,6 +570,23 @@ export default function BalancePage() {
 
     const handleResolveReminder = (apptId: string) => {
         updateAppointment(apptId, { status: 'completed' })
+        const appt = appointments.find(a => a.id === apptId)
+        if (appt && appt.notes?.startsWith('recovery_reminder:')) {
+            const txId = appt.notes.replace('recovery_reminder:', '')
+            const tx = transactions.find(t => t.id === txId)
+            if (tx && !tx.isRecovered) {
+                updateTransaction(txId, { isRecovered: true })
+                addTransaction({
+                    amount: Math.abs(tx.amount),
+                    type: 'income',
+                    description: language === 'es'
+                        ? `Capital recuperado: ${tx.description}`
+                        : `Capital recovered: ${tx.description}`,
+                    date: todayStr,
+                    currency: tx.currency || '$'
+                })
+            }
+        }
         showToast(language === 'es' ? "Capital marcado como recuperado" : "Capital marked as recovered", "success")
     }
 
@@ -1069,7 +1087,7 @@ export default function BalancePage() {
                             {/* Header containing title and chart variation toggle */}
                             <div className="flex items-center justify-between w-full mb-2 px-2 max-w-[320px]">
                                 <div className="w-8 h-8" />
-                                <h1 className="text-3xl font-bold tracking-tight text-foreground font-dancing text-center flex-1">
+                                <h1 className="text-3xl font-normal tracking-tight text-foreground font-dancing text-center flex-1">
                                     Balance
                                 </h1>
                                 <div className="flex gap-2">
@@ -1683,21 +1701,21 @@ export default function BalancePage() {
                             onTouchMove={() => {
                                 if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
                             }}
-                            className="w-full max-w-[280px] bg-white rounded-[32px] p-6 shadow-2xl relative flex flex-col text-center select-none"
+                            className="w-full max-w-[320px] bg-white rounded-[36px] p-7 shadow-2xl relative flex flex-col text-center select-none"
                         >
-                            <div className="text-[32px] font-bold text-black mb-1 capitalize" style={{ fontFamily: 'var(--font-dancing-script), cursive' }}>
+                            <div className="text-[36px] font-normal text-black mb-1 capitalize" style={{ fontFamily: 'var(--font-dancing-script), cursive' }}>
                                 {selectedTxDetails.type === 'income' 
                                     ? (language === 'es' ? 'Ingreso' : 'Income')
                                     : (language === 'es' ? 'Egreso' : 'Expense')
                                 }
                             </div>
                             
-                            <div className="text-[42px] font-black text-black leading-none mb-3 tracking-tight flex items-center justify-center">
+                            <div className="text-[44px] font-black text-black leading-none mb-3 tracking-tight flex items-center justify-center">
                                 {Math.abs(selectedTxDetails.amount)}
                                 {selectedTxDetails.type === 'expense' ? '-' : (selectedTxDetails.currency || '$')}
                             </div>
 
-                            <div className="w-full h-px bg-black/10 my-2" />
+                            <div className="w-full h-px bg-black/10 my-3" />
 
                             <div className="text-[13px] font-medium text-black/80 mb-3">
                                 {(() => {
@@ -1708,8 +1726,65 @@ export default function BalancePage() {
                                 })()}
                             </div>
 
-                            <div className="border border-black/10 rounded-[24px] p-4 text-[14px] font-medium text-black/80 text-left min-h-[120px]">
-                                {selectedTxDetails.description || (language === 'es' ? 'Sin descripción' : 'No description')}
+                            <div className="border border-black/10 rounded-[28px] p-5 text-left min-h-[150px] flex flex-col justify-between bg-white">
+                                <p className="text-[14px] font-medium text-black/80 break-words mb-3">
+                                    {selectedTxDetails.description || (language === 'es' ? 'Sin descripción' : 'No description')}
+                                </p>
+
+                                {selectedTxDetails.type === 'expense' && (
+                                    !selectedTxDetails.isRecovered ? (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (!selectedTxDetails) return;
+
+                                                // Mark transaction as recovered
+                                                updateTransaction(selectedTxDetails.id, { isRecovered: true });
+
+                                                // Return spent capital back to the account as income
+                                                addTransaction({
+                                                    amount: Math.abs(selectedTxDetails.amount),
+                                                    type: 'income',
+                                                    description: language === 'es'
+                                                        ? `Capital recuperado: ${selectedTxDetails.description}`
+                                                        : `Capital recovered: ${selectedTxDetails.description}`,
+                                                    date: todayStr,
+                                                    currency: selectedTxDetails.currency || '$'
+                                                });
+
+                                                // Complete associated reminder appointment if exists
+                                                const appt = appointments.find(a => a.notes === `recovery_reminder:${selectedTxDetails.id}`);
+                                                if (appt) {
+                                                    updateAppointment(appt.id, { status: 'completed' });
+                                                }
+
+                                                // Update local state to reflect change immediately
+                                                setSelectedTxDetails(prev => prev ? { ...prev, isRecovered: true } : null);
+
+                                                showToast(
+                                                    language === 'es' ? "Capital recuperado y devuelto a la cuenta" : "Capital recovered and returned to account",
+                                                    "success"
+                                                );
+                                            }}
+                                            onDoubleClick={(e) => e.stopPropagation()}
+                                            onTouchStart={(e) => e.stopPropagation()}
+                                            className="w-full py-3 bg-[#7029b1] hover:bg-[#602099] active:scale-95 text-white font-bold text-sm rounded-xl transition-all shadow text-center mt-auto cursor-pointer"
+                                        >
+                                            {language === 'es' ? "Recuperado" : "Recovered"}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => e.stopPropagation()}
+                                            onDoubleClick={(e) => e.stopPropagation()}
+                                            onTouchStart={(e) => e.stopPropagation()}
+                                            className="w-full py-3 bg-[#222222] text-white font-bold text-sm rounded-xl text-center mt-auto cursor-default"
+                                        >
+                                            {language === 'es' ? "Capital recuperado" : "Capital recovered"}
+                                        </button>
+                                    )
+                                )}
                             </div>
                         </motion.div>
                     </motion.div>
