@@ -1701,23 +1701,23 @@ export default function BalancePage() {
                             onTouchMove={() => {
                                 if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
                             }}
-                            className="w-full max-w-[320px] bg-white rounded-[36px] p-7 shadow-2xl relative flex flex-col text-center select-none"
+                            className="w-full max-w-[360px] sm:max-w-[400px] bg-white rounded-[40px] p-8 sm:p-9 shadow-2xl relative flex flex-col text-center select-none"
                         >
-                            <div className="text-[36px] font-normal text-black mb-1 capitalize" style={{ fontFamily: 'var(--font-dancing-script), cursive' }}>
+                            <div className="text-[40px] sm:text-[46px] font-normal text-black mb-1 capitalize" style={{ fontFamily: 'var(--font-dancing-script), cursive' }}>
                                 {selectedTxDetails.type === 'income' 
                                     ? (language === 'es' ? 'Ingreso' : 'Income')
                                     : (language === 'es' ? 'Egreso' : 'Expense')
                                 }
                             </div>
                             
-                            <div className="text-[44px] font-black text-black leading-none mb-3 tracking-tight flex items-center justify-center">
+                            <div className="text-[48px] sm:text-[56px] font-black text-black leading-none mb-4 tracking-tight flex items-center justify-center">
                                 {Math.abs(selectedTxDetails.amount)}
                                 {selectedTxDetails.type === 'expense' ? '-' : (selectedTxDetails.currency || '$')}
                             </div>
 
-                            <div className="w-full h-px bg-black/10 my-3" />
+                            <div className="w-full h-px bg-black/10 my-4" />
 
-                            <div className="text-[13px] font-medium text-black/80 mb-3">
+                            <div className="text-[14px] sm:text-[15px] font-medium text-black/80 mb-4">
                                 {(() => {
                                     if (!selectedTxDetails.date) return '';
                                     const parts = selectedTxDetails.date.split('-');
@@ -1726,8 +1726,8 @@ export default function BalancePage() {
                                 })()}
                             </div>
 
-                            <div className="border border-black/10 rounded-[28px] p-5 text-left min-h-[150px] flex flex-col justify-between bg-white">
-                                <p className="text-[14px] font-medium text-black/80 break-words mb-3">
+                            <div className="border border-black/10 rounded-[30px] p-6 text-left min-h-[170px] flex flex-col justify-between bg-white">
+                                <p className="text-[15px] font-medium text-black/80 break-words mb-4 leading-relaxed">
                                     {selectedTxDetails.description || (language === 'es' ? 'Sin descripción' : 'No description')}
                                 </p>
 
