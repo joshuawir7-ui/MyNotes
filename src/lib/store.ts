@@ -3388,7 +3388,7 @@ export const useStore = create<AppState>()(
                         return false;
                     }
                     } finally {
-                        isSyncing = false;
+                        syncInProgress = false;
                     }
                 },
 
@@ -3843,7 +3843,7 @@ export const useStore = create<AppState>()(
                         return false;
                     }
                     } finally {
-                        syncInProgress = false;
+                        isSyncing = false;
                     }
                 }
             };

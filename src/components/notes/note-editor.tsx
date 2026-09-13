@@ -805,8 +805,13 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
     const isDownloading = block.isDownloading;
     const isSynced = !!(block.driveFileId && hasImage && !isDownloading);
     const lastTapRef = useRef(0);
+    const [imageError, setImageError] = useState(false);
 
-    const imageSrc = useLocalUrl(hasImage ? block.content : null);
+    useEffect(() => {
+        setImageError(false);
+    }, [block.content]);
+
+    const imageSrc = useLocalUrl(hasImage ? (imageError && block.driveFileId ? `drive://${block.driveFileId}` : block.content) : null);
 
     const handleImageTap = (e: React.MouseEvent | React.TouchEvent) => {
         if (!isDownloading) {
@@ -892,6 +897,11 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                             alt="Note attachment"
                             className="max-h-[600px] max-w-full rounded-2xl cursor-pointer shadow-sm"
                             onClick={handleImageTap}
+                            onError={() => {
+                                if (block.driveFileId && !imageError) {
+                                    setImageError(true);
+                                }
+                            }}
                         />
                         {/* Sync status badge */}
                         {isSynced && (
