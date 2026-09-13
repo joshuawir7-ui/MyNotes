@@ -1658,12 +1658,6 @@ export default function BalancePage() {
                         onClick={() => setSelectedTxDetails(null)}
                         className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
                     >
-                        <style>{`
-                            @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500;700&display=swap');
-                            .font-handwriting {
-                                font-family: 'Dancing Script', cursive;
-                            }
-                        `}</style>
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
@@ -1691,7 +1685,7 @@ export default function BalancePage() {
                             }}
                             className="w-full max-w-[280px] bg-white rounded-[32px] p-6 shadow-2xl relative flex flex-col text-center select-none"
                         >
-                            <div className="font-handwriting text-[32px] font-bold text-black mb-1 capitalize">
+                            <div className="text-[32px] font-bold text-black mb-1 capitalize" style={{ fontFamily: 'var(--font-dancing-script), cursive' }}>
                                 {selectedTxDetails.type === 'income' 
                                     ? (language === 'es' ? 'Ingreso' : 'Income')
                                     : (language === 'es' ? 'Egreso' : 'Expense')
