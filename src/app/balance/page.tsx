@@ -7,7 +7,7 @@ import { Virtuoso } from "react-virtuoso"
 import { Reveal } from "@/components/ui/reveal"
 import { useStore, Transaction, Appointment } from "@/lib/store"
 import { translations } from "@/lib/translations"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Plus, Wallet, X, Trash2, Edit2, ArrowUpRight, ArrowDownRight, Calendar, DollarSign, Check, Coins, ChevronDown, AlertTriangle, TrendingUp, PieChart, RotateCcw, FileText } from "lucide-react"
 import { ExpenseNoteForm } from "@/components/balance/expense-note-form"
 import { ExpenseNoteCard } from "@/components/balance/expense-note-card"
@@ -230,6 +230,7 @@ export default function BalancePage() {
     const [mounted, setMounted] = useState(false)
     const [isEditingGoal, setIsEditingGoal] = useState(false)
     const [tempGoalValue, setTempGoalValue] = useState("")
+    const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
 
     // Toggle between 'donut' and 'line' (wavy line)
     const [chartType, setChartType] = useState<"donut" | "line">("donut")
@@ -1118,11 +1119,11 @@ export default function BalancePage() {
                     {/* Meta budget row + quick-add input + buttons */}
                     <Reveal margin="0px" duration={0.8} delay={0.1} className="w-full">
                         <div className="p-3 bg-transparent flex flex-col gap-3 w-full border-t border-black/5 dark:border-white/5 pt-3">
-                            {/* Meta & Input row */}
-                            <div className="relative flex items-center justify-center gap-4 w-full min-h-[40px]">
-                                {/* Savings Goal Info (label only, no pencil here) */}
+                            {/* Meta & Input row — grid de 3 zonas para evitar sobreposición */}
+                            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 w-full min-h-[40px]">
+                                {/* Columna izquierda: label Meta o form de edición */}
                                 {isEditingGoal ? (
-                                    <form onSubmit={handleSaveGoal} className="flex items-center gap-2 shrink-0">
+                                    <form onSubmit={handleSaveGoal} className="flex items-center gap-2 col-span-3">
                                         <input
                                             autoFocus
                                             type="number"
@@ -1139,37 +1140,39 @@ export default function BalancePage() {
                                         </button>
                                     </form>
                                 ) : (
-                                    <span className="absolute left-1 text-sm font-black text-purple-650 dark:text-purple-400 shrink-0">
-                                        Meta: {savingsGoal}$
-                                    </span>
-                                )}
+                                    <>
+                                        {/* col 1: etiqueta Meta */}
+                                        <span className="text-sm font-black text-purple-650 dark:text-purple-400 shrink-0 whitespace-nowrap">
+                                            Meta: {savingsGoal}$
+                                        </span>
 
-                                {/* Quick Add Input (allows negative for debt) */}
-                                <div className="flex justify-center w-full">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={quickAmount}
-                                        onChange={(e) => setQuickAmount(e.target.value)}
-                                        placeholder="0.00 $"
-                                        className="w-full max-w-[100px] bg-black/5 dark:bg-white/5 border border-zinc-300 dark:border-zinc-700 rounded-2xl py-2 px-3 focus:outline-none focus:border-zinc-400 text-center font-bold text-sm text-foreground placeholder:font-normal placeholder:text-muted-foreground/45"
-                                    />
-                                </div>
+                                        {/* col 2: input centrado */}
+                                        <div className="flex justify-center min-w-0">
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={quickAmount}
+                                                onChange={(e) => setQuickAmount(e.target.value)}
+                                                placeholder="0.00 $"
+                                                className="w-full max-w-[100px] bg-black/5 dark:bg-white/5 border border-zinc-300 dark:border-zinc-700 rounded-2xl py-2 px-3 focus:outline-none focus:border-zinc-400 text-center font-bold text-sm text-foreground placeholder:font-normal placeholder:text-muted-foreground/45"
+                                            />
+                                        </div>
 
-                                {/* Pencil button moved to right of input */}
-                                {!isEditingGoal && (
-                                    <button
-                                        onClick={() => {
-                                            setTempGoalValue(savingsGoal.toString())
-                                            setIsEditingGoal(true)
-                                        }}
-                                        className="absolute right-1 p-1.5 text-muted-foreground hover:text-purple-400 transition-colors shrink-0"
-                                        title={language === 'es' ? 'Editar meta' : 'Edit goal'}
-                                    >
-                                        <Edit2 className="w-3.5 h-3.5" />
-                                    </button>
+                                        {/* col 3: botón lápiz */}
+                                        <button
+                                            onClick={() => {
+                                                setTempGoalValue(savingsGoal.toString())
+                                                setIsEditingGoal(true)
+                                            }}
+                                            className="p-1.5 text-muted-foreground hover:text-purple-400 transition-colors shrink-0"
+                                            title={language === 'es' ? 'Editar meta' : 'Edit goal'}
+                                        >
+                                            <Edit2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </>
                                 )}
                             </div>
+
 
                             {/* Centered Actions Buttons */}
                             <div className="flex gap-4 justify-center w-full pt-1">
@@ -1655,109 +1658,64 @@ export default function BalancePage() {
                         onClick={() => setSelectedTxDetails(null)}
                         className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
                     >
+                        <style>{`
+                            @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500;700&display=swap');
+                            .font-handwriting {
+                                font-family: 'Dancing Script', cursive;
+                            }
+                        `}</style>
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.92, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.92, y: 20 }}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ type: "spring", damping: 25, stiffness: 300 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-black/10 dark:border-white/10 rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col gap-5"
+                            onDoubleClick={() => {
+                                const id = selectedTxDetails.id;
+                                setSelectedTxDetails(null);
+                                handleDeleteTransaction(id);
+                            }}
+                            onTouchStart={() => {
+                                if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                                longPressTimerRef.current = setTimeout(() => {
+                                    const id = selectedTxDetails.id;
+                                    setSelectedTxDetails(null);
+                                    handleDeleteTransaction(id);
+                                }, 600);
+                            }}
+                            onTouchEnd={() => {
+                                if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                            }}
+                            onTouchMove={() => {
+                                if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                            }}
+                            className="w-full max-w-[280px] bg-white rounded-[32px] p-6 shadow-2xl relative flex flex-col text-center select-none"
                         >
-                            {/* Header bar */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2.5">
-                                    <div className={`p-2.5 rounded-2xl ${selectedTxDetails.type === 'income'
-                                            ? 'bg-emerald-500/10 text-emerald-500 dark:bg-purple-500/10 dark:text-purple-400'
-                                            : 'bg-rose-500/10 text-rose-500'
-                                        }`}>
-                                        {selectedTxDetails.type === 'income'
-                                            ? <ArrowUpRight className="w-5 h-5 stroke-[2.5]" />
-                                            : <ArrowDownRight className="w-5 h-5 stroke-[2.5]" />
-                                        }
-                                    </div>
-                                    <span className="text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/5 text-muted-foreground">
-                                        {selectedTxDetails.type === 'income'
-                                            ? (language === 'es' ? 'Ingreso' : 'Income')
-                                            : (language === 'es' ? 'Gasto' : 'Expense')
-                                        }
-                                    </span>
-                                </div>
-                                <button
-                                    onClick={() => setSelectedTxDetails(null)}
-                                    className="p-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
+                            <div className="font-handwriting text-[32px] font-bold text-black mb-1 capitalize">
+                                {selectedTxDetails.type === 'income' 
+                                    ? (language === 'es' ? 'Ingreso' : 'Income')
+                                    : (language === 'es' ? 'Egreso' : 'Expense')
+                                }
+                            </div>
+                            
+                            <div className="text-[42px] font-black text-black leading-none mb-3 tracking-tight flex items-center justify-center">
+                                {Math.abs(selectedTxDetails.amount)}
+                                {selectedTxDetails.type === 'expense' ? '-' : (selectedTxDetails.currency || '$')}
                             </div>
 
-                            {/* Amount card */}
-                            <div className={`p-5 rounded-2xl flex flex-col items-center justify-center text-center text-white shadow-md ${selectedTxDetails.type === 'income'
-                                    ? 'bg-[#00b050] dark:bg-[#7030a0]'
-                                    : 'bg-[#e60000]'
-                                }`}>
-                                <span className="text-xs uppercase font-extrabold text-white/80 tracking-wider">
-                                    {language === 'es' ? 'Monto Registrado' : 'Amount Recorded'}
-                                </span>
-                                <span className="text-3xl font-black mt-1 tracking-tight">
-                                    {selectedTxDetails.type === 'income' ? '+' : '-'}
-                                    {Math.abs(selectedTxDetails.amount)} {selectedTxDetails.currency || '$'}
-                                </span>
+                            <div className="w-full h-px bg-black/10 my-2" />
+
+                            <div className="text-[13px] font-medium text-black/80 mb-3">
+                                {(() => {
+                                    if (!selectedTxDetails.date) return '';
+                                    const parts = selectedTxDetails.date.split('-');
+                                    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                                    return selectedTxDetails.date;
+                                })()}
                             </div>
 
-                            {/* Info list */}
-                            <div className="space-y-3 bg-black/5 dark:bg-white/5 p-4 rounded-2xl border border-black/5 dark:border-white/5">
-                                <div>
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                                        {language === 'es' ? 'Concepto / Descripción' : 'Concept / Description'}
-                                    </span>
-                                    <p className="text-sm font-semibold text-foreground mt-0.5 break-words">
-                                        {selectedTxDetails.description || (language === 'es' ? 'Sin descripción' : 'No description')}
-                                    </p>
-                                </div>
-
-                                <div className="h-px bg-black/5 dark:bg-white/5 w-full" />
-
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                                            {language === 'es' ? 'Fecha de Registro' : 'Recorded Date'}
-                                        </span>
-                                        <p className="text-xs font-semibold text-foreground mt-0.5">
-                                            {formatTransactionDate(selectedTxDetails.date)}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                                            {language === 'es' ? 'Moneda' : 'Currency'}
-                                        </span>
-                                        <p className="text-xs font-semibold text-foreground mt-0.5">
-                                            {selectedTxDetails.currency || '$'}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex gap-3 pt-1">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const id = selectedTxDetails.id
-                                        setSelectedTxDetails(null)
-                                        handleDeleteTransaction(id)
-                                    }}
-                                    className="flex-1 py-3 px-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-bold text-xs flex items-center justify-center gap-2 transition-all"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                    {language === 'es' ? 'Eliminar' : 'Delete'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedTxDetails(null)}
-                                    className="flex-1 py-3 px-4 rounded-2xl bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-foreground font-bold text-xs transition-all"
-                                >
-                                    {language === 'es' ? 'Cerrar' : 'Close'}
-                                </button>
+                            <div className="border border-black/10 rounded-[24px] p-4 text-[14px] font-medium text-black/80 text-left min-h-[120px]">
+                                {selectedTxDetails.description || (language === 'es' ? 'Sin descripción' : 'No description')}
                             </div>
                         </motion.div>
                     </motion.div>

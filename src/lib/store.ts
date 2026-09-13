@@ -1168,6 +1168,35 @@ interface AppState {
 let lastLocalTasksUpdate = 0;
 let lastLocalNotesUpdate = 0;
 
+// ── Serialized save queues ─────────────────────────────────────────────────────
+// Each write waits for the previous one to finish, using the latest in-memory
+// snapshot. This eliminates the "lost update" race condition where two rapid
+// async writes could each read a stale version of the file from disk.
+let notesSaveQueue: Promise<void> = Promise.resolve();
+let tasksSaveQueue: Promise<void> = Promise.resolve();
+
+function queueNotesSave(notes: Note[]) {
+    notesSaveQueue = notesSaveQueue
+        .then(() => saveAllNotesToDisk(notes))
+        .catch(err => console.error('[Store] Error guardando notas:', err));
+}
+
+function queueTasksSave(tasks: Task[]) {
+    tasksSaveQueue = tasksSaveQueue
+        .then(() => saveAllTasksToDisk(tasks))
+        .catch(err => console.error('[Store] Error guardando tareas:', err));
+}
+
+// Safe UUID generator: uses crypto.randomUUID when available (no collisions),
+// falls back to a timestamp+random combo for older environments.
+const generateId = (): string => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
+// ──────────────────────────────────────────────────────────────────────────────
+
 async function fetchWithTimeout(resource: string, options: any = {}, timeout = 60000) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort('Timeout reached'), timeout);
@@ -1915,7 +1944,7 @@ export const useStore = create<AppState>()(
                 addTask: (task: Omit<Task, 'id' | 'completed' | 'completedDates' | 'missed' | 'streak'>) => {
                     lastLocalTasksUpdate = Date.now();
                     const newTask: Task = {
-                        id: Math.random().toString(36).substring(7),
+                        id: generateId(),
                         completed: false,
                         completedDates: [],
                         missed: 0,
@@ -1930,18 +1959,19 @@ export const useStore = create<AppState>()(
                         ...task as any
                     };
 
-                    readAllTasksFromDisk(get().tasks).then(allTasks => {
-                        const newTasks = [...allTasks, newTask];
-                        saveAllTasksToDisk(newTasks);
-                    });
-
+                    // 1. Actualiza UI de inmediato (síncrono)
                     set((state) => {
                         const currentTasks = Array.isArray(state.tasks) ? state.tasks : [];
                         const newTasks = [...currentTasks, newTask];
                         syncWidgetData(state.goals, state.appointments, state.notes, newTasks);
                         return { tasks: newTasks };
                     });
+
+                    // 2. Persiste a disco en segundo plano usando el estado ya actualizado
+                    queueTasksSave(get().tasks);
                 },
+
+
 
                 addProject: (project) => set((state) => ({
                     projects: [...state.projects, {
@@ -1956,47 +1986,6 @@ export const useStore = create<AppState>()(
                     lastLocalTasksUpdate = Date.now();
                     let syncedTasks: Task[] | null = null;
                     let taskToSync: any = undefined;
-
-                    readAllTasksFromDisk(get().tasks).then(allTasks => {
-                        const task = allTasks.find(t => t.id === taskId);
-                        if (!task) return;
-
-                        const today = getLocalDateString();
-                        const isRecurring = task.recurrence !== 'None';
-                        const completedDates = task.completedDates || [];
-                        const isCompletedToday = isRecurring ? completedDates.includes(today) : task.completed;
-                        const willBeCompleted = !isCompletedToday;
-
-                        if (isRecurring) {
-                            if (willBeCompleted) {
-                                if (!task.completedDates.includes(today)) {
-                                    task.completedDates.push(today);
-                                    if (!task.completionTimes) task.completionTimes = [];
-                                    task.completionTimes.push(new Date().toISOString());
-                                    task.streak = (task.streak || 0) + 1;
-                                }
-                            } else {
-                                task.completedDates = task.completedDates.filter(d => d !== today);
-                                task.completionTimes = (task.completionTimes || []).filter(t => !t.startsWith(today));
-                                task.streak = Math.max(0, (task.streak || 0) - 1);
-                            }
-                        } else {
-                            task.completed = !task.completed;
-                            if (task.completed) {
-                                if (!task.completionTimes) task.completionTimes = [];
-                                task.completionTimes.push(new Date().toISOString());
-                            } else {
-                                task.completionTimes = (task.completionTimes || []).filter(t => !t.startsWith(today));
-                            }
-                        }
-                        task.lastUpdated = Date.now();
-
-                        const finalTasks = (task.recurrence === 'Once' && willBeCompleted)
-                            ? allTasks.filter(t => t.id !== taskId)
-                            : allTasks;
-
-                        saveAllTasksToDisk(finalTasks);
-                    });
 
                     set((state) => {
                         const task = state.tasks.find(t => t.id === taskId)
@@ -2107,7 +2096,12 @@ export const useStore = create<AppState>()(
                             },
                             deletedItems
                         }
-                    })
+                    });
+
+                    // Guarda a disco usando el estado ya actualizado en memoria
+                    const updatedTasks = get().tasks;
+                    queueTasksSave(updatedTasks);
+                    syncedTasks = updatedTasks;
 
                     if (syncedTasks) {
                         if (taskToSync && taskToSync.recurrence === 'Daily') {
@@ -2120,10 +2114,7 @@ export const useStore = create<AppState>()(
 
                 deleteTask: (taskId) => {
                     lastLocalTasksUpdate = Date.now();
-                    readAllTasksFromDisk(get().tasks).then(allTasks => {
-                        const finalTasks = allTasks.filter(t => t.id !== taskId);
-                        saveAllTasksToDisk(finalTasks);
-                    });
+                    // set() primero para respuesta inmediata en UI
                     set((state) => {
                         const newTasks = state.tasks.filter(t => t.id !== taskId)
                         const today = getLocalDateString()
@@ -2167,6 +2158,8 @@ export const useStore = create<AppState>()(
                             deletedItems
                         };
                     });
+                    // Persiste a disco con el estado ya actualizado
+                    queueTasksSave(get().tasks);
                 },
 
                 addXP: (amount) => set((state) => ({
@@ -2179,23 +2172,17 @@ export const useStore = create<AppState>()(
 
                 addNote: (note) => {
                     lastLocalNotesUpdate = Date.now();
-                    const newNote = { ...note, id: Math.random().toString(36).substring(7), createdAt: new Date().toISOString(), lastUpdated: Date.now() }
+                    const newNote = { ...note, id: generateId(), createdAt: new Date().toISOString(), lastUpdated: Date.now() }
                     
+                    // 1. UI inmediata
                     set((state) => {
                         const newNotes = [...state.notes, newNote]
                         syncWidgetData(state.goals, state.appointments, newNotes)
                         return { notes: newNotes }
                     });
 
-                    (async () => {
-                        try {
-                            const allNotes = await readAllNotesFromDisk(get().notes);
-                            const finalNotes = [...allNotes, newNote];
-                            await saveAllNotesToDisk(finalNotes);
-                        } catch (e) {
-                            console.error("Async disk save failed", e);
-                        }
-                    })();
+                    // 2. Persiste con snapshot ya actualizado
+                    queueNotesSave(get().notes);
 
                     return newNote
                 },
@@ -2204,44 +2191,37 @@ export const useStore = create<AppState>()(
                     const now = Date.now();
                     lastLocalNotesUpdate = now;
                     
-                    const allNotes = await readAllNotesFromDisk(get().notes);
-                    const finalNotes = allNotes.map(n => n.id === id ? { ...n, title, blocks, lastUpdated: now } : n);
-                    await saveAllNotesToDisk(finalNotes);
-
+                    // 1. UI inmediata
                     set((state) => {
                         const newNotes = state.notes.map(n => n.id === id ? { ...n, title, blocks, lastUpdated: now } : n)
                         syncWidgetData(state.goals, state.appointments, newNotes)
                         return { notes: newNotes }
                     });
+
+                    // 2. Persiste con snapshot ya actualizado
+                    queueNotesSave(get().notes);
                 },
 
                 toggleNotePin: async (id) => {
                     const now = Date.now();
                     lastLocalNotesUpdate = now;
                     
-                    const allNotes = await readAllNotesFromDisk(get().notes);
-                    const finalNotes = allNotes.map(n => n.id === id ? { ...n, isPinned: !n.isPinned, lastUpdated: now } : n);
-                    await saveAllNotesToDisk(finalNotes);
-
+                    // 1. UI inmediata
                     set((state) => {
                         const newNotes = state.notes.map(n => n.id === id ? { ...n, isPinned: !n.isPinned, lastUpdated: now } : n)
                         syncWidgetData(state.goals, state.appointments, newNotes)
                         return { notes: newNotes }
                     });
+
+                    // 2. Persiste con snapshot ya actualizado
+                    queueNotesSave(get().notes);
                 },
 
-                updateNoteBlockContent: async (noteId, blockId, content) => {
+                updateNoteBlockContent: (noteId, blockId, content) => {
                     const now = Date.now();
                     lastLocalNotesUpdate = now;
 
-                    const allNotes = await readAllNotesFromDisk(get().notes);
-                    const finalNotes = allNotes.map(n => n.id === noteId ? {
-                        ...n,
-                        lastUpdated: now,
-                        blocks: n.blocks.map(b => b.id === blockId ? { ...b, content, isDownloading: false } : b)
-                    } : n);
-                    await saveAllNotesToDisk(finalNotes);
-
+                    // 1. UI inmediata (sin await)
                     set((state) => {
                         const newNotes = state.notes.map(n => n.id === noteId ? {
                             ...n,
@@ -2251,6 +2231,9 @@ export const useStore = create<AppState>()(
                         syncWidgetData(state.goals, state.appointments, newNotes)
                         return { notes: newNotes }
                     });
+
+                    // 2. Persiste con snapshot ya actualizado
+                    queueNotesSave(get().notes);
                 },
 
                 setBlockDownloading: (noteId, blockId, isDownloading) => {
@@ -2262,19 +2245,19 @@ export const useStore = create<AppState>()(
                     }))
                 },
 
-                deleteNote: async (id) => {
+                deleteNote: (id) => {
                     lastLocalNotesUpdate = Date.now();
-                    
-                    const allNotes = await readAllNotesFromDisk(get().notes);
-                    const finalNotes = allNotes.filter(n => n.id !== id);
-                    await saveAllNotesToDisk(finalNotes);
 
+                    // 1. UI inmediata
                     set((state) => {
                         const newNotes = state.notes.filter(n => n.id !== id)
                         const deletedItems = { ...(state.deletedItems || {}), [id]: Date.now() };
                         syncWidgetData(state.goals, state.appointments, newNotes)
                         return { notes: newNotes, deletedItems }
                     });
+
+                    // 2. Persiste con snapshot ya actualizado
+                    queueNotesSave(get().notes);
                 },
 
                 addAppointment: (apt) => set((state) => {
@@ -2832,16 +2815,16 @@ export const useStore = create<AppState>()(
 
                 updateTask: (taskId, updates) => {
                     lastLocalTasksUpdate = Date.now();
-                    readAllTasksFromDisk(get().tasks).then(allTasks => {
-                        const finalTasks = allTasks.map(t => t.id === taskId ? { ...t, ...updates, lastUpdated: Date.now() } : t);
-                        saveAllTasksToDisk(finalTasks);
-                    });
+                    // 1. UI inmediata
                     set((state) => {
                         const newTasks = state.tasks.map(t => t.id === taskId ? { ...t, ...updates, lastUpdated: Date.now() } : t)
                         syncWidgetData(state.goals, state.appointments, state.notes, newTasks);
                         return { tasks: newTasks }
                     });
+                    // 2. Persiste con snapshot ya actualizado
+                    queueTasksSave(get().tasks);
                 },
+
 
                 addTaskGroup: (title, color) => set((state) => ({
                     taskGroups: [...(state.taskGroups || []), {
