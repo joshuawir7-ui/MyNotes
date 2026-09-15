@@ -540,33 +540,38 @@ export function AppSidebar() {
                 </div>
 
                 {/* Create Project Input (Desktop only) */}
+                {/* CSS Grid 0fr→1fr avoids animating height (which causes Layout/Reflow on every frame).
+                    The transition runs in the compositor thread: no layout recalculation per frame. */}
                 <div className="hidden md:block shrink-0">
-                    <AnimatePresence>
-                        {isCreatingProject && (
-                            <motion.form
-                                initial={{ opacity: 0, height: 0, y: -10 }}
-                                animate={{ opacity: 1, height: "auto", y: 0 }}
-                                exit={{ opacity: 0, height: 0, y: -10 }}
-                                onSubmit={handleCreateProject}
-                                className="mb-2 px-2 overflow-hidden"
-                            >
-                                <div className="flex items-center gap-2 bg-black/5 dark:bg-white/5 rounded-md p-1 border border-black/10 dark:border-white/10">
-                                    <input
-                                        autoFocus
-                                        type="text"
-                                        placeholder={t.newProject}
-                                        value={newProjectTitle}
-                                        onChange={(e) => setNewProjectTitle(e.target.value)}
-                                        className="w-full bg-transparent border-none outline-none text-xs px-1 h-6"
-                                    />
-                                    <button type="button" onClick={() => setIsCreatingProject(false)} className="text-muted-foreground hover:text-red-400">
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
-                            </motion.form>
-                        )}
-                    </AnimatePresence>
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateRows: isCreatingProject ? '1fr' : '0fr',
+                            transition: 'grid-template-rows 0.35s var(--easing-enter)',
+                        }}
+                    >
+                        <form
+                            onSubmit={handleCreateProject}
+                            className="overflow-hidden"
+                            style={{ opacity: isCreatingProject ? 1 : 0, transition: 'opacity 0.25s ease' }}
+                        >
+                            <div className="flex items-center gap-2 bg-black/5 dark:bg-white/5 rounded-md p-1 border border-black/10 dark:border-white/10 mb-2 mx-2">
+                                <input
+                                    autoFocus={isCreatingProject}
+                                    type="text"
+                                    placeholder={t.newProject}
+                                    value={newProjectTitle}
+                                    onChange={(e) => setNewProjectTitle(e.target.value)}
+                                    className="w-full bg-transparent border-none outline-none text-xs px-1 h-6"
+                                />
+                                <button type="button" onClick={() => setIsCreatingProject(false)} className="text-muted-foreground hover:text-red-400">
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
+
 
                 <div className="flex flex-row md:flex-col gap-1 md:space-y-1 items-center md:items-stretch h-full md:h-auto py-2 md:py-0 shrink-0">
                     {isMounted && projects.map(project => (

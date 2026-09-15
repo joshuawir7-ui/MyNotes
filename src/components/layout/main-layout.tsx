@@ -14,7 +14,7 @@ import { GlassToast } from "@/components/ui/glass-toast"
 import { CloudPrompt } from "@/components/ui/cloud-prompt"
 import { SyncConflictDialog } from "@/components/ui/sync-conflict-dialog"
 import { MIUIOnboardingDialog } from "@/components/ui/miui-onboarding"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion"
 import { useState, useRef } from "react"
 import { X, Sparkles } from "lucide-react"
 import { App as CapacitorApp } from "@capacitor/app"
@@ -842,12 +842,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <SyncConflictDialog />
             <AppSidebar />
             <FloatingTimer />
-            
-            <main className="flex-1 max-w-full transition-[margin] duration-300 ease-in-out bg-background text-foreground md:ml-64 pt-4 md:pt-10 pb-32 md:pb-10 overflow-x-hidden" suppressHydrationWarning>
-                <div className="px-4 md:px-12 max-w-7xl mx-auto w-full" suppressHydrationWarning>
-                    {children}
-                </div>
-            </main>
+
+            {/* motion.main + layout: Framer Motion captures the before/after position
+                of the <main> element when the sidebar appears/disappears (FLIP).
+                The shift is animated via GPU transform instead of animating
+                margin-left (which triggers a full Layout/Reflow on every frame).
+                LayoutGroup is not needed here since <main> is the only layout participant. */}
+            <LayoutGroup>
+                <motion.main
+                    layout
+                    transition={{ type: "spring", stiffness: 260, damping: 28, mass: 0.9 }}
+                    className="flex-1 max-w-full bg-background text-foreground md:ml-64 pt-4 md:pt-10 pb-32 md:pb-10 overflow-x-hidden"
+                    suppressHydrationWarning
+                >
+                    <div className="px-4 md:px-12 max-w-7xl mx-auto w-full" suppressHydrationWarning>
+                        {children}
+                    </div>
+                </motion.main>
+            </LayoutGroup>
         </div>
     )
 }
