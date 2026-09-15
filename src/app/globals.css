@@ -50,6 +50,20 @@
   --input: #e4e4e7;
   --ring: #7f0df2;
   --radius: 0.75rem;
+
+  /* ── Animation Easing Tokens ────────────────────────────────────────────
+     Reusable easing curves for consistent, high-performance animations.
+     Only animate transform / opacity / filter — never width/height/top/left.
+     --spring    : spring-like reorder feel, natural on touch gestures
+     --easing-enter  : fast-in / soft-out for elements appearing
+     --easing-sheet  : iOS-style sheet/morph (maximize / minimize panels)
+     ─────────────────────────────────────────────────────────────────── */
+  --spring: linear(
+    0, 0.32 6.3%, 0.94 15.3%, 1.09 19.8%, 1.13 23.1%,
+    1.11 27.6%, 1.02 39.9%, 0.99 47.9%, 1
+  );
+  --easing-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --easing-sheet: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .dark {
@@ -105,8 +119,10 @@
      because the browser collapses off-screen items to a placeholder height, then
      re-expands them as they scroll into view, shifting the scroll position.
      VirtuosoGrid also cannot measure items correctly when they are collapsed.
-     Stable GPU isolation is handled via translate3d in .glass-panel instead. */
-  contain: layout style;
+     Stable GPU isolation is handled via translate3d in .glass-panel instead.
+     Added 'paint' to contain: isolates repaint cost to this element only,
+     so animating one card does not trigger repaint of the full document. */
+  contain: layout style paint;
 }
 
 @utility neon-glow {
@@ -355,7 +371,9 @@
 ::-webkit-scrollbar-thumb {
   background: rgba(127, 13, 242, 0.1);
   border-radius: 20px;
-  transition: all 0.3s ease;
+  /* transition: all forces recalculation of every CSS property including layout.
+     Scoped to 'background' only — the only property that actually changes on hover. */
+  transition: background 0.3s ease;
 }
 
 .dark ::-webkit-scrollbar-thumb {

@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { ReactNode, useEffect, useState } from "react"
+import { ReactNode, useEffect, useRef, useState } from "react"
 
 interface RevealProps {
     children: ReactNode
@@ -15,6 +15,11 @@ interface RevealProps {
 export const Reveal = ({ children, delay = 0, width = "100%", margin = "-20px", duration = 0.4, className }: RevealProps) => {
     const [isMobile, setIsMobile] = useState(false)
     const [isLowEnd, setIsLowEnd] = useState(false)
+    // Track whether the entrance animation is still running.
+    // "transform, opacity" is active only while animating; released to "auto" on completion
+    // to avoid accumulating dead GPU compositing layers across all dashboard cards.
+    const [animatingWillChange, setAnimatingWillChange] = useState<"transform, opacity" | "auto">("transform, opacity")
+    const domRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         const checkMobile = () => {
@@ -33,6 +38,12 @@ export const Reveal = ({ children, delay = 0, width = "100%", margin = "-20px", 
     const actualDuration = isLowEnd ? 0 : duration;
     const actualDelay = isLowEnd ? 0 : delay;
 
+    const handleAnimationComplete = () => {
+        // Release the GPU compositing layer once the entrance animation finishes.
+        // Equivalent to: anim.finished.then(() => el.style.willChange = "auto")
+        setAnimatingWillChange("auto")
+    }
+
     if (isMobile) {
         return (
             <div
@@ -41,6 +52,7 @@ export const Reveal = ({ children, delay = 0, width = "100%", margin = "-20px", 
                     animation: `fade-in-up-fast ${actualDuration}s cubic-bezier(0.22, 1, 0.36, 1) ${actualDelay}s both`,
                 }}
                 className={`${className || ""} transform-gpu`}
+                ref={domRef}
             >
                 {children}
             </div>
@@ -57,7 +69,11 @@ export const Reveal = ({ children, delay = 0, width = "100%", margin = "-20px", 
                 delay: actualDelay,
                 ease: [0.22, 1, 0.36, 1]
             }}
-            style={{ width, willChange: "transform, opacity" }}
+            style={{
+                width,
+                willChange: animatingWillChange,
+            }}
+            onAnimationComplete={handleAnimationComplete}
             className={`${className || ""} transform-gpu`}
         >
             {children}
