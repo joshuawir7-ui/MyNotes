@@ -1839,35 +1839,56 @@ const BlockRenderer = React.memo(function BlockRenderer({
                 items = Array.isArray(block.content) ? block.content : []
             }
 
+            // Keep a ref to always-latest items/title so async-triggered callbacks
+            // (like insertItemAfter called from a keydown handler right after flushing onChange)
+            // don't operate on stale closure values.
+            const latestTaskDataRef = React.useRef({ items, title });
+            latestTaskDataRef.current = { items, title };
+
             const toggle = (id: string) => {
-                const newItems = items.map((i: any) => (i && typeof i === 'object') ? (i.id === id ? { ...i, checked: !i.checked } : i) : i)
-                onChange({ title, items: newItems })
+                const { items: latestItems, title: latestTitle } = latestTaskDataRef.current;
+                const newItems = latestItems.map((i: any) => (i && typeof i === 'object') ? (i.id === id ? { ...i, checked: !i.checked } : i) : i)
+                onChange({ title: latestTitle, items: newItems })
             }
             const updateText = (id: string, text: string) => {
-                const newItems = items.map((i: any) => (i && typeof i === 'object') ? (i.id === id ? { ...i, text } : i) : i)
-                onChange({ title, items: newItems })
+                const { items: latestItems, title: latestTitle } = latestTaskDataRef.current;
+                const newItems = latestItems.map((i: any) => (i && typeof i === 'object') ? (i.id === id ? { ...i, text } : i) : i)
+                onChange({ title: latestTitle, items: newItems })
             }
             const updateTitle = (newTitle: string) => {
-                onChange({ title: newTitle, items })
+                const { items: latestItems } = latestTaskDataRef.current;
+                onChange({ title: newTitle, items: latestItems })
             }
             const addItem = () => {
-                const cleanItems = items.filter(i => i && typeof i === 'object')
+                const { items: latestItems, title: latestTitle } = latestTaskDataRef.current;
+                const cleanItems = latestItems.filter(i => i && typeof i === 'object')
                 const newItems = [...cleanItems, { id: Math.random().toString(), text: '', checked: false }]
-                onChange({ title, items: newItems })
+                onChange({ title: latestTitle, items: newItems })
             }
-            const insertItemAfter = (id: string) => {
-                const cleanItems = items.filter(i => i && typeof i === 'object')
+            const insertItemAfter = (id: string, currentContent?: string) => {
+                const { items: latestItems, title: latestTitle } = latestTaskDataRef.current;
+                // First, flush the current text (if provided) into the item being edited
+                let baseItems = latestItems;
+                if (currentContent !== undefined) {
+                    baseItems = latestItems.map((i: any) =>
+                        (i && typeof i === 'object' && i.id === id)
+                            ? { ...i, text: currentContent }
+                            : i
+                    );
+                }
+                const cleanItems = baseItems.filter(i => i && typeof i === 'object')
                 const index = cleanItems.findIndex(i => i.id === id)
                 if (index !== -1) {
                     const newItems = [...cleanItems]
                     newItems.splice(index + 1, 0, { id: Math.random().toString(), text: '', checked: false })
-                    onChange({ title, items: newItems })
+                    onChange({ title: latestTitle, items: newItems })
                     // Focus logic could be added, but react handles focus loss so user just taps or we can use ref
                 }
             }
             const removeItem = (id: string) => {
-                const newItems = items.filter((i: any) => i && typeof i === 'object' && i.id !== id)
-                onChange({ title, items: newItems })
+                const { items: latestItems, title: latestTitle } = latestTaskDataRef.current;
+                const newItems = latestItems.filter((i: any) => i && typeof i === 'object' && i.id !== id)
+                onChange({ title: latestTitle, items: newItems })
             }
 
             return (
@@ -1894,7 +1915,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                                 <RichTaskItem
                                     content={typeof item.text === 'string' ? item.text : ''}
                                     onChange={(newText) => updateText(item.id, newText)}
-                                    onEnter={() => insertItemAfter(item.id)}
+                                    onEnter={(currentContent) => insertItemAfter(item.id, currentContent)}
                                     placeholder={language === 'es' ? "Elemento de tarea..." : "To-do item..."}
                                     checked={item.checked}
                                     onFocus={onFocus}
@@ -2455,7 +2476,7 @@ const RichTaskTitle = React.memo(function RichTaskTitle({ content, onChange, onF
     return prev.content === next.content && prev.placeholder === next.placeholder;
 });
 
-const RichTaskItem = React.memo(function RichTaskItem({ content, onChange, onEnter, onFocus, onBlur, placeholder, checked }: { content: string, onChange: (c: string) => void, onEnter?: () => void, onFocus?: () => void, onBlur?: () => void, placeholder?: string, checked: boolean }) {
+const RichTaskItem = React.memo(function RichTaskItem({ content, onChange, onEnter, onFocus, onBlur, placeholder, checked }: { content: string, onChange: (c: string) => void, onEnter?: (currentContent: string) => void, onFocus?: () => void, onBlur?: () => void, placeholder?: string, checked: boolean }) {
     const editorRef = useRef<HTMLDivElement>(null);
     const isFirstLoad = useRef(true);
 
@@ -2488,9 +2509,11 @@ const RichTaskItem = React.memo(function RichTaskItem({ content, onChange, onEnt
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
             e.preventDefault();
+            // Cancel debounce – we handle everything synchronously here
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            if (editorRef.current) onChange(editorRef.current.innerHTML);
-            if (onEnter) onEnter();
+            const currentHTML = editorRef.current ? editorRef.current.innerHTML : '';
+            // Pass current HTML to onEnter so it can be saved atomically with the insertion
+            if (onEnter) onEnter(currentHTML);
         }
     };
 

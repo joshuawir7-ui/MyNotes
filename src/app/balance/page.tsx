@@ -1291,28 +1291,27 @@ export default function BalancePage() {
                                                                 }
                                                             </div>
 
-                                                            <div className="flex-1 min-w-0 pr-2">
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-extrabold text-sm tracking-tight sm:text-base">
-                                                                        {tx.type === 'income'
-                                                                            ? (tx.amount < 0
-                                                                                ? (language === 'es' ? `Gane ${tx.amount}${tx.currency || '$'}` : `Earned ${tx.amount}${tx.currency || '$'}`)
-                                                                                : (language === 'es' ? `Gane +${tx.amount}${tx.currency || '$'}` : `Earned +${tx.amount}${tx.currency || '$'}`)
-                                                                            )
-                                                                            : (tx.amount < 0
-                                                                                ? (language === 'es' ? `Gaste ${tx.amount}${tx.currency || '$'}` : `Spent ${tx.amount}${tx.currency || '$'}`)
-                                                                                : (language === 'es' ? `Gaste -${tx.amount}${tx.currency || '$'}` : `Spent -${tx.amount}${tx.currency || '$'}`)
-                                                                            )
-                                                                        }
-                                                                    </span>
-                                                                    <span className="text-xs text-white/90 truncate block mt-0.5 font-medium">
+                                                            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                                                <span className="font-extrabold text-sm tracking-tight sm:text-base leading-tight">
+                                                                    {tx.type === 'income'
+                                                                        ? (tx.amount < 0
+                                                                            ? (language === 'es' ? `Gane ${tx.amount}${tx.currency || '$'}` : `Earned ${tx.amount}${tx.currency || '$'}`)
+                                                                            : (language === 'es' ? `Gane +${tx.amount}${tx.currency || '$'}` : `Earned +${tx.amount}${tx.currency || '$'}`)
+                                                                        )
+                                                                        : (tx.amount < 0
+                                                                            ? (language === 'es' ? `Gaste ${tx.amount}${tx.currency || '$'}` : `Spent ${tx.amount}${tx.currency || '$'}`)
+                                                                            : (language === 'es' ? `Gaste -${tx.amount}${tx.currency || '$'}` : `Spent -${tx.amount}${tx.currency || '$'}`)
+                                                                        )
+                                                                    }
+                                                                </span>
+                                                                {tx.description && (
+                                                                    <span className="text-xs text-white/80 truncate font-medium leading-tight">
                                                                         {tx.description}
                                                                     </span>
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="text-[10px] sm:text-xs font-black uppercase text-white/95 shrink-0 text-right self-center wallet-history-date">
-                                                                {formatTransactionDate(tx.date)}
+                                                                )}
+                                                                <span className="text-[10px] font-bold uppercase text-white/70 leading-tight mt-0.5 wallet-history-date">
+                                                                    {formatTransactionDate(tx.date)}
+                                                                </span>
                                                             </div>
                                                         </div>
 
