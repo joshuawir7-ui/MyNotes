@@ -298,40 +298,57 @@ export default function CalendarPage() {
                 }
             }
 
-            // Determine centering strategy:
-            // Use position:absolute approach for multi-cell spanning to achieve true centering
+            // Original spanning system (restored) with symmetric case fix
             let L = 0;
             let R = 0;
+            let alignClass = "self-stretch";
+            let justifyClass = "justify-center";
+            let textClass = "text-center";
 
             if (leftSpan > 0 && rightSpan > 0) {
+                // Free on both sides: expand symmetrically
+                // FIX: use self-start + explicit marginLeft (instead of self-center which doesn't cross cells)
                 const symmetricSpan = Math.min(leftSpan, rightSpan);
                 L = symmetricSpan;
                 R = symmetricSpan;
+                alignClass = "self-start";
+                justifyClass = "justify-center";
+                textClass = "text-center";
             } else if (leftSpan > 0) {
+                // Right side has neighbor event, span left only
                 L = leftSpan;
                 R = 0;
+                alignClass = "self-end";
+                justifyClass = "justify-end";
+                textClass = "text-right";
             } else if (rightSpan > 0) {
+                // Left side has neighbor event, span right only
                 L = 0;
                 R = rightSpan;
+                alignClass = "self-start";
+                justifyClass = "justify-start";
+                textClass = "text-left";
             }
 
             const totalSpan = L + 1 + R;
 
-            // For multi-span events, use position absolute with percentage-based offset
-            // Each cell is 1/7 of the grid width, gap = border width (≈0)
-            // To center over (L+1+R) cells starting from current cell:
-            //   left offset = -L * cellWidth = -L/totalSpan * 100% (of element width)
-            //   We use marginLeft to shift left by L cells
+            // spanStyle: restored original formula (16px gap compensation) 
+            // For symmetric case: force full totalSpan width (not max-content) + same marginLeft as self-end
+            // This makes the event physically occupy L+1+R cells, centered over the current day
+            const isSymmetric = L > 0 && R > 0;
             const spanStyle: React.CSSProperties = totalSpan > 1 ? {
-                position: 'relative',
-                width: `calc(${totalSpan * 100}% + ${(totalSpan - 1) * 1}px)`,
-                marginLeft: L > 0 ? `calc(-${L * 100}% - ${L * 1}px)` : '0px',
+                width: isSymmetric
+                    ? `calc(${totalSpan * 100}% + ${(totalSpan - 1) * 16}px - 12px)`
+                    : "max-content",
+                maxWidth: `calc(${totalSpan * 100}% + ${(totalSpan - 1) * 16}px - 12px)`,
+                marginLeft: L > 0
+                    ? `calc(-${L * 100}% - ${L * 16}px + 6px)`
+                    : (R > 0 ? "6px" : undefined),
                 zIndex: 20,
-                flexShrink: 0,
             } : {
-                width: '100%',
+                width: "100%",
+                maxWidth: "100%",
                 zIndex: 10,
-                flexShrink: 0,
             };
 
             days.push(
@@ -373,14 +390,14 @@ export default function CalendarPage() {
                         </div>
                     )}
 
-                    <div className="flex flex-col space-y-1 overflow-visible">
+                    <div className="relative z-10 flex flex-col space-y-1 overflow-visible">
                         {dayItems.slice(0, 3).map(item => {
                             if (item.type === 'note') {
                                 return (
                                     <div
                                         key={item.id}
                                         style={spanStyle}
-                                        className="text-[9px] font-bold px-1.5 py-1 rounded border whitespace-normal break-words leading-tight text-center bg-[#6b7280]/20 text-[#9ca3af] border-[#6b7280]/30"
+                                        className={`text-[9px] font-bold px-1.5 py-1 rounded border whitespace-normal break-words leading-tight text-center shrink-0 ${alignClass} bg-[#6b7280]/20 text-[#9ca3af] border-[#6b7280]/30`}
                                     >
                                         {item.title}
                                     </div>
@@ -391,7 +408,7 @@ export default function CalendarPage() {
                                     <div
                                         key={item.id}
                                         style={spanStyle}
-                                        className={`text-[9px] font-bold px-1.5 py-1 rounded border whitespace-normal break-words leading-tight flex items-start gap-1
+                                        className={`text-[9px] font-bold px-1.5 py-1 rounded border whitespace-normal break-words leading-tight flex items-start gap-1 shrink-0 ${alignClass} ${justifyClass}
                                         ${item.status === 'completed' || item.status === 'attendance' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
                                                 item.status === 'failed' || item.status === 'absence' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
                                                     item.status === 'tardiness' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
@@ -411,7 +428,7 @@ export default function CalendarPage() {
                                     <div
                                         key={item.id}
                                         style={spanStyle}
-                                        className={`text-[9px] font-bold px-1.5 py-1 rounded border whitespace-normal break-words leading-tight flex items-start gap-1
+                                        className={`text-[9px] font-bold px-1.5 py-1 rounded border whitespace-normal break-words leading-tight flex items-start gap-1 shrink-0 ${alignClass} ${justifyClass}
                                         ${isComp
                                                 ? 'bg-green-500/20 text-green-300 border-green-500/30 line-through opacity-70'
                                                 : isHabit
