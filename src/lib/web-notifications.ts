@@ -75,6 +75,8 @@ function checkTaskReminders(tasks: Task[], language: string) {
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     for (const task of tasks) {
+        // Only notify for high-priority tasks
+        if (task.energyLevel !== 'High') continue;
         if (task.completed) continue;
         if (!task.dueDate) continue;
 
@@ -127,6 +129,8 @@ function checkHabitReminders(tasks: Task[], language: string) {
     const nowMinutes = hour * 60 + now.getMinutes();
 
     for (const task of tasks) {
+        // Only notify for high-priority habits
+        if (task.energyLevel !== 'High') continue;
         if (!task.isHabit) continue;
         if (task.enabled === false) continue;
         if (task.recurrence !== 'Daily') continue;

@@ -302,7 +302,7 @@ export default function CalendarPage() {
             `}
                 >
                     <div className={`text-xs font-bold mb-1.5 w-6 h-6 flex items-center justify-center rounded-full transition-colors
-                ${isToday ? 'bg-primary text-black shadow-[0_0_10px_rgba(var(--primary-rgb),0.4)]' : 'text-muted-foreground group-hover:text-foreground'}
+                ${isToday ? 'bg-primary text-white shadow-[0_0_10px_rgba(var(--primary-rgb),0.4)]' : 'text-muted-foreground group-hover:text-foreground'}
             `}>
                         {d}
                     </div>
@@ -425,7 +425,7 @@ export default function CalendarPage() {
                             <div className="flex justify-between items-start mb-6">
                                 <div className="flex flex-col gap-1">
                                     <div className="flex items-center gap-2 mb-2">
-                                        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-black font-black text-lg shadow-lg shadow-primary/30">
+                                        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-black text-lg shadow-lg shadow-primary/30">
                                             {selectedDate.split('-')[2]}
                                         </div>
                                         <button

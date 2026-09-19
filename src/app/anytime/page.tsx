@@ -90,21 +90,21 @@ export default function AnytimePage() {
 
         // 2. Scan tasks and their completions in ONE pass
         tasks.forEach((task) => {
-            if (task.isHabit && task.completionTimes) {
+            if ((task.isHabit || task.recurrence !== 'None') && task.completionTimes) {
                 task.completionTimes.forEach((ct) => {
                     if (typeof ct === 'string' && ct.length >= 10) {
-                        const ctDateStr = ct.substring(0, 10)
+                        const ctDate = new Date(ct)
+                        const ctDateStr = isNaN(ctDate.getTime()) ? ct.substring(0, 10) : getLocalDateString(ctDate)
 
                         if (checkDates.has(ctDateStr)) {
                             let timeStr = "00:00"
-                            if (ct.length >= 16) {
+                            if (!isNaN(ctDate.getTime())) {
+                                timeStr = ctDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+                            } else if (ct.length >= 16) {
                                 timeStr = ct.substring(11, 16)
                             }
 
-                            let ts = 0
-                            try {
-                                ts = Date.parse(ct)
-                            } catch (e) { }
+                            let ts = !isNaN(ctDate.getTime()) ? ctDate.getTime() : 0
 
                             itemsByDate[ctDateStr].push({
                                 habitTitle: task.title,
@@ -121,16 +121,16 @@ export default function AnytimePage() {
         if (Array.isArray(completedOnceHabits)) {
             completedOnceHabits.forEach((coh) => {
                 if (coh.completedAt && typeof coh.completedAt === 'string' && coh.completedAt.length >= 10) {
-                    const ctDateStr = coh.completedAt.substring(0, 10)
+                    const cohDate = new Date(coh.completedAt)
+                    const ctDateStr = isNaN(cohDate.getTime()) ? coh.completedAt.substring(0, 10) : getLocalDateString(cohDate)
                     if (checkDates.has(ctDateStr)) {
                         let timeStr = "00:00"
-                        if (coh.completedAt.length >= 16) {
+                        if (!isNaN(cohDate.getTime())) {
+                            timeStr = cohDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+                        } else if (coh.completedAt.length >= 16) {
                             timeStr = coh.completedAt.substring(11, 16)
                         }
-                        let ts = 0
-                        try {
-                            ts = Date.parse(coh.completedAt)
-                        } catch (e) { }
+                        let ts = !isNaN(cohDate.getTime()) ? cohDate.getTime() : 0
 
                         itemsByDate[ctDateStr].push({
                             habitTitle: coh.title,

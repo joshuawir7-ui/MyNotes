@@ -79,6 +79,8 @@ export const NotificationManager = {
                 // Skip if not a daily task, or disabled, or already completed today
                 if (task.recurrence !== 'Daily' || task.enabled === false) continue;
                 if (task.completedDates?.includes(todayStr)) continue;
+                // Only schedule notifications for high-priority habits/tasks
+                if (task.energyLevel !== 'High') continue;
 
                 // Assign a deterministic slot based on the task's ID.
                 // Same ID → same slot always, even after editing the task title/settings.

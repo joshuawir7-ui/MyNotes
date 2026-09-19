@@ -342,22 +342,22 @@ export default function TasksPage() {
         }
 
         // 2. Scan tasks and their completions in ONE pass
-        activeHabitsMemo.forEach((task) => {
-            if (task.completionTimes) {
+        tasks.forEach((task) => {
+            if ((task.isHabit || task.recurrence !== 'None') && task.completionTimes) {
                 task.completionTimes.forEach((ct) => {
                     if (typeof ct === 'string' && ct.length >= 10) {
-                        const ctDateStr = ct.substring(0, 10)
+                        const ctDate = new Date(ct)
+                        const ctDateStr = isNaN(ctDate.getTime()) ? ct.substring(0, 10) : getLocalDateString(ctDate)
 
                         if (checkDates.has(ctDateStr)) {
                             let timeStr = "00:00"
-                            if (ct.length >= 16) {
+                            if (!isNaN(ctDate.getTime())) {
+                                timeStr = ctDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+                            } else if (ct.length >= 16) {
                                 timeStr = ct.substring(11, 16)
                             }
 
-                            let ts = 0
-                            try {
-                                ts = Date.parse(ct)
-                            } catch (e) { }
+                            let ts = !isNaN(ctDate.getTime()) ? ctDate.getTime() : 0
 
                             itemsByDate[ctDateStr].push({
                                 habitTitle: task.title,
@@ -374,16 +374,16 @@ export default function TasksPage() {
         if (Array.isArray(completedOnceHabits)) {
             completedOnceHabits.forEach((coh) => {
                 if (coh.completedAt && typeof coh.completedAt === 'string' && coh.completedAt.length >= 10) {
-                    const ctDateStr = coh.completedAt.substring(0, 10)
+                    const cohDate = new Date(coh.completedAt)
+                    const ctDateStr = isNaN(cohDate.getTime()) ? coh.completedAt.substring(0, 10) : getLocalDateString(cohDate)
                     if (checkDates.has(ctDateStr)) {
                         let timeStr = "00:00"
-                        if (coh.completedAt.length >= 16) {
+                        if (!isNaN(cohDate.getTime())) {
+                            timeStr = cohDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+                        } else if (coh.completedAt.length >= 16) {
                             timeStr = coh.completedAt.substring(11, 16)
                         }
-                        let ts = 0
-                        try {
-                            ts = Date.parse(coh.completedAt)
-                        } catch (e) { }
+                        let ts = !isNaN(cohDate.getTime()) ? cohDate.getTime() : 0
 
                         itemsByDate[ctDateStr].push({
                             habitTitle: coh.title,
@@ -415,7 +415,7 @@ export default function TasksPage() {
         }
 
         return history
-    }, [activeHabitsMemo, language, completedOnceHabits])
+    }, [tasks, language, completedOnceHabits])
 
     const handleToggleTask = (habit: Task) => {
         const today = getLocalDateString()
@@ -1773,7 +1773,7 @@ export default function TasksPage() {
                                 {language === 'es' ? 'Últimos 7 días' : 'Last 7 days'}
                             </p>
 
-                            <div className="flex-1 pr-1 h-full min-h-[300px]">
+                            <div className="flex-1 overflow-y-auto pr-1 space-y-6 custom-scrollbar min-h-[300px]">
                                 {habitHistory.length === 0 ? (
                                     <div className="py-12 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl opacity-40">
                                         <History className="w-8 h-8 mb-2" />
@@ -1782,33 +1782,29 @@ export default function TasksPage() {
                                         </p>
                                     </div>
                                 ) : (
-                                    <Virtuoso
-                                        style={{ height: '100%' }}
-                                        data={habitHistory}
-                                        itemContent={(index, dayGroup) => (
-                                            <div key={dayGroup.dateStr} className="space-y-2 mb-6">
-                                                <h4 className="text-xs font-black uppercase tracking-wider text-primary">
-                                                    {dayGroup.label}
-                                                </h4>
-                                                <div className="space-y-1.5">
-                                                    {dayGroup.items.map((item, i) => (
-                                                        <div
-                                                            key={`${dayGroup.dateStr}-${i}`}
-                                                            className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5"
-                                                        >
-                                                            <span className="font-semibold text-sm text-foreground">
-                                                                {item.habitTitle}
-                                                            </span>
-                                                            <span className="text-xs font-bold text-muted-foreground/60 bg-white/5 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                                                <Check className="w-3.5 h-3.5 text-green-500" />
-                                                                {item.time}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
+                                    habitHistory.map((dayGroup) => (
+                                        <div key={dayGroup.dateStr} className="space-y-2">
+                                            <h4 className="text-xs font-black uppercase tracking-wider text-primary">
+                                                {dayGroup.label}
+                                            </h4>
+                                            <div className="space-y-1.5">
+                                                {dayGroup.items.map((item, i) => (
+                                                    <div
+                                                        key={`${dayGroup.dateStr}-${i}`}
+                                                        className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5"
+                                                    >
+                                                        <span className="font-semibold text-sm text-foreground">
+                                                            {item.habitTitle}
+                                                        </span>
+                                                        <span className="text-xs font-bold text-muted-foreground/60 bg-white/5 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                            <Check className="w-3.5 h-3.5 text-green-500" />
+                                                            {item.time}
+                                                        </span>
+                                                    </div>
+                                                ))}
                                             </div>
-                                        )}
-                                    />
+                                        </div>
+                                    ))
                                 )}
                             </div>
 
