@@ -14,6 +14,8 @@ export default function CalendarPage() {
     const addAppointment = useStore(state => state.addAppointment)
     const updateAppointment = useStore(state => state.updateAppointment)
     const deleteAppointment = useStore(state => state.deleteAppointment)
+    const calendarNotes = useStore(state => state.calendarNotes)
+    const setCalendarNote = useStore(state => state.setCalendarNote)
     const language = useStore(state => state.language)
     const loadAllTasks = useStore(state => state.loadAllTasks)
     const unloadTasks = useStore(state => state.unloadTasks)
@@ -26,6 +28,8 @@ export default function CalendarPage() {
     const [newApptTitle, setNewApptTitle] = useState("")
     const [newApptNotes, setNewApptNotes] = useState("")
     const [selectedColor, setSelectedColor] = useState("#7f0df2") // Default to primary
+    const [quickNoteText, setQuickNoteText] = useState("")
+    const [noteSaved, setNoteSaved] = useState(false)
 
     useEffect(() => {
         loadAllTasks()
@@ -35,6 +39,21 @@ export default function CalendarPage() {
             unloadTasks()
         }
     }, [loadAllTasks, unloadTasks])
+
+    // Sync quickNoteText when selectedDate changes
+    useEffect(() => {
+        if (selectedDate) {
+            setQuickNoteText(calendarNotes[selectedDate] || "")
+            setNoteSaved(false)
+        }
+    }, [selectedDate, calendarNotes])
+
+    const handleSaveNote = () => {
+        if (!selectedDate) return
+        setCalendarNote(selectedDate, quickNoteText)
+        setNoteSaved(true)
+        setTimeout(() => setNoteSaved(false), 2000)
+    }
 
     const eventColors = [
         { name: 'Purple', value: '#7f0df2', bg: 'bg-[#7f0df2]/20', text: 'text-[#7f0df2]', border: 'border-[#7f0df2]/30' },
@@ -254,6 +273,8 @@ export default function CalendarPage() {
 
             let L = 0;
             let R = 0;
+            // Default: day is isolated (surrounded by other event days or edges)
+            // Items fill the cell width and are centered
             let alignClass = "self-stretch";
             let justifyClass = "justify-center";
             let textClass = "text-center";
@@ -267,14 +288,14 @@ export default function CalendarPage() {
                 justifyClass = "justify-center";
                 textClass = "text-center";
             } else if (leftSpan > 0) {
-                // Right side has neighbor event, span left
+                // Right side has neighbor event, span left only
                 L = leftSpan;
                 R = 0;
                 alignClass = "self-end";
                 justifyClass = "justify-end";
                 textClass = "text-right";
             } else if (rightSpan > 0) {
-                // Left side has neighbor event, span right
+                // Left side has neighbor event, span right only
                 L = 0;
                 R = rightSpan;
                 alignClass = "self-start";
@@ -607,10 +628,27 @@ export default function CalendarPage() {
                                 Quick Notes
                             </h2>
                             <textarea
-                                className="w-full flex-1 bg-white/5 border border-white/5 rounded-3xl p-6 outline-none focus:ring-1 focus:ring-primary/20 transition-all resize-none text-sm placeholder:text-muted-foreground/30 font-medium leading-relaxed shadow-inner"
-                                placeholder="Jot down quick details, locations, or reminders for this specific date..."
+                                className="w-full flex-1 min-h-[120px] bg-white/5 border border-white/5 rounded-3xl p-6 outline-none focus:ring-1 focus:ring-primary/20 transition-all resize-none text-sm placeholder:text-muted-foreground/30 font-medium leading-relaxed shadow-inner"
+                                placeholder={language === 'es' ? 'Anota detalles, ubicaciones o recordatorios para este día...' : 'Jot down quick details, locations, or reminders for this specific date...'}
+                                value={quickNoteText}
+                                onChange={(e) => { setQuickNoteText(e.target.value); setNoteSaved(false) }}
                             />
-                            <div className="mt-4 text-[9px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] text-right">Auto-saving...</div>
+                            <div className="mt-4 flex items-center justify-between gap-3">
+                                <div className={`text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${noteSaved ? 'text-green-400' : 'text-muted-foreground/30'}`}>
+                                    {noteSaved ? (language === 'es' ? '✓ Guardado' : '✓ Saved') : (calendarNotes[selectedDate!] ? (language === 'es' ? 'Nota guardada' : 'Note saved') : (language === 'es' ? 'Sin guardar' : 'Not saved'))}
+                                </div>
+                                <button
+                                    onClick={handleSaveNote}
+                                    disabled={!quickNoteText.trim() && !calendarNotes[selectedDate!]}
+                                    className={`px-5 h-10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2
+                                        ${noteSaved
+                                            ? 'bg-green-500 text-white shadow-lg shadow-green-500/20'
+                                            : 'bg-primary/20 text-primary hover:bg-primary hover:text-black disabled:opacity-30 disabled:cursor-not-allowed'
+                                        }`}
+                                >
+                                    {noteSaved ? '✓' : '💾'} {language === 'es' ? 'Guardar' : 'Save'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

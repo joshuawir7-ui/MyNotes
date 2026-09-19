@@ -1010,6 +1010,7 @@ interface AppState {
     projects: Project[]
     notes: Note[]
     appointments: Appointment[]
+    calendarNotes: Record<string, string>
     goals: Goal[]
     transactions: Transaction[]
     expenseNotes: ExpenseNote[]
@@ -1120,6 +1121,7 @@ interface AppState {
     addAppointment: (apt: Omit<Appointment, 'id'>) => void
     updateAppointment: (id: string, updates: Partial<Appointment>) => void
     deleteAppointment: (id: string) => void
+    setCalendarNote: (date: string, note: string) => void
 
     addGoal: (goal: Omit<Goal, 'id' | 'createdAt' | 'progress'>) => void
     updateGoal: (id: string, updates: Partial<Goal>) => void
@@ -1725,6 +1727,7 @@ export const useStore = create<AppState>()(
                 projects: [],
                 notes: [],
                 appointments: [],
+                calendarNotes: {},
                 goals: [],
                 transactions: [],
                 expenseNotes: [],
@@ -2285,6 +2288,10 @@ export const useStore = create<AppState>()(
                     syncWidgetData(state.goals, newAppointments)
                     return { appointments: newAppointments, deletedItems }
                 }),
+
+                setCalendarNote: (date: string, note: string) => set((state) => ({
+                    calendarNotes: { ...state.calendarNotes, [date]: note }
+                })),
 
                 addGoal: (goal) => set((state) => {
                     let initialProgress = 0;
