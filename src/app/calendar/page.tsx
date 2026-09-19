@@ -307,7 +307,29 @@ export default function CalendarPage() {
                         {d}
                     </div>
 
-                    <div className="absolute top-10 left-2 right-2 z-10 flex flex-col space-y-1 overflow-visible">
+                    {dayItems.length > 0 && (
+                        <div className="flex items-center gap-1 flex-wrap mb-1.5 px-0.5 z-10">
+                            {dayItems.map((item, idx) => {
+                                let dotColor = '#7f0df2'
+                                if (item.type === 'appointment') {
+                                    dotColor = item.color || '#7f0df2'
+                                } else if (item.type === 'task') {
+                                    dotColor = '#3b82f6'
+                                } else if (item.type === 'habit') {
+                                    dotColor = '#7f0df2'
+                                }
+                                return (
+                                    <div
+                                        key={`dot-${item.id}-${idx}`}
+                                        className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm border border-black/10 dark:border-white/20 transition-transform hover:scale-125"
+                                        style={{ backgroundColor: dotColor }}
+                                    />
+                                )
+                            })}
+                        </div>
+                    )}
+
+                    <div className="relative z-10 flex flex-col space-y-1 overflow-visible">
                         {dayItems.slice(0, 3).map(item => {
                             if (item.type === 'appointment') {
                                 const config = eventColors.find(c => c.value === item.color) || eventColors[0]
