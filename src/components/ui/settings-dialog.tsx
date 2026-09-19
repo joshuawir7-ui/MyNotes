@@ -750,7 +750,7 @@ export function SettingsDialog() {
 
                                 <div className="mb-6 flex justify-center w-full">
                                     <Settings 
-                                        className="w-8 h-8 text-primary animate-spin" 
+                                        className="w-8 h-8 text-black dark:text-white animate-spin" 
                                         style={{ animationDuration: '10s' }}
                                     />
                                 </div>
@@ -773,7 +773,7 @@ export function SettingsDialog() {
                                                     whileHover="hover"
                                                     className={`p-2 rounded-xl transition-colors duration-300 ${
                                                         notificationsEnabled 
-                                                            ? "bg-primary/20 text-primary dark:bg-primary/30" 
+                                                            ? "bg-black/10 text-black dark:bg-white/20 dark:text-white" 
                                                             : "bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400"
                                                     }`}
                                                 >
@@ -787,11 +787,10 @@ export function SettingsDialog() {
 
                                             <button
                                                 tabIndex={-1}
-                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 pointer-events-none ${notificationsEnabled ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 pointer-events-none ${notificationsEnabled ? 'bg-black dark:bg-white' : 'bg-zinc-300 dark:bg-zinc-700'
                                                     }`}
                                             >
-                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
-                                                    }`} />
+                                                <span className={`inline-block h-4 w-4 transform rounded-full ${notificationsEnabled ? 'bg-white dark:bg-zinc-900 translate-x-6' : 'bg-white translate-x-1'} transition-transform duration-300`} />
                                             </button>
                                         </motion.div>
 
@@ -827,11 +826,10 @@ export function SettingsDialog() {
 
                                             <button
                                                 tabIndex={-1}
-                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 pointer-events-none ${focusEffectEnabled ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 pointer-events-none ${focusEffectEnabled ? 'bg-black dark:bg-white' : 'bg-zinc-300 dark:bg-zinc-700'
                                                     }`}
                                             >
-                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${focusEffectEnabled ? 'translate-x-6' : 'translate-x-1'
-                                                    }`} />
+                                                <span className={`inline-block h-4 w-4 transform rounded-full ${focusEffectEnabled ? 'bg-white dark:bg-zinc-900 translate-x-6' : 'bg-white translate-x-1'} transition-transform duration-300`} />
                                             </button>
                                         </motion.div>
 
@@ -885,9 +883,9 @@ export function SettingsDialog() {
                                                     router.push('/');
                                                     startTourManually();
                                                 }}
-                                                className="w-full flex items-center justify-center gap-2 p-3 bg-primary text-primary-foreground rounded-xl font-bold transition-all text-sm hover:scale-105 active:scale-95 shadow-lg shadow-primary/20 cursor-pointer"
+                                                className="w-full flex items-center justify-center gap-2 p-3 bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black rounded-xl font-bold transition-all text-sm hover:scale-105 active:scale-95 shadow-lg shadow-black/20 dark:shadow-white/10 cursor-pointer"
                                             >
-                                                <Sparkles className="w-4 h-4 text-primary-foreground animate-pulse" />
+                                                <Sparkles className="w-4 h-4 text-white dark:text-black animate-pulse" />
                                                 {language === 'es' ? "Iniciar guía interactiva" : "Start interactive guide"}
                                             </button>
                                         </div>
@@ -907,7 +905,7 @@ export function SettingsDialog() {
                                                         }}
                                                         whileHover="hover"
                                                         whileTap="tap"
-                                                        className="flex-1 flex items-center justify-center gap-2 p-3 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl font-bold transition-all text-sm"
+                                                        className="flex-1 flex items-center justify-center gap-2 p-3 bg-black/10 hover:bg-black/20 text-black dark:bg-white/10 dark:hover:bg-white/20 dark:text-white rounded-xl font-bold transition-all text-sm"
                                                     >
                                                         <motion.div
                                                             variants={exportVariants}
@@ -972,14 +970,14 @@ export function SettingsDialog() {
                                                     }}
                                                     whileHover="hover"
                                                     whileTap="tap"
-                                                    className="w-full flex items-center justify-center gap-2 p-3 bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 rounded-xl font-bold transition-all text-sm"
+                                                    className="w-full flex items-center justify-center gap-2 p-3 bg-black/10 hover:bg-black/20 text-black dark:bg-white/10 dark:hover:bg-white/20 dark:text-white rounded-xl font-bold transition-all text-sm"
                                                 >
                                                     <motion.div
                                                         variants={smartImportVariants}
                                                         animate={smartImportAnimate ? { rotate: [0, 360], scale: [1, 1.4, 0.85, 1.15, 1] } : "normal"}
                                                         transition={smartImportAnimate ? { type: "spring", stiffness: 250, damping: 10 } : undefined}
                                                     >
-                                                        <Zap className="w-4 h-4 text-purple-500" />
+                                                        <Zap className="w-4 h-4 text-black dark:text-white" />
                                                     </motion.div>
                                                     {language === 'es' ? "Importe Inteligente" : "Smart Import"}
                                                 </motion.button>
@@ -1000,7 +998,7 @@ export function SettingsDialog() {
                                                 <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
                                                     {t.cloudSync || "Cloud Sync"}
                                                 </p>
-                                                <Cloud className="w-4 h-4 text-primary" />
+                                                <Cloud className="w-4 h-4 text-black dark:text-white" />
                                             </div>
 
                                             {!googleUser ? (
@@ -1075,7 +1073,7 @@ export function SettingsDialog() {
                                                                 onClick={handleGoogleLogin}
                                                                 whileHover={{ scale: 1.02 }}
                                                                 whileTap={{ scale: 0.98 }}
-                                                                className="w-full flex items-center justify-center gap-2 p-3 bg-primary text-white rounded-xl font-bold transition-all text-xs shadow-lg shadow-primary/20"
+                                                                className="w-full flex items-center justify-center gap-2 p-3 bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black rounded-xl font-bold transition-all text-xs shadow-lg shadow-black/20 dark:shadow-white/10"
                                                             >
                                                                 <RefreshCw className="w-3.5 h-3.5" />
                                                                 {language === 'es' ? "Re-conectar cuenta" : "Re-connect account"}
@@ -1089,7 +1087,7 @@ export function SettingsDialog() {
                                                                     disabled={isSyncingCloud || localSyncing || localRestoring}
                                                                     whileHover={{ scale: 1.02 }}
                                                                     whileTap={{ scale: 0.98 }}
-                                                                    className="flex-1 flex items-center justify-center gap-2 p-3 bg-primary hover:bg-primary/95 disabled:bg-primary/50 text-white rounded-xl font-bold transition-all text-xs shadow-lg shadow-primary/20"
+                                                                    className="flex-1 flex items-center justify-center gap-2 p-3 bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black disabled:opacity-50 rounded-xl font-bold transition-all text-xs shadow-lg shadow-black/20 dark:shadow-white/10"
                                                                 >
                                                                     <motion.div
                                                                         animate={localSyncing ? { rotate: 360 } : { rotate: 0 }}
@@ -1126,7 +1124,7 @@ export function SettingsDialog() {
                                                             </div>
 
                                                             {restoreProgress && (
-                                                                <div className="w-full text-center text-xs text-primary font-medium mt-1 animate-pulse">
+                                                                <div className="w-full text-center text-xs text-black dark:text-white font-medium mt-1 animate-pulse">
                                                                     {restoreProgress}
                                                                 </div>
                                                             )}

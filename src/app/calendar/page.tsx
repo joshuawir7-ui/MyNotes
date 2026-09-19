@@ -257,7 +257,7 @@ export default function CalendarPage() {
     const renderCalendarDays = () => {
         const days = []
         for (let i = 0; i < startingDay; i++) {
-            days.push(<div key={`empty-${i}`} className="h-24 bg-transparent border-b border-r border-white/5" />)
+            days.push(<div key={`empty-${i}`} className="min-h-[90px] md:min-h-[100px] bg-transparent border-b border-r border-white/5" />)
         }
 
         for (let d = 1; d <= daysInMonth; d++) {
@@ -274,19 +274,19 @@ export default function CalendarPage() {
                 <div
                     key={d}
                     onClick={() => setSelectedDate(dateString)}
-                    className={`min-h-[100px] p-2 border-b border-r border-white/5 relative group cursor-pointer transition-all hover:bg-white/[0.03] flex flex-col items-center
+                    className={`min-h-[90px] md:min-h-[100px] p-1 md:p-2 border-b border-r border-white/5 relative group cursor-pointer transition-all hover:bg-white/[0.03] flex flex-col items-center overflow-hidden md:overflow-visible
                 ${isSelected ? 'bg-primary/[0.07] ring-1 ring-inset ring-primary/20' : ''}
                 ${isToday ? 'bg-white/[0.02]' : ''}
             `}
                 >
-                    <div className={`text-xs font-bold mb-1.5 w-6 h-6 flex items-center justify-center rounded-full transition-colors shrink-0
+                    <div className={`text-xs font-bold mb-1 md:mb-1.5 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-full transition-colors shrink-0
                 ${isToday ? 'bg-primary text-white shadow-[0_0_10px_rgba(var(--primary-rgb),0.4)]' : 'text-muted-foreground group-hover:text-foreground'}
             `}>
                         {d}
                     </div>
 
                     {dayItems.length > 0 && (
-                        <div className="flex items-center justify-center gap-1 flex-wrap mb-1.5 px-0.5 z-10 shrink-0">
+                        <div className="flex items-center justify-center gap-0.5 md:gap-1 flex-wrap mb-1 md:mb-1.5 px-0.5 z-10 shrink-0">
                             {dayItems.map((item, idx) => {
                                 let dotColor = '#7f0df2'
                                 if (item.type === 'appointment') {
@@ -301,7 +301,7 @@ export default function CalendarPage() {
                                 return (
                                     <div
                                         key={`dot-${item.id}-${idx}`}
-                                        className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm border border-black/10 dark:border-white/20 transition-transform hover:scale-125"
+                                        className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shrink-0 shadow-sm border border-black/10 dark:border-white/20 transition-transform hover:scale-125"
                                         style={{ backgroundColor: dotColor }}
                                     />
                                 )
@@ -309,13 +309,13 @@ export default function CalendarPage() {
                         </div>
                     )}
 
-                    <div className="relative z-10 flex flex-col items-center space-y-1 w-full overflow-visible">
+                    <div className="relative z-10 flex flex-col items-center space-y-1 w-full box-border overflow-hidden md:overflow-visible">
                         {dayItems.slice(0, 3).map(item => {
                             if (item.type === 'note') {
                                 return (
                                     <div
                                         key={item.id}
-                                        className="text-[9px] font-bold px-2 py-1 rounded border whitespace-normal break-words leading-tight text-center shrink-0 w-fit max-w-full bg-[#6b7280]/20 text-[#9ca3af] border-[#6b7280]/30 shadow-sm"
+                                        className="text-[8px] md:text-[9px] font-bold px-1 md:px-2 py-0.5 md:py-1 rounded-md md:rounded border break-all md:break-words [overflow-wrap:anywhere] leading-tight text-center shrink-0 w-full md:w-fit max-w-full bg-[#6b7280]/20 text-[#9ca3af] border-[#6b7280]/30 shadow-sm overflow-hidden box-border"
                                     >
                                         {item.title}
                                     </div>
@@ -325,17 +325,17 @@ export default function CalendarPage() {
                                 return (
                                     <div
                                         key={item.id}
-                                        className={`text-[9px] font-bold px-2 py-1 rounded border whitespace-normal break-words leading-tight flex items-center justify-center gap-1 shrink-0 w-fit max-w-full text-center shadow-sm
+                                        className={`text-[8px] md:text-[9px] font-bold px-1 md:px-2 py-0.5 md:py-1 rounded-md md:rounded border break-all md:break-words [overflow-wrap:anywhere] leading-tight flex items-center justify-center gap-0.5 md:gap-1 shrink-0 w-full md:w-fit max-w-full text-center shadow-sm overflow-hidden box-border
                                         ${item.status === 'completed' || item.status === 'attendance' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
                                                 item.status === 'failed' || item.status === 'absence' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
                                                     item.status === 'tardiness' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
                                                         `${config.bg} ${config.text} ${config.border}`}
                                      `}
                                     >
-                                        {(item.status === 'completed' || item.status === 'attendance') && <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />}
-                                        {(item.status === 'failed' || item.status === 'absence') && <XCircle className="w-2.5 h-2.5 shrink-0" />}
-                                        {item.status === 'tardiness' && <Clock3 className="w-2.5 h-2.5 shrink-0" />}
-                                        <span>{item.title}</span>
+                                        {(item.status === 'completed' || item.status === 'attendance') && <CheckCircle2 className="w-2 h-2 md:w-2.5 md:h-2.5 shrink-0" />}
+                                        {(item.status === 'failed' || item.status === 'absence') && <XCircle className="w-2 h-2 md:w-2.5 md:h-2.5 shrink-0" />}
+                                        {item.status === 'tardiness' && <Clock3 className="w-2 h-2 md:w-2.5 md:h-2.5 shrink-0" />}
+                                        <span className="break-all md:break-words [overflow-wrap:anywhere] leading-tight">{item.title}</span>
                                     </div>
                                 )
                             } else {
@@ -344,7 +344,7 @@ export default function CalendarPage() {
                                 return (
                                     <div
                                         key={item.id}
-                                        className={`text-[9px] font-bold px-2 py-1 rounded border whitespace-normal break-words leading-tight flex items-center justify-center gap-1 shrink-0 w-fit max-w-full text-center shadow-sm
+                                        className={`text-[8px] md:text-[9px] font-bold px-1 md:px-2 py-0.5 md:py-1 rounded-md md:rounded border break-all md:break-words [overflow-wrap:anywhere] leading-tight flex items-center justify-center gap-0.5 md:gap-1 shrink-0 w-full md:w-fit max-w-full text-center shadow-sm overflow-hidden box-border
                                         ${isComp
                                                 ? 'bg-green-500/20 text-green-300 border-green-500/30 line-through opacity-70'
                                                 : isHabit
@@ -352,15 +352,15 @@ export default function CalendarPage() {
                                                     : 'bg-[#3b82f6]/20 text-[#60a5fa] border-[#3b82f6]/30'
                                             }`}
                                     >
-                                        {isComp && <CheckCircle2 className="w-2.5 h-2.5 shrink-0 text-green-400" />}
-                                        {!isComp && isHabit && <Flame className="w-2.5 h-2.5 shrink-0 text-orange-400 fill-orange-400" />}
-                                        <span>{item.title}</span>
+                                        {isComp && <CheckCircle2 className="w-2 h-2 md:w-2.5 md:h-2.5 shrink-0 text-green-400" />}
+                                        {!isComp && isHabit && <Flame className="w-2 h-2 md:w-2.5 md:h-2.5 shrink-0 text-orange-400 fill-orange-400" />}
+                                        <span className="break-all md:break-words [overflow-wrap:anywhere] leading-tight">{item.title}</span>
                                     </div>
                                 )
                             }
                         })}
                         {dayItems.length > 3 && (
-                            <div className="text-[8px] text-muted-foreground text-center font-bold">
+                            <div className="text-[7.5px] md:text-[8px] text-muted-foreground text-center font-bold">
                                 +{dayItems.length - 3} {language === 'es' ? 'más' : 'more'}
                             </div>
                         )}
@@ -369,9 +369,9 @@ export default function CalendarPage() {
                     {isSelected && (
                         <button
                             onClick={(e) => { e.stopPropagation(); setSelectedDate(dateString); setShowAddModal(true) }}
-                            className="absolute bottom-2 right-2 w-6 h-6 rounded-full bg-primary/20 text-primary hover:bg-primary hover:text-black flex items-center justify-center transition-all shadow-lg active:scale-95 z-30"
+                            className="absolute bottom-1 right-1 md:bottom-2 md:right-2 w-5 h-5 md:w-6 md:h-6 rounded-full bg-primary/20 text-primary hover:bg-primary hover:text-black flex items-center justify-center transition-all shadow-lg active:scale-95 z-30"
                         >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3 h-3 md:w-3.5 md:h-3.5" />
                         </button>
                     )}
                 </div>
@@ -382,7 +382,7 @@ export default function CalendarPage() {
 
 
     return (
-        <div className="min-h-screen bg-background text-foreground p-6 transition-colors duration-300 relative selection:bg-primary/30 flex flex-col items-center">
+        <div className="min-h-screen bg-background text-foreground p-2 sm:p-4 md:p-6 transition-colors duration-300 relative selection:bg-primary/30 flex flex-col items-center">
             {/* Ambient Background Gradients */}
             <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
                 <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20" />
@@ -391,7 +391,7 @@ export default function CalendarPage() {
 
             <div className="relative z-10 w-full max-w-5xl">
                 <Reveal margin="0px" duration={0.4}>
-                    <header className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8 text-center md:text-left">
+                    <header className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 mb-6 md:mb-8 text-center md:text-left">
                         <div className="flex flex-col items-center md:items-start">
                             <h1 className="text-3xl font-black tracking-tighter sm:text-4xl font-dancing-mobile">{t.title}</h1>
                             <div className="hidden md:block">
@@ -408,11 +408,11 @@ export default function CalendarPage() {
 
                 {/* Grid */}
                 <Reveal delay={0.1} margin="0px" duration={0.4}>
-                    <div className="glass-panel rounded-3xl overflow-hidden border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+                    <div className="glass-panel rounded-2xl md:rounded-3xl overflow-hidden border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
                         {/* Week Headers */}
                         <div className="grid grid-cols-7 bg-white/[0.03] border-b border-white/5">
                             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                                <div key={day} className="py-4 text-center text-[10px] font-black uppercase text-muted-foreground/50 tracking-[0.2em]">
+                                <div key={day} className="py-2.5 md:py-4 text-center text-[9px] md:text-[10px] font-black uppercase text-muted-foreground/50 tracking-wider md:tracking-[0.2em]">
                                     {common.days[day.toLowerCase() as keyof typeof common.days]}
                                 </div>
                             ))}

@@ -2469,7 +2469,7 @@ const RichTaskTitle = React.memo(function RichTaskTitle({ content, onChange, onF
                 if (onBlur) onBlur();
             }}
             {...({ placeholder: placeholder || "Título..." } as any)}
-            className="w-full bg-transparent border-none outline-none font-bold text-lg mb-2 text-foreground relative empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 before:absolute before:pointer-events-none rich-text-editor rich-task-title"
+            className="w-full bg-transparent border-none outline-none font-bold text-lg mb-2 text-foreground min-h-[1.75rem] empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 empty:before:block empty:before:pointer-events-none rich-text-editor rich-task-title"
         />
     );
 }, (prev, next) => {

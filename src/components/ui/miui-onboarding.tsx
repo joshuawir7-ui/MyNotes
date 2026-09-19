@@ -132,14 +132,14 @@ export function MIUIOnboardingDialog() {
                         <div className="bg-white/5 p-4 rounded-xl border border-white/5">
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2 font-semibold text-zinc-100">
-                                    <Settings className="w-4 h-4 text-purple-400" />
+                                    <Settings className="w-4 h-4 text-zinc-400" />
                                     {text.appSettings}
                                 </div>
                             </div>
                             <p className="text-xs text-zinc-400 mb-3">{text.appSettingsDesc}</p>
                             <button
                                 onClick={() => WidgetSync.openAppSettings().catch(console.error)}
-                                className="w-full py-2 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 rounded-lg text-sm font-medium transition-colors"
+                                className="w-full py-2 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 rounded-lg text-sm font-medium transition-colors"
                             >
                                 {text.btnSettings}
                             </button>
