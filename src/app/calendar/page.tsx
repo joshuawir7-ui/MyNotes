@@ -29,6 +29,7 @@ export default function CalendarPage() {
     const [newApptNotes, setNewApptNotes] = useState("")
     const [selectedColor, setSelectedColor] = useState("#7f0df2") // Default to primary
     const [quickNoteText, setQuickNoteText] = useState("")
+    const [quickNoteTitle, setQuickNoteTitle] = useState("")
     const [noteSaved, setNoteSaved] = useState(false)
 
     useEffect(() => {
@@ -40,17 +41,19 @@ export default function CalendarPage() {
         }
     }, [loadAllTasks, unloadTasks])
 
-    // Sync quickNoteText when selectedDate changes
+    // Sync quickNoteText+Title when selectedDate changes
     useEffect(() => {
         if (selectedDate) {
-            setQuickNoteText(calendarNotes[selectedDate] || "")
+            const saved = calendarNotes[selectedDate]
+            setQuickNoteTitle(saved?.title || "")
+            setQuickNoteText(saved?.text || "")
             setNoteSaved(false)
         }
     }, [selectedDate, calendarNotes])
 
     const handleSaveNote = () => {
         if (!selectedDate) return
-        setCalendarNote(selectedDate, quickNoteText)
+        setCalendarNote(selectedDate, quickNoteTitle, quickNoteText)
         setNoteSaved(true)
         setTimeout(() => setNoteSaved(false), 2000)
     }
@@ -117,6 +120,17 @@ export default function CalendarPage() {
             if (dayAppts) {
                 map[dateStr].push(...dayAppts)
             }
+            // Add Quick Note as an event if it exists and has content
+            const note = calendarNotes[dateStr]
+            if (note && (note.title || note.text)) {
+                map[dateStr].push({
+                    id: `note-${dateStr}`,
+                    title: note.title || note.text.slice(0, 30),
+                    type: 'note' as const,
+                    status: 'pending' as const,
+                    color: '#6b7280'
+                })
+            }
         }
 
         relevantCalendarTasks.forEach(task => {
@@ -166,7 +180,7 @@ export default function CalendarPage() {
         })
 
         return map
-    }, [currentDate, appointmentsByDate, relevantCalendarTasks])
+    }, [currentDate, appointmentsByDate, relevantCalendarTasks, calendarNotes])
 
     const getCalendarItemsForDate = useCallback((dateString: string) => {
         if (calendarItemsByDate[dateString]) {
@@ -177,6 +191,19 @@ export default function CalendarPage() {
 
         const dateObj = new Date(dateString + 'T12:00:00');
         const dayOfWeek = dateObj.getDay();
+
+        // Include quick note as event
+        const noteItems: any[] = []
+        const note = calendarNotes[dateString]
+        if (note && (note.title || note.text)) {
+            noteItems.push({
+                id: `note-${dateString}`,
+                title: note.title || note.text.slice(0, 30),
+                type: 'note' as const,
+                status: 'pending' as const,
+                color: '#6b7280'
+            })
+        }
 
         const dayTasks = relevantCalendarTasks.filter(task => {
             if (!task.isHabit) {
@@ -206,8 +233,8 @@ export default function CalendarPage() {
             };
         });
 
-        return [...dayAppointments, ...dayTasks];
-    }, [calendarItemsByDate, appointmentsByDate, relevantCalendarTasks])
+        return [...dayAppointments, ...noteItems, ...dayTasks];
+    }, [calendarItemsByDate, appointmentsByDate, relevantCalendarTasks, calendarNotes])
 
     const handleAddAppointment = (e: React.FormEvent) => {
         e.preventDefault()
@@ -271,46 +298,40 @@ export default function CalendarPage() {
                 }
             }
 
+            // Determine centering strategy:
+            // Use position:absolute approach for multi-cell spanning to achieve true centering
             let L = 0;
             let R = 0;
-            // Default: day is isolated (surrounded by other event days or edges)
-            // Items fill the cell width and are centered
-            let alignClass = "self-stretch";
-            let justifyClass = "justify-center";
-            let textClass = "text-center";
 
             if (leftSpan > 0 && rightSpan > 0) {
-                // Free on both sides: expand symmetrically
                 const symmetricSpan = Math.min(leftSpan, rightSpan);
                 L = symmetricSpan;
                 R = symmetricSpan;
-                alignClass = "self-center";
-                justifyClass = "justify-center";
-                textClass = "text-center";
             } else if (leftSpan > 0) {
-                // Right side has neighbor event, span left only
                 L = leftSpan;
                 R = 0;
-                alignClass = "self-end";
-                justifyClass = "justify-end";
-                textClass = "text-right";
             } else if (rightSpan > 0) {
-                // Left side has neighbor event, span right only
                 L = 0;
                 R = rightSpan;
-                alignClass = "self-start";
-                justifyClass = "justify-start";
-                textClass = "text-left";
             }
 
             const totalSpan = L + 1 + R;
-            const spanStyle = {
-                width: totalSpan > 1 ? "max-content" : "100%",
-                maxWidth: totalSpan > 1 ? `calc(${totalSpan * 100}% + ${(totalSpan - 1) * 16}px - 12px)` : "100%",
-                marginLeft: alignClass === "self-end"
-                    ? `calc(-${L * 100}% - ${L * 16}px + 6px)`
-                    : (alignClass === "self-start" ? "6px" : undefined),
-                zIndex: totalSpan > 1 ? 20 : 10,
+
+            // For multi-span events, use position absolute with percentage-based offset
+            // Each cell is 1/7 of the grid width, gap = border width (≈0)
+            // To center over (L+1+R) cells starting from current cell:
+            //   left offset = -L * cellWidth = -L/totalSpan * 100% (of element width)
+            //   We use marginLeft to shift left by L cells
+            const spanStyle: React.CSSProperties = totalSpan > 1 ? {
+                position: 'relative',
+                width: `calc(${totalSpan * 100}% + ${(totalSpan - 1) * 1}px)`,
+                marginLeft: L > 0 ? `calc(-${L * 100}% - ${L * 1}px)` : '0px',
+                zIndex: 20,
+                flexShrink: 0,
+            } : {
+                width: '100%',
+                zIndex: 10,
+                flexShrink: 0,
             };
 
             days.push(
@@ -338,6 +359,8 @@ export default function CalendarPage() {
                                     dotColor = '#3b82f6'
                                 } else if (item.type === 'habit') {
                                     dotColor = '#7f0df2'
+                                } else if (item.type === 'note') {
+                                    dotColor = '#374151' // dark gray for notes
                                 }
                                 return (
                                     <div
@@ -350,15 +373,25 @@ export default function CalendarPage() {
                         </div>
                     )}
 
-                    <div className="relative z-10 flex flex-col space-y-1 overflow-visible">
+                    <div className="flex flex-col space-y-1 overflow-visible">
                         {dayItems.slice(0, 3).map(item => {
-                            if (item.type === 'appointment') {
+                            if (item.type === 'note') {
+                                return (
+                                    <div
+                                        key={item.id}
+                                        style={spanStyle}
+                                        className="text-[9px] font-bold px-1.5 py-1 rounded border whitespace-normal break-words leading-tight text-center bg-[#6b7280]/20 text-[#9ca3af] border-[#6b7280]/30"
+                                    >
+                                        {item.title}
+                                    </div>
+                                )
+                            } else if (item.type === 'appointment') {
                                 const config = eventColors.find(c => c.value === item.color) || eventColors[0]
                                 return (
                                     <div
                                         key={item.id}
                                         style={spanStyle}
-                                        className={`text-[9px] font-bold px-1.5 py-1 rounded border whitespace-normal break-words leading-tight flex items-start gap-1 shrink-0 ${alignClass} ${justifyClass}
+                                        className={`text-[9px] font-bold px-1.5 py-1 rounded border whitespace-normal break-words leading-tight flex items-start gap-1
                                         ${item.status === 'completed' || item.status === 'attendance' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
                                                 item.status === 'failed' || item.status === 'absence' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
                                                     item.status === 'tardiness' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
@@ -368,7 +401,7 @@ export default function CalendarPage() {
                                         {(item.status === 'completed' || item.status === 'attendance') && <CheckCircle2 className="w-2.5 h-2.5 shrink-0 mt-0.5" />}
                                         {(item.status === 'failed' || item.status === 'absence') && <XCircle className="w-2.5 h-2.5 shrink-0 mt-0.5" />}
                                         {item.status === 'tardiness' && <Clock3 className="w-2.5 h-2.5 shrink-0 mt-0.5" />}
-                                        <span className={textClass}>{item.title}</span>
+                                        <span className="flex-1 text-center">{item.title}</span>
                                     </div>
                                 )
                             } else {
@@ -378,7 +411,7 @@ export default function CalendarPage() {
                                     <div
                                         key={item.id}
                                         style={spanStyle}
-                                        className={`text-[9px] font-bold px-1.5 py-1 rounded border whitespace-normal break-words leading-tight flex items-start gap-1 shrink-0 ${alignClass} ${justifyClass}
+                                        className={`text-[9px] font-bold px-1.5 py-1 rounded border whitespace-normal break-words leading-tight flex items-start gap-1
                                         ${isComp
                                                 ? 'bg-green-500/20 text-green-300 border-green-500/30 line-through opacity-70'
                                                 : isHabit
@@ -388,7 +421,7 @@ export default function CalendarPage() {
                                     >
                                         {isComp && <CheckCircle2 className="w-2.5 h-2.5 shrink-0 text-green-400 mt-0.5" />}
                                         {!isComp && isHabit && <Flame className="w-2.5 h-2.5 shrink-0 text-orange-400 fill-orange-400 mt-0.5" />}
-                                        <span className={textClass}>{item.title}</span>
+                                        <span className="flex-1 text-center">{item.title}</span>
                                     </div>
                                 )
                             }
@@ -620,33 +653,42 @@ export default function CalendarPage() {
                             </div>
                         </div>
 
-                        <div className="glass-panel p-8 rounded-[2rem] border border-white/10 flex flex-col">
-                            <h2 className="text-xl font-bold tracking-tight mb-6 flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-green-500/10 flex items-center justify-center">
-                                    <MapPin className="w-5 h-5 text-green-400" />
+                        <div className="glass-panel p-8 rounded-[2rem] border border-white/10 flex flex-col gap-4">
+                            <h2 className="text-xl font-bold tracking-tight flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-zinc-500/10 flex items-center justify-center">
+                                    <MapPin className="w-5 h-5 text-zinc-400" />
                                 </div>
                                 Quick Notes
                             </h2>
+                            {/* Title input */}
+                            <input
+                                type="text"
+                                className="w-full h-11 bg-white/5 border border-white/5 rounded-2xl px-4 outline-none focus:ring-1 focus:ring-white/20 transition-all text-sm font-bold placeholder:text-muted-foreground/30 shadow-inner"
+                                placeholder={language === 'es' ? 'Título de la nota...' : 'Note title...'}
+                                value={quickNoteTitle}
+                                onChange={(e) => { setQuickNoteTitle(e.target.value); setNoteSaved(false) }}
+                            />
+                            {/* Note body */}
                             <textarea
-                                className="w-full flex-1 min-h-[120px] bg-white/5 border border-white/5 rounded-3xl p-6 outline-none focus:ring-1 focus:ring-primary/20 transition-all resize-none text-sm placeholder:text-muted-foreground/30 font-medium leading-relaxed shadow-inner"
-                                placeholder={language === 'es' ? 'Anota detalles, ubicaciones o recordatorios para este día...' : 'Jot down quick details, locations, or reminders for this specific date...'}
+                                className="w-full flex-1 min-h-[100px] bg-white/5 border border-white/5 rounded-2xl p-4 outline-none focus:ring-1 focus:ring-white/20 transition-all resize-none text-sm placeholder:text-muted-foreground/30 font-medium leading-relaxed shadow-inner"
+                                placeholder={language === 'es' ? 'Anota detalles, recordatorios...' : 'Jot down details, reminders...'}
                                 value={quickNoteText}
                                 onChange={(e) => { setQuickNoteText(e.target.value); setNoteSaved(false) }}
                             />
-                            <div className="mt-4 flex items-center justify-between gap-3">
+                            <div className="flex items-center justify-between gap-3">
                                 <div className={`text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${noteSaved ? 'text-green-400' : 'text-muted-foreground/30'}`}>
-                                    {noteSaved ? (language === 'es' ? '✓ Guardado' : '✓ Saved') : (calendarNotes[selectedDate!] ? (language === 'es' ? 'Nota guardada' : 'Note saved') : (language === 'es' ? 'Sin guardar' : 'Not saved'))}
+                                    {noteSaved
+                                        ? (language === 'es' ? 'Guardado' : 'Saved')
+                                        : (calendarNotes[selectedDate!]
+                                            ? (language === 'es' ? 'Nota guardada' : 'Note saved')
+                                            : (language === 'es' ? 'Sin guardar' : 'Not saved'))}
                                 </div>
                                 <button
                                     onClick={handleSaveNote}
-                                    disabled={!quickNoteText.trim() && !calendarNotes[selectedDate!]}
-                                    className={`px-5 h-10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2
-                                        ${noteSaved
-                                            ? 'bg-green-500 text-white shadow-lg shadow-green-500/20'
-                                            : 'bg-primary/20 text-primary hover:bg-primary hover:text-black disabled:opacity-30 disabled:cursor-not-allowed'
-                                        }`}
+                                    disabled={!quickNoteTitle.trim() && !quickNoteText.trim()}
+                                    className="px-6 h-10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 bg-black text-white hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-white dark:text-black dark:hover:bg-zinc-100"
                                 >
-                                    {noteSaved ? '✓' : '💾'} {language === 'es' ? 'Guardar' : 'Save'}
+                                    {language === 'es' ? 'Guardar' : 'Save'}
                                 </button>
                             </div>
                         </div>

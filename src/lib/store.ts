@@ -1010,7 +1010,7 @@ interface AppState {
     projects: Project[]
     notes: Note[]
     appointments: Appointment[]
-    calendarNotes: Record<string, string>
+    calendarNotes: Record<string, { title: string; text: string }>
     goals: Goal[]
     transactions: Transaction[]
     expenseNotes: ExpenseNote[]
@@ -1121,7 +1121,7 @@ interface AppState {
     addAppointment: (apt: Omit<Appointment, 'id'>) => void
     updateAppointment: (id: string, updates: Partial<Appointment>) => void
     deleteAppointment: (id: string) => void
-    setCalendarNote: (date: string, note: string) => void
+    setCalendarNote: (date: string, title: string, text: string) => void
 
     addGoal: (goal: Omit<Goal, 'id' | 'createdAt' | 'progress'>) => void
     updateGoal: (id: string, updates: Partial<Goal>) => void
@@ -2289,8 +2289,8 @@ export const useStore = create<AppState>()(
                     return { appointments: newAppointments, deletedItems }
                 }),
 
-                setCalendarNote: (date: string, note: string) => set((state) => ({
-                    calendarNotes: { ...state.calendarNotes, [date]: note }
+                setCalendarNote: (date: string, title: string, text: string) => set((state) => ({
+                    calendarNotes: { ...state.calendarNotes, [date]: { title, text } }
                 })),
 
                 addGoal: (goal) => set((state) => {
