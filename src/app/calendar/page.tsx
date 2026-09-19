@@ -270,104 +270,23 @@ export default function CalendarPage() {
             const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), d);
             const dayOfWeek = dateObj.getDay(); // 0 = Sun, ..., 6 = Sat
 
-            // Calculate leftSpan (consecutive empty cells to the left in the same week)
-            let leftSpan = 0;
-            const maxLeft = dayOfWeek;
-            for (let offset = 1; offset <= maxLeft; offset++) {
-                const prevDay = d - offset;
-                if (prevDay < 1) break;
-                const prevDateString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(prevDay).padStart(2, '0')}`;
-                if (getCalendarItemsForDate(prevDateString).length === 0) {
-                    leftSpan++;
-                } else {
-                    break;
-                }
-            }
-
-            // Calculate rightSpan (consecutive empty cells to the right in the same week)
-            let rightSpan = 0;
-            const maxRight = 6 - dayOfWeek;
-            for (let offset = 1; offset <= maxRight; offset++) {
-                const nextDay = d + offset;
-                if (nextDay > daysInMonth) break;
-                const nextDateString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(nextDay).padStart(2, '0')}`;
-                if (getCalendarItemsForDate(nextDateString).length === 0) {
-                    rightSpan++;
-                } else {
-                    break;
-                }
-            }
-
-            // Original spanning system (restored) with symmetric case fix
-            let L = 0;
-            let R = 0;
-            let alignClass = "self-stretch";
-            let justifyClass = "justify-center";
-            let textClass = "text-center";
-
-            if (leftSpan > 0 && rightSpan > 0) {
-                // Free on both sides: expand symmetrically
-                // FIX: use self-start + explicit marginLeft (instead of self-center which doesn't cross cells)
-                const symmetricSpan = Math.min(leftSpan, rightSpan);
-                L = symmetricSpan;
-                R = symmetricSpan;
-                alignClass = "self-start";
-                justifyClass = "justify-center";
-                textClass = "text-center";
-            } else if (leftSpan > 0) {
-                // Right side has neighbor event, span left only
-                L = leftSpan;
-                R = 0;
-                alignClass = "self-end";
-                justifyClass = "justify-end";
-                textClass = "text-right";
-            } else if (rightSpan > 0) {
-                // Left side has neighbor event, span right only
-                L = 0;
-                R = rightSpan;
-                alignClass = "self-start";
-                justifyClass = "justify-start";
-                textClass = "text-left";
-            }
-
-            const totalSpan = L + 1 + R;
-
-            // spanStyle: restored original formula (16px gap compensation) 
-            // For symmetric case: force full totalSpan width (not max-content) + same marginLeft as self-end
-            // This makes the event physically occupy L+1+R cells, centered over the current day
-            const isSymmetric = L > 0 && R > 0;
-            const spanStyle: React.CSSProperties = totalSpan > 1 ? {
-                width: isSymmetric
-                    ? `calc(${totalSpan * 100}% + ${(totalSpan - 1) * 16}px - 12px)`
-                    : "max-content",
-                maxWidth: `calc(${totalSpan * 100}% + ${(totalSpan - 1) * 16}px - 12px)`,
-                marginLeft: L > 0
-                    ? `calc(-${L * 100}% - ${L * 16}px + 6px)`
-                    : (R > 0 ? "6px" : undefined),
-                zIndex: 20,
-            } : {
-                width: "100%",
-                maxWidth: "100%",
-                zIndex: 10,
-            };
-
             days.push(
                 <div
                     key={d}
                     onClick={() => setSelectedDate(dateString)}
-                    className={`min-h-[100px] p-2 border-b border-r border-white/5 relative group cursor-pointer transition-all hover:bg-white/[0.03]
+                    className={`min-h-[100px] p-2 border-b border-r border-white/5 relative group cursor-pointer transition-all hover:bg-white/[0.03] flex flex-col items-center
                 ${isSelected ? 'bg-primary/[0.07] ring-1 ring-inset ring-primary/20' : ''}
                 ${isToday ? 'bg-white/[0.02]' : ''}
             `}
                 >
-                    <div className={`text-xs font-bold mb-1.5 w-6 h-6 flex items-center justify-center rounded-full transition-colors
+                    <div className={`text-xs font-bold mb-1.5 w-6 h-6 flex items-center justify-center rounded-full transition-colors shrink-0
                 ${isToday ? 'bg-primary text-white shadow-[0_0_10px_rgba(var(--primary-rgb),0.4)]' : 'text-muted-foreground group-hover:text-foreground'}
             `}>
                         {d}
                     </div>
 
                     {dayItems.length > 0 && (
-                        <div className="flex items-center gap-1 flex-wrap mb-1.5 px-0.5 z-10">
+                        <div className="flex items-center justify-center gap-1 flex-wrap mb-1.5 px-0.5 z-10 shrink-0">
                             {dayItems.map((item, idx) => {
                                 let dotColor = '#7f0df2'
                                 if (item.type === 'appointment') {
@@ -390,14 +309,13 @@ export default function CalendarPage() {
                         </div>
                     )}
 
-                    <div className="relative z-10 flex flex-col space-y-1 overflow-visible">
+                    <div className="relative z-10 flex flex-col items-center space-y-1 w-full overflow-visible">
                         {dayItems.slice(0, 3).map(item => {
                             if (item.type === 'note') {
                                 return (
                                     <div
                                         key={item.id}
-                                        style={spanStyle}
-                                        className={`text-[9px] font-bold px-1.5 py-1 rounded border whitespace-normal break-words leading-tight text-center shrink-0 ${alignClass} bg-[#6b7280]/20 text-[#9ca3af] border-[#6b7280]/30`}
+                                        className="text-[9px] font-bold px-2 py-1 rounded border whitespace-normal break-words leading-tight text-center shrink-0 w-fit max-w-full bg-[#6b7280]/20 text-[#9ca3af] border-[#6b7280]/30 shadow-sm"
                                     >
                                         {item.title}
                                     </div>
@@ -407,18 +325,17 @@ export default function CalendarPage() {
                                 return (
                                     <div
                                         key={item.id}
-                                        style={spanStyle}
-                                        className={`text-[9px] font-bold px-1.5 py-1 rounded border whitespace-normal break-words leading-tight flex items-start gap-1 shrink-0 ${alignClass} ${justifyClass}
+                                        className={`text-[9px] font-bold px-2 py-1 rounded border whitespace-normal break-words leading-tight flex items-center justify-center gap-1 shrink-0 w-fit max-w-full text-center shadow-sm
                                         ${item.status === 'completed' || item.status === 'attendance' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
                                                 item.status === 'failed' || item.status === 'absence' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
                                                     item.status === 'tardiness' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
                                                         `${config.bg} ${config.text} ${config.border}`}
                                      `}
                                     >
-                                        {(item.status === 'completed' || item.status === 'attendance') && <CheckCircle2 className="w-2.5 h-2.5 shrink-0 mt-0.5" />}
-                                        {(item.status === 'failed' || item.status === 'absence') && <XCircle className="w-2.5 h-2.5 shrink-0 mt-0.5" />}
-                                        {item.status === 'tardiness' && <Clock3 className="w-2.5 h-2.5 shrink-0 mt-0.5" />}
-                                        <span className="flex-1 text-center">{item.title}</span>
+                                        {(item.status === 'completed' || item.status === 'attendance') && <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />}
+                                        {(item.status === 'failed' || item.status === 'absence') && <XCircle className="w-2.5 h-2.5 shrink-0" />}
+                                        {item.status === 'tardiness' && <Clock3 className="w-2.5 h-2.5 shrink-0" />}
+                                        <span>{item.title}</span>
                                     </div>
                                 )
                             } else {
@@ -427,8 +344,7 @@ export default function CalendarPage() {
                                 return (
                                     <div
                                         key={item.id}
-                                        style={spanStyle}
-                                        className={`text-[9px] font-bold px-1.5 py-1 rounded border whitespace-normal break-words leading-tight flex items-start gap-1 shrink-0 ${alignClass} ${justifyClass}
+                                        className={`text-[9px] font-bold px-2 py-1 rounded border whitespace-normal break-words leading-tight flex items-center justify-center gap-1 shrink-0 w-fit max-w-full text-center shadow-sm
                                         ${isComp
                                                 ? 'bg-green-500/20 text-green-300 border-green-500/30 line-through opacity-70'
                                                 : isHabit
@@ -436,15 +352,15 @@ export default function CalendarPage() {
                                                     : 'bg-[#3b82f6]/20 text-[#60a5fa] border-[#3b82f6]/30'
                                             }`}
                                     >
-                                        {isComp && <CheckCircle2 className="w-2.5 h-2.5 shrink-0 text-green-400 mt-0.5" />}
-                                        {!isComp && isHabit && <Flame className="w-2.5 h-2.5 shrink-0 text-orange-400 fill-orange-400 mt-0.5" />}
-                                        <span className="flex-1 text-center">{item.title}</span>
+                                        {isComp && <CheckCircle2 className="w-2.5 h-2.5 shrink-0 text-green-400" />}
+                                        {!isComp && isHabit && <Flame className="w-2.5 h-2.5 shrink-0 text-orange-400 fill-orange-400" />}
+                                        <span>{item.title}</span>
                                     </div>
                                 )
                             }
                         })}
                         {dayItems.length > 3 && (
-                            <div className="text-[8px] text-muted-foreground pl-1 font-bold">
+                            <div className="text-[8px] text-muted-foreground text-center font-bold">
                                 +{dayItems.length - 3} {language === 'es' ? 'más' : 'more'}
                             </div>
                         )}
