@@ -751,7 +751,11 @@ export const syncWidgetData = async (goals?: any[], appointments?: any[], notes?
 
             if (currentGoals !== lastSyncedGoals) {
                 // Strip large photo strings for native widget data transfers
-                const lightweightGoals = (currentGoals || []).map((g: any) => ({ ...g, photos: undefined }));
+                const lightweightGoals = (currentGoals || []).map((g: any) => ({
+                    ...g,
+                    photos: undefined,
+                    objectives: Array.isArray(g.objectives) ? g.objectives.map((o: any) => ({ ...o, image: undefined })) : g.objectives
+                }));
                 updatePayload.goals = JSON.stringify(lightweightGoals);
                 lastSyncedGoals = currentGoals;
             }

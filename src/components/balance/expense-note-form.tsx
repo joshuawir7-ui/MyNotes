@@ -4,6 +4,7 @@ import { useStore, ExpenseNote } from '@/lib/store';
 import { useShallow } from 'zustand/react/shallow';
 import { Capacitor } from '@capacitor/core';
 import { saveBase64File, getOrCreateThumbnail, getLocalImageSrc } from '@/lib/image-utils';
+import { LocalImage } from '@/components/ui/local-image';
 
 export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
     const { expenseNotes, addExpenseNote, updateExpenseNote, deleteExpenseNote, addTransaction } = useStore();
@@ -202,7 +203,7 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                             <div className="mb-[20px] flex">
                                 {item.imageBlock?.localPath ? (
                                     <div className="relative w-[180px] h-[140px] rounded-[12px] overflow-hidden border border-[#e5e7eb] dark:border-zinc-800 bg-[#f9fafb] dark:bg-zinc-800/50 group/img shrink-0">
-                                        <img src={getLocalImageSrc(item.imageBlock.localPath)} alt="Producto" className="w-full h-full object-contain" />
+                                        <LocalImage src={item.imageBlock.localPath} alt="Producto" className="w-full h-full object-contain" />
                                         {!item.confirmado && (
                                             <button
                                                 type="button"

@@ -2,6 +2,7 @@ import React from 'react';
 import { ExpenseNote, useStore } from '@/lib/store';
 import { Trash2, Image as ImageIcon } from 'lucide-react';
 import { getLocalImageSrc } from '@/lib/image-utils';
+import { LocalImage } from '@/components/ui/local-image';
 
 interface ExpenseNoteCardProps {
     note: ExpenseNote;
@@ -15,8 +16,8 @@ export const ExpenseNoteCard = React.memo(({ note, currencySymbol }: ExpenseNote
         <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 mb-3 flex gap-4 transition-all hover:bg-white/10">
             {note.imageBlock?.thumbnailPath || note.imageBlock?.localPath ? (
                 <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-black/20 flex items-center justify-center">
-                    <img 
-                        src={getLocalImageSrc(note.imageBlock.thumbnailPath || note.imageBlock.localPath!)} 
+                    <LocalImage 
+                        src={note.imageBlock.thumbnailPath || note.imageBlock.localPath!} 
                         alt={note.title}
                         className="w-full h-full object-cover"
                     />

@@ -1,6 +1,7 @@
 /* eslint-disable */
 "use client"
 import { getLocalImageSrc } from "@/lib/image-utils"
+import { LocalImage } from "@/components/ui/local-image"
 
 import { motion, AnimatePresence } from "framer-motion"
 import { useShallow } from "zustand/react/shallow"
@@ -1656,7 +1657,7 @@ export default function TasksPage() {
                                                     <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                                                         {tempPhotos.map((photo, i) => (
                                                             <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-white/10 flex-shrink-0 group">
-                                                                <img src={getLocalImageSrc(photo)} alt="" className="w-full h-full object-cover" />
+                                                                <LocalImage src={photo} alt="" className="w-full h-full object-cover" />
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setTempPhotos(tempPhotos.filter((_, idx) => idx !== i))}
@@ -2089,8 +2090,8 @@ const HabitCard = memo(({
                             {/* Habit Photo Preview on the Right */}
                             {habit.photos && habit.photos.length > 0 && (
                                 <div className="relative w-16 h-16 md:w-20 md:h-20 flex-shrink-0 rounded-lg overflow-hidden border border-white/10 shadow-sm cursor-pointer hover:opacity-90 transition-opacity">
-                                    <img
-                                        src={getLocalImageSrc(habit.photos[0])}
+                                    <LocalImage
+                                        src={habit.photos[0]}
                                         alt=""
                                         className="w-full h-full object-cover"
                                         onClick={(e) => {

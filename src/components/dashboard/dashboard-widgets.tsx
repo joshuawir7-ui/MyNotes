@@ -1,5 +1,6 @@
 "use client"
 import { getLocalImageSrc } from "@/lib/image-utils";
+import { LocalImage } from "@/components/ui/local-image";
 
 import { useStore, Note } from "@/lib/store";
 import { useShallow } from 'zustand/react/shallow';
@@ -76,7 +77,7 @@ function NotePreviewRenderer({ note, isPinned = false }: { note: Note; isPinned?
                     return (
                         <div key={block.id} className={`relative w-full ${isPinned ? 'h-20 rounded-lg' : 'h-40 rounded-xl'} overflow-hidden bg-black/20 border border-white/5`}>
                             {block.content ? (
-                                <img src={getLocalImageSrc(block.content)} alt="Note image" className="object-cover w-full h-full hover:scale-105 transition-transform duration-500" />
+                                <LocalImage src={block.content} alt="Note image" className="object-cover w-full h-full hover:scale-105 transition-transform duration-500" />
                             ) : (
                                 <div className="flex items-center justify-center w-full h-full text-xs text-muted-foreground">Imagen Vacía</div>
                             )}
@@ -97,14 +98,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
     const notes = useStore(useShallow((state) => state.notes));
     const appointments = useStore(useShallow((state) => state.appointments));
     const lastPinnedGoalId = useStore(state => state.lastPinnedGoalId);
-    // Granular goal selector: only re-renders when pinned/photos/description/title changes
-    const goals = useStore(useShallow((state) => state.goals?.map(g => ({
-        id: g.id,
-        title: g.title,
-        description: g.description,
-        pinned: g.pinned,
-        photos: g.photos,
-    }))));
+    const goals = useStore(useShallow((state) => state.goals || []));
     const setPinnedNoteId = useStore(state => state.setPinnedNoteId);
     const t = (translations[language]?.dashboard || translations['en'].dashboard) as any;
     const noteTranslations = (translations[language]?.pages?.notes || translations['en'].pages.notes) as any;
@@ -374,8 +368,8 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
             {targetGoal && targetGoal.photos && targetGoal.photos.length > 0 && (
                 <div className="w-full flex flex-col items-center mb-2">
                     <div className="w-full rounded-3xl bg-white dark:bg-white/5 shadow-sm mb-3 overflow-hidden flex items-center justify-center">
-                        <img 
-                            src={getLocalImageSrc(targetGoal.photos[0])} 
+                        <LocalImage 
+                            src={targetGoal.photos[0]} 
                             alt="Meta" 
                             className="w-full h-auto object-cover" 
                         />

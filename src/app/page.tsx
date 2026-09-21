@@ -170,8 +170,27 @@ export default function Home() {
 
   const strokeDashoffset = 175.9 - (percentage / 100) * 175.9;
 
-  const showMobile = !isMounted || isMobile;
-  const showDesktop = !isMounted || !isMobile;
+  // Before mount, render nothing dynamic to avoid SSR/client hydration mismatch (React Error #418)
+  // Both layouts will only render after isMounted is true, preventing content divergence
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-background text-foreground p-4 sm:p-8 font-[family-name:var(--font-geist-sans)] relative selection:bg-primary/30">
+        <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 transform-gpu" style={{ willChange: "transform" }}>
+          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20 transform-gpu" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20 transform-gpu" />
+        </div>
+        <div className="relative z-10 max-w-4xl mx-auto w-full flex flex-col gap-4 pb-24 pt-0">
+          <div className="h-20 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" />
+          <div className="h-40 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="h-32 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" />
+            <div className="h-32 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" />
+          </div>
+          <div className="h-48 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4 sm:p-8 font-[family-name:var(--font-geist-sans)] relative selection:bg-primary/30">
@@ -184,7 +203,7 @@ export default function Home() {
       <div className="relative z-10 max-w-4xl mx-auto w-full flex flex-col gap-4 pb-24 text-center sm:text-left pt-0">
 
         {/* MOBILE ONLY LAYOUT (as per user sketch) */}
-        {showMobile && (
+        {isMobile && (
           <div className="flex md:hidden flex-col gap-4 mt-2">
 
           {/* 1. Quote */}
@@ -399,7 +418,7 @@ export default function Home() {
       )}
 
         {/* DESKTOP LAYOUT (unchanged) */}
-        {showDesktop && (
+        {!isMobile && (
           <div className="hidden md:flex flex-col gap-4">
           <div className="flex flex-col gap-4">
             <Reveal delay={0.2} margin="0px">

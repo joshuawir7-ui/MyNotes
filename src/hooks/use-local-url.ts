@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getLocalImageSrc } from '@/lib/image-utils';
 import { createObjectURLFromIndexedDB } from '@/lib/blob-storage';
+import { Capacitor } from '@capacitor/core';
 
 /**
  * Hook to asynchronously resolve a local file path or IndexedDB URI into a browser-usable URL (e.g., blob:).
@@ -15,6 +16,14 @@ export function useLocalUrl(uriOrBase64: string | null | undefined): string {
             return;
         }
 
+        // On Web, native device file:// or /data/ paths cannot be loaded by browser security rules
+        if (typeof window !== 'undefined' && !Capacitor.isNativePlatform()) {
+            if (uriOrBase64.startsWith('file://') || uriOrBase64.startsWith('/data/')) {
+                setResolvedUrl('');
+                return;
+            }
+        }
+
         // Fast path for normal URLs / Base64 / Native file paths
         const syncUrl = getLocalImageSrc(uriOrBase64);
         
@@ -26,7 +35,11 @@ export function useLocalUrl(uriOrBase64: string | null | undefined): string {
                 if (active && url) {
                     objectUrl = url;
                     setResolvedUrl(url);
+                } else if (active) {
+                    setResolvedUrl('');
                 }
+            }).catch(() => {
+                if (active) setResolvedUrl('');
             });
 
             return () => {

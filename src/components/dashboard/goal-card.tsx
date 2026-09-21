@@ -1,5 +1,6 @@
 "use client"
 import { getLocalImageSrc } from "@/lib/image-utils"
+import { LocalImage } from "@/components/ui/local-image"
 
 import { Goal, GoalObjective, useStore } from "@/lib/store"
 import { motion } from "framer-motion"
@@ -356,7 +357,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                     <div className="flex flex-wrap gap-4 mt-2">
                         {goal.photos.map((photo, i) => (
                             <div key={i} className="relative group w-full max-w-sm rounded-xl overflow-hidden">
-                                <img src={getLocalImageSrc(photo)} alt="" className="w-full h-auto max-h-64 object-contain transition-transform group-hover:scale-[1.02]" />
+                                <LocalImage src={photo} alt="" className="w-full h-auto max-h-64 object-contain transition-transform group-hover:scale-[1.02]" />
                             </div>
                         ))}
                         {goal.photos.length === 0 && (
@@ -466,7 +467,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                                                 }}
                                                 className="w-8 h-8 rounded overflow-hidden border border-white/10 shrink-0 cursor-zoom-in hover:scale-105 transition-all"
                                             >
-                                                <img src={getLocalImageSrc(obj.image)} alt="" className="w-full h-full object-cover" />
+                                                <LocalImage src={obj.image} alt="" className="w-full h-full object-cover" />
                                             </div>
                                         )}
 
@@ -498,7 +499,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                     {/* Preview of attached photo for card objective */}
                     {newObjectivePhoto && (
                         <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-black/5 dark:border-white/10 flex-shrink-0 mt-2">
-                            <img src={getLocalImageSrc(newObjectivePhoto)} alt="" className="w-full h-full object-cover" />
+                            <LocalImage src={newObjectivePhoto} alt="" className="w-full h-full object-cover" />
                             <button
                                 type="button"
                                 onClick={() => setNewObjectivePhoto(null)}
@@ -657,8 +658,8 @@ export function GoalCard({ goal }: { goal: Goal }) {
                         className="relative max-w-4xl max-h-[85vh] rounded-2xl overflow-hidden shadow-2xl border border-white/10"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <img
-                            src={getLocalImageSrc(activeOverlayImage)}
+                        <LocalImage
+                            src={activeOverlayImage}
                             alt="Preview"
                             className="w-full h-auto max-h-[85vh] object-contain"
                         />

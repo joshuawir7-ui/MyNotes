@@ -150,7 +150,7 @@ export function PulseChart() {
             </div>
 
             <div className="h-[105px] w-full relative z-10">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <LineChart data={finalData}>
                         <defs>
                             <linearGradient id="gradientPulse" x1="0" y1="0" x2="1" y2="0">

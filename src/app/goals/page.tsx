@@ -1,5 +1,6 @@
 "use client"
 import { getLocalImageSrc } from "@/lib/image-utils"
+import { LocalImage } from "@/components/ui/local-image"
 
 import { Reveal } from "@/components/ui/reveal"
 import { useStore, GoalType, GoalObjective } from "@/lib/store"
@@ -237,7 +238,7 @@ export default function GoalsPage() {
                                                     <div key={index} className="flex items-center justify-between bg-black/5 dark:bg-black/20 px-3 py-2 rounded-xl border border-black/5 dark:border-white/5">
                                                         <div className="flex items-center gap-3">
                                                             {obj.image && (
-                                                                <img src={getLocalImageSrc(obj.image)} alt="" className="w-8 h-8 rounded object-cover border border-white/10 shrink-0" />
+                                                                <LocalImage src={obj.image} alt="" className="w-8 h-8 rounded object-cover border border-white/10 shrink-0" />
                                                             )}
                                                             <span className="text-sm opacity-90 text-left">{obj.title}</span>
                                                         </div>
@@ -256,7 +257,7 @@ export default function GoalsPage() {
                                         {/* Preview of attached photo for the new objective */}
                                         {tempObjectivePhoto && (
                                             <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-black/5 dark:border-white/10 flex-shrink-0 mb-2">
-                                                <img src={getLocalImageSrc(tempObjectivePhoto)} alt="" className="w-full h-full object-cover" />
+                                                <LocalImage src={tempObjectivePhoto} alt="" className="w-full h-full object-cover" />
                                                 <button
                                                     type="button"
                                                     onClick={() => setTempObjectivePhoto(null)}
@@ -331,7 +332,7 @@ export default function GoalsPage() {
                                         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                                             {tempPhotos.map((photo, i) => (
                                                 <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-black/5 dark:border-white/10 flex-shrink-0">
-                                                    <img src={getLocalImageSrc(photo)} alt="" className="w-full h-full object-cover" />
+                                                    <LocalImage src={photo} alt="" className="w-full h-full object-cover" />
                                                     <button
                                                         type="button"
                                                         onClick={() => setTempPhotos(tempPhotos.filter((_, idx) => idx !== i))}

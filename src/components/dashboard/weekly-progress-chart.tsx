@@ -416,7 +416,7 @@ export function WeeklyProgressChart() {
                     transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
                     className="h-full min-w-0 w-full"
                 >
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <ComposedChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                             <defs>
                                 <linearGradient id="lineColor" x1="0" y1="0" x2="1" y2="0">
