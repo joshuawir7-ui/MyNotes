@@ -187,6 +187,13 @@ html.dark.theme-black {
   box-shadow: 0 10px 25px -5px rgba(255, 255, 255, 0.1) !important;
 }
 
+.theme-black .neon-glow,
+.dark.theme-black .neon-glow,
+.theme-black .shadow-primary\/20,
+.dark.theme-black .shadow-primary\/20 {
+  box-shadow: none !important;
+}
+
 
 @layer base {
   html, body {

@@ -491,7 +491,7 @@ export function AppSidebar() {
                                     }`}
                                 title={isMounted ? item.label : ""}
                             >
-                                {isActive && (
+                                {isActive && appColor !== 'black' && (
                                     <motion.div
                                         layoutId="mobile-nav-active"
                                         className="absolute inset-0 bg-primary/10 rounded-full z-0"
@@ -533,12 +533,12 @@ export function AppSidebar() {
                                 id={item.href === '/tasks' ? "nav-item-tasks-desktop" : undefined}
                                 className={`relative flex items-center justify-center md:px-4 md:py-3 rounded-2xl text-sm font-medium transition-colors duration-300 group
                                     ${isActive
-                                        ? 'text-primary'
+                                        ? (appColor === 'black' ? 'text-black dark:text-white font-bold' : 'text-primary')
                                         : 'text-muted-foreground hover:text-foreground'
                                     } ${isBlinking ? 'animate-pulse-green border border-green-500/50 bg-green-500/10' : ''}`}
                                 title={isMounted ? item.label : ""}
                             >
-                                {isActive && (
+                                {isActive && appColor !== 'black' && (
                                     <motion.div
                                         layoutId="sidebar-active-pill"
                                         className="absolute inset-0 bg-primary/10 rounded-2xl z-0"

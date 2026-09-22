@@ -16,6 +16,7 @@ import { CustomSelect } from "@/components/ui/custom-select"
 
 export default function GoalsPage() {
     const language = useStore(state => state.language)
+    const appColor = useStore(state => state.appColor ?? 'purple')
     const goals = useStore(state => state.goals)
     const addGoal = useStore(state => state.addGoal)
     const showToast = useStore(state => state.showToast)
@@ -135,7 +136,9 @@ export default function GoalsPage() {
 
                     <button
                         onClick={() => setIsCreating(true)}
-                        className="w-full md:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white font-bold rounded-2xl hover:scale-105 transition-all shadow-xl shadow-primary/20 neon-glow"
+                        className={`w-full md:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-primary text-primary-foreground font-bold rounded-2xl hover:scale-105 transition-all ${
+                            appColor === 'black' ? 'shadow-none' : 'shadow-xl shadow-primary/20 neon-glow'
+                        }`}
                     >
                         <Plus className="w-6 h-6" />
                         {t.newGoalBtn}
