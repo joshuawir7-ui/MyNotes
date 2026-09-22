@@ -1168,6 +1168,8 @@ interface AppState {
     addExpenseNote: (note: ExpenseNote) => void
     updateExpenseNote: (id: string, noteData: Partial<ExpenseNote>) => void
     deleteExpenseNote: (id: string) => void
+    appColor?: 'purple' | 'black'
+    setAppColor: (color: 'purple' | 'black') => void
     savingsGoal: number
     setSavingsGoal: (goal: number) => void
     recoverImagesFromDriveRevisions?: () => Promise<{ recovered: number; failed: number; message: string }>
@@ -1756,6 +1758,17 @@ export const useStore = create<AppState>()(
                 taskGroups: [],
                 celebration: null,
                 focusEffectEnabled: true,
+                appColor: 'purple',
+                setAppColor: (color) => {
+                    set({ appColor: color });
+                    if (typeof document !== 'undefined') {
+                        if (color === 'black') {
+                            document.documentElement.classList.add('theme-black');
+                        } else {
+                            document.documentElement.classList.remove('theme-black');
+                        }
+                    }
+                },
                 priorityReminderSettings: {
                     enabled: true,
                     slots: ['12:00', '19:00', '22:00'],

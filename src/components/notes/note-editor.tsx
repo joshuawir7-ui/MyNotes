@@ -496,7 +496,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                     disabled={isSaving}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all text-xs font-bold shadow-lg ${lastSaved
                                         ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                        : 'bg-purple-600 text-white hover:bg-purple-700 active:scale-95 shadow-purple-500/20'
+                                        : 'bg-primary text-primary-foreground hover:opacity-90 active:scale-95 shadow-primary/20'
                                         }`}
                                 >
                                     <span>{isSaving ? '...' : lastSaved ? (language === 'es' ? 'Guardado' : 'Saved') : (language === 'es' ? 'Guardar' : 'Save')}</span>
@@ -535,7 +535,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                         disabled={isSaving}
                                         className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-6 py-1.5 md:py-2 rounded-full transition-all text-xs md:text-sm font-bold shadow-lg ${lastSaved
                                             ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                            : 'bg-purple-600 text-white hover:bg-purple-700 active:scale-95 shadow-purple-500/20'
+                                            : 'bg-primary text-primary-foreground hover:opacity-90 active:scale-95 shadow-primary/20'
                                             }`}
                                     >
                                         <span className="hidden xs:inline">{isSaving ? langSection.common.saving : lastSaved ? langSection.common.saved : langSection.common.save}</span>

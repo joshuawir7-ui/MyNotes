@@ -90,6 +90,104 @@
   --ring: #d8b4fe;
 }
 
+/* ── App Theme: Black Overrides ─────────────────────────────────────── */
+:root.theme-black,
+html.theme-black {
+  --primary: #000000;
+  --primary-foreground: #ffffff;
+  --ring: #000000;
+}
+
+.dark:root.theme-black,
+.dark.theme-black,
+html.dark.theme-black {
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+  --ring: #ffffff;
+}
+
+/* Overrides for hardcoded purple Tailwind utilities when black theme is active */
+.theme-black .text-purple-400,
+.theme-black .text-purple-500,
+.theme-black .text-purple-600,
+.theme-black .text-purple-650,
+.theme-black .text-purple-700 {
+  color: #000000 !important;
+}
+
+.dark.theme-black .text-purple-400,
+.dark.theme-black .text-purple-500,
+.dark.theme-black .text-purple-600,
+.dark.theme-black .text-purple-650,
+.dark.theme-black .text-purple-700 {
+  color: #ffffff !important;
+}
+
+.theme-black .bg-purple-500,
+.theme-black .bg-purple-600,
+.theme-black .bg-purple-700,
+.theme-black .bg-purple-800 {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.dark.theme-black .bg-purple-500,
+.dark.theme-black .bg-purple-600,
+.dark.theme-black .bg-purple-700,
+.dark.theme-black .bg-purple-800 {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.theme-black .bg-purple-50,
+.theme-black .bg-purple-100,
+.theme-black .bg-purple-500\/10,
+.theme-black .bg-purple-500\/20,
+.theme-black .bg-purple-600\/10,
+.theme-black .bg-purple-600\/20,
+.theme-black .bg-purple-700\/20 {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.dark.theme-black .bg-purple-50,
+.dark.theme-black .bg-purple-100,
+.dark.theme-black .bg-purple-500\/10,
+.dark.theme-black .bg-purple-500\/20,
+.dark.theme-black .bg-purple-600\/10,
+.dark.theme-black .bg-purple-600\/20,
+.dark.theme-black .bg-purple-700\/20 {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.theme-black .border-purple-400,
+.theme-black .border-purple-500,
+.theme-black .border-purple-500\/20,
+.theme-black .border-purple-500\/30,
+.theme-black .border-purple-600 {
+  border-color: rgba(0, 0, 0, 0.25) !important;
+}
+
+.dark.theme-black .border-purple-400,
+.dark.theme-black .border-purple-500,
+.dark.theme-black .border-purple-500\/20,
+.dark.theme-black .border-purple-500\/30,
+.dark.theme-black .border-purple-600 {
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.theme-black .shadow-purple-500\/5,
+.theme-black .shadow-purple-500\/10,
+.theme-black .shadow-purple-500\/20 {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15) !important;
+}
+
+.dark.theme-black .shadow-purple-500\/5,
+.dark.theme-black .shadow-purple-500\/10,
+.dark.theme-black .shadow-purple-500\/20 {
+  box-shadow: 0 10px 25px -5px rgba(255, 255, 255, 0.1) !important;
+}
+
+
 @layer base {
   html, body {
     overscroll-behavior-y: contain;

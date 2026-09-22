@@ -134,7 +134,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const timerTargetTimestamp = useStore(state => state.timer?.targetTimestamp)
     const setTimer = useStore(state => state.setTimer)
     const language = useStore(state => state.language)
+    const appColor = useStore(state => state.appColor)
     const { theme, resolvedTheme } = useTheme()
+
+    useEffect(() => {
+        if (typeof document !== 'undefined') {
+            if (appColor === 'black') {
+                document.documentElement.classList.add('theme-black');
+            } else {
+                document.documentElement.classList.remove('theme-black');
+            }
+        }
+    }, [appColor]);
 
     useEffect(() => {
         if (isNative) {

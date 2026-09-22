@@ -20,6 +20,8 @@ export function SettingsDialog() {
     const router = useRouter()
     const language = useStore(state => state.language)
     const setLanguage = useStore(state => state.setLanguage)
+    const appColor = useStore(state => state.appColor ?? 'purple')
+    const setAppColor = useStore(state => state.setAppColor)
     const notificationsEnabled = useStore(state => state.notificationsEnabled)
     const setNotificationsEnabled = useStore(state => state.setNotificationsEnabled)
     const focusEffectEnabled = useStore(state => state.focusEffectEnabled)
@@ -869,6 +871,49 @@ export function SettingsDialog() {
                                                 <div className="scale-110">
                                                     <LanguageToggle />
                                                 </div>
+                                            </div>
+                                        </div>
+
+                                        {/* App Colors Selector */}
+                                        <div className="flex flex-col gap-3 p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                                                    {language === 'es' ? "Colores de la App" : "App Colors"}
+                                                </p>
+                                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                                    {appColor === 'black' 
+                                                        ? (language === 'es' ? "Negro" : "Black")
+                                                        : (language === 'es' ? "Morado" : "Purple")}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                {/* Morado Button */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAppColor('purple')}
+                                                    className={`flex-1 flex items-center justify-center gap-2.5 py-2.5 px-3 rounded-xl border transition-all duration-300 font-bold text-xs cursor-pointer ${
+                                                        (appColor === 'purple' || !appColor)
+                                                            ? "bg-purple-600/10 border-purple-600 text-purple-600 dark:text-purple-400 shadow-sm ring-1 ring-purple-600/30"
+                                                            : "bg-black/5 dark:bg-white/5 border-transparent text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10"
+                                                    }`}
+                                                >
+                                                    <span className="w-4 h-4 rounded-full bg-[#7f0df2] border border-white/20 shadow-sm shrink-0" />
+                                                    <span>{language === 'es' ? "Morado" : "Purple"}</span>
+                                                </button>
+
+                                                {/* Negro Button */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAppColor('black')}
+                                                    className={`flex-1 flex items-center justify-center gap-2.5 py-2.5 px-3 rounded-xl border transition-all duration-300 font-bold text-xs cursor-pointer ${
+                                                        appColor === 'black'
+                                                            ? "bg-black/15 dark:bg-white/15 border-black dark:border-white text-black dark:text-white shadow-sm ring-1 ring-black/20 dark:ring-white/20"
+                                                            : "bg-black/5 dark:bg-white/5 border-transparent text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10"
+                                                    }`}
+                                                >
+                                                    <span className="w-4 h-4 rounded-full bg-black dark:bg-white border border-white/20 shadow-sm shrink-0" />
+                                                    <span>{language === 'es' ? "Negro" : "Black"}</span>
+                                                </button>
                                             </div>
                                         </div>
 
