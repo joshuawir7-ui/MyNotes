@@ -874,7 +874,8 @@ function InlineImageButton({ language }: { language: string }) {
                 onChange={handleFileChange}
             />
             <button
-                onClick={() => {
+                onMouseDown={(e) => {
+                    e.preventDefault();
                     saveSelection();
                     fileInputRef.current?.click();
                 }}
@@ -1016,7 +1017,8 @@ function InlineVideoButton({ language }: { language: string }) {
                 onChange={handleFileChange}
             />
             <button
-                onClick={() => {
+                onMouseDown={(e) => {
+                    e.preventDefault();
                     saveSelection();
                     hideKeyboard();
                     fileInputRef.current?.click();
@@ -1052,15 +1054,33 @@ function InlineTaskButton({ language }: { language: string }) {
     };
 
     const handleInsertTask = () => {
+        saveSelection();
         restoreSelection();
-        const taskHtml = `<div data-inline-task="1" style="display:flex;align-items:center;gap:8px;margin:6px 0;line-height:1.4;clear:both;"><span contenteditable="false" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;user-select:none;cursor:pointer;vertical-align:middle;"><input type="checkbox" style="width:18px;height:18px;margin:0;cursor:pointer;vertical-align:middle;" /></span><span>&nbsp;</span></div>`;
+
+        const sel = window.getSelection();
+        let needsBreak = false;
+        if (sel && sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            const container = range.startContainer;
+            if (container && container.nodeType === Node.TEXT_NODE) {
+                const textBeforeContent = container.nodeValue?.substring(0, range.startOffset) || '';
+                if (textBeforeContent.trim() !== '') {
+                    needsBreak = true;
+                }
+            } else if (container && container.childNodes.length > 0) {
+                needsBreak = true;
+            }
+        }
+
+        const breakHtml = needsBreak ? '<br />' : '';
+        const taskHtml = `${breakHtml}<span data-inline-task="1" style="display:inline-flex;align-items:center;gap:6px;margin:4px 0;vertical-align:middle;line-height:1.4;"><span contenteditable="false" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;user-select:none;cursor:pointer;vertical-align:middle;"><input type="checkbox" style="width:18px;height:18px;margin:0;cursor:pointer;vertical-align:middle;" /></span>&nbsp;</span>`;
         document.execCommand('insertHTML', false, taskHtml);
     };
 
     return (
         <button
-            onClick={() => {
-                saveSelection();
+            onMouseDown={(e) => {
+                e.preventDefault();
                 handleInsertTask();
             }}
             className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10 shrink-0"
@@ -1093,6 +1113,7 @@ function InlineSeparatorButton({ language }: { language: string }) {
     };
 
     const handleInsertSeparator = () => {
+        saveSelection();
         restoreSelection();
         const sepHtml = `<hr data-inline-sep="1" style="display:block;margin:12px 0;border:none;border-top:1.5px solid rgba(120,120,120,0.4);clear:both;" /><br />`;
         document.execCommand('insertHTML', false, sepHtml);
@@ -1100,8 +1121,8 @@ function InlineSeparatorButton({ language }: { language: string }) {
 
     return (
         <button
-            onClick={() => {
-                saveSelection();
+            onMouseDown={(e) => {
+                e.preventDefault();
                 handleInsertSeparator();
             }}
             className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10 shrink-0"
