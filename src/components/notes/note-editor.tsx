@@ -684,7 +684,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                     applyHeading('h1');
                                 }}
                                 className={`px-3 py-1.5 rounded-md text-xs font-extrabold transition-all active:scale-95 shrink-0 ${formatStates.h1
-                                        ? "bg-purple-600/20 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/30"
+                                        ? "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 font-bold"
                                         : "text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10"
                                     }`}
                                 title="H1"
@@ -697,7 +697,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                     applyHeading('h2');
                                 }}
                                 className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all active:scale-95 shrink-0 ${formatStates.h2
-                                        ? "bg-purple-600/20 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/30"
+                                        ? "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 font-bold"
                                         : "text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10"
                                     }`}
                                 title="H2"
@@ -710,7 +710,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                     applyHeading('h3');
                                 }}
                                 className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all active:scale-95 shrink-0 ${formatStates.h3
-                                        ? "bg-purple-600/20 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/30"
+                                        ? "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 font-bold"
                                         : "text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10"
                                     }`}
                                 title="H3"
@@ -1554,12 +1554,12 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                 }}
                 className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer ${
                     isOpen
-                        ? "bg-purple-600/20 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/30"
+                        ? "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 font-bold"
                         : "text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10"
                 }`}
                 title={language === 'es' ? "Fuente de Letra" : "Font Family"}
             >
-                <Type className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                <Type className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
                 <span className="text-[11px] font-bold">{language === 'es' ? "Fuente" : "Font"}</span>
                 <ChevronDown className="w-3 h-3 opacity-60" />
             </button>
@@ -1570,7 +1570,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                     <div className="relative z-10 w-full max-w-xs sm:max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[75vh] animate-in zoom-in-95 duration-150">
                         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-white/10 bg-zinc-50/50 dark:bg-zinc-800/50">
                             <div className="flex items-center gap-2">
-                                <Type className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                <Type className="w-4 h-4 text-zinc-800 dark:text-zinc-200" />
                                 <span className="font-bold text-sm text-foreground">
                                     {language === 'es' ? "Seleccionar Fuente" : "Select Font"}
                                 </span>
@@ -1595,7 +1595,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                                             e.preventDefault();
                                             handleApplyFont(font.fontName);
                                         }}
-                                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-purple-600/10 hover:text-purple-600 dark:hover:bg-purple-500/20 dark:hover:text-purple-300 transition-colors flex items-center justify-between cursor-pointer border border-transparent hover:border-purple-500/20"
+                                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/10 hover:text-foreground transition-colors flex items-center justify-between cursor-pointer border border-transparent hover:border-zinc-200 dark:hover:border-white/10"
                                         style={{ fontFamily: font.previewFamily }}
                                     >
                                         <span className="text-sm font-medium">{font.name}</span>
@@ -1617,7 +1617,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                                                     e.preventDefault();
                                                     handleApplyFont(font.name);
                                                 }}
-                                                className="w-full text-left px-3 py-2 rounded-xl hover:bg-purple-600/10 hover:text-purple-600 dark:hover:bg-purple-500/20 dark:hover:text-purple-300 transition-colors flex items-center justify-between cursor-pointer border border-transparent hover:border-purple-500/20"
+                                                className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/10 hover:text-foreground transition-colors flex items-center justify-between cursor-pointer border border-transparent hover:border-zinc-200 dark:hover:border-white/10"
                                                 style={{ fontFamily: font.name }}
                                             >
                                                 <span className="text-sm font-medium truncate">{font.name}</span>
@@ -1643,7 +1643,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                                     saveSelection();
                                     fontInputRef.current?.click();
                                 }}
-                                className="w-full flex items-center justify-center gap-2 p-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition-all text-xs cursor-pointer shadow-md shadow-purple-600/20 active:scale-95"
+                                className="w-full flex items-center justify-center gap-2 p-2.5 bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black rounded-xl font-bold transition-all text-xs cursor-pointer shadow-md shadow-zinc-900/10 dark:shadow-black/40 active:scale-95"
                             >
                                 <Plus className="w-4 h-4" />
                                 <span>{language === 'es' ? "Añadir fuente desde almacenamiento" : "Add font from storage"}</span>
@@ -3176,7 +3176,7 @@ function FormatButton({ icon: Icon, label, onClick, active }: { icon: any, label
                 onClick();
             }}
             className={`p-1.5 rounded transition-all active:scale-95 shrink-0 ${active
-                    ? "bg-purple-600/20 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/30 font-bold"
+                    ? "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 font-bold"
                     : "hover:bg-white/10 text-muted-foreground hover:text-foreground"
                 }`}
             title={label}

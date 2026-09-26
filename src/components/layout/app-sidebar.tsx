@@ -134,16 +134,6 @@ const AnimatedSun = ({ isActive, appColor }: { isActive: boolean; appColor?: str
                 ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-amber-500')
                 : (appColor === 'black' ? 'text-muted-foreground group-hover:text-black dark:group-hover:text-white' : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-amber-400')
         }`} />
-        <motion.div
-            className={`absolute inset-0 rounded-full border ${appColor === 'black' ? 'border-black/20 dark:border-white/20' : 'border-primary/20 dark:border-amber-500/20'} pointer-events-none`}
-            variants={{
-                initial: { scale: 0, opacity: 0 },
-                hover: { scale: 1.5, opacity: 0.5 },
-                tap: { scale: 1.2, opacity: 0.3 },
-                active: { scale: 1.8, opacity: 0.4 }
-            }}
-            transition={{ duration: 0.5 }}
-        />
     </motion.div>
 )
 
