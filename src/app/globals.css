@@ -491,7 +491,16 @@ html.dark.theme-black {
   animation: fade-in-up-fast 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* Global Premium Scrollbar */
+/* Global Premium Scrollbar — Light Gray */
+* {
+  scrollbar-color: rgba(160, 160, 160, 0.4) transparent;
+  scrollbar-width: thin;
+}
+
+.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -502,19 +511,21 @@ html.dark.theme-black {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(127, 13, 242, 0.1);
+  background: rgba(160, 160, 160, 0.35);
   border-radius: 20px;
-  /* transition: all forces recalculation of every CSS property including layout.
-     Scoped to 'background' only — the only property that actually changes on hover. */
   transition: background 0.3s ease;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: rgba(127, 13, 242, 0.2);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(127, 13, 242, 0.4);
+  background: rgba(140, 140, 140, 0.6);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
 }
 
 /* Note card thumbnail — layout-shift-free fade-in
@@ -540,10 +551,16 @@ html.dark.theme-black {
 
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
+  height: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(127, 13, 242, 0.3);
+  background: rgba(160, 160, 160, 0.4);
+  border-radius: 20px;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 /* Styling for headings inside note editor's rich text & previews */
