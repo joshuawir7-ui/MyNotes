@@ -807,7 +807,8 @@ function ToolbarButton({ icon: Icon, label, onClick }: { icon: any, label: strin
 
 /**
  * InlineImageButton — inserts an image at cursor in a contenteditable text block.
- * KEY FIX: Uses base64 data URL directly. file:// URIs are blocked in WebView as img src.
+ * Default styling: inline-block with 48% width so images sit side-by-side natively!
+ * Icon: black in light mode, white in dark mode.
  */
 function InlineImageButton({ language }: { language: string }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -835,8 +836,8 @@ function InlineImageButton({ language }: { language: string }) {
         const reader = new FileReader();
         reader.onloadend = () => {
             const base64 = reader.result as string;
-            // Use base64 directly — file:// URIs are blocked in WebView HTML src attributes
-            const imgHtml = `<img src="${base64}" data-inline-img="1" style="width:100%;max-width:100%;border-radius:12px;display:block;margin:4px 0;cursor:pointer;" alt="imagen" />`;
+            // Use inline-block display by default so multiple images can naturally sit side-by-side!
+            const imgHtml = `<img src="${base64}" data-inline-img="1" style="display:inline-block;vertical-align:top;width:48%;max-width:100%;margin:4px;border-radius:12px;cursor:pointer;" alt="imagen" />`;
             restoreSelection();
             document.execCommand('insertHTML', false, imgHtml);
         };
@@ -857,10 +858,10 @@ function InlineImageButton({ language }: { language: string }) {
                     saveSelection();
                     fileInputRef.current?.click();
                 }}
-                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10"
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10"
                 title={language === 'es' ? 'Insertar imagen en texto' : 'Insert image in text'}
             >
-                <ImageIcon className="w-3.5 h-3.5 text-yellow-500" />
+                <ImageIcon className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
                 <span className="text-[11px] font-bold">Img</span>
             </button>
         </div>
@@ -868,8 +869,12 @@ function InlineImageButton({ language }: { language: string }) {
 }
 
 /**
- * InlineImageOverlay — floating overlay that shows resize (4 corners) and move (center) handles
- * over a selected inline image inside a contenteditable. Uses PointerEvents for touch+mouse.
+ * InlineImageOverlay — floating overlay for selected inline image.
+ * Features:
+ * - Neutral outline & handles (black in light mode, white in dark mode, NO PURPLE)
+ * - Alignment toolbar (Align Left, Center, Align Right, Side-by-side)
+ * - Prominent Delete button 🗑️
+ * - Smart drop logic (place side-by-side next to another image or at caret)
  */
 function InlineImageOverlay({ img, onClose, editorRef }: {
     img: HTMLImageElement;
@@ -877,6 +882,15 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
     editorRef: React.RefObject<HTMLDivElement>;
 }) {
     const [rect, setRect] = useState(() => img.getBoundingClientRect());
+    const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+
+    // Neutral color palette: Light mode zinc-900 / white, Dark mode white / zinc-950
+    const borderCol = isDark ? '#ffffff' : '#18181b';
+    const handleBg = isDark ? '#ffffff' : '#18181b';
+    const handleBorder = isDark ? '#18181b' : '#ffffff';
+    const moveBg = isDark ? 'rgba(255,255,255,0.92)' : 'rgba(24,24,27,0.92)';
+    const moveColor = isDark ? '#18181b' : '#ffffff';
+
     const dragRef = useRef<{
         mode: 'resize' | 'move';
         handle: string;
@@ -901,7 +915,9 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
     useEffect(() => {
         const handler = (e: PointerEvent) => {
             const target = e.target as HTMLElement;
-            if (!img.contains(target) && target !== img) onClose();
+            if (!img.contains(target) && target !== img && !target.closest('.img-overlay-toolbar')) {
+                onClose();
+            }
         };
         const t = setTimeout(() => document.addEventListener('pointerdown', handler), 120);
         return () => { clearTimeout(t); document.removeEventListener('pointerdown', handler); };
@@ -910,6 +926,38 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
     const triggerSave = () => {
         editorRef.current?.dispatchEvent(new Event('input', { bubbles: true }));
         setRect(img.getBoundingClientRect());
+    };
+
+    const handleDelete = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (img.parentNode) {
+            img.parentNode.removeChild(img);
+            triggerSave();
+            onClose();
+        }
+    };
+
+    const setAlign = (alignMode: 'left' | 'center' | 'right' | 'inline') => {
+        if (alignMode === 'left') {
+            img.style.display = 'inline-block';
+            img.style.float = 'left';
+            img.style.margin = '4px 12px 4px 0';
+        } else if (alignMode === 'center') {
+            img.style.display = 'block';
+            img.style.float = 'none';
+            img.style.margin = '8px auto';
+        } else if (alignMode === 'right') {
+            img.style.display = 'inline-block';
+            img.style.float = 'right';
+            img.style.margin = '4px 0 4px 12px';
+        } else if (alignMode === 'inline') {
+            img.style.display = 'inline-block';
+            img.style.float = 'none';
+            img.style.verticalAlign = 'top';
+            img.style.margin = '4px';
+        }
+        triggerSave();
     };
 
     const handleResizeStart = (e: React.PointerEvent, handle: string) => {
@@ -933,7 +981,7 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
         // Ghost preview
         const ghost = document.createElement('div');
-        ghost.style.cssText = `position:fixed;pointer-events:none;z-index:99999;background:rgba(127,13,242,0.15);border:2.5px dashed #7f0df2;border-radius:14px;width:${imgRect.width}px;height:${imgRect.height}px;top:${imgRect.top}px;left:${imgRect.left}px;`;
+        ghost.style.cssText = `position:fixed;pointer-events:none;z-index:99999;background:${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(24,24,27,0.12)'};border:2.5px dashed ${borderCol};border-radius:14px;width:${imgRect.width}px;height:${imgRect.height}px;top:${imgRect.top}px;left:${imgRect.left}px;`;
         document.body.appendChild(ghost);
         ghostRef.current = ghost;
         img.style.opacity = '0.3';
@@ -968,10 +1016,36 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
             img.style.opacity = '1';
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
-            if (Math.sqrt(dx * dx + dy * dy) > 12) {
-                // Find new caret position at drop point
-                let range: Range | null = null;
+            if (Math.sqrt(dx * dx + dy * dy) > 10) {
                 const x = e.clientX, y = e.clientY;
+                // Check if dropping directly over another image
+                const elAtPoint = document.elementFromPoint(x, y);
+                const targetImg = elAtPoint ? elAtPoint.closest('img') as HTMLImageElement | null : null;
+
+                if (targetImg && targetImg !== img && targetImg.parentNode) {
+                    const targetRect = targetImg.getBoundingClientRect();
+                    const clone = img.cloneNode(true) as HTMLImageElement;
+                    // Make sure both are inline-block so they sit side-by-side!
+                    clone.style.display = 'inline-block';
+                    clone.style.verticalAlign = 'top';
+                    clone.style.margin = '4px';
+                    targetImg.style.display = 'inline-block';
+                    targetImg.style.verticalAlign = 'top';
+                    targetImg.style.margin = '4px';
+
+                    img.parentNode?.removeChild(img);
+                    if (x > targetRect.left + targetRect.width / 2) {
+                        targetImg.parentNode.insertBefore(clone, targetImg.nextSibling);
+                    } else {
+                        targetImg.parentNode.insertBefore(clone, targetImg);
+                    }
+                    triggerSave();
+                    onClose();
+                    return;
+                }
+
+                // Caret drop fallback
+                let range: Range | null = null;
                 if ((document as any).caretRangeFromPoint) {
                     range = (document as any).caretRangeFromPoint(x, y);
                 } else if ((document as any).caretPositionFromPoint) {
@@ -980,6 +1054,9 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
                 }
                 if (range && img.parentNode && !img.contains(range.startContainer)) {
                     const clone = img.cloneNode(true) as HTMLImageElement;
+                    clone.style.display = 'inline-block';
+                    clone.style.verticalAlign = 'top';
+                    clone.style.margin = '4px';
                     img.parentNode.removeChild(img);
                     range.insertNode(clone);
                     triggerSave();
@@ -995,9 +1072,9 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
     const PAD = 8;
     const handleStyle = (extra: React.CSSProperties = {}): React.CSSProperties => ({
         position: 'absolute',
-        width: 22, height: 22,
-        background: '#7f0df2',
-        border: '3px solid #fff',
+        width: 20, height: 20,
+        background: handleBg,
+        border: `2.5px solid ${handleBorder}`,
         borderRadius: '50%',
         pointerEvents: 'all',
         touchAction: 'none',
@@ -1021,8 +1098,86 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
                 height: rect.height + PAD * 2,
                 pointerEvents: 'none',
             }}>
-                {/* Selection border */}
-                <div style={{ position: 'absolute', inset: 0, border: '2.5px solid #7f0df2', borderRadius: 16, pointerEvents: 'none', boxShadow: '0 0 0 2px rgba(127,13,242,0.12)' }} />
+                {/* Selection border — neutral dark/white */}
+                <div style={{
+                    position: 'absolute', inset: 0,
+                    border: `2.5px solid ${borderCol}`,
+                    borderRadius: 16,
+                    pointerEvents: 'none',
+                    boxShadow: isDark ? '0 0 0 1.5px rgba(255,255,255,0.2)' : '0 0 0 1.5px rgba(0,0,0,0.15)',
+                }} />
+
+                {/* Floating alignment & action bar above image */}
+                <div
+                    className="img-overlay-toolbar"
+                    style={{
+                        position: 'absolute',
+                        top: -46,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: isDark ? '#18181b' : '#ffffff',
+                        border: `1.5px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}`,
+                        borderRadius: 24,
+                        padding: '3px 8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+                        pointerEvents: 'all',
+                        zIndex: 30,
+                    }}
+                >
+                    <button
+                        onClick={() => setAlign('left')}
+                        style={{ padding: 4, borderRadius: 6, color: isDark ? '#e4e4e7' : '#27272a' }}
+                        title="Alinear izquierda"
+                    >
+                        <AlignLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => setAlign('center')}
+                        style={{ padding: 4, borderRadius: 6, color: isDark ? '#e4e4e7' : '#27272a' }}
+                        title="Centrar"
+                    >
+                        <AlignCenter className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => setAlign('right')}
+                        style={{ padding: 4, borderRadius: 6, color: isDark ? '#e4e4e7' : '#27272a' }}
+                        title="Alinear derecha"
+                    >
+                        <AlignRight className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => setAlign('inline')}
+                        style={{ padding: '2px 6px', borderRadius: 6, fontSize: 11, fontWeight: 700, color: isDark ? '#e4e4e7' : '#27272a' }}
+                        title="Lado a lado (Inline)"
+                    >
+                        ⇄
+                    </button>
+
+                    <div style={{ width: 1, height: 16, background: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)', margin: '0 2px' }} />
+
+                    {/* Delete button */}
+                    <button
+                        onClick={handleDelete}
+                        style={{
+                            padding: '4px 8px',
+                            borderRadius: 14,
+                            background: '#ef4444',
+                            color: '#ffffff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                        }}
+                        title="Eliminar imagen"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                </div>
 
                 {/* Move handle — center */}
                 <div
@@ -1030,16 +1185,16 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
                         position: 'absolute',
                         top: '50%', left: '50%',
                         transform: 'translate(-50%,-50%)',
-                        width: 44, height: 44,
-                        background: 'rgba(127,13,242,0.92)',
-                        border: '3px solid #fff',
+                        width: 42, height: 42,
+                        background: moveBg,
+                        border: `2.5px solid ${handleBorder}`,
                         borderRadius: '50%',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         cursor: 'grab',
                         pointerEvents: 'all',
                         touchAction: 'none',
                         boxShadow: '0 3px 12px rgba(0,0,0,0.4)',
-                        color: '#fff',
+                        color: moveColor,
                         fontSize: 20,
                         userSelect: 'none',
                         zIndex: 20,
@@ -1050,20 +1205,20 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
 
                 {/* Width label */}
                 <div style={{
-                    position: 'absolute', top: PAD + 4, right: PAD + 4,
+                    position: 'absolute', bottom: PAD + 4, right: PAD + 4,
                     fontSize: 10, fontWeight: 700,
-                    background: 'rgba(0,0,0,0.6)', color: '#fff',
+                    background: 'rgba(0,0,0,0.65)', color: '#fff',
                     padding: '2px 6px', borderRadius: 8, pointerEvents: 'none',
                 }}>{Math.round(rect.width)}px</div>
 
                 {/* Corner resize handles */}
-                <div style={handleStyle({ top: -5, left: -5, cursor: 'nw-resize' })} onPointerDown={e => handleResizeStart(e, 'tl')} />
-                <div style={handleStyle({ top: -5, right: -5, cursor: 'ne-resize' })} onPointerDown={e => handleResizeStart(e, 'tr')} />
-                <div style={handleStyle({ bottom: -5, left: -5, cursor: 'sw-resize' })} onPointerDown={e => handleResizeStart(e, 'bl')} />
-                <div style={handleStyle({ bottom: -5, right: -5, cursor: 'se-resize' })} onPointerDown={e => handleResizeStart(e, 'br')} />
+                <div style={handleStyle({ top: -4, left: -4, cursor: 'nw-resize' })} onPointerDown={e => handleResizeStart(e, 'tl')} />
+                <div style={handleStyle({ top: -4, right: -4, cursor: 'ne-resize' })} onPointerDown={e => handleResizeStart(e, 'tr')} />
+                <div style={handleStyle({ bottom: -4, left: -4, cursor: 'sw-resize' })} onPointerDown={e => handleResizeStart(e, 'bl')} />
+                <div style={handleStyle({ bottom: -4, right: -4, cursor: 'se-resize' })} onPointerDown={e => handleResizeStart(e, 'br')} />
                 {/* Edge mid handles */}
-                <div style={handleStyle({ top: -5, left: 'calc(50% - 11px)', cursor: 'n-resize' })} onPointerDown={e => handleResizeStart(e, 'tm')} />
-                <div style={handleStyle({ bottom: -5, left: 'calc(50% - 11px)', cursor: 's-resize' })} onPointerDown={e => handleResizeStart(e, 'bm')} />
+                <div style={handleStyle({ top: -4, left: 'calc(50% - 10px)', cursor: 'n-resize' })} onPointerDown={e => handleResizeStart(e, 'tm')} />
+                <div style={handleStyle({ bottom: -4, left: 'calc(50% - 10px)', cursor: 's-resize' })} onPointerDown={e => handleResizeStart(e, 'bm')} />
             </div>
         </div>,
         document.body
