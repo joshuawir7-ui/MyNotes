@@ -9,6 +9,19 @@
   font-weight: 700 !important;
 }
 
+/* Mobile performance, touch responsiveness & smooth rendering */
+html, body {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior-y: contain;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button, a, [role="button"] {
+  touch-action: manipulation;
+}
+
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
