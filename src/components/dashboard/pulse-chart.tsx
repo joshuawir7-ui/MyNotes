@@ -27,6 +27,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 export function PulseChart() {
     const language = useStore(state => state.language)
     const tasks = useStore(state => state.tasks)
+    const appColor = useStore(state => state.appColor ?? 'purple')
     const t = translations[language].dashboard.charts
 
     const [mounted, setMounted] = useState(false)
@@ -117,8 +118,8 @@ export function PulseChart() {
     return (
         <div className="w-full h-[170px] glass-panel rounded-2xl p-4 relative overflow-hidden group">
             {/* Dynamic background glow */}
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl group-hover:bg-purple-500/30 transition-colors duration-500" />
-            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl group-hover:bg-blue-500/30 transition-colors duration-500" />
+            <div className={`absolute -top-10 -right-10 w-40 h-40 ${appColor === 'black' ? 'bg-black/10 dark:bg-white/10' : 'bg-purple-500/20 group-hover:bg-purple-500/30'} rounded-full blur-3xl transition-colors duration-500`} />
+            <div className={`absolute -bottom-10 -left-10 w-40 h-40 ${appColor === 'black' ? 'bg-black/10 dark:bg-white/10' : 'bg-blue-500/20 group-hover:bg-blue-500/30'} rounded-full blur-3xl transition-colors duration-500`} />
 
             <div className="flex justify-between items-center mb-2 relative z-10 gap-2">
                 <h3 className="text-sm sm:text-base font-semibold text-foreground/90 flex items-center gap-2 whitespace-nowrap shrink-0">
@@ -158,6 +159,13 @@ export function PulseChart() {
                                 <stop offset="50%" stopColor="#ec4899" />
                                 <stop offset="100%" stopColor="#8b5cf6" />
                             </linearGradient>
+                            <linearGradient id="darkPulseGradient" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%" stopColor="#808080" />
+                                <stop offset="25%" stopColor="#757575" />
+                                <stop offset="50%" stopColor="#0A0A0A" />
+                                <stop offset="78%" stopColor="#6E6E6E" />
+                                <stop offset="100%" stopColor="#666666" />
+                            </linearGradient>
                         </defs>
                         <YAxis domain={[-1, 'auto']} hide={true} />
                         <XAxis
@@ -171,16 +179,17 @@ export function PulseChart() {
                         />
                         <Tooltip
                             content={<CustomTooltip />}
-                            cursor={{ stroke: 'rgba(139, 92, 246, 0.2)', strokeWidth: 2 }}
+                            cursor={{ stroke: appColor === 'black' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(139, 92, 246, 0.2)', strokeWidth: 2 }}
                         />
                         <Line
                             key={timeframe} // Force re-animation when changing timeframe
                             type="monotone"
                             dataKey="value"
-                            stroke="url(#gradientPulse)"
+                            stroke={appColor === 'black' ? "url(#darkPulseGradient)" : "url(#gradientPulse)"}
                             strokeWidth={4}
+                            strokeLinecap="round"
                             dot={false}
-                            activeDot={{ r: 6, stroke: '#fff', strokeWidth: 3, fill: '#8b5cf6' }}
+                            activeDot={appColor === 'black' ? { r: 6, stroke: '#fff', strokeWidth: 3, fill: '#0A0A0A' } : { r: 6, stroke: '#fff', strokeWidth: 3, fill: '#8b5cf6' }}
                             animationDuration={1500}
                         />
                     </LineChart>

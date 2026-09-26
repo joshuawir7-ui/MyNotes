@@ -16,6 +16,7 @@ export function DailyFocusWidget() {
     )
     const tasks = useStore(state => state.tasks)
     const language = useStore(state => state.language)
+    const appColor = useStore(state => state.appColor ?? 'purple')
     const t = translations[language].dashboard
 
     const today = getLocalDateString()
@@ -53,37 +54,44 @@ export function DailyFocusWidget() {
     }, [tasks, today, circumference])
 
     return (
-        <div className="glass-panel p-4 sm:p-5 rounded-2xl flex items-center gap-4 sm:gap-6 relative overflow-hidden group w-full min-h-[140px]">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-50" />
+        <div className={`glass-panel p-4 sm:p-5 rounded-2xl flex items-center gap-4 sm:gap-6 relative overflow-hidden group w-full min-h-[140px] ${appColor === 'black' ? 'shadow-[0_2px_15px_rgba(0,0,0,0.08)]' : ''}`}>
+            <div className={`absolute inset-0 ${appColor === 'black' ? 'bg-black/[0.02] dark:bg-white/[0.02]' : 'bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-50'}`} />
 
             {/* Circular Progress */}
             <div className="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 flex items-center justify-center shrink-0">
                 {/* Background Circle */}
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 128 128">
+                    <defs>
+                        <linearGradient id="darkProgressGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#D4D4D8" />
+                            <stop offset="50%" stopColor="#6E6E77" />
+                            <stop offset="100%" stopColor="#000000" />
+                        </linearGradient>
+                    </defs>
                     <circle
                         cx="64"
                         cy="64"
                         r={radius}
-                        stroke="currentColor"
+                        stroke={appColor === 'black' ? "#ECEEEF" : "currentColor"}
                         strokeWidth="8"
                         fill="transparent"
-                        className="text-secondary/30"
+                        className={appColor === 'black' ? "" : "text-secondary/30"}
                     />
                     <circle
                         cx="64"
                         cy="64"
                         r={radius}
-                        stroke="currentColor"
+                        stroke={appColor === 'black' ? "url(#darkProgressGradient)" : "currentColor"}
                         strokeWidth="8"
                         fill="transparent"
                         strokeDasharray={circumference}
                         strokeDashoffset={strokeDashoffset}
-                        className="text-primary transition-all duration-1000 ease-out neon-glow"
+                        className={appColor === 'black' ? "transition-all duration-1000 ease-out" : "text-primary transition-all duration-1000 ease-out neon-glow"}
                         strokeLinecap="round"
                     />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">{percentage}%</span>
+                    <span className={`text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight ${appColor === 'black' ? 'text-black dark:text-white font-black' : ''}`}>{percentage}%</span>
                     <span className="text-[9px] sm:text-[10px] lg:text-xs text-muted-foreground font-bold uppercase tracking-wider">{t.focus}</span>
                 </div>
             </div>

@@ -24,6 +24,7 @@ export default function NotesPage() {
     const loadAllNotes = useStore(state => state.loadAllNotes)
     const unloadNotes = useStore(state => state.unloadNotes)
     const language = useStore(state => state.language)
+    const appColor = useStore(state => state.appColor ?? 'purple')
     const showToast = useStore(state => state.showToast)
     const t = translations[language].pages.notes
     const common = translations[language].common
@@ -251,7 +252,7 @@ export default function NotesPage() {
                                 className="glass-panel p-6 rounded-2xl border-dashed border-white/20 hover:border-primary/50 transition-colors flex flex-col items-center justify-center text-center cursor-pointer min-h-[200px] group relative overflow-hidden"
                             >
                                 <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-4 mx-auto group-hover:bg-primary/20 group-hover:text-primary transition-all">
+                                <div className={`w-12 h-12 rounded-full ${appColor === 'black' ? 'bg-transparent text-foreground' : 'bg-white/5 group-hover:bg-primary/20 group-hover:text-primary'} flex items-center justify-center mb-4 mx-auto transition-all`}>
                                     <Plus className="w-6 h-6" />
                                 </div>
                                 <span className="font-medium">{t.create}</span>

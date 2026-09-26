@@ -11,6 +11,7 @@ export function DashboardHero() {
     const tasks = useStore(state => state.tasks)
     const language = useStore(state => state.language)
     const [mounted, setMounted] = useState(false)
+    const appColor = useStore(state => state.appColor ?? 'purple')
     const t = (translations[language]?.dashboard || translations['en'].dashboard) as any
     const common = (translations[language]?.common || translations['en'].common) as any
 
@@ -44,7 +45,7 @@ export function DashboardHero() {
 
     return (
         <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-black/[0.03] to-transparent dark:from-white/[0.08] dark:to-white/[0.02] border border-black/5 dark:border-white/10 p-8 sm:p-10 mb-8 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/5 group">
-            <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-primary/10 blur-[100px] rounded-full -mr-20 -mt-20 opacity-50 group-hover:opacity-100 transition-opacity" />
+            <div className={`absolute top-0 right-0 w-[40%] h-[40%] ${appColor === 'black' ? 'bg-black/5 dark:bg-white/5' : 'bg-primary/10'} blur-[100px] rounded-full -mr-20 -mt-20 opacity-50 group-hover:opacity-100 transition-opacity`} />
 
             <div className="relative z-10 flex flex-col gap-8">
                 {/* Header Row */}
@@ -77,17 +78,24 @@ export function DashboardHero() {
                     <div className="lg:col-span-3 flex justify-center lg:justify-start">
                         <div className="relative w-40 h-40 flex items-center justify-center">
                             <svg className="w-full h-full transform -rotate-90">
-                                <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/5" />
+                                <defs>
+                                    <linearGradient id="darkProgressGradientHero" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stopColor="#D4D4D8" />
+                                        <stop offset="50%" stopColor="#6E6E77" />
+                                        <stop offset="100%" stopColor="#000000" />
+                                    </linearGradient>
+                                </defs>
+                                <circle cx="80" cy="80" r="70" stroke={appColor === 'black' ? "#ECEEEF" : "currentColor"} strokeWidth="12" fill="transparent" className={appColor === 'black' ? "" : "text-white/5"} />
                                 <circle
-                                    cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="12" fill="transparent"
+                                    cx="80" cy="80" r="70" stroke={appColor === 'black' ? "url(#darkProgressGradientHero)" : "currentColor"} strokeWidth="12" fill="transparent"
                                     strokeDasharray={440}
                                     strokeDashoffset={440 - (percentage / 100) * 440}
-                                    className="text-primary transition-all duration-1000 ease-out drop-shadow-[0_0_12px_rgba(var(--primary-rgb),0.5)]"
+                                    className={appColor === 'black' ? "transition-all duration-1000 ease-out" : "text-primary transition-all duration-1000 ease-out drop-shadow-[0_0_12px_rgba(var(--primary-rgb),0.5)]"}
                                     strokeLinecap="round"
                                 />
                             </svg>
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-4xl font-black tracking-tighter">{percentage}%</span>
+                                <span className={`text-4xl font-black tracking-tighter ${appColor === 'black' ? 'text-black dark:text-white' : ''}`}>{percentage}%</span>
                                 <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em]">{t.tasks}</span>
                             </div>
                         </div>

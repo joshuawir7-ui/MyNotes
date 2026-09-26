@@ -92,6 +92,7 @@ function NotePreviewRenderer({ note, isPinned = false }: { note: Note; isPinned?
 
 export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => void }) {
     const language = useStore(state => state.language);
+    const appColor = useStore(state => state.appColor ?? 'purple');
     const pinnedNoteId = useStore(state => state.pinnedNoteId);
     // For the pinned note and recent note we need full Note objects, but use shallow to avoid
     // re-renders when unrelated notes change their lastUpdated or internal state
@@ -222,7 +223,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
                 >
                     <div className="flex items-center justify-between mb-2 md:mb-4 shrink-0">
                         <div className="flex items-center gap-1.5 md:gap-2">
-                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0">
+                            <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full ${appColor === 'black' ? 'bg-transparent text-foreground' : 'bg-primary/20 text-primary'} flex items-center justify-center shrink-0`}>
                                 <StickyNote className="w-3.5 h-3.5 md:w-4 md:h-4" />
                             </div>
                         </div>
@@ -289,7 +290,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
                 {/* Calendar Events Module - Takes 2 columns */}
                 <div className="col-span-2 glass-panel p-3 md:p-5 rounded-3xl flex flex-col h-[150px] md:h-[180px] relative overflow-hidden border border-white/5">
                     <div className="flex items-center justify-center mb-2 md:mb-4 shrink-0">
-                        <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 shrink-0">
+                        <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full ${appColor === 'black' ? 'bg-transparent text-foreground' : 'bg-blue-500/20 text-blue-500'} flex items-center justify-center shrink-0`}>
                             <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />
                         </div>
                     </div>
@@ -351,7 +352,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
             {recentNote && recentNote.id !== pinnedNoteId && (
                 <div className="glass-panel p-3 md:p-4 rounded-3xl flex flex-col h-[140px] relative overflow-hidden border border-white/5">
                     <div className="flex items-center gap-2 mb-2 shrink-0">
-                        <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-500">
+                        <div className={`w-8 h-8 rounded-full ${appColor === 'black' ? 'bg-transparent text-foreground' : 'bg-purple-500/20 text-purple-500'} flex items-center justify-center`}>
                             <History className="w-4 h-4" />
                         </div>
                     </div>

@@ -88,6 +88,7 @@ const CustomTooltip = ({ active, payload, language, viewMode }: any) => {
 
 export function WeeklyProgressChart() {
     const language = useStore(state => state.language)
+    const appColor = useStore(state => state.appColor ?? 'purple')
     const dailySnapshots = useStore(state => state.dailySnapshots)
     const timerIsActive = useStore(state => state.timer?.isActive)
     const tasks = useStore(state => state.tasks)
@@ -419,6 +420,26 @@ export function WeeklyProgressChart() {
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <ComposedChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                             <defs>
+                                {/* Degradado horizontal para la línea en negro (Gris -> Negro -> Gris) */}
+                                <linearGradient id="darkStrokeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor="#808080" />
+                                    <stop offset="25%" stopColor="#757575" />
+                                    <stop offset="50%" stopColor="#0A0A0A" />
+                                    <stop offset="78%" stopColor="#6E6E6E" />
+                                    <stop offset="100%" stopColor="#666666" />
+                                </linearGradient>
+
+                                {/* Degradado vertical para el relleno inferior */}
+                                <linearGradient id="darkFillGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" stopColor="#4A4A4A" stopOpacity={0.45} />
+                                    <stop offset="55%" stopColor="#8A8A8A" stopOpacity={0.18} />
+                                    <stop offset="100%" stopColor="#FFFFFF" stopOpacity={0.0} />
+                                </linearGradient>
+
+                                <filter id="darkGlowWeekly" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000000" floodOpacity="0.25" />
+                                </filter>
+
                                 <linearGradient id="lineColor" x1="0" y1="0" x2="1" y2="0">
                                     <stop offset="0%" stopColor="#8b5cf6" />
                                     <stop offset="100%" stopColor="#ec4899" />
@@ -452,7 +473,7 @@ export function WeeklyProgressChart() {
                                             if (isToday) {
                                                 return (
                                                     <g transform={`translate(${x},${y})`}>
-                                                        <circle cx={0} cy={25} r={2} fill="#ec4899" />
+                                                        <circle cx={0} cy={25} r={2} fill={appColor === 'black' ? "#0A0A0A" : "#ec4899"} />
                                                     </g>
                                                 );
                                             }
@@ -467,14 +488,14 @@ export function WeeklyProgressChart() {
                                                 y={0}
                                                 dy={16}
                                                 textAnchor="middle"
-                                                fill={isToday ? "#ec4899" : "#888888"}
+                                                fill={isToday ? (appColor === 'black' ? (typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? "#ffffff" : "#000000") : "#ec4899") : "#888888"}
                                                 fontWeight={isToday ? "bold" : "normal"}
                                                 className="text-[10px]"
                                             >
                                                 {payload.value}
                                             </text>
                                             {isToday && (
-                                                <circle cx={0} cy={25} r={2} fill="#ec4899" />
+                                                <circle cx={0} cy={25} r={2} fill={appColor === 'black' ? "#0A0A0A" : "#ec4899"} />
                                             )}
                                         </g>
                                     );
@@ -497,7 +518,7 @@ export function WeeklyProgressChart() {
                                 type="monotone"
                                 dataKey="progress"
                                 stroke="none"
-                                fill="url(#areaColor)"
+                                fill={appColor === 'black' ? "url(#darkFillGradient)" : "url(#areaColor)"}
                                 animationDuration={2000}
                             />
 
@@ -515,12 +536,13 @@ export function WeeklyProgressChart() {
                             <Line
                                 type="monotone"
                                 dataKey="progress"
-                                stroke="url(#lineColor)"
-                                strokeWidth={showTimer ? 3 : 4}
+                                stroke={appColor === 'black' ? "url(#darkStrokeGradient)" : "url(#lineColor)"}
+                                strokeWidth={appColor === 'black' ? 3.5 : (showTimer ? 3 : 4)}
+                                strokeLinecap="round"
                                 dot={false}
-                                activeDot={{ r: 6, fill: '#fff', stroke: '#ec4899', strokeWidth: 2 }}
+                                activeDot={appColor === 'black' ? { r: 6, fill: '#fff', stroke: '#0A0A0A', strokeWidth: 2 } : { r: 6, fill: '#fff', stroke: '#ec4899', strokeWidth: 2 }}
                                 animationDuration={1800}
-                                filter="url(#glowWeekly)"
+                                filter={appColor === 'black' ? "url(#darkGlowWeekly)" : "url(#glowWeekly)"}
                             />
                         </ComposedChart>
                     </ResponsiveContainer>

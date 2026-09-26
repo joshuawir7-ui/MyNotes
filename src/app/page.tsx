@@ -25,6 +25,7 @@ const DashboardWidgets = dynamic(() => import("@/components/dashboard/dashboard-
 export default function Home() {
   const router = useRouter();
   const language = useStore(state => state.language);
+  const appColor = useStore(state => state.appColor ?? 'purple');
   const addNote = useStore(state => state.addNote);
   // Atomic selectors: tasks and goals use shallow to prevent re-render cascades
   const tasks = useStore(useShallow((state) => state.tasks));
@@ -340,10 +341,26 @@ export default function Home() {
               <div className="glass-panel p-4 rounded-3xl flex flex-col items-center justify-center gap-0 h-32 w-full">
                 <div className="relative w-20 h-20 flex items-center justify-center">
                   <svg className="w-full h-full transform -rotate-90">
-                    <circle cx="40" cy="40" r="32" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-secondary/30" />
-                    <circle cx="40" cy="40" r="32" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray="201" strokeDashoffset={201 - (percentage / 100) * 201} className="text-primary neon-glow" strokeLinecap="round" />
+                    <defs>
+                      <linearGradient id="darkProgressGradientMobile" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#D4D4D8" />
+                        <stop offset="50%" stopColor="#6E6E77" />
+                        <stop offset="100%" stopColor="#000000" />
+                      </linearGradient>
+                    </defs>
+                    <circle cx="40" cy="40" r="32" stroke={appColor === 'black' ? "#ECEEEF" : "currentColor"} strokeWidth="6" fill="transparent" className={appColor === 'black' ? "" : "text-secondary/30"} />
+                    <circle
+                      cx="40" cy="40" r="32"
+                      stroke={appColor === 'black' ? "url(#darkProgressGradientMobile)" : "currentColor"}
+                      strokeWidth="6"
+                      fill="transparent"
+                      strokeDasharray="201"
+                      strokeDashoffset={201 - (percentage / 100) * 201}
+                      className={appColor === 'black' ? "transition-all duration-1000 ease-out" : "text-primary neon-glow"}
+                      strokeLinecap="round"
+                    />
                   </svg>
-                  <span className="absolute text-xl font-bold">{percentage}%</span>
+                  <span className={`absolute text-xl font-bold ${appColor === 'black' ? 'text-black dark:text-white font-black' : ''}`}>{percentage}%</span>
                 </div>
               </div>
             </Reveal>
@@ -353,7 +370,7 @@ export default function Home() {
                 onClick={handleNewNote}
                 className="glass-panel p-4 rounded-3xl flex flex-col items-center justify-center gap-2 h-32 w-full hover:bg-primary/5 transition-all text-center group active:scale-95"
               >
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary shadow-sm group-hover:scale-110 transition-transform">
+                <div className={`w-12 h-12 rounded-full ${appColor === 'black' ? 'bg-transparent text-foreground' : 'bg-primary/20 text-primary'} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform`}>
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                   </svg>

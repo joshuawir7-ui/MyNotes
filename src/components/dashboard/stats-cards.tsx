@@ -24,6 +24,7 @@ export function StatsCards() {
     )
     const toggleTask = useStore(state => state.toggleTask)
     const language = useStore(state => state.language)
+    const appColor = useStore(state => state.appColor ?? 'purple')
     const [mounted, setMounted] = useState(false)
     const [activeModal, setActiveModal] = useState<'completed' | 'focus' | 'streak' | null>(null)
 
@@ -79,9 +80,9 @@ export function StatsCards() {
                         className={`glass-panel rounded-2xl p-4 sm:p-5 flex flex-col items-center justify-center gap-2 sm:gap-3 hover:scale-105 transition-all duration-300 cursor-pointer group relative overflow-hidden text-center w-full active:scale-95 ${stat.hoverBorder}`}
                     >
                         {/* Subtle gradient background */}
-                        <div className={`absolute inset-0 bg-gradient-to-br ${stat.bg} opacity-20 group-hover:opacity-35 transition-opacity`} />
+                        <div className={`absolute inset-0 bg-gradient-to-br ${stat.bg} ${appColor === 'black' ? 'opacity-0' : 'opacity-20 group-hover:opacity-35'} transition-opacity`} />
 
-                        <div className={`p-2.5 sm:p-3 rounded-full bg-background/90 dark:bg-zinc-800/90 border border-black/5 dark:border-white/5 shadow-sm relative z-10 group-hover:shadow-[0_0_15px_rgba(127,13,242,0.3)] transition-all group-hover:scale-110`}>
+                        <div className={`p-2.5 sm:p-3 rounded-full ${appColor === 'black' ? 'bg-transparent border-none shadow-none' : 'bg-background/90 dark:bg-zinc-800/90 border border-black/5 dark:border-white/5 shadow-sm'} relative z-10 group-hover:shadow-[0_0_15px_rgba(127,13,242,0.3)] transition-all group-hover:scale-110`}>
                             <stat.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${stat.color}`} />
                         </div>
                         <div className="text-xl sm:text-2xl font-bold tracking-tight relative z-10">{stat.value}</div>
