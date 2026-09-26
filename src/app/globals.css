@@ -518,29 +518,33 @@ html.dark.theme-black {
   background: rgba(127, 13, 242, 0.3);
 }
 
-/* Styling for headings inside note editor's rich text */
+/* Styling for headings inside note editor's rich text & previews */
 .rich-text-editor h1 {
-  font-size: 1.75rem;
+  font-size: 1.6em;
   font-weight: 800;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-  line-height: 1.2;
-}
-
-.rich-text-editor h2 {
-  font-size: 1.4rem;
-  font-weight: 700;
-  margin-top: 0.85rem;
-  margin-bottom: 0.4rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.35rem;
   line-height: 1.25;
 }
 
-.rich-text-editor h3 {
-  font-size: 1.15rem;
-  font-weight: 600;
-  margin-top: 0.7rem;
+.rich-text-editor h2 {
+  font-size: 1.35em;
+  font-weight: 700;
+  margin-top: 0.45rem;
   margin-bottom: 0.3rem;
+  line-height: 1.28;
+}
+
+.rich-text-editor h3 {
+  font-size: 1.15em;
+  font-weight: 600;
+  margin-top: 0.4rem;
+  margin-bottom: 0.25rem;
   line-height: 1.3;
+}
+
+.note-font-container {
+  font-family: var(--note-font-family, inherit) !important;
 }
 
 .rich-text-editor p {

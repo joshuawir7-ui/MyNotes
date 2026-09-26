@@ -576,7 +576,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                 <div
                     ref={contentContainerRef}
                     onScroll={handleScroll}
-                    className="flex-1 overflow-y-auto p-5 md:p-8 space-y-2"
+                    className="flex-1 overflow-y-auto p-5 md:p-8 space-y-2 note-font-container"
                 >
 
                     {blocks.length === 0 && (

@@ -137,6 +137,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const appColor = useStore(state => state.appColor)
     const { theme, resolvedTheme } = useTheme()
 
+    const noteFontFamily = useStore(state => state.noteFontFamily ?? 'default');
+    const customFonts = useStore(state => state.customFonts || []);
+
     useEffect(() => {
         if (typeof document !== 'undefined') {
             if (appColor === 'black') {
@@ -146,6 +149,35 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             }
         }
     }, [appColor]);
+
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+
+        let styleTag = document.getElementById('custom-note-fonts-style') as HTMLStyleElement | null;
+        if (!styleTag) {
+            styleTag = document.createElement('style');
+            styleTag.id = 'custom-note-fonts-style';
+            document.head.appendChild(styleTag);
+        }
+
+        let cssRules = '';
+        for (const font of customFonts) {
+            if (font.name && font.dataUrl) {
+                cssRules += `@font-face { font-family: "${font.name}"; src: url("${font.dataUrl}"); font-display: swap; }\n`;
+            }
+        }
+        styleTag.textContent = cssRules;
+
+        let fontVal = 'inherit';
+        if (noteFontFamily === 'serif') fontVal = 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif';
+        else if (noteFontFamily === 'monospace') fontVal = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+        else if (noteFontFamily === 'cursive') fontVal = 'var(--font-dancing-script), cursive';
+        else if (noteFontFamily !== 'default' && noteFontFamily) {
+            fontVal = noteFontFamily.startsWith('var(') || noteFontFamily.includes(',') ? noteFontFamily : `"${noteFontFamily}", sans-serif`;
+        }
+
+        document.documentElement.style.setProperty('--note-font-family', fontVal);
+    }, [noteFontFamily, customFonts]);
 
     useEffect(() => {
         if (isNative) {

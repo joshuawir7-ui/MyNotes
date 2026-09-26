@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence, Variants } from "framer-motion"
-import { Settings, Bell, X, Download, Upload, Zap, Cloud, LogOut, RefreshCw, Loader2, Sparkles } from "lucide-react"
+import { Settings, Bell, X, Download, Upload, Zap, Cloud, LogOut, RefreshCw, Loader2, Sparkles, Type, Plus, Trash2, FolderPlus } from "lucide-react"
 import { useStore, readAllNotesFromDisk, readAllTasksFromDisk } from "@/lib/store"
 import { translations } from "@/lib/translations"
 import { ModeToggle } from "@/components/ui/mode-toggle"
@@ -17,11 +17,17 @@ export function SettingsDialog() {
     const [isOpen, setIsOpen] = useState(false)
     const [mounted, setMounted] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const fontInputRef = useRef<HTMLInputElement>(null)
     const router = useRouter()
     const language = useStore(state => state.language)
     const setLanguage = useStore(state => state.setLanguage)
     const appColor = useStore(state => state.appColor ?? 'purple')
     const setAppColor = useStore(state => state.setAppColor)
+    const noteFontFamily = useStore(state => state.noteFontFamily ?? 'default')
+    const customFonts = useStore(state => state.customFonts || [])
+    const setNoteFontFamily = useStore(state => state.setNoteFontFamily)
+    const addCustomFont = useStore(state => state.addCustomFont)
+    const removeCustomFont = useStore(state => state.removeCustomFont)
     const notificationsEnabled = useStore(state => state.notificationsEnabled)
     const setNotificationsEnabled = useStore(state => state.setNotificationsEnabled)
     const focusEffectEnabled = useStore(state => state.focusEffectEnabled)
@@ -425,6 +431,46 @@ export function SettingsDialog() {
             setIsRecovering(false);
         }
     };
+
+    const handleFontFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        if (!['ttf', 'otf', 'woff', 'woff2'].includes(ext || '')) {
+            showNotif(
+                language === 'es' ? 'Archivo de fuente inválido' : 'Invalid font file',
+                language === 'es' ? 'Por favor selecciona un archivo .ttf, .otf, .woff o .woff2' : 'Please select a .ttf, .otf, .woff, or .woff2 file',
+                'error'
+            );
+            return;
+        }
+
+        const fontName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_\-\s]/g, "").trim() || "Fuente Personalizada";
+        const reader = new FileReader();
+
+        reader.onload = (event) => {
+            const dataUrl = event.target?.result as string;
+            if (dataUrl) {
+                const newFont = {
+                    id: `font_${Date.now()}`,
+                    name: fontName,
+                    dataUrl: dataUrl,
+                    format: ext === 'ttf' ? 'truetype' : ext === 'otf' ? 'opentype' : ext as string
+                };
+                addCustomFont(newFont);
+                setNoteFontFamily(newFont.name);
+                showToast(
+                    language === 'es' ? `Fuente "${fontName}" añadida` : `Font "${fontName}" added`,
+                    'success'
+                );
+            }
+        };
+
+        reader.readAsDataURL(file);
+        if (e.target) e.target.value = '';
+    };
+
 
     const handleExport = async () => {
         const state = useStore.getState();
@@ -915,6 +961,138 @@ export function SettingsDialog() {
                                                     <span>{language === 'es' ? "Negro" : "Black"}</span>
                                                 </button>
                                             </div>
+                                        </div>
+
+                                        {/* Fuentes de letras en Notas */}
+                                        <div className="flex flex-col gap-3 p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Type className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                                                        {language === 'es' ? "Fuentes de letras en Notas" : "Note Font Family"}
+                                                    </p>
+                                                </div>
+                                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                                    {noteFontFamily === 'default'
+                                                        ? (language === 'es' ? "Sistema" : "System")
+                                                        : noteFontFamily}
+                                                </span>
+                                            </div>
+
+                                            {/* Font Presets Grid */}
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setNoteFontFamily('default')}
+                                                    className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col gap-1 items-start transition-all cursor-pointer ${
+                                                        noteFontFamily === 'default'
+                                                            ? "bg-purple-600/10 border-purple-600 text-purple-600 dark:text-purple-400 shadow-sm ring-1 ring-purple-600/30"
+                                                            : "bg-black/5 dark:bg-white/5 border-transparent text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10"
+                                                    }`}
+                                                >
+                                                    <span className="font-sans text-sm font-bold">Aa</span>
+                                                    <span>{language === 'es' ? "Sistema" : "System"}</span>
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setNoteFontFamily('serif')}
+                                                    className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col gap-1 items-start transition-all cursor-pointer ${
+                                                        noteFontFamily === 'serif'
+                                                            ? "bg-purple-600/10 border-purple-600 text-purple-600 dark:text-purple-400 shadow-sm ring-1 ring-purple-600/30"
+                                                            : "bg-black/5 dark:bg-white/5 border-transparent text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10"
+                                                    }`}
+                                                >
+                                                    <span className="font-serif text-sm font-bold">Aa</span>
+                                                    <span>Serif</span>
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setNoteFontFamily('monospace')}
+                                                    className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col gap-1 items-start transition-all cursor-pointer ${
+                                                        noteFontFamily === 'monospace'
+                                                            ? "bg-purple-600/10 border-purple-600 text-purple-600 dark:text-purple-400 shadow-sm ring-1 ring-purple-600/30"
+                                                            : "bg-black/5 dark:bg-white/5 border-transparent text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10"
+                                                    }`}
+                                                >
+                                                    <span className="font-mono text-sm font-bold">Aa</span>
+                                                    <span>{language === 'es' ? "Mononavegador" : "Monospace"}</span>
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setNoteFontFamily('cursive')}
+                                                    className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col gap-1 items-start transition-all cursor-pointer ${
+                                                        noteFontFamily === 'cursive'
+                                                            ? "bg-purple-600/10 border-purple-600 text-purple-600 dark:text-purple-400 shadow-sm ring-1 ring-purple-600/30"
+                                                            : "bg-black/5 dark:bg-white/5 border-transparent text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10"
+                                                    }`}
+                                                >
+                                                    <span className="font-serif italic text-sm font-bold">Aa</span>
+                                                    <span>{language === 'es' ? "Cursiva" : "Cursive"}</span>
+                                                </button>
+                                            </div>
+
+                                            {/* Custom Uploaded Fonts List */}
+                                            {customFonts.length > 0 && (
+                                                <div className="flex flex-col gap-1.5 mt-1">
+                                                    <p className="text-[11px] text-muted-foreground font-semibold">
+                                                        {language === 'es' ? "Fuentes personalizadas:" : "Custom fonts:"}
+                                                    </p>
+                                                    <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto pr-1">
+                                                        {customFonts.map((font) => (
+                                                            <div
+                                                                key={font.id}
+                                                                className={`flex items-center justify-between p-2 rounded-xl border text-xs font-medium transition-all ${
+                                                                    noteFontFamily === font.name
+                                                                        ? "bg-purple-600/10 border-purple-600 text-purple-600 dark:text-purple-400"
+                                                                        : "bg-black/5 dark:bg-white/5 border-transparent text-muted-foreground"
+                                                                }`}
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setNoteFontFamily(font.name)}
+                                                                    className="flex-1 text-left truncate cursor-pointer font-medium"
+                                                                    style={{ fontFamily: font.name }}
+                                                                >
+                                                                    {font.name}
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        removeCustomFont(font.id);
+                                                                        if (noteFontFamily === font.name) {
+                                                                            setNoteFontFamily('default');
+                                                                        }
+                                                                    }}
+                                                                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-500/10 rounded-lg transition-all ml-2"
+                                                                    title={language === 'es' ? "Eliminar fuente" : "Remove font"}
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Upload Custom Font Button */}
+                                            <input
+                                                type="file"
+                                                ref={fontInputRef}
+                                                accept=".ttf,.otf,.woff,.woff2"
+                                                className="hidden"
+                                                onChange={handleFontFileUpload}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => fontInputRef.current?.click()}
+                                                className="w-full flex items-center justify-center gap-2 p-2.5 bg-black/10 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/15 text-black dark:text-white rounded-xl font-bold transition-all text-xs cursor-pointer mt-1"
+                                            >
+                                                <Plus className="w-3.5 h-3.5" />
+                                                <span>{language === 'es' ? "Añadir fuente desde almacenamiento" : "Add font from storage"}</span>
+                                            </button>
                                         </div>
 
                                         {/* Guided Onboarding Replay */}

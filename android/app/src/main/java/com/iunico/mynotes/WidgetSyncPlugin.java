@@ -128,6 +128,7 @@ public class WidgetSyncPlugin extends Plugin {
         String notificationsEnabled = call.getString("notificationsEnabled");
         String isDarkMode = call.getString("isDarkMode");
         String pinnedNoteId = call.getString("pinnedNoteId");
+        String noteFontFamily = call.getString("noteFontFamily");
         Boolean priorityRemindersEnabled = call.getBoolean("priorityRemindersEnabled");
         String priorityReminderSlots = call.getString("priorityReminderSlots");
 
@@ -144,6 +145,7 @@ public class WidgetSyncPlugin extends Plugin {
         if (notificationsEnabled != null) editor.putString("notificationsEnabled", notificationsEnabled);
         if (isDarkMode != null) editor.putString("isDarkMode", isDarkMode);
         if (pinnedNoteId != null) editor.putString("pinnedNoteId", pinnedNoteId);
+        if (noteFontFamily != null) editor.putString("noteFontFamily", noteFontFamily);
         if (priorityRemindersEnabled != null) editor.putBoolean("priority_reminders_enabled", priorityRemindersEnabled);
         if (priorityReminderSlots != null) editor.putString("priority_reminder_slots", priorityReminderSlots);
         

@@ -26,7 +26,7 @@ function NotePreviewRenderer({ note, isPinned = false }: { note: Note; isPinned?
     };
 
     return (
-        <div className={`flex flex-col ${isPinned ? 'gap-1.5 md:gap-2' : 'gap-4'}`} onClick={handleLinkClick}>
+        <div className={`flex flex-col note-font-container ${isPinned ? 'gap-1.5 md:gap-2' : 'gap-4'}`} onClick={handleLinkClick}>
 
             {note.blocks.map(block => {
                 if (block.type === 'text') {
@@ -280,7 +280,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
                             </div>
                         ) : (
                             <div className="flex flex-col gap-1 md:gap-1.5 pb-2">
-                                <h3 className="font-bold text-sm md:text-base line-clamp-2 group-hover:text-primary transition-colors">{pinnedNote.title || noteTranslations.untitled}</h3>
+                                <h3 className="font-bold text-sm md:text-base line-clamp-2 group-hover:text-primary transition-colors note-font-container">{pinnedNote.title || noteTranslations.untitled}</h3>
                                 <NotePreviewRenderer note={pinnedNote} isPinned={true} />
                             </div>
                         )}
@@ -358,7 +358,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 cursor-pointer group" onClick={() => onOpenNote(recentNote)}>
                         <div className="flex flex-col gap-1.5 pb-2">
-                            <h3 className="font-bold text-base md:text-lg line-clamp-1 group-hover:text-primary transition-colors">{recentNote.title || noteTranslations.untitled}</h3>
+                            <h3 className="font-bold text-base md:text-lg line-clamp-1 group-hover:text-primary transition-colors note-font-container">{recentNote.title || noteTranslations.untitled}</h3>
                             <NotePreviewRenderer note={recentNote} />
                         </div>
                     </div>

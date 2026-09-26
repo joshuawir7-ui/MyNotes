@@ -13,7 +13,7 @@ import { BackgroundTask } from '@capawesome/capacitor-background-task'
 const isNative = Capacitor.isNativePlatform();
 
 export const WidgetSync = registerPlugin<{
-    updateWidgetData: (data: { goals?: string, appointments?: string, notes?: string, tasks?: string, dailySnapshots?: string, notificationsEnabled?: string, isDarkMode?: string, pinnedNoteId?: string, priorityRemindersEnabled?: boolean, priorityReminderSlots?: string }) => Promise<void>;
+    updateWidgetData: (data: { goals?: string, appointments?: string, notes?: string, tasks?: string, dailySnapshots?: string, notificationsEnabled?: string, isDarkMode?: string, pinnedNoteId?: string, priorityRemindersEnabled?: boolean, priorityReminderSlots?: string, noteFontFamily?: string }) => Promise<void>;
     showHabitNotification: (data: { tasks: string }) => Promise<void>;
     getTasks: () => Promise<{ tasks: string }>;
     getNotes: () => Promise<{ notes: string }>;
@@ -727,6 +727,7 @@ let lastSyncedIsDarkMode: string | null = null;
 let lastSyncedPinnedNoteId: string | null = null;
 let lastSyncedPriorityRemindersEnabled: boolean | null = null;
 let lastSyncedPriorityReminderSlots: string | null = null;
+let lastSyncedNoteFontFamily: string | null = null;
 
 export const syncWidgetData = async (goals?: any[], appointments?: any[], notes?: any[], tasks?: any[], immediate = false) => {
     if (!isNative) return;
@@ -746,6 +747,7 @@ export const syncWidgetData = async (goals?: any[], appointments?: any[], notes?
             const isDark = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false;
             const currentIsDarkMode = isDark ? "true" : "false";
             const currentPinnedNoteId = state.pinnedNoteId;
+            const currentNoteFontFamily = state.noteFontFamily || "default";
 
             const updatePayload: any = {};
 
@@ -807,6 +809,11 @@ export const syncWidgetData = async (goals?: any[], appointments?: any[], notes?
             if (currentPinnedNoteId !== lastSyncedPinnedNoteId) {
                 updatePayload.pinnedNoteId = currentPinnedNoteId || "";
                 lastSyncedPinnedNoteId = currentPinnedNoteId;
+            }
+
+            if (currentNoteFontFamily !== lastSyncedNoteFontFamily) {
+                updatePayload.noteFontFamily = currentNoteFontFamily;
+                lastSyncedNoteFontFamily = currentNoteFontFamily;
             }
 
             if (state.priorityReminderSettings) {
@@ -1077,6 +1084,11 @@ interface AppState {
     taskGroups: TaskGroup[]
     celebration: { groupId: string, title: string } | null
     focusEffectEnabled: boolean
+    noteFontFamily: string
+    customFonts: Array<{ name: string; dataUrl: string }>
+    setNoteFontFamily: (fontFamily: string) => void
+    addCustomFont: (font: { name: string; dataUrl: string }) => void
+    removeCustomFont: (fontName: string) => void
     priorityReminderSettings: {
         enabled: boolean
         slots: string[] // ["12:00", "19:00", "22:00"] in HH:mm 24h format
@@ -1758,6 +1770,28 @@ export const useStore = create<AppState>()(
                 taskGroups: [],
                 celebration: null,
                 focusEffectEnabled: true,
+                noteFontFamily: 'default',
+                customFonts: [],
+                setNoteFontFamily: (fontFamily: string) => {
+                    set({ noteFontFamily: fontFamily });
+                    syncWidgetData(undefined, undefined, undefined, undefined, true).catch(console.error);
+                },
+                addCustomFont: (font: { name: string; dataUrl: string }) => {
+                    set((state) => {
+                        const exists = (state.customFonts || []).some(f => f.name === font.name);
+                        const newFonts = exists ? state.customFonts : [...(state.customFonts || []), font];
+                        return { customFonts: newFonts, noteFontFamily: font.name };
+                    });
+                    syncWidgetData(undefined, undefined, undefined, undefined, true).catch(console.error);
+                },
+                removeCustomFont: (fontName: string) => {
+                    set((state) => {
+                        const newFonts = (state.customFonts || []).filter(f => f.name !== fontName);
+                        const newActiveFont = state.noteFontFamily === fontName ? 'default' : state.noteFontFamily;
+                        return { customFonts: newFonts, noteFontFamily: newActiveFont };
+                    });
+                    syncWidgetData(undefined, undefined, undefined, undefined, true).catch(console.error);
+                },
                 appColor: 'purple',
                 setAppColor: (color) => {
                     set({ appColor: color });

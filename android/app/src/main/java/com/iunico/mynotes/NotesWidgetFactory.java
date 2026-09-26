@@ -170,11 +170,16 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
                             // Replace break tags with newline
                             textContent = textContent.replaceAll("(?i)<br\\s*/?>", "\n");
                             
-                            // Replace block transitions </tag><tag> (with optional whitespace) with newline
-                            textContent = textContent.replaceAll("(?i)</(p|div|h[1-6]|li)>\\s*<(p|div|h[1-6]|li)[^>]*>", "\n");
-                            
-                            // Replace remaining opening/closing block tags with newline
-                            textContent = textContent.replaceAll("(?i)</?(p|div|h[1-6]|li)[^>]*>", "\n");
+                            // Standardize header tags
+                            textContent = textContent.replaceAll("(?i)<h1[^>]*>", "<h1>").replaceAll("(?i)</h1>", "</h1>");
+                            textContent = textContent.replaceAll("(?i)<h2[^>]*>", "<h2>").replaceAll("(?i)</h2>", "</h2>");
+                            textContent = textContent.replaceAll("(?i)<h3[^>]*>", "<h3>").replaceAll("(?i)</h3>", "</h3>");
+
+                            // Insert newlines between block transitions while preserving header tags
+                            textContent = textContent.replaceAll("(?i)</h([1-6])>\\s*", "</h$1>\n");
+                            textContent = textContent.replaceAll("(?i)\\s*<h([1-6])>", "\n<h$1>");
+                            textContent = textContent.replaceAll("(?i)</(p|div|li)>\\s*<(p|div|li)[^>]*>", "\n");
+                            textContent = textContent.replaceAll("(?i)</?(p|div|li)[^>]*>", "\n");
                             
                             String[] rawLines = textContent.split("\n", -1);
                             List<String> processedLines = new ArrayList<>();
@@ -512,6 +517,21 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
         // Standardize common HTML tags
         plainText = plainText.replaceAll("(?i)<strong[^>]*>", "<b>").replaceAll("(?i)</strong>", "</b>");
         plainText = plainText.replaceAll("(?i)<em[^>]*>", "<i>").replaceAll("(?i)</em>", "</i>");
+
+        // Format headers explicitly for Android Html.fromHtml (bold + distinct font sizes)
+        plainText = plainText.replaceAll("(?is)<h1[^>]*>(.*?)</h1>", "<h1><b><font size=\"6\">$1</font></b></h1>");
+        plainText = plainText.replaceAll("(?is)<h2[^>]*>(.*?)</h2>", "<h2><b><font size=\"5\">$1</font></b></h2>");
+        plainText = plainText.replaceAll("(?is)<h3[^>]*>(.*?)</h3>", "<h3><b><font size=\"4\">$1</font></b></h3>");
+
+        // Apply custom font family face if set
+        String noteFontFamily = prefs.getString("noteFontFamily", "default");
+        if (noteFontFamily != null && !noteFontFamily.isEmpty() && !"default".equals(noteFontFamily)) {
+            String fontFace = getFontFaceForWidget(noteFontFamily);
+            if (fontFace != null && !fontFace.isEmpty()) {
+                plainText = "<font face=\"" + fontFace + "\">" + plainText + "</font>";
+            }
+        }
+
         plainText = plainText.replace("&nbsp;", " ").replace("&nbsp", " ").replace("\u00A0", " ").trim();
 
         // Convert plain text URLs to <a> tags
@@ -525,6 +545,16 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
             }
         }
         return plainText;
+    }
+
+    private String getFontFaceForWidget(String family) {
+        if (family == null || family.isEmpty() || "default".equals(family)) return null;
+        String lower = family.toLowerCase();
+        if (lower.contains("serif")) return "serif";
+        if (lower.contains("monospace") || lower.contains("mono")) return "monospace";
+        if (lower.contains("cursive") || lower.contains("dancing") || lower.contains("handwriting")) return "cursive";
+        if (lower.contains("sans")) return "sans-serif";
+        return family;
     }
 
     private String linkifyTextInJava(String text) {
