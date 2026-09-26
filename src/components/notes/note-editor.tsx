@@ -889,6 +889,82 @@ function InlineImageButton({ language }: { language: string }) {
 }
 
 /**
+ * Asynchronously resolves all inline <video> elements with data-local-uri or indexeddb/file URIs
+ * to live, playable blob: or Capacitor convertFileSrc URLs.
+ */
+export async function resolveInlineVideos(container: HTMLElement | null) {
+    if (!container || typeof window === 'undefined') return;
+    const videoElements = container.querySelectorAll<HTMLVideoElement>('video[data-inline-video="1"], video[data-local-uri]');
+    if (videoElements.length === 0) return;
+
+    const { createObjectURLFromIndexedDB } = await import('@/lib/blob-storage');
+    const { Capacitor } = await import('@capacitor/core');
+
+    for (let i = 0; i < videoElements.length; i++) {
+        const video = videoElements[i];
+        let localUri = video.getAttribute('data-local-uri');
+        const currentSrc = video.getAttribute('src') || '';
+
+        if (!localUri && currentSrc && !currentSrc.startsWith('blob:')) {
+            localUri = currentSrc;
+            video.setAttribute('data-local-uri', localUri);
+        }
+
+        if (!localUri) continue;
+
+        if (!video.hasAttribute('controls')) video.controls = true;
+        video.setAttribute('playsinline', 'true');
+        if (!video.getAttribute('preload')) video.preload = 'metadata';
+
+        if (currentSrc.startsWith('blob:') || currentSrc.startsWith('http://') || currentSrc.startsWith('https://')) {
+            continue;
+        }
+
+        if (localUri.startsWith('indexeddb://')) {
+            try {
+                const blobUrl = await createObjectURLFromIndexedDB(localUri);
+                if (blobUrl) {
+                    video.src = blobUrl;
+                }
+            } catch (err) {
+                console.error('[InlineVideo] Failed to load IndexedDB video blob:', err);
+            }
+        } else if (localUri.startsWith('file://') || localUri.startsWith('/data/')) {
+            if (Capacitor.isNativePlatform()) {
+                video.src = Capacitor.convertFileSrc(localUri);
+            } else {
+                video.src = localUri;
+            }
+        } else if (localUri.startsWith('data:')) {
+            try {
+                const arr = localUri.split(',');
+                const mime = arr[0].match(/:(.*?);/)?.[1] || 'video/mp4';
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
+                const blob = new Blob([u8arr], { type: mime });
+                const blobUrl = URL.createObjectURL(blob);
+                video.src = blobUrl;
+            } catch (e) {
+                video.src = localUri;
+            }
+        } else if (localUri.startsWith('drive://')) {
+            const fileId = localUri.replace('drive://', '');
+            try {
+                const { useStore } = await import('@/lib/store');
+                const token = useStore?.getState?.()?.googleUser?.accessToken;
+                if (token && fileId) {
+                    video.src = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${token}`;
+                }
+            } catch (e) {}
+        }
+    }
+}
+
+/**
  * InlineVideoButton — inserts a video inside text block.
  */
 function InlineVideoButton({ language }: { language: string }) {
@@ -914,15 +990,16 @@ function InlineVideoButton({ language }: { language: string }) {
         if (!file) return;
         if (e.target) e.target.value = '';
 
+        const immediateBlobUrl = URL.createObjectURL(file);
+
         const reader = new FileReader();
         reader.onloadend = async () => {
             const base64 = reader.result as string;
-            const { saveBase64File, getLocalImageSrc } = await import('@/lib/image-utils');
+            const { saveBase64File } = await import('@/lib/image-utils');
             const localUri = await saveBase64File(base64, file.name);
-            const videoSrc = localUri || base64;
-            const displaySrc = getLocalImageSrc(videoSrc);
+            const persistentUri = localUri || base64;
 
-            const videoHtml = `<video src="${displaySrc}" data-inline-video="1" controls style="display:inline-block;vertical-align:top;width:80%;max-width:100%;margin:8px;border-radius:12px;cursor:pointer;"></video>`;
+            const videoHtml = `<video src="${immediateBlobUrl}" data-local-uri="${persistentUri}" data-inline-video="1" controls playsinline preload="metadata" style="display:inline-block;vertical-align:top;width:80%;max-width:100%;margin:8px;border-radius:12px;cursor:pointer;"></video>`;
             restoreSelection();
             document.execCommand('insertHTML', false, videoHtml);
         };
@@ -1320,7 +1397,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
                             fontWeight: 700,
                             cursor: 'pointer',
                         }}
-                        title="Eliminar imagen"
+                        title="Eliminar"
                     >
                         <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -1347,7 +1424,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
                         zIndex: 20,
                     }}
                     onPointerDown={handleMoveStart}
-                    title="Mover imagen"
+                    title="Mover"
                 >✥</div>
 
                 {/* Width label */}
@@ -3388,6 +3465,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
     useEffect(() => {
         if (editorRef.current) {
             if (document.activeElement === editorRef.current && !isFirstLoad.current) {
+                resolveInlineVideos(editorRef.current);
                 return;
             }
             cleanContainerStyle(editorRef.current);
@@ -3396,6 +3474,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                 editorRef.current.innerHTML = cleaned;
                 isFirstLoad.current = false;
             }
+            resolveInlineVideos(editorRef.current);
         }
     }, [content]);
 
@@ -3403,6 +3482,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
 
     const handleInput = () => {
         if (editorRef.current) {
+            resolveInlineVideos(editorRef.current);
             const newContent = editorRef.current.innerHTML;
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             timeoutRef.current = setTimeout(() => {
@@ -3439,7 +3519,9 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
         // Handle inline image or video clicks — hide soft keyboard and show overlay
         const media = target.closest('img, video') as HTMLElement | null;
         if (media) {
-            e.preventDefault();
+            if (media.tagName !== 'VIDEO') {
+                e.preventDefault();
+            }
             hideKeyboard();
             setSelectedMedia(media);
             return;
