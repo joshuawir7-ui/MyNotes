@@ -523,6 +523,9 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
         plainText = plainText.replaceAll("(?is)<h2[^>]*>(.*?)</h2>", "<h2><b><font size=\"5\">$1</font></b></h2>");
         plainText = plainText.replaceAll("(?is)<h3[^>]*>(.*?)</h3>", "<h3><b><font size=\"4\">$1</font></b></h3>");
 
+        // Convert <span style="font-family: ..."> to <font face="..."> for Android Html.fromHtml
+        plainText = plainText.replaceAll("(?is)<span[^>]*style\\s*=\\s*[\\\"'][^\\\"']*font-family\\s*:\\s*['\\\"]?([^;\\\"']+)['\\\"]?[^\\\"']*[\\\"'][^>]*>(.*?)</span>", "<font face=\"$1\">$2</font>");
+
         // Apply custom font family face if set
         String noteFontFamily = prefs.getString("noteFontFamily", "default");
         if (noteFontFamily != null && !noteFontFamily.isEmpty() && !"default".equals(noteFontFamily)) {

@@ -723,6 +723,8 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                             <FormatButton icon={Bold} label="Negrita" onClick={() => applyFormat('bold')} active={formatStates.bold} />
                             <FormatButton icon={Italic} label="Cursiva" onClick={() => applyFormat('italic')} active={formatStates.italic} />
                             <FormatButton icon={Underline} label="Subrayado" onClick={() => applyFormat('underline')} active={formatStates.underline} />
+                            
+                            <FontDropdown language={language} applyFormat={applyFormat} />
 
                             <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
 
@@ -795,6 +797,142 @@ function ToolbarButton({ icon: Icon, label, onClick }: { icon: any, label: strin
             {label}
         </button>
     )
+}
+
+function FontDropdown({ language, applyFormat }: { language: string, applyFormat: (cmd: string, val: string) => void }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const customFonts = useStore(state => state.customFonts || []);
+    const addCustomFont = useStore(state => state.addCustomFont);
+    const fontInputRef = useRef<HTMLInputElement>(null);
+
+    const handleApplyFont = (fontFamily: string) => {
+        applyFormat('fontName', fontFamily);
+        setIsOpen(false);
+    };
+
+    const handleFontUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        if (!['ttf', 'otf', 'woff', 'woff2'].includes(ext || '')) return;
+
+        const fontName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_\-\s]/g, "").trim() || "Fuente Personalizada";
+        const reader = new FileReader();
+
+        reader.onload = (event) => {
+            const dataUrl = event.target?.result as string;
+            if (dataUrl) {
+                const newFont = {
+                    id: `font_${Date.now()}`,
+                    name: fontName,
+                    dataUrl: dataUrl,
+                    format: ext === 'ttf' ? 'truetype' : ext === 'otf' ? 'opentype' : ext as string
+                };
+                addCustomFont(newFont);
+                handleApplyFont(fontName);
+            }
+        };
+        reader.readAsDataURL(file);
+        if (e.target) e.target.value = '';
+    };
+
+    const standardFonts = [
+        { name: language === 'es' ? "Predeterminada" : "Default", family: "inherit" },
+        { name: "Arial", family: "Arial, sans-serif" },
+        { name: "Calibri", family: "Calibri, sans-serif" },
+        { name: "Georgia", family: "Georgia, serif" },
+        { name: "Times New Roman", family: "Times New Roman, serif" },
+        { name: "Courier New", family: "Courier New, monospace" },
+        { name: "Comic Sans MS", family: "Comic Sans MS, cursive" },
+        { name: "Dancing Script", family: "cursive" },
+        { name: "Impact", family: "Impact, sans-serif" },
+    ];
+
+    return (
+        <div className="relative shrink-0">
+            <button
+                onMouseDown={(e) => {
+                    e.preventDefault();
+                    setIsOpen(!isOpen);
+                }}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer ${
+                    isOpen
+                        ? "bg-purple-600/20 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/30"
+                        : "text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10"
+                }`}
+                title={language === 'es' ? "Fuente de Letra" : "Font Family"}
+            >
+                <Type className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                <span className="text-[11px] font-bold">{language === 'es' ? "Fuente" : "Font"}</span>
+                <ChevronDown className="w-3 h-3 opacity-60" />
+            </button>
+
+            {isOpen && (
+                <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+                    <div className="absolute bottom-full mb-2 left-0 z-50 w-52 max-h-64 overflow-y-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/15 rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150">
+                        <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-zinc-100 dark:border-white/10 mb-1">
+                            {language === 'es' ? "Fuentes del sistema" : "System Fonts"}
+                        </div>
+                        {standardFonts.map((font) => (
+                            <button
+                                key={font.family}
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleApplyFont(font.family);
+                                }}
+                                className="w-full text-left px-2.5 py-1.5 text-xs rounded-lg hover:bg-purple-600/10 hover:text-purple-600 dark:hover:bg-purple-500/20 dark:hover:text-purple-300 transition-colors flex items-center justify-between cursor-pointer"
+                                style={{ fontFamily: font.family }}
+                            >
+                                <span className="truncate">{font.name}</span>
+                                <span className="text-[10px] opacity-40 font-mono shrink-0 ml-1">Aa</span>
+                            </button>
+                        ))}
+
+                        {customFonts.length > 0 && (
+                            <>
+                                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-t border-zinc-100 dark:border-white/10 my-1">
+                                    {language === 'es' ? "Fuentes personalizadas" : "Custom Fonts"}
+                                </div>
+                                {customFonts.map((font) => (
+                                    <button
+                                        key={font.id}
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            handleApplyFont(font.name);
+                                        }}
+                                        className="w-full text-left px-2.5 py-1.5 text-xs rounded-lg hover:bg-purple-600/10 hover:text-purple-600 dark:hover:bg-purple-500/20 dark:hover:text-purple-300 transition-colors truncate cursor-pointer"
+                                        style={{ fontFamily: font.name }}
+                                    >
+                                        {font.name}
+                                    </button>
+                                ))}
+                            </>
+                        )}
+
+                        <input
+                            type="file"
+                            ref={fontInputRef}
+                            accept=".ttf,.otf,.woff,.woff2"
+                            className="hidden"
+                            onChange={handleFontFileUpload}
+                        />
+                        <button
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                fontInputRef.current?.click();
+                            }}
+                            className="w-full text-left px-2.5 py-1.5 text-xs rounded-lg bg-zinc-100 dark:bg-white/10 hover:bg-purple-600/10 hover:text-purple-600 dark:hover:bg-purple-500/20 dark:hover:text-purple-300 transition-colors flex items-center gap-1.5 font-semibold mt-1 cursor-pointer"
+                        >
+                            <Plus className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                            <span>{language === 'es' ? "Añadir fuente..." : "Add font..."}</span>
+                        </button>
+                    </div>
+                </>
+            )}
+        </div>
+    );
 }
 
 // Sub-components for blocks (Inline for simplicity now, could separate)
@@ -2363,14 +2501,19 @@ export function sanitizeNoteHtml(html: string): string {
             }
         });
 
-        // Replace <font> tags with their child nodes
+        // Replace <font> tags with their child nodes ONLY if they don't have face or size attributes
         const fontElements = doc.querySelectorAll('font');
         fontElements.forEach(font => {
-            const fragment = doc.createDocumentFragment();
-            while (font.firstChild) {
-                fragment.appendChild(font.firstChild);
+            const hasFace = font.hasAttribute('face');
+            const hasSize = font.hasAttribute('size');
+            const hasStyle = font.hasAttribute('style');
+            if (!hasFace && !hasSize && !hasStyle) {
+                const fragment = doc.createDocumentFragment();
+                while (font.firstChild) {
+                    fragment.appendChild(font.firstChild);
+                }
+                font.parentNode?.replaceChild(fragment, font);
             }
-            font.parentNode?.replaceChild(fragment, font);
         });
 
         return doc.body.innerHTML;
