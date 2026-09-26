@@ -1053,7 +1053,7 @@ function InlineTaskButton({ language }: { language: string }) {
 
     const handleInsertTask = () => {
         restoreSelection();
-        const taskHtml = `<span contenteditable="false" data-inline-task="1" style="display:inline-flex;align-items:center;margin:0 4px 0 2px;vertical-align:middle;cursor:pointer;user-select:none;"><input type="checkbox" style="width:16px;height:16px;accent-color:#18181b;cursor:pointer;" /></span>&nbsp;`;
+        const taskHtml = `<div data-inline-task="1" style="display:flex;align-items:center;gap:8px;margin:6px 0;line-height:1.4;clear:both;"><span contenteditable="false" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;user-select:none;cursor:pointer;vertical-align:middle;"><input type="checkbox" style="width:18px;height:18px;margin:0;cursor:pointer;vertical-align:middle;" /></span><span>&nbsp;</span></div>`;
         document.execCommand('insertHTML', false, taskHtml);
     };
 
@@ -3530,12 +3530,25 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
         const taskBox = target.closest('[data-inline-task]') as HTMLElement | null;
         if (taskBox || (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox')) {
             const input = (target.tagName === 'INPUT' ? target : taskBox?.querySelector('input')) as HTMLInputElement | null;
-            if (input && target !== input) {
-                input.checked = !input.checked;
+            if (input) {
+                if (target !== input) {
+                    input.checked = !input.checked;
+                }
+                const container = taskBox || input.parentElement;
                 if (input.checked) {
                     input.setAttribute('checked', 'true');
+                    input.defaultChecked = true;
+                    if (container) {
+                        container.style.textDecoration = 'line-through';
+                        container.style.opacity = '0.6';
+                    }
                 } else {
                     input.removeAttribute('checked');
+                    input.defaultChecked = false;
+                    if (container) {
+                        container.style.textDecoration = 'none';
+                        container.style.opacity = '1';
+                    }
                 }
                 handleInput();
             }

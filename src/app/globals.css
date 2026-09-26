@@ -571,6 +571,34 @@ html.dark.theme-black {
   display: list-item !important;
 }
 
+/* Inline Task item inside rich-text-editor — forces block line below & vertical alignment */
+.rich-text-editor [data-inline-task] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  margin: 0.35rem 0 !important;
+  width: 100% !important;
+  line-height: 1.4 !important;
+  clear: both !important;
+}
+
+.rich-text-editor [data-inline-task] input[type="checkbox"] {
+  width: 1.125rem !important;
+  height: 1.125rem !important;
+  min-width: 1.125rem !important;
+  min-height: 1.125rem !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  vertical-align: middle !important;
+  flex-shrink: 0 !important;
+  accent-color: #18181b;
+}
+
+.dark .rich-text-editor [data-inline-task] input[type="checkbox"] {
+  accent-color: #f4f4f5;
+}
+
+
 /* Ensure highlighted text has high-contrast readable dark text in light theme */
 :not(.dark) .rich-text-editor [style*="background-color"] {
   color: #0f172a !important;
