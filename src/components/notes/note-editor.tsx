@@ -979,27 +979,26 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
     const handleMoveStart = (e: React.PointerEvent) => {
         e.preventDefault(); e.stopPropagation();
         const imgRect = img.getBoundingClientRect();
-        const editorEl = editorRef.current;
-        const editorRect = editorEl ? editorEl.getBoundingClientRect() : imgRect;
 
-        // Calculate initial image left/top relative to editor container bounds
-        const startLeft = imgRect.left - editorRect.left + (editorEl ? editorEl.scrollLeft : 0);
-        const startTop = imgRect.top - editorRect.top + (editorEl ? editorEl.scrollTop : 0);
+        // Parse current numeric relative offsets (default to 0)
+        const currentLeft = parseFloat(img.style.left || '0') || 0;
+        const currentTop = parseFloat(img.style.top || '0') || 0;
 
         dragRef.current = {
             mode: 'move', handle: 'center',
             startX: e.clientX, startY: e.clientY,
             startW: imgRect.width,
-            startLeft, startTop,
+            startLeft: currentLeft,
+            startTop: currentTop,
         };
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
 
         // Ghost preview
         const ghost = document.createElement('div');
-        ghost.style.cssText = `position:fixed;pointer-events:none;z-index:99999;background:${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(24,24,27,0.12)'};border:2.5px dashed ${borderCol};border-radius:14px;width:${imgRect.width}px;height:${imgRect.height}px;top:${imgRect.top}px;left:${imgRect.left}px;`;
+        ghost.style.cssText = `position:fixed;pointer-events:none;z-index:99999;background:${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(24,24,27,0.18)'};border:2.5px dashed ${borderCol};border-radius:14px;width:${imgRect.width}px;height:${imgRect.height}px;top:${imgRect.top}px;left:${imgRect.left}px;box-shadow:0 8px 24px rgba(0,0,0,0.3);`;
         document.body.appendChild(ghost);
         ghostRef.current = ghost;
-        img.style.opacity = '0.3';
+        img.style.opacity = '0.35';
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
@@ -1009,7 +1008,7 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
             let delta = e.clientX - startX;
             if (handle === 'bl' || handle === 'tl') delta = -delta;
             const parentW = img.parentElement?.getBoundingClientRect().width || startW;
-            const newW = Math.max(60, Math.min(parentW, startW + delta));
+            const newW = Math.max(60, Math.min(parentW * 1.5, startW + delta));
             img.style.width = `${Math.round(newW)}px`;
             setRect(img.getBoundingClientRect());
         } else if (mode === 'move' && ghostRef.current) {
@@ -1031,21 +1030,18 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
             img.style.opacity = '1';
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
-            if (Math.sqrt(dx * dx + dy * dy) > 8) {
-                const editorEl = editorRef.current;
-                if (editorEl && startLeft !== undefined && startTop !== undefined) {
-                    const targetLeft = Math.max(0, startLeft + dx);
-                    const targetTop = Math.max(0, startTop + dy);
+            if (Math.sqrt(dx * dx + dy * dy) > 3) {
+                const newLeft = (startLeft || 0) + dx;
+                const newTop = (startTop || 0) + dy;
 
-                    // Position the image freely at (targetLeft, targetTop) relative to editor canvas!
-                    img.style.position = 'absolute';
-                    img.style.left = `${Math.round(targetLeft)}px`;
-                    img.style.top = `${Math.round(targetTop)}px`;
-                    img.style.zIndex = '10';
-                    img.style.margin = '0';
-                    img.style.float = 'none';
-                    img.style.display = 'inline-block';
-                }
+                // Apply 2D relative pixel offset + high z-index so image can overlap ANYTHING freely!
+                img.style.position = 'relative';
+                img.style.left = `${Math.round(newLeft)}px`;
+                img.style.top = `${Math.round(newTop)}px`;
+                img.style.zIndex = '30';
+                img.style.display = 'inline-block';
+                img.style.margin = '4px';
+
                 triggerSave();
             }
             triggerSave();
