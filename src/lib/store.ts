@@ -1246,14 +1246,13 @@ export const stripLargePayloads = (notes: Note[]): Note[] => {
     return notes.map(note => ({
         ...note,
         blocks: note.blocks.map(block => {
-            if (['image', 'video', 'file'].includes(block.type) && block.driveFileId && block.content?.url) {
-                if (block.content.url.startsWith('data:') || block.content.url.length > 500) {
+            if (['image', 'video', 'file', 'drawing'].includes(block.type) && block.driveFileId) {
+                const url = typeof block.content === 'string' ? block.content : block.content?.url;
+                if (url && (url.startsWith('data:') || url.length > 500)) {
+                    const newContent = typeof block.content === 'string' ? `drive://${block.driveFileId}` : { ...block.content, url: `drive://${block.driveFileId}` };
                     return {
                         ...block,
-                        content: {
-                            ...block.content,
-                            url: `drive://${block.driveFileId}`
-                        }
+                        content: newContent
                     };
                 }
             }
@@ -1496,6 +1495,7 @@ export const reconcileCloudAttachments = async (
 
     return remoteNotes;
 };
+
 import { getBlobFromIndexedDB } from './blob-storage';
 
 // Helper to upload attachments that don't have a driveFileId yet
@@ -1505,142 +1505,162 @@ export const uploadMissingAttachments = async (token: string, notes: Note[]): Pr
         const note = notes[i];
         for (let j = 0; j < note.blocks.length; j++) {
             const block = note.blocks[j];
-            const url = block.content?.url;
-            if (['image', 'video', 'file'].includes(block.type) && !block.driveFileId && url && (url.startsWith('data:') || url.startsWith('indexeddb://'))) {
-                try {
-                    console.log(`[Sync] Subiendo archivo faltante de bloque ${block.id}...`);
-                    const fileName = block.content.name || `file_${Date.now()}`;
-                    let fileBlob: Blob | null = null;
-                    let mimeType = 'application/octet-stream';
+            const targetUrl = typeof block.content === 'string' ? block.content : block.content?.url;
+            if (['image', 'video', 'file', 'drawing'].includes(block.type) && !block.driveFileId && targetUrl) {
+                const isData = targetUrl.startsWith('data:');
+                const isIndexedDb = targetUrl.startsWith('indexeddb://');
+                const isFile = targetUrl.startsWith('file://') || targetUrl.startsWith('/');
+                
+                if (isData || isIndexedDb || isFile) {
+                    try {
+                        console.log(`[Sync] Subiendo archivo faltante de bloque ${block.id}...`);
+                        const fileName = (typeof block.content === 'object' && block.content?.name) ? block.content.name : `file_${Date.now()}`;
+                        let fileBlob: Blob | null = null;
+                        let mimeType = 'application/octet-stream';
 
-                    if (url.startsWith('indexeddb://')) {
-                        const data = await getBlobFromIndexedDB(url);
-                        if (!data) {
-                            console.error(`[Sync] Blob no encontrado en IndexedDB: ${url}`);
-                            continue;
-                        }
-                        if (data instanceof Blob) {
-                            fileBlob = data;
-                            mimeType = fileBlob.type || 'application/octet-stream';
-                        } else if (typeof data === 'string' && data.startsWith('data:')) {
-                            // Fallback if it was stored as Base64 string in IndexedDB
-                            const pureBase64 = data.includes(',') ? data.split(',')[1] : data;
+                        if (isIndexedDb) {
+                            const data = await getBlobFromIndexedDB(targetUrl);
+                            if (!data) {
+                                console.error(`[Sync] Blob no encontrado en IndexedDB: ${targetUrl}`);
+                                continue;
+                            }
+                            if (data instanceof Blob) {
+                                fileBlob = data;
+                                mimeType = fileBlob.type || 'application/octet-stream';
+                            } else if (typeof data === 'string' && data.startsWith('data:')) {
+                                const pureBase64 = data.includes(',') ? data.split(',')[1] : data;
+                                const byteCharacters = atob(pureBase64);
+                                const byteArray = new Uint8Array(byteCharacters.length);
+                                for (let k = 0; k < byteCharacters.length; k++) {
+                                    byteArray[k] = byteCharacters.charCodeAt(k);
+                                }
+                                const match = data.match(/^data:([^;]+);/);
+                                if (match) mimeType = match[1];
+                                fileBlob = new Blob([byteArray], { type: mimeType });
+                            }
+                        } else if (isData) {
+                            const pureBase64 = targetUrl.includes(',') ? targetUrl.split(',')[1] : targetUrl;
                             const byteCharacters = atob(pureBase64);
                             const byteArray = new Uint8Array(byteCharacters.length);
                             for (let k = 0; k < byteCharacters.length; k++) {
                                 byteArray[k] = byteCharacters.charCodeAt(k);
                             }
-                            const match = data.match(/^data:([^;]+);/);
+                            const match = targetUrl.match(/^data:([^;]+);/);
                             if (match) mimeType = match[1];
                             fileBlob = new Blob([byteArray], { type: mimeType });
-                        }
-                    } else if (url.startsWith('data:')) {
-                        const pureBase64 = url.includes(',') ? url.split(',')[1] : url;
-                        const byteCharacters = atob(pureBase64);
-                        const byteArray = new Uint8Array(byteCharacters.length);
-                        for (let k = 0; k < byteCharacters.length; k++) {
-                            byteArray[k] = byteCharacters.charCodeAt(k);
-                        }
-                        const match = url.match(/^data:([^;]+);/);
-                        if (match) mimeType = match[1];
-                        fileBlob = new Blob([byteArray], { type: mimeType });
-                    }
-
-                    if (!fileBlob) continue;
-
-                    const fileSizeMB = fileBlob.size / (1024 * 1024);
-                    // Determine extension for mimetype fallback if empty
-                    if (mimeType === 'application/octet-stream') {
-                        const ext = fileName.split('.').pop()?.toLowerCase() || '';
-                        const mimeMap: Record<string, string> = {
-                            mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
-                            mp3: 'audio/mpeg', wav: 'audio/wav',
-                            pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg',
-                            jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
-                        };
-                        mimeType = mimeMap[ext] || 'application/octet-stream';
-                    }
-
-                    const metadata = { name: fileName, mimeType };
-                    let driveFileId: string | null = null;
-
-                    if (fileSizeMB < 4) {
-                        // Small file: multipart upload
-                        const boundary = 'mynotes_upload_boundary';
-                        const multipartBody =
-                            `--${boundary}\r\n` +
-                            `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-                            `${JSON.stringify(metadata)}\r\n` +
-                            `--${boundary}\r\n` +
-                            `Content-Type: ${mimeType}\r\n\r\n`;
-                        const closing = `\r\n--${boundary}--`;
-                        const fullBody = new Blob([multipartBody, fileBlob, closing]);
-
-                        const uploadRes = await fetch(
-                            'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-                            {
-                                method: 'POST',
-                                headers: {
-                                    Authorization: `Bearer ${token}`,
-                                    'Content-Type': `multipart/related; boundary=${boundary}`,
-                                },
-                                body: fullBody,
-                            }
-                        );
-
-                        if (uploadRes.ok) {
-                            const data = await uploadRes.json();
-                            driveFileId = data.id || null;
-                        } else {
-                            console.error(`[Sync] Multipart upload failed: ${uploadRes.status}`);
-                        }
-                    } else {
-                        // Large file: resumable upload
-                        console.log(`[Sync] Archivo grande (${fileSizeMB.toFixed(1)} MB) — usando Resumable Upload`);
-                        const initiateRes = await fetch(
-                            'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
-                            {
-                                method: 'POST',
-                                headers: {
-                                    Authorization: `Bearer ${token}`,
-                                    'Content-Type': 'application/json; charset=UTF-8',
-                                    'X-Upload-Content-Type': mimeType,
-                                    'X-Upload-Content-Length': String(fileBlob.size),
-                                },
-                                body: JSON.stringify(metadata),
-                            }
-                        );
-
-                        if (initiateRes.ok) {
-                            const uploadUrl = initiateRes.headers.get('Location');
-                            if (uploadUrl) {
-                                const putRes = await fetch(uploadUrl, {
-                                    method: 'PUT',
-                                    headers: {
-                                        'Content-Type': mimeType,
-                                        'Content-Length': String(fileBlob.size),
-                                    },
-                                    body: fileBlob,
-                                });
-                                if (putRes.ok) {
-                                    const data = await putRes.json();
-                                    driveFileId = data.id || null;
-                                } else {
-                                    console.error(`[Sync] Resumable PUT failed: ${putRes.status}`);
+                        } else if (isFile) {
+                            try {
+                                const cleanPath = targetUrl.replace('file://', '');
+                                const { Filesystem } = await import('@capacitor/filesystem');
+                                const fileData = await Filesystem.readFile({ path: cleanPath });
+                                const base64Str = typeof fileData.data === 'string' ? fileData.data : '';
+                                if (base64Str) {
+                                    const pureBase64 = base64Str.includes(',') ? base64Str.split(',')[1] : base64Str;
+                                    const byteCharacters = atob(pureBase64);
+                                    const byteArray = new Uint8Array(byteCharacters.length);
+                                    for (let k = 0; k < byteCharacters.length; k++) {
+                                        byteArray[k] = byteCharacters.charCodeAt(k);
+                                    }
+                                    fileBlob = new Blob([byteArray], { type: mimeType });
                                 }
+                            } catch (err) {
+                                console.error('[Sync] Failed reading local file URI:', err);
+                            }
+                        }
+
+                        if (!fileBlob) continue;
+
+                        const fileSizeMB = fileBlob.size / (1024 * 1024);
+                        if (mimeType === 'application/octet-stream') {
+                            const ext = fileName.split('.').pop()?.toLowerCase() || '';
+                            const mimeMap: Record<string, string> = {
+                                mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
+                                mp3: 'audio/mpeg', wav: 'audio/wav',
+                                pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg',
+                                jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+                            };
+                            mimeType = mimeMap[ext] || 'application/octet-stream';
+                        }
+
+                        const metadata = { name: fileName, mimeType };
+                        let driveFileId: string | null = null;
+
+                        if (fileSizeMB < 4) {
+                            const boundary = 'mynotes_upload_boundary';
+                            const multipartBody =
+                                `--${boundary}\r\n` +
+                                `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+                                `${JSON.stringify(metadata)}\r\n` +
+                                `--${boundary}\r\n` +
+                                `Content-Type: ${mimeType}\r\n\r\n`;
+                            const closing = `\r\n--${boundary}--`;
+                            const fullBody = new Blob([multipartBody, fileBlob, closing]);
+
+                            const uploadRes = await fetch(
+                                'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+                                {
+                                    method: 'POST',
+                                    headers: {
+                                        Authorization: `Bearer ${token}`,
+                                        'Content-Type': `multipart/related; boundary=${boundary}`,
+                                    },
+                                    body: fullBody,
+                                }
+                            );
+
+                            if (uploadRes.ok) {
+                                const data = await uploadRes.json();
+                                driveFileId = data.id || null;
+                            } else {
+                                console.error(`[Sync] Multipart upload failed: ${uploadRes.status}`);
                             }
                         } else {
-                            console.error(`[Sync] Resumable initiate failed: ${initiateRes.status}`);
-                        }
-                    }
+                            console.log(`[Sync] Archivo grande (${fileSizeMB.toFixed(1)} MB) — usando Resumable Upload`);
+                            const initiateRes = await fetch(
+                                'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
+                                {
+                                    method: 'POST',
+                                    headers: {
+                                        Authorization: `Bearer ${token}`,
+                                        'Content-Type': 'application/json; charset=UTF-8',
+                                        'X-Upload-Content-Type': mimeType,
+                                        'X-Upload-Content-Length': String(fileBlob.size),
+                                    },
+                                    body: JSON.stringify(metadata),
+                                }
+                            );
 
-                    if (driveFileId) {
-                        block.driveFileId = driveFileId;
-                        hasChanges = true;
-                        console.log(`[Sync] Archivo subido exitosamente: ${driveFileId}`);
+                            if (initiateRes.ok) {
+                                const uploadUrl = initiateRes.headers.get('Location');
+                                if (uploadUrl) {
+                                    const putRes = await fetch(uploadUrl, {
+                                        method: 'PUT',
+                                        headers: {
+                                            'Content-Type': mimeType,
+                                            'Content-Length': String(fileBlob.size),
+                                        },
+                                        body: fileBlob,
+                                    });
+                                    if (putRes.ok) {
+                                        const data = await putRes.json();
+                                        driveFileId = data.id || null;
+                                    } else {
+                                        console.error(`[Sync] Resumable PUT failed: ${putRes.status}`);
+                                    }
+                                }
+                            } else {
+                                console.error(`[Sync] Resumable initiate failed: ${initiateRes.status}`);
+                            }
+                        }
+
+                        if (driveFileId) {
+                            block.driveFileId = driveFileId;
+                            hasChanges = true;
+                            console.log(`[Sync] Archivo subido exitosamente a Drive: ${driveFileId}`);
+                        }
+                    } catch (e) {
+                        console.error('[Sync] Error subiendo archivo faltante:', e);
                     }
-                } catch (e) {
-                    console.error('[Sync] Error subiendo archivo faltante:', e);
                 }
             }
         }
@@ -1652,7 +1672,17 @@ export const uploadMissingAttachments = async (token: string, notes: Note[]): Pr
     }
     
     return notes;
-}
+};
+
+export const reconcileMediaManifest = async (token: string, notes: Note[]): Promise<void> => {
+    try {
+        console.log('[Sync] Reconciliando manifiesto de medios con Google Drive...');
+        await uploadMissingAttachments(token, notes);
+    } catch (e) {
+        console.error('[Sync] Error en reconcileMediaManifest:', e);
+    }
+};
+
 
 export let isCloudSyncDirty = false;
 let cloudSyncDebounceTimeout: any = null;

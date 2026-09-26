@@ -744,6 +744,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
                             {/* Inline Media & Elements Group */}
                             <InlineImageButton language={language} />
+                            <InlineVideoButton language={language} />
                             <InlineTaskButton language={language} />
                             <InlineSeparatorButton language={language} />
 
@@ -882,6 +883,72 @@ function InlineImageButton({ language }: { language: string }) {
             >
                 <ImageIcon className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
                 <span className="text-[11px] font-bold">Img</span>
+            </button>
+        </div>
+    );
+}
+
+/**
+ * InlineVideoButton — inserts a video inside text block.
+ */
+function InlineVideoButton({ language }: { language: string }) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const savedRangeRef = useRef<Range | null>(null);
+
+    const saveSelection = () => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+        }
+    };
+
+    const restoreSelection = () => {
+        const r = savedRangeRef.current;
+        if (!r) return;
+        const sel = window.getSelection();
+        if (sel) { sel.removeAllRanges(); sel.addRange(r); }
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (e.target) e.target.value = '';
+
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            const base64 = reader.result as string;
+            const { saveBase64File, getLocalImageSrc } = await import('@/lib/image-utils');
+            const localUri = await saveBase64File(base64, file.name);
+            const videoSrc = localUri || base64;
+            const displaySrc = getLocalImageSrc(videoSrc);
+
+            const videoHtml = `<video src="${displaySrc}" data-inline-video="1" controls style="display:inline-block;vertical-align:top;width:80%;max-width:100%;margin:8px;border-radius:12px;cursor:pointer;"></video>`;
+            restoreSelection();
+            document.execCommand('insertHTML', false, videoHtml);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    return (
+        <div className="shrink-0">
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={handleFileChange}
+            />
+            <button
+                onClick={() => {
+                    saveSelection();
+                    hideKeyboard();
+                    fileInputRef.current?.click();
+                }}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10"
+                title={language === 'es' ? 'Insertar video en texto' : 'Insert video in text'}
+            >
+                <Film className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
+                <span className="text-[11px] font-bold">Vid</span>
             </button>
         </div>
     );
@@ -1594,12 +1661,37 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                         onPointerUp={onPointerUp}
                         onPointerCancel={onPointerUp}
                     >
-                        <img
-                            src={imageSrc}
-                            alt="Imagen adjunta"
-                            onClick={() => { if (!isDownloading) onImageClick?.(block.content); setShowControls(true); setTimeout(() => setShowControls(false), 4000); }}
-                            onError={() => { if (block.driveFileId && !imageError) setImageError(true); }}
-                        />
+                        {imageError ? (
+                            <div className="flex flex-col items-center justify-center p-6 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-center w-full min-h-[160px]">
+                                <AlertCircle className="w-10 h-10 text-amber-500 mb-2" />
+                                <span className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-1">
+                                    Imagen no disponible localmente
+                                </span>
+                                <span className="text-xs text-muted-foreground max-w-xs mb-3">
+                                    {block.driveFileId ? 'Guardada en Drive. Toca para descargar.' : 'Sincroniza tu cuenta para respaldar.'}
+                                </span>
+                                {block.driveFileId && (
+                                    <button
+                                        onClick={async () => {
+                                            const { useStore } = await import('@/lib/store');
+                                            await useStore.getState().downloadAttachment(block.noteId || '', block.id);
+                                            setImageError(false);
+                                        }}
+                                        className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 dark:text-amber-300 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                                    >
+                                        <Download className="w-3.5 h-3.5" />
+                                        Reintentar descarga
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <img
+                                src={imageSrc}
+                                alt="Imagen adjunta"
+                                onClick={() => { if (!isDownloading) onImageClick?.(block.content); setShowControls(true); setTimeout(() => setShowControls(false), 4000); }}
+                                onError={() => setImageError(true)}
+                            />
+                        )}
                         {/* Sync badge */}
                         {isSynced && (
                             <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-2 py-0.5 pointer-events-none">
