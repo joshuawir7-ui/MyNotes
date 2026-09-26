@@ -805,9 +805,25 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
     const customFonts = useStore(state => state.customFonts || []);
     const addCustomFont = useStore(state => state.addCustomFont);
     const fontInputRef = useRef<HTMLInputElement>(null);
+    const savedRangeRef = useRef<Range | null>(null);
 
-    const handleApplyFont = (fontFamily: string) => {
-        applyFormat('fontName', fontFamily);
+    const saveSelection = () => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+        }
+    };
+
+    const restoreSelection = () => {
+        const range = savedRangeRef.current;
+        if (!range) return;
+        const sel = window.getSelection();
+        if (sel) { sel.removeAllRanges(); sel.addRange(range); }
+    };
+
+    const handleApplyFont = (fontName: string) => {
+        restoreSelection();
+        applyFormat('fontName', fontName);
         setIsOpen(false);
     };
 
@@ -828,10 +844,12 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                     id: `font_${Date.now()}`,
                     name: fontName,
                     dataUrl: dataUrl,
-                    format: ext === 'ttf' ? 'truetype' : ext === 'otf' ? 'opentype' : ext as string
+                    format: (ext === 'ttf' ? 'truetype' : ext === 'otf' ? 'opentype' : (ext as string))
                 };
                 addCustomFont(newFont);
-                handleApplyFont(fontName);
+                restoreSelection();
+                applyFormat('fontName', fontName);
+                setIsOpen(false);
             }
         };
         reader.readAsDataURL(file);
@@ -839,15 +857,15 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
     };
 
     const standardFonts = [
-        { name: language === 'es' ? "Predeterminada" : "Default", family: "inherit" },
-        { name: "Arial", family: "Arial, sans-serif" },
-        { name: "Calibri", family: "Calibri, sans-serif" },
-        { name: "Georgia", family: "Georgia, serif" },
-        { name: "Times New Roman", family: "Times New Roman, serif" },
-        { name: "Courier New", family: "Courier New, monospace" },
-        { name: "Comic Sans MS", family: "Comic Sans MS, cursive" },
-        { name: "Dancing Script", family: "cursive" },
-        { name: "Impact", family: "Impact, sans-serif" },
+        { name: language === 'es' ? "Predeterminada" : "Default", fontName: "inherit", previewFamily: "inherit" },
+        { name: "Arial", fontName: "Arial", previewFamily: "Arial, sans-serif" },
+        { name: "Calibri", fontName: "Calibri", previewFamily: "Calibri, Carlito, sans-serif" },
+        { name: "Georgia", fontName: "Georgia", previewFamily: "Georgia, serif" },
+        { name: "Times New Roman", fontName: "Times New Roman", previewFamily: "Times New Roman, serif" },
+        { name: "Courier New", fontName: "Courier New", previewFamily: "Courier New, monospace" },
+        { name: "Comic Sans MS", fontName: "Comic Sans MS", previewFamily: "Comic Sans MS, cursive" },
+        { name: "Verdana", fontName: "Verdana", previewFamily: "Verdana, Geneva, sans-serif" },
+        { name: "Impact", fontName: "Impact", previewFamily: "Impact, Haettenschweiler, sans-serif" },
     ];
 
     return (
@@ -855,6 +873,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
             <button
                 onMouseDown={(e) => {
                     e.preventDefault();
+                    saveSelection();
                     setIsOpen(!isOpen);
                 }}
                 className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer ${
@@ -895,16 +914,16 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                             <div className="grid grid-cols-1 gap-1">
                                 {standardFonts.map((font) => (
                                     <button
-                                        key={font.family}
+                                        key={font.fontName}
                                         onMouseDown={(e) => {
                                             e.preventDefault();
-                                            handleApplyFont(font.family);
+                                            handleApplyFont(font.fontName);
                                         }}
                                         className="w-full text-left px-3 py-2 rounded-xl hover:bg-purple-600/10 hover:text-purple-600 dark:hover:bg-purple-500/20 dark:hover:text-purple-300 transition-colors flex items-center justify-between cursor-pointer border border-transparent hover:border-purple-500/20"
-                                        style={{ fontFamily: font.family }}
+                                        style={{ fontFamily: font.previewFamily }}
                                     >
                                         <span className="text-sm font-medium">{font.name}</span>
-                                        <span className="text-xs opacity-60 font-mono">AaBbCc 123</span>
+                                        <span className="text-xs opacity-60">AaBbCc 123</span>
                                     </button>
                                 ))}
                             </div>
@@ -935,6 +954,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                         </div>
 
                         <div className="p-3 border-t border-zinc-100 dark:border-white/10 bg-zinc-50/50 dark:bg-zinc-800/50">
+                            {/* Hidden file input — use onClick (not onMouseDown+preventDefault) so Android WebView opens the native file picker */}
                             <input
                                 type="file"
                                 ref={fontInputRef}
@@ -943,8 +963,8 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                                 onChange={handleFontFileUpload}
                             />
                             <button
-                                onMouseDown={(e) => {
-                                    e.preventDefault();
+                                onClick={() => {
+                                    saveSelection();
                                     fontInputRef.current?.click();
                                 }}
                                 className="w-full flex items-center justify-center gap-2 p-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition-all text-xs cursor-pointer shadow-md shadow-purple-600/20 active:scale-95"
@@ -952,6 +972,9 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                                 <Plus className="w-4 h-4" />
                                 <span>{language === 'es' ? "Añadir fuente desde almacenamiento" : "Add font from storage"}</span>
                             </button>
+                            <p className="text-center text-[10px] text-muted-foreground mt-1.5 opacity-70">
+                                {language === 'es' ? "Formatos admitidos: TTF, OTF, WOFF, WOFF2" : "Supported formats: TTF, OTF, WOFF, WOFF2"}
+                            </p>
                         </div>
                     </div>
                 </div>,

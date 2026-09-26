@@ -1085,9 +1085,9 @@ interface AppState {
     celebration: { groupId: string, title: string } | null
     focusEffectEnabled: boolean
     noteFontFamily: string
-    customFonts: Array<{ name: string; dataUrl: string }>
+    customFonts: Array<{ id?: string; name: string; dataUrl: string; format?: string }>
     setNoteFontFamily: (fontFamily: string) => void
-    addCustomFont: (font: { name: string; dataUrl: string }) => void
+    addCustomFont: (font: { id?: string; name: string; dataUrl: string; format?: string }) => void
     removeCustomFont: (fontName: string) => void
     priorityReminderSettings: {
         enabled: boolean

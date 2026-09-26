@@ -1061,7 +1061,7 @@ export function SettingsDialog() {
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => {
-                                                                        removeCustomFont(font.id);
+                                                                        removeCustomFont(font.name);
                                                                         if (noteFontFamily === font.name) {
                                                                             setNoteFontFamily('default');
                                                                         }
