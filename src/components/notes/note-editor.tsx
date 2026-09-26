@@ -742,6 +742,11 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
                             <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
 
+                            {/* Inline Image Insert Button */}
+                            <InlineImageButton language={language} />
+
+                            <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
                             {/* Highlighters Group */}
                             <span className="text-[9px] uppercase font-bold text-zinc-500 dark:text-white/40 tracking-wider shrink-0 mr-1">{language === 'es' ? "Resaltar:" : "Highlight:"}</span>
                             <HighlightButton color="#fef08a" label={language === 'es' ? "Amarillo" : "Yellow"} onClick={() => applyFormat('backColor', '#fef08a')} />
@@ -798,6 +803,77 @@ function ToolbarButton({ icon: Icon, label, onClick }: { icon: any, label: strin
             {label}
         </button>
     )
+}
+
+/**
+ * InlineImageButton — inserts a resizable image at cursor position inside a contenteditable (text block).
+ * Uses onClick (not onMouseDown) for the file input trigger so Android WebView opens the native picker.
+ * Saves + restores selection before inserting so the image lands at the right place.
+ */
+function InlineImageButton({ language }: { language: string }) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const savedRangeRef = useRef<Range | null>(null);
+
+    const saveSelection = () => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+        }
+    };
+
+    const restoreSelection = () => {
+        const r = savedRangeRef.current;
+        if (!r) return;
+        const sel = window.getSelection();
+        if (sel) { sel.removeAllRanges(); sel.addRange(r); }
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (e.target) e.target.value = '';
+
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            const base64 = reader.result as string;
+            let src = base64;
+            try {
+                const { saveBase64ImageToFile } = await import('@/lib/image-utils');
+                const uri = await saveBase64ImageToFile(base64);
+                if (uri) src = uri;
+            } catch (_) { /* fallback to base64 */ }
+
+            // Build an HTML img tag with class for rounded corners and inline style for width
+            const imgHtml = `<img src="${src}" data-inline-img="1" style="width:100%;border-radius:12px;vertical-align:middle;display:inline-block;" alt="imagen" />&nbsp;`;
+
+            restoreSelection();
+            document.execCommand('insertHTML', false, imgHtml);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    return (
+        <div className="shrink-0">
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+            />
+            <button
+                onClick={() => {
+                    saveSelection();
+                    fileInputRef.current?.click();
+                }}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10"
+                title={language === 'es' ? 'Insertar imagen en texto' : 'Insert image in text'}
+            >
+                <ImageIcon className="w-3.5 h-3.5 text-yellow-500" />
+                <span className="text-[11px] font-bold">{language === 'es' ? 'Img' : 'Img'}</span>
+            </button>
+        </div>
+    );
 }
 
 function FontDropdown({ language, applyFormat }: { language: string, applyFormat: (cmd: string, val: string) => void }) {
@@ -991,82 +1067,83 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
     const hasImage = typeof block.content === 'string' && block.content;
     const isDownloading = block.isDownloading;
     const isSynced = !!(block.driveFileId && hasImage && !isDownloading);
-    const lastTapRef = useRef(0);
     const [imageError, setImageError] = useState(false);
+    // Width in pixels (null = auto/natural)
+    const [imgWidth, setImgWidth] = useState<number | null>(block.imageWidth || null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const dragRef = useRef<{ startX: number; startY: number; startW: number; handle: string } | null>(null);
 
-    useEffect(() => {
-        setImageError(false);
-    }, [block.content]);
+    useEffect(() => { setImageError(false); }, [block.content]);
 
     const imageSrc = useLocalUrl(hasImage ? (imageError && block.driveFileId ? `drive://${block.driveFileId}` : block.content) : null);
-
-    const handleImageTap = (e: React.MouseEvent | React.TouchEvent) => {
-        if (!isDownloading) {
-            onImageClick?.(block.content);
-        }
-    };
 
     useEffect(() => {
         if (hasImage && !isDownloading) {
             setShowControls(true);
-            const timer = setTimeout(() => {
-                setShowControls(false);
-            }, 3000);
+            const timer = setTimeout(() => setShowControls(false), 3000);
             return () => clearTimeout(timer);
         }
     }, [hasImage, block.content, isDownloading]);
 
+    // Pointer-based resize (works for both mouse and touch)
+    const startResize = (e: React.PointerEvent, handle: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const container = containerRef.current;
+        if (!container) return;
+        const currentW = container.getBoundingClientRect().width;
+        dragRef.current = { startX: e.clientX, startY: e.clientY, startW: currentW, handle };
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    };
+
+    const onPointerMove = (e: React.PointerEvent) => {
+        if (!dragRef.current || !containerRef.current) return;
+        const { startX, startW, handle } = dragRef.current;
+        const parentW = containerRef.current.parentElement?.getBoundingClientRect().width || startW;
+        let delta = e.clientX - startX;
+        if (handle === 'bl') delta = -delta;
+        if (handle === 'bm') delta = (e.clientX - startX) * 0.5; // slower for center
+        const newW = Math.min(parentW, Math.max(80, startW + delta * (handle === 'bm' ? 2 : 1)));
+        setImgWidth(Math.round(newW));
+    };
+
+    const onPointerUp = (e: React.PointerEvent) => {
+        if (!dragRef.current) return;
+        const finalW = imgWidth ?? (containerRef.current?.getBoundingClientRect().width ?? null);
+        if (finalW) {
+            onChange(block.content, { imageWidth: Math.round(finalW) });
+        }
+        dragRef.current = null;
+    };
+
     return (
         <>
             <div
-                className={`relative group rounded-xl flex flex-col items-center justify-center transition-all ${hasImage || isDownloading
-                        ? 'p-0 bg-transparent border-none min-h-[200px]'
-                        : 'border-2 border-dashed border-white/10 p-4 min-h-[200px] bg-black/20'
+                className={`relative group flex flex-col items-center justify-center transition-all ${hasImage || isDownloading
+                        ? 'p-0 bg-transparent border-none min-h-[80px]'
+                        : 'border-2 border-dashed border-white/10 p-4 min-h-[200px] bg-black/20 rounded-2xl'
                     }`}
                 onContextMenu={(e) => {
                     if (hasImage && !isDownloading) {
                         e.preventDefault();
                         setShowControls(true);
-                        setTimeout(() => setShowControls(false), 3000);
+                        setTimeout(() => setShowControls(false), 4000);
                     }
                 }}
             >
                 {/* Compact floating overlay for mobile image */}
                 {showControls && (hasImage || isDownloading) && (
-                    <div className="absolute top-2 right-2 flex gap-1 md:hidden bg-white/90 dark:bg-zinc-950/80 backdrop-blur rounded-lg p-0.5 border border-zinc-200 dark:border-white/10 z-10 animate-in fade-in duration-200">
-                        <button
-                            onMouseDown={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (!isFirst) moveBlock(idx, 'up');
-                            }}
-                            disabled={isFirst}
-                            className="p-1 text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white disabled:opacity-30"
-                            title="Subir"
-                        >
+                    <div className="absolute top-2 right-2 flex gap-1 bg-white/90 dark:bg-zinc-950/80 backdrop-blur rounded-lg p-0.5 border border-zinc-200 dark:border-white/10 z-10 animate-in fade-in duration-200">
+                        <button onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); if (!isFirst) moveBlock(idx, 'up'); }}
+                            disabled={isFirst} className="p-1 text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white disabled:opacity-30" title="Subir">
                             <ChevronUp className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                            onMouseDown={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (!isLast) moveBlock(idx, 'down');
-                            }}
-                            disabled={isLast}
-                            className="p-1 text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white disabled:opacity-30"
-                            title="Bajar"
-                        >
+                        <button onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); if (!isLast) moveBlock(idx, 'down'); }}
+                            disabled={isLast} className="p-1 text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white disabled:opacity-30" title="Bajar">
                             <ChevronDown className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                            onMouseDown={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                removeBlock(block.id);
-                            }}
-                            className="p-1 text-red-500 hover:text-red-400"
-                            title="Eliminar"
-                        >
+                        <button onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeBlock(block.id); }}
+                            className="p-1 text-red-500 hover:text-red-400" title="Eliminar">
                             <Trash2 className="w-3.5 h-3.5" />
                         </button>
                     </div>
@@ -1075,36 +1152,45 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                 {isDownloading ? (
                     <div className="flex flex-col items-center justify-center w-full min-h-[200px] bg-black/20 rounded-2xl animate-pulse">
                         <ImageIcon className="w-12 h-12 text-white/20 mb-3 animate-bounce" />
-                        <span className="text-white/40 text-sm font-medium">Downloading image...</span>
+                        <span className="text-white/40 text-sm font-medium">Descargando imagen...</span>
                     </div>
                 ) : hasImage ? (
-                    <div className="relative flex justify-center w-full">
+                    <div
+                        ref={containerRef}
+                        className="note-image-block-resizable"
+                        style={{ width: imgWidth ? `${imgWidth}px` : '100%' }}
+                        onPointerMove={onPointerMove}
+                        onPointerUp={onPointerUp}
+                        onPointerCancel={onPointerUp}
+                    >
                         <img
                             src={imageSrc}
-                            alt="Note attachment"
-                            className="max-h-[600px] max-w-full rounded-2xl cursor-pointer shadow-sm"
-                            onClick={handleImageTap}
-                            onError={() => {
-                                if (block.driveFileId && !imageError) {
-                                    setImageError(true);
-                                }
-                            }}
+                            alt="Imagen adjunta"
+                            onClick={() => { if (!isDownloading) onImageClick?.(block.content); setShowControls(true); setTimeout(() => setShowControls(false), 4000); }}
+                            onError={() => { if (block.driveFileId && !imageError) setImageError(true); }}
                         />
-                        {/* Sync status badge */}
+                        {/* Sync badge */}
                         {isSynced && (
-                            <div
-                                className="absolute top-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-2 py-0.5 pointer-events-none"
-                                title="Synced with Drive"
-                            >
+                            <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-2 py-0.5 pointer-events-none">
                                 <Cloud className="w-3 h-3 text-emerald-400" />
                                 <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                             </div>
                         )}
+                        {/* Width indicator */}
+                        {imgWidth && (
+                            <div className="absolute top-2 right-2 text-[10px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded-full pointer-events-none opacity-70">
+                                {imgWidth}px
+                            </div>
+                        )}
+                        {/* Resize handles */}
+                        <div className="img-resize-handle bl" onPointerDown={(e) => startResize(e, 'bl')} />
+                        <div className="img-resize-handle bm" onPointerDown={(e) => startResize(e, 'bm')} />
+                        <div className="img-resize-handle br" onPointerDown={(e) => startResize(e, 'br')} />
                     </div>
                 ) : (
                     <div className="text-center">
                         <ImageIcon className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground mb-4">Upload an image</p>
+                        <p className="text-sm text-muted-foreground mb-4">{block.language === 'es' ? 'Subir imagen' : 'Upload an image'}</p>
                         <input
                             type="file"
                             accept="image/*"

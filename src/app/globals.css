@@ -788,3 +788,116 @@ html.dark.theme-black {
   box-shadow: 0 10px 16px rgba(0, 0, 0, 0.18);
   border-radius: 4px;
 }
+
+/* ─── Inline images inside rich-text-editor (text blocks) ─── */
+.rich-text-editor img {
+  border-radius: 12px;
+  max-width: 100%;
+  height: auto;
+  display: inline-block;
+  vertical-align: middle;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  transition: box-shadow 0.15s, outline 0.1s;
+}
+
+.rich-text-editor img.note-img-selected {
+  outline: 3px solid #7f0df2;
+  outline-offset: 2px;
+  box-shadow: 0 4px 16px rgba(127,13,242,0.25);
+}
+
+/* Resizable image wrapper inside text blocks */
+.note-inline-img-wrapper {
+  display: inline-block;
+  position: relative;
+  line-height: 0;
+  cursor: default;
+  touch-action: none;
+  user-select: none;
+  vertical-align: middle;
+}
+
+.note-inline-img-wrapper img {
+  border-radius: 12px !important;
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+.note-inline-img-wrapper .img-resize-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #7f0df2;
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  z-index: 10;
+  touch-action: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.note-inline-img-wrapper:hover .img-resize-handle,
+.note-inline-img-wrapper.img-selected .img-resize-handle {
+  opacity: 1;
+}
+
+.note-inline-img-wrapper .img-resize-handle.br {
+  right: -7px; bottom: -7px; cursor: se-resize;
+}
+.note-inline-img-wrapper .img-resize-handle.bl {
+  left: -7px; bottom: -7px; cursor: sw-resize;
+}
+.note-inline-img-wrapper .img-resize-handle.bm {
+  left: calc(50% - 10px); bottom: -7px; cursor: s-resize;
+}
+
+/* ─── Standalone image block — rounded + resize handles ─── */
+.note-image-block-resizable {
+  border-radius: 16px;
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  touch-action: none;
+}
+
+.note-image-block-resizable img {
+  border-radius: 16px !important;
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.note-image-block-resizable .img-resize-handle {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background: rgba(127,13,242,0.92);
+  border: 3px solid #fff;
+  border-radius: 50%;
+  z-index: 20;
+  touch-action: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.note-image-block-resizable:hover .img-resize-handle,
+.note-image-block-resizable .img-resize-handle:active {
+  opacity: 1;
+}
+
+.note-image-block-resizable .img-resize-handle.br {
+  right: 8px; bottom: 8px; cursor: se-resize;
+}
+.note-image-block-resizable .img-resize-handle.bl {
+  left: 8px; bottom: 8px; cursor: sw-resize;
+}
+.note-image-block-resizable .img-resize-handle.bm {
+  left: calc(50% - 12px); bottom: 8px; cursor: s-resize;
+}
