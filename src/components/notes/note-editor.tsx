@@ -897,6 +897,8 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
         startX: number;
         startY: number;
         startW: number;
+        startLeft?: number;
+        startTop?: number;
     } | null>(null);
     const ghostRef = useRef<HTMLDivElement | null>(null);
 
@@ -939,6 +941,10 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
     };
 
     const setAlign = (alignMode: 'left' | 'center' | 'right' | 'inline') => {
+        img.style.position = 'relative';
+        img.style.left = '0px';
+        img.style.top = '0px';
+        img.style.zIndex = 'auto';
         if (alignMode === 'left') {
             img.style.display = 'inline-block';
             img.style.float = 'left';
@@ -973,12 +979,21 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
     const handleMoveStart = (e: React.PointerEvent) => {
         e.preventDefault(); e.stopPropagation();
         const imgRect = img.getBoundingClientRect();
+        const editorEl = editorRef.current;
+        const editorRect = editorEl ? editorEl.getBoundingClientRect() : imgRect;
+
+        // Calculate initial image left/top relative to editor container bounds
+        const startLeft = imgRect.left - editorRect.left + (editorEl ? editorEl.scrollLeft : 0);
+        const startTop = imgRect.top - editorRect.top + (editorEl ? editorEl.scrollTop : 0);
+
         dragRef.current = {
             mode: 'move', handle: 'center',
             startX: e.clientX, startY: e.clientY,
             startW: imgRect.width,
+            startLeft, startTop,
         };
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
+
         // Ghost preview
         const ghost = document.createElement('div');
         ghost.style.cssText = `position:fixed;pointer-events:none;z-index:99999;background:${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(24,24,27,0.12)'};border:2.5px dashed ${borderCol};border-radius:14px;width:${imgRect.width}px;height:${imgRect.height}px;top:${imgRect.top}px;left:${imgRect.left}px;`;
@@ -1006,7 +1021,7 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
 
     const handlePointerUp = (e: React.PointerEvent) => {
         if (!dragRef.current) return;
-        const { mode, startX, startY } = dragRef.current;
+        const { mode, startX, startY, startLeft, startTop } = dragRef.current;
         dragRef.current = null;
 
         if (mode === 'resize') {
@@ -1016,53 +1031,22 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
             img.style.opacity = '1';
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
-            if (Math.sqrt(dx * dx + dy * dy) > 10) {
-                const x = e.clientX, y = e.clientY;
-                // Check if dropping directly over another image
-                const elAtPoint = document.elementFromPoint(x, y);
-                const targetImg = elAtPoint ? elAtPoint.closest('img') as HTMLImageElement | null : null;
+            if (Math.sqrt(dx * dx + dy * dy) > 8) {
+                const editorEl = editorRef.current;
+                if (editorEl && startLeft !== undefined && startTop !== undefined) {
+                    const targetLeft = Math.max(0, startLeft + dx);
+                    const targetTop = Math.max(0, startTop + dy);
 
-                if (targetImg && targetImg !== img && targetImg.parentNode) {
-                    const targetRect = targetImg.getBoundingClientRect();
-                    const clone = img.cloneNode(true) as HTMLImageElement;
-                    // Make sure both are inline-block so they sit side-by-side!
-                    clone.style.display = 'inline-block';
-                    clone.style.verticalAlign = 'top';
-                    clone.style.margin = '4px';
-                    targetImg.style.display = 'inline-block';
-                    targetImg.style.verticalAlign = 'top';
-                    targetImg.style.margin = '4px';
-
-                    img.parentNode?.removeChild(img);
-                    if (x > targetRect.left + targetRect.width / 2) {
-                        targetImg.parentNode.insertBefore(clone, targetImg.nextSibling);
-                    } else {
-                        targetImg.parentNode.insertBefore(clone, targetImg);
-                    }
-                    triggerSave();
-                    onClose();
-                    return;
+                    // Position the image freely at (targetLeft, targetTop) relative to editor canvas!
+                    img.style.position = 'absolute';
+                    img.style.left = `${Math.round(targetLeft)}px`;
+                    img.style.top = `${Math.round(targetTop)}px`;
+                    img.style.zIndex = '10';
+                    img.style.margin = '0';
+                    img.style.float = 'none';
+                    img.style.display = 'inline-block';
                 }
-
-                // Caret drop fallback
-                let range: Range | null = null;
-                if ((document as any).caretRangeFromPoint) {
-                    range = (document as any).caretRangeFromPoint(x, y);
-                } else if ((document as any).caretPositionFromPoint) {
-                    const pos = (document as any).caretPositionFromPoint(x, y);
-                    if (pos) { range = document.createRange(); range.setStart(pos.offsetNode, pos.offset); range.collapse(true); }
-                }
-                if (range && img.parentNode && !img.contains(range.startContainer)) {
-                    const clone = img.cloneNode(true) as HTMLImageElement;
-                    clone.style.display = 'inline-block';
-                    clone.style.verticalAlign = 'top';
-                    clone.style.margin = '4px';
-                    img.parentNode.removeChild(img);
-                    range.insertNode(clone);
-                    triggerSave();
-                    onClose();
-                    return;
-                }
+                triggerSave();
             }
             triggerSave();
         }
