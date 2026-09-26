@@ -742,8 +742,10 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
                             <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
 
-                            {/* Inline Image Insert Button */}
+                            {/* Inline Media & Elements Group */}
                             <InlineImageButton language={language} />
+                            <InlineTaskButton language={language} />
+                            <InlineSeparatorButton language={language} />
 
                             <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
 
@@ -803,6 +805,23 @@ function ToolbarButton({ icon: Icon, label, onClick }: { icon: any, label: strin
             {label}
         </button>
     )
+}
+
+/**
+ * InlineImageButton — inserts an image at cursor in a contenteditable text block.
+/**
+ * Helper to hide virtual soft keyboard on Web / Mobile Web / WebView
+ */
+export function hideKeyboard() {
+    if (typeof document !== 'undefined') {
+        const active = document.activeElement as HTMLElement;
+        if (active && typeof active.blur === 'function') {
+            active.blur();
+        }
+        if (typeof window !== 'undefined' && (window as any).Capacitor?.Plugins?.Keyboard) {
+            try { (window as any).Capacitor.Plugins.Keyboard.hide(); } catch (e) {}
+        }
+    }
 }
 
 /**
@@ -869,12 +888,94 @@ function InlineImageButton({ language }: { language: string }) {
 }
 
 /**
+ * InlineTaskButton — inserts an interactive checkbox task item inside text block.
+ */
+function InlineTaskButton({ language }: { language: string }) {
+    const savedRangeRef = useRef<Range | null>(null);
+
+    const saveSelection = () => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+        }
+    };
+
+    const restoreSelection = () => {
+        const r = savedRangeRef.current;
+        if (!r) return;
+        const sel = window.getSelection();
+        if (sel) { sel.removeAllRanges(); sel.addRange(r); }
+    };
+
+    const handleInsertTask = () => {
+        restoreSelection();
+        const taskHtml = `<span contenteditable="false" data-inline-task="1" style="display:inline-flex;align-items:center;margin:0 4px 0 2px;vertical-align:middle;cursor:pointer;user-select:none;"><input type="checkbox" style="width:16px;height:16px;accent-color:#18181b;cursor:pointer;" /></span>&nbsp;`;
+        document.execCommand('insertHTML', false, taskHtml);
+    };
+
+    return (
+        <button
+            onClick={() => {
+                saveSelection();
+                handleInsertTask();
+            }}
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10 shrink-0"
+            title={language === 'es' ? 'Insertar Tarea con Checkmark' : 'Insert Checkmark Task'}
+        >
+            <CheckSquare className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
+            <span className="text-[11px] font-bold">{language === 'es' ? 'Tarea' : 'Task'}</span>
+        </button>
+    );
+}
+
+/**
+ * InlineSeparatorButton — inserts a horizontal line separator inside text block.
+ */
+function InlineSeparatorButton({ language }: { language: string }) {
+    const savedRangeRef = useRef<Range | null>(null);
+
+    const saveSelection = () => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+        }
+    };
+
+    const restoreSelection = () => {
+        const r = savedRangeRef.current;
+        if (!r) return;
+        const sel = window.getSelection();
+        if (sel) { sel.removeAllRanges(); sel.addRange(r); }
+    };
+
+    const handleInsertSeparator = () => {
+        restoreSelection();
+        const sepHtml = `<hr data-inline-sep="1" style="display:block;margin:12px 0;border:none;border-top:1.5px solid rgba(120,120,120,0.4);clear:both;" /><br />`;
+        document.execCommand('insertHTML', false, sepHtml);
+    };
+
+    return (
+        <button
+            onClick={() => {
+                saveSelection();
+                handleInsertSeparator();
+            }}
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10 shrink-0"
+            title={language === 'es' ? 'Insertar Separador' : 'Insert Separator'}
+        >
+            <SeparatorHorizontal className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
+            <span className="text-[11px] font-bold">{language === 'es' ? 'Separador' : 'Separator'}</span>
+        </button>
+    );
+}
+
+/**
  * InlineImageOverlay — floating overlay for selected inline image.
  * Features:
- * - Neutral outline & handles (black in light mode, white in dark mode, NO PURPLE)
+ * - Sleek small gray handles (14px diameter) & gray border outline (NO black/purple)
  * - Alignment toolbar (Align Left, Center, Align Right, Side-by-side)
  * - Prominent Delete button 🗑️
- * - Smart drop logic (place side-by-side next to another image or at caret)
+ * - 2D free relative offset drag positioning
  */
 function InlineImageOverlay({ img, onClose, editorRef }: {
     img: HTMLImageElement;
@@ -884,11 +985,11 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
     const [rect, setRect] = useState(() => img.getBoundingClientRect());
     const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
 
-    // Neutral color palette: Light mode zinc-900 / white, Dark mode white / zinc-950
-    const borderCol = isDark ? '#ffffff' : '#18181b';
-    const handleBg = isDark ? '#ffffff' : '#18181b';
-    const handleBorder = isDark ? '#18181b' : '#ffffff';
-    const moveBg = isDark ? 'rgba(255,255,255,0.92)' : 'rgba(24,24,27,0.92)';
+    // Refined Sleek Gray color palette (NO pure black / NO purple)
+    const borderCol = isDark ? '#a1a1aa' : '#71717a';
+    const handleBg = isDark ? '#e4e4e7' : '#71717a';
+    const handleBorder = isDark ? '#27272a' : '#ffffff';
+    const moveBg = isDark ? 'rgba(228,228,231,0.92)' : 'rgba(113,113,122,0.92)';
     const moveColor = isDark ? '#18181b' : '#ffffff';
 
     const dragRef = useRef<{
@@ -980,7 +1081,6 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
         e.preventDefault(); e.stopPropagation();
         const imgRect = img.getBoundingClientRect();
 
-        // Parse current numeric relative offsets (default to 0)
         const currentLeft = parseFloat(img.style.left || '0') || 0;
         const currentTop = parseFloat(img.style.top || '0') || 0;
 
@@ -995,7 +1095,7 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
 
         // Ghost preview
         const ghost = document.createElement('div');
-        ghost.style.cssText = `position:fixed;pointer-events:none;z-index:99999;background:${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(24,24,27,0.18)'};border:2.5px dashed ${borderCol};border-radius:14px;width:${imgRect.width}px;height:${imgRect.height}px;top:${imgRect.top}px;left:${imgRect.left}px;box-shadow:0 8px 24px rgba(0,0,0,0.3);`;
+        ghost.style.cssText = `position:fixed;pointer-events:none;z-index:99999;background:${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(113,113,122,0.2)'};border:2px dashed ${borderCol};border-radius:14px;width:${imgRect.width}px;height:${imgRect.height}px;top:${imgRect.top}px;left:${imgRect.left}px;box-shadow:0 8px 24px rgba(0,0,0,0.25);`;
         document.body.appendChild(ghost);
         ghostRef.current = ghost;
         img.style.opacity = '0.35';
@@ -1034,7 +1134,6 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
                 const newLeft = (startLeft || 0) + dx;
                 const newTop = (startTop || 0) + dy;
 
-                // Apply 2D relative pixel offset + high z-index so image can overlap ANYTHING freely!
                 img.style.position = 'relative';
                 img.style.left = `${Math.round(newLeft)}px`;
                 img.style.top = `${Math.round(newTop)}px`;
@@ -1049,16 +1148,17 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
         setRect(img.getBoundingClientRect());
     };
 
-    const PAD = 8;
+    const PAD = 6;
+    // Smaller 14px handles in sleek medium gray (NO pure black)
     const handleStyle = (extra: React.CSSProperties = {}): React.CSSProperties => ({
         position: 'absolute',
-        width: 20, height: 20,
+        width: 14, height: 14,
         background: handleBg,
-        border: `2.5px solid ${handleBorder}`,
+        border: `2px solid ${handleBorder}`,
         borderRadius: '50%',
         pointerEvents: 'all',
         touchAction: 'none',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
         zIndex: 10,
         ...extra,
     });
@@ -1078,13 +1178,13 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
                 height: rect.height + PAD * 2,
                 pointerEvents: 'none',
             }}>
-                {/* Selection border — neutral dark/white */}
+                {/* Selection border — sleek medium gray */}
                 <div style={{
                     position: 'absolute', inset: 0,
-                    border: `2.5px solid ${borderCol}`,
-                    borderRadius: 16,
+                    border: `2px solid ${borderCol}`,
+                    borderRadius: 14,
                     pointerEvents: 'none',
-                    boxShadow: isDark ? '0 0 0 1.5px rgba(255,255,255,0.2)' : '0 0 0 1.5px rgba(0,0,0,0.15)',
+                    boxShadow: '0 0 0 1.5px rgba(113,113,122,0.2)',
                 }} />
 
                 {/* Floating alignment & action bar above image */}
@@ -1092,7 +1192,7 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
                     className="img-overlay-toolbar"
                     style={{
                         position: 'absolute',
-                        top: -46,
+                        top: -44,
                         left: '50%',
                         transform: 'translateX(-50%)',
                         background: isDark ? '#18181b' : '#ffffff',
@@ -1165,17 +1265,17 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
                         position: 'absolute',
                         top: '50%', left: '50%',
                         transform: 'translate(-50%,-50%)',
-                        width: 42, height: 42,
+                        width: 36, height: 36,
                         background: moveBg,
-                        border: `2.5px solid ${handleBorder}`,
+                        border: `2px solid ${handleBorder}`,
                         borderRadius: '50%',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         cursor: 'grab',
                         pointerEvents: 'all',
                         touchAction: 'none',
-                        boxShadow: '0 3px 12px rgba(0,0,0,0.4)',
+                        boxShadow: '0 3px 10px rgba(0,0,0,0.3)',
                         color: moveColor,
-                        fontSize: 20,
+                        fontSize: 18,
                         userSelect: 'none',
                         zIndex: 20,
                     }}
@@ -1191,14 +1291,14 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
                     padding: '2px 6px', borderRadius: 8, pointerEvents: 'none',
                 }}>{Math.round(rect.width)}px</div>
 
-                {/* Corner resize handles */}
-                <div style={handleStyle({ top: -4, left: -4, cursor: 'nw-resize' })} onPointerDown={e => handleResizeStart(e, 'tl')} />
-                <div style={handleStyle({ top: -4, right: -4, cursor: 'ne-resize' })} onPointerDown={e => handleResizeStart(e, 'tr')} />
-                <div style={handleStyle({ bottom: -4, left: -4, cursor: 'sw-resize' })} onPointerDown={e => handleResizeStart(e, 'bl')} />
-                <div style={handleStyle({ bottom: -4, right: -4, cursor: 'se-resize' })} onPointerDown={e => handleResizeStart(e, 'br')} />
+                {/* Corner resize handles (14px diameter) */}
+                <div style={handleStyle({ top: -3, left: -3, cursor: 'nw-resize' })} onPointerDown={e => handleResizeStart(e, 'tl')} />
+                <div style={handleStyle({ top: -3, right: -3, cursor: 'ne-resize' })} onPointerDown={e => handleResizeStart(e, 'tr')} />
+                <div style={handleStyle({ bottom: -3, left: -3, cursor: 'sw-resize' })} onPointerDown={e => handleResizeStart(e, 'bl')} />
+                <div style={handleStyle({ bottom: -3, right: -3, cursor: 'se-resize' })} onPointerDown={e => handleResizeStart(e, 'br')} />
                 {/* Edge mid handles */}
-                <div style={handleStyle({ top: -4, left: 'calc(50% - 10px)', cursor: 'n-resize' })} onPointerDown={e => handleResizeStart(e, 'tm')} />
-                <div style={handleStyle({ bottom: -4, left: 'calc(50% - 10px)', cursor: 's-resize' })} onPointerDown={e => handleResizeStart(e, 'bm')} />
+                <div style={handleStyle({ top: -3, left: 'calc(50% - 7px)', cursor: 'n-resize' })} onPointerDown={e => handleResizeStart(e, 'tm')} />
+                <div style={handleStyle({ bottom: -3, left: 'calc(50% - 7px)', cursor: 's-resize' })} onPointerDown={e => handleResizeStart(e, 'bm')} />
             </div>
         </div>,
         document.body
@@ -1227,6 +1327,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
     };
 
     const handleApplyFont = (fontName: string) => {
+        hideKeyboard();
         restoreSelection();
         applyFormat('fontName', fontName);
         setIsOpen(false);
@@ -1278,6 +1379,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
             <button
                 onMouseDown={(e) => {
                     e.preventDefault();
+                    hideKeyboard();
                     saveSelection();
                     setIsOpen(!isOpen);
                 }}
@@ -2510,9 +2612,9 @@ const BlockRenderer = React.memo(function BlockRenderer({
                             <div key={item.id || itemIdx} className="flex items-center gap-3">
                                 <button
                                     onClick={() => toggle(item.id)}
-                                    className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${item.checked ? 'bg-primary text-black' : 'border border-muted-foreground bg-transparent'}`}
+                                    className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${item.checked ? 'bg-zinc-900 border border-zinc-900 text-white dark:bg-white dark:border-white dark:text-zinc-900' : 'border border-muted-foreground/60 bg-transparent'}`}
                                 >
-                                    {item.checked && <Check className="w-3.5 h-3.5" />}
+                                    {item.checked && <Check className="w-3.5 h-3.5 stroke-[3] text-white dark:text-zinc-900" />}
                                 </button>
                                 <RichTaskItem
                                     content={typeof item.text === 'string' ? item.text : ''}
@@ -3242,14 +3344,29 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             if (href) { e.preventDefault(); window.open(href, '_system'); }
             return;
         }
-        // Handle inline image clicks — show overlay
-        const img = target.closest('img[data-inline-img]') as HTMLImageElement | null;
+        // Handle inline image clicks — hide soft keyboard and show overlay
+        const img = target.closest('img') as HTMLImageElement | null;
         if (img) {
             e.preventDefault();
+            hideKeyboard();
             setSelectedImg(img);
             return;
         }
-        // Click elsewhere — deselect
+        // Handle inline task checkbox toggling inside text block
+        const taskBox = target.closest('[data-inline-task]') as HTMLElement | null;
+        if (taskBox || (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox')) {
+            const input = (target.tagName === 'INPUT' ? target : taskBox?.querySelector('input')) as HTMLInputElement | null;
+            if (input && target !== input) {
+                input.checked = !input.checked;
+                if (input.checked) {
+                    input.setAttribute('checked', 'true');
+                } else {
+                    input.removeAttribute('checked');
+                }
+                handleInput();
+            }
+        }
+        // Click elsewhere — deselect overlay
         setSelectedImg(null);
     };
 

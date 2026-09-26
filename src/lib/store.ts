@@ -779,9 +779,15 @@ export const syncWidgetData = async (goals?: any[], appointments?: any[], notes?
                     ...note,
                     blocks: Array.isArray(note.blocks)
                         ? note.blocks.map((b: any) => {
-                            if ((b.type === 'image' || b.type === 'drawing') && typeof b.content === 'string' && b.content.length > 500000) {
-                                // If an image base64 is exceptionally massive (>500KB), omit to avoid SharedPreferences overflow
-                                return { ...b, content: '' };
+                            if ((b.type === 'image' || b.type === 'drawing') && typeof b.content === 'string') {
+                                const src = b.content;
+                                if (src.startsWith('file://') || src.startsWith('/') || src.startsWith('http') || src.startsWith('drive://') || src.includes('_capacitor_file_')) {
+                                    return b;
+                                }
+                                if (src.length > 500000) {
+                                    return { ...b, content: src.slice(0, 200000) };
+                                }
+                                return b;
                             }
                             return b;
                         })

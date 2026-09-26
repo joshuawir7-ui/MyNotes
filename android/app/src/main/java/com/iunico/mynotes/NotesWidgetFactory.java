@@ -162,7 +162,26 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
                         String type = block.optString("type");
 
                         if ("text".equals(type)) {
-                            String textContent = block.optString("content", "");
+                            String rawContent = block.optString("content", "");
+                            
+                            // Extract inline images from text block for native widget
+                            java.util.regex.Pattern imgPattern = java.util.regex.Pattern.compile("(?i)<img[^>]+src=[\"']([^\"']+)[\"']");
+                            java.util.regex.Matcher imgMatcher = imgPattern.matcher(rawContent);
+                            while (imgMatcher.find()) {
+                                String imgSrc = imgMatcher.group(1);
+                                if (imgSrc != null && !imgSrc.isEmpty()) {
+                                    Bitmap inlineBmp = decodeBase64(imgSrc);
+                                    if (inlineBmp != null) {
+                                        NoteItem imgItem = new NoteItem(inlineBmp);
+                                        imgItem.noteId = noteId;
+                                        imgItem.blockId = blockId;
+                                        imgItem.hasTaskList = noteHasTaskList;
+                                        newNoteItems.add(imgItem);
+                                    }
+                                }
+                            }
+
+                            String textContent = rawContent.replaceAll("(?i)<img[^>]*>", "");
                             
                             // Remove list container tags
                             textContent = textContent.replaceAll("(?i)</?(ul|ol)[^>]*>", "");
@@ -328,15 +347,19 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
             if (input == null || input.isEmpty()) return null;
             Bitmap decoded = null;
             
-            // Check if the input is a local file URI (from Capacitor Filesystem migration)
-            if (input.startsWith("file://") || input.startsWith("/")) {
+            if (input.contains("_capacitor_file_")) {
+                int idx = input.indexOf("_capacitor_file_");
+                String filePath = input.substring(idx + "_capacitor_file_".length());
+                if (!filePath.startsWith("/")) filePath = "/" + filePath;
+                decoded = android.graphics.BitmapFactory.decodeFile(filePath);
+            } else if (input.startsWith("file://") || input.startsWith("/")) {
                 String filePath = input;
                 if (filePath.startsWith("file://")) {
                     filePath = filePath.substring(7);
                 }
                 decoded = android.graphics.BitmapFactory.decodeFile(filePath);
             } else {
-                // Fallback for older Base64 encoded images
+                // Fallback for Base64 encoded images
                 if (input.startsWith("data:image")) {
                     input = input.substring(input.indexOf(",") + 1);
                 }

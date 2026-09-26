@@ -42,8 +42,8 @@ function NotePreviewRenderer({ note, isPinned = false }: { note: Note; isPinned?
                             {title && <h4 className={`font-bold ${isPinned ? 'text-[11px] md:text-xs' : 'text-sm'} mb-1`}>{title}</h4>}
                             {items.map((item: any, i: number) => (
                                 <div key={item.id || i} className={`flex items-start gap-2 ${isPinned ? 'text-[10px] md:text-xs' : 'text-sm'}`}>
-                                    <div className={`${isPinned ? 'w-3.5 h-3.5 mt-0.5' : 'w-4 h-4 mt-0.5'} rounded flex items-center justify-center shrink-0 border transition-all ${item.checked ? 'bg-primary border-primary text-black' : 'border-muted-foreground/50 bg-transparent'}`}>
-                                        {item.checked && <Check className={`${isPinned ? 'w-2.5 h-2.5' : 'w-3 h-3'} stroke-[3.5]`} />}
+                                    <div className={`${isPinned ? 'w-3.5 h-3.5 mt-0.5' : 'w-4 h-4 mt-0.5'} rounded flex items-center justify-center shrink-0 border transition-all ${item.checked ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-white dark:border-white dark:text-zinc-900' : 'border-muted-foreground/50 bg-transparent'}`}>
+                                        {item.checked && <Check className={`${isPinned ? 'w-2.5 h-2.5' : 'w-3 h-3'} stroke-[3.5] text-white dark:text-zinc-900`} />}
                                     </div>
                                     <span className={item.checked ? 'line-through text-muted-foreground opacity-60' : 'opacity-90'} dangerouslySetInnerHTML={{ __html: item.text || '' }} />
                                 </div>
