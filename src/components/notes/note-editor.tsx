@@ -1062,18 +1062,22 @@ function InlineTaskButton({ language }: { language: string }) {
         if (sel && sel.rangeCount > 0) {
             const range = sel.getRangeAt(0);
             const container = range.startContainer;
-            if (container && container.nodeType === Node.TEXT_NODE) {
-                const textBeforeContent = container.nodeValue?.substring(0, range.startOffset) || '';
-                if (textBeforeContent.trim() !== '') {
-                    needsBreak = true;
+            if (container) {
+                if (container.nodeType === Node.TEXT_NODE) {
+                    if (range.startOffset > 0 || container.previousSibling) {
+                        needsBreak = true;
+                    }
+                } else if (container.nodeType === Node.ELEMENT_NODE) {
+                    const el = container as HTMLElement;
+                    if (range.startOffset > 0 || el.childNodes.length > 0) {
+                        needsBreak = true;
+                    }
                 }
-            } else if (container && container.childNodes.length > 0) {
-                needsBreak = true;
             }
         }
 
         const breakHtml = needsBreak ? '<br />' : '';
-        const taskHtml = `${breakHtml}<span data-inline-task="1" style="display:inline-flex;align-items:center;gap:6px;margin:4px 0;vertical-align:middle;line-height:1.4;"><span contenteditable="false" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;user-select:none;cursor:pointer;vertical-align:middle;"><input type="checkbox" style="width:18px;height:18px;margin:0;cursor:pointer;vertical-align:middle;" /></span>&nbsp;</span>`;
+        const taskHtml = `${breakHtml}<span data-inline-task="1" style="display:flex;align-items:center;gap:6px;margin:4px 0;width:100%;clear:both;line-height:1.4;"><span contenteditable="false" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;user-select:none;cursor:pointer;vertical-align:middle;"><input type="checkbox" style="width:18px;height:18px;margin:0;cursor:pointer;vertical-align:middle;" /></span>&nbsp;</span>`;
         document.execCommand('insertHTML', false, taskHtml);
     };
 
