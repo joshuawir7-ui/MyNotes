@@ -806,9 +806,8 @@ function ToolbarButton({ icon: Icon, label, onClick }: { icon: any, label: strin
 }
 
 /**
- * InlineImageButton — inserts a resizable image at cursor position inside a contenteditable (text block).
- * Uses onClick (not onMouseDown) for the file input trigger so Android WebView opens the native picker.
- * Saves + restores selection before inserting so the image lands at the right place.
+ * InlineImageButton — inserts an image at cursor in a contenteditable text block.
+ * KEY FIX: Uses base64 data URL directly. file:// URIs are blocked in WebView as img src.
  */
 function InlineImageButton({ language }: { language: string }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -828,24 +827,16 @@ function InlineImageButton({ language }: { language: string }) {
         if (sel) { sel.removeAllRanges(); sel.addRange(r); }
     };
 
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
         if (e.target) e.target.value = '';
 
         const reader = new FileReader();
-        reader.onloadend = async () => {
+        reader.onloadend = () => {
             const base64 = reader.result as string;
-            let src = base64;
-            try {
-                const { saveBase64ImageToFile } = await import('@/lib/image-utils');
-                const uri = await saveBase64ImageToFile(base64);
-                if (uri) src = uri;
-            } catch (_) { /* fallback to base64 */ }
-
-            // Build an HTML img tag with class for rounded corners and inline style for width
-            const imgHtml = `<img src="${src}" data-inline-img="1" style="width:100%;border-radius:12px;vertical-align:middle;display:inline-block;" alt="imagen" />&nbsp;`;
-
+            // Use base64 directly — file:// URIs are blocked in WebView HTML src attributes
+            const imgHtml = `<img src="${base64}" data-inline-img="1" style="width:100%;max-width:100%;border-radius:12px;display:block;margin:4px 0;cursor:pointer;" alt="imagen" />`;
             restoreSelection();
             document.execCommand('insertHTML', false, imgHtml);
         };
@@ -870,9 +861,212 @@ function InlineImageButton({ language }: { language: string }) {
                 title={language === 'es' ? 'Insertar imagen en texto' : 'Insert image in text'}
             >
                 <ImageIcon className="w-3.5 h-3.5 text-yellow-500" />
-                <span className="text-[11px] font-bold">{language === 'es' ? 'Img' : 'Img'}</span>
+                <span className="text-[11px] font-bold">Img</span>
             </button>
         </div>
+    );
+}
+
+/**
+ * InlineImageOverlay — floating overlay that shows resize (4 corners) and move (center) handles
+ * over a selected inline image inside a contenteditable. Uses PointerEvents for touch+mouse.
+ */
+function InlineImageOverlay({ img, onClose, editorRef }: {
+    img: HTMLImageElement;
+    onClose: () => void;
+    editorRef: React.RefObject<HTMLDivElement>;
+}) {
+    const [rect, setRect] = useState(() => img.getBoundingClientRect());
+    const dragRef = useRef<{
+        mode: 'resize' | 'move';
+        handle: string;
+        startX: number;
+        startY: number;
+        startW: number;
+    } | null>(null);
+    const ghostRef = useRef<HTMLDivElement | null>(null);
+
+    // Keep rect synced with scroll/resize
+    useEffect(() => {
+        const update = () => setRect(img.getBoundingClientRect());
+        window.addEventListener('scroll', update, true);
+        window.addEventListener('resize', update);
+        return () => {
+            window.removeEventListener('scroll', update, true);
+            window.removeEventListener('resize', update);
+        };
+    }, [img]);
+
+    // Dismiss on tap outside
+    useEffect(() => {
+        const handler = (e: PointerEvent) => {
+            const target = e.target as HTMLElement;
+            if (!img.contains(target) && target !== img) onClose();
+        };
+        const t = setTimeout(() => document.addEventListener('pointerdown', handler), 120);
+        return () => { clearTimeout(t); document.removeEventListener('pointerdown', handler); };
+    }, [img, onClose]);
+
+    const triggerSave = () => {
+        editorRef.current?.dispatchEvent(new Event('input', { bubbles: true }));
+        setRect(img.getBoundingClientRect());
+    };
+
+    const handleResizeStart = (e: React.PointerEvent, handle: string) => {
+        e.preventDefault(); e.stopPropagation();
+        dragRef.current = {
+            mode: 'resize', handle,
+            startX: e.clientX, startY: e.clientY,
+            startW: img.getBoundingClientRect().width,
+        };
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    };
+
+    const handleMoveStart = (e: React.PointerEvent) => {
+        e.preventDefault(); e.stopPropagation();
+        const imgRect = img.getBoundingClientRect();
+        dragRef.current = {
+            mode: 'move', handle: 'center',
+            startX: e.clientX, startY: e.clientY,
+            startW: imgRect.width,
+        };
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        // Ghost preview
+        const ghost = document.createElement('div');
+        ghost.style.cssText = `position:fixed;pointer-events:none;z-index:99999;background:rgba(127,13,242,0.15);border:2.5px dashed #7f0df2;border-radius:14px;width:${imgRect.width}px;height:${imgRect.height}px;top:${imgRect.top}px;left:${imgRect.left}px;`;
+        document.body.appendChild(ghost);
+        ghostRef.current = ghost;
+        img.style.opacity = '0.3';
+    };
+
+    const handlePointerMove = (e: React.PointerEvent) => {
+        if (!dragRef.current) return;
+        const { mode, handle, startX, startY, startW } = dragRef.current;
+        if (mode === 'resize') {
+            let delta = e.clientX - startX;
+            if (handle === 'bl' || handle === 'tl') delta = -delta;
+            const parentW = img.parentElement?.getBoundingClientRect().width || startW;
+            const newW = Math.max(60, Math.min(parentW, startW + delta));
+            img.style.width = `${Math.round(newW)}px`;
+            setRect(img.getBoundingClientRect());
+        } else if (mode === 'move' && ghostRef.current) {
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            ghostRef.current.style.transform = `translate(${dx}px,${dy}px)`;
+        }
+    };
+
+    const handlePointerUp = (e: React.PointerEvent) => {
+        if (!dragRef.current) return;
+        const { mode, startX, startY } = dragRef.current;
+        dragRef.current = null;
+
+        if (mode === 'resize') {
+            triggerSave();
+        } else if (mode === 'move') {
+            if (ghostRef.current) { ghostRef.current.remove(); ghostRef.current = null; }
+            img.style.opacity = '1';
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            if (Math.sqrt(dx * dx + dy * dy) > 12) {
+                // Find new caret position at drop point
+                let range: Range | null = null;
+                const x = e.clientX, y = e.clientY;
+                if ((document as any).caretRangeFromPoint) {
+                    range = (document as any).caretRangeFromPoint(x, y);
+                } else if ((document as any).caretPositionFromPoint) {
+                    const pos = (document as any).caretPositionFromPoint(x, y);
+                    if (pos) { range = document.createRange(); range.setStart(pos.offsetNode, pos.offset); range.collapse(true); }
+                }
+                if (range && img.parentNode && !img.contains(range.startContainer)) {
+                    const clone = img.cloneNode(true) as HTMLImageElement;
+                    img.parentNode.removeChild(img);
+                    range.insertNode(clone);
+                    triggerSave();
+                    onClose();
+                    return;
+                }
+            }
+            triggerSave();
+        }
+        setRect(img.getBoundingClientRect());
+    };
+
+    const PAD = 8;
+    const handleStyle = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+        position: 'absolute',
+        width: 22, height: 22,
+        background: '#7f0df2',
+        border: '3px solid #fff',
+        borderRadius: '50%',
+        pointerEvents: 'all',
+        touchAction: 'none',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+        zIndex: 10,
+        ...extra,
+    });
+
+    return createPortal(
+        <div
+            style={{ position: 'fixed', inset: 0, zIndex: 99990, pointerEvents: 'none' }}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+        >
+            <div style={{
+                position: 'absolute',
+                left: rect.left - PAD,
+                top: rect.top - PAD,
+                width: rect.width + PAD * 2,
+                height: rect.height + PAD * 2,
+                pointerEvents: 'none',
+            }}>
+                {/* Selection border */}
+                <div style={{ position: 'absolute', inset: 0, border: '2.5px solid #7f0df2', borderRadius: 16, pointerEvents: 'none', boxShadow: '0 0 0 2px rgba(127,13,242,0.12)' }} />
+
+                {/* Move handle — center */}
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: '50%', left: '50%',
+                        transform: 'translate(-50%,-50%)',
+                        width: 44, height: 44,
+                        background: 'rgba(127,13,242,0.92)',
+                        border: '3px solid #fff',
+                        borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'grab',
+                        pointerEvents: 'all',
+                        touchAction: 'none',
+                        boxShadow: '0 3px 12px rgba(0,0,0,0.4)',
+                        color: '#fff',
+                        fontSize: 20,
+                        userSelect: 'none',
+                        zIndex: 20,
+                    }}
+                    onPointerDown={handleMoveStart}
+                    title="Mover imagen"
+                >✥</div>
+
+                {/* Width label */}
+                <div style={{
+                    position: 'absolute', top: PAD + 4, right: PAD + 4,
+                    fontSize: 10, fontWeight: 700,
+                    background: 'rgba(0,0,0,0.6)', color: '#fff',
+                    padding: '2px 6px', borderRadius: 8, pointerEvents: 'none',
+                }}>{Math.round(rect.width)}px</div>
+
+                {/* Corner resize handles */}
+                <div style={handleStyle({ top: -5, left: -5, cursor: 'nw-resize' })} onPointerDown={e => handleResizeStart(e, 'tl')} />
+                <div style={handleStyle({ top: -5, right: -5, cursor: 'ne-resize' })} onPointerDown={e => handleResizeStart(e, 'tr')} />
+                <div style={handleStyle({ bottom: -5, left: -5, cursor: 'sw-resize' })} onPointerDown={e => handleResizeStart(e, 'bl')} />
+                <div style={handleStyle({ bottom: -5, right: -5, cursor: 'se-resize' })} onPointerDown={e => handleResizeStart(e, 'br')} />
+                {/* Edge mid handles */}
+                <div style={handleStyle({ top: -5, left: 'calc(50% - 11px)', cursor: 'n-resize' })} onPointerDown={e => handleResizeStart(e, 'tm')} />
+                <div style={handleStyle({ bottom: -5, left: 'calc(50% - 11px)', cursor: 's-resize' })} onPointerDown={e => handleResizeStart(e, 'bm')} />
+            </div>
+        </div>,
+        document.body
     );
 }
 
@@ -2855,9 +3049,11 @@ const RichTaskItem = React.memo(function RichTaskItem({ content, onChange, onEnt
 const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, activeBlockId, onFocus, onBlur }: { content: string, onChange: (c: string) => void, activeBlockId: string, onFocus?: () => void, onBlur?: () => void }) {
     const editorRef = useRef<HTMLDivElement>(null);
     const isFirstLoad = useRef(true);
+    const [selectedImg, setSelectedImg] = useState<HTMLImageElement | null>(null);
 
     useEffect(() => {
         isFirstLoad.current = true;
+        setSelectedImg(null);
     }, [activeBlockId]);
 
     useEffect(() => {
@@ -2904,43 +3100,61 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
 
     const handleClick = (e: React.MouseEvent) => {
         const target = e.target as HTMLElement;
+        // Handle anchor clicks
         const anchor = target.closest('a');
         if (anchor) {
             const href = anchor.getAttribute('href');
-            if (href) {
-                e.preventDefault();
-                window.open(href, '_system');
-            }
+            if (href) { e.preventDefault(); window.open(href, '_system'); }
+            return;
         }
+        // Handle inline image clicks — show overlay
+        const img = target.closest('img[data-inline-img]') as HTMLImageElement | null;
+        if (img) {
+            e.preventDefault();
+            setSelectedImg(img);
+            return;
+        }
+        // Click elsewhere — deselect
+        setSelectedImg(null);
     };
 
     return (
-        <div
-            ref={editorRef}
-            contentEditable
-            onInput={handleInput}
-            onFocus={onFocus}
-            onBlur={() => {
-                if (timeoutRef.current) clearTimeout(timeoutRef.current);
-                if (editorRef.current) {
-                    cleanContainerStyle(editorRef.current);
-                    const linkified = stripInlineColors(linkifyHTML(editorRef.current.innerHTML));
-                    if (editorRef.current.innerHTML !== linkified) {
-                        editorRef.current.innerHTML = linkified;
+        <>
+            <div
+                ref={editorRef}
+                contentEditable
+                onInput={handleInput}
+                onFocus={onFocus}
+                onBlur={() => {
+                    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                    if (editorRef.current) {
+                        cleanContainerStyle(editorRef.current);
+                        const linkified = stripInlineColors(linkifyHTML(editorRef.current.innerHTML));
+                        if (editorRef.current.innerHTML !== linkified) {
+                            editorRef.current.innerHTML = linkified;
+                        }
+                        onChange(editorRef.current.innerHTML); // Flush immediately on blur
                     }
-                    onChange(editorRef.current.innerHTML); // Flush immediately on blur
-                }
-                if (onBlur) onBlur();
-            }}
-            onPaste={handlePaste}
-            onClick={handleClick}
-            {...({ placeholder: "Escribe algo aquí..." } as any)}
-            className="rich-text-editor w-full min-h-[30px] bg-transparent border-none outline-none text-base text-foreground relative empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 before:absolute before:pointer-events-none"
-        />
+                    if (onBlur) onBlur();
+                }}
+                onPaste={handlePaste}
+                onClick={handleClick}
+                {...({ placeholder: "Escribe algo aquí..." } as any)}
+                className="rich-text-editor w-full min-h-[30px] bg-transparent border-none outline-none text-base text-foreground relative empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 before:absolute before:pointer-events-none"
+            />
+            {selectedImg && typeof document !== 'undefined' && (
+                <InlineImageOverlay
+                    img={selectedImg}
+                    onClose={() => setSelectedImg(null)}
+                    editorRef={editorRef as React.RefObject<HTMLDivElement>}
+                />
+            )}
+        </>
     );
 }, (prev, next) => {
     return prev.content === next.content && prev.activeBlockId === next.activeBlockId;
 });
+
 
 
 function getBlockIconAndLabel(type: BlockType, language: string) {
