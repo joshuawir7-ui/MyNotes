@@ -1037,19 +1037,19 @@ function InlineSeparatorButton({ language }: { language: string }) {
 }
 
 /**
- * InlineImageOverlay — floating overlay for selected inline image.
+ * InlineMediaOverlay — floating overlay for selected inline image or video element.
  * Features:
  * - Sleek small gray handles (14px diameter) & gray border outline (NO black/purple)
  * - Alignment toolbar (Align Left, Center, Align Right, Side-by-side)
  * - Prominent Delete button 🗑️
- * - 2D free relative offset drag positioning
+ * - 2D free relative offset drag positioning & corner/side resizing for both images and videos!
  */
-function InlineImageOverlay({ img, onClose, editorRef }: {
-    img: HTMLImageElement;
+function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
+    mediaEl: HTMLElement;
     onClose: () => void;
     editorRef: React.RefObject<HTMLDivElement>;
 }) {
-    const [rect, setRect] = useState(() => img.getBoundingClientRect());
+    const [rect, setRect] = useState(() => mediaEl.getBoundingClientRect());
     const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
 
     // Refined Sleek Gray color palette (NO pure black / NO purple)
@@ -1072,64 +1072,64 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
 
     // Keep rect synced with scroll/resize
     useEffect(() => {
-        const update = () => setRect(img.getBoundingClientRect());
+        const update = () => setRect(mediaEl.getBoundingClientRect());
         window.addEventListener('scroll', update, true);
         window.addEventListener('resize', update);
         return () => {
             window.removeEventListener('scroll', update, true);
             window.removeEventListener('resize', update);
         };
-    }, [img]);
+    }, [mediaEl]);
 
     // Dismiss on tap outside
     useEffect(() => {
         const handler = (e: PointerEvent) => {
             const target = e.target as HTMLElement;
-            if (!img.contains(target) && target !== img && !target.closest('.img-overlay-toolbar')) {
+            if (!mediaEl.contains(target) && target !== mediaEl && !target.closest('.img-overlay-toolbar')) {
                 onClose();
             }
         };
         const t = setTimeout(() => document.addEventListener('pointerdown', handler), 120);
         return () => { clearTimeout(t); document.removeEventListener('pointerdown', handler); };
-    }, [img, onClose]);
+    }, [mediaEl, onClose]);
 
     const triggerSave = () => {
         editorRef.current?.dispatchEvent(new Event('input', { bubbles: true }));
-        setRect(img.getBoundingClientRect());
+        setRect(mediaEl.getBoundingClientRect());
     };
 
     const handleDelete = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (img.parentNode) {
-            img.parentNode.removeChild(img);
+        if (mediaEl.parentNode) {
+            mediaEl.parentNode.removeChild(mediaEl);
             triggerSave();
             onClose();
         }
     };
 
     const setAlign = (alignMode: 'left' | 'center' | 'right' | 'inline') => {
-        img.style.position = 'relative';
-        img.style.left = '0px';
-        img.style.top = '0px';
-        img.style.zIndex = 'auto';
+        mediaEl.style.position = 'relative';
+        mediaEl.style.left = '0px';
+        mediaEl.style.top = '0px';
+        mediaEl.style.zIndex = 'auto';
         if (alignMode === 'left') {
-            img.style.display = 'inline-block';
-            img.style.float = 'left';
-            img.style.margin = '4px 12px 4px 0';
+            mediaEl.style.display = 'inline-block';
+            mediaEl.style.float = 'left';
+            mediaEl.style.margin = '4px 12px 4px 0';
         } else if (alignMode === 'center') {
-            img.style.display = 'block';
-            img.style.float = 'none';
-            img.style.margin = '8px auto';
+            mediaEl.style.display = 'block';
+            mediaEl.style.float = 'none';
+            mediaEl.style.margin = '8px auto';
         } else if (alignMode === 'right') {
-            img.style.display = 'inline-block';
-            img.style.float = 'right';
-            img.style.margin = '4px 0 4px 12px';
+            mediaEl.style.display = 'inline-block';
+            mediaEl.style.float = 'right';
+            mediaEl.style.margin = '4px 0 4px 12px';
         } else if (alignMode === 'inline') {
-            img.style.display = 'inline-block';
-            img.style.float = 'none';
-            img.style.verticalAlign = 'top';
-            img.style.margin = '4px';
+            mediaEl.style.display = 'inline-block';
+            mediaEl.style.float = 'none';
+            mediaEl.style.verticalAlign = 'top';
+            mediaEl.style.margin = '4px';
         }
         triggerSave();
     };
@@ -1139,22 +1139,22 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
         dragRef.current = {
             mode: 'resize', handle,
             startX: e.clientX, startY: e.clientY,
-            startW: img.getBoundingClientRect().width,
+            startW: mediaEl.getBoundingClientRect().width,
         };
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
     };
 
     const handleMoveStart = (e: React.PointerEvent) => {
         e.preventDefault(); e.stopPropagation();
-        const imgRect = img.getBoundingClientRect();
+        const elRect = mediaEl.getBoundingClientRect();
 
-        const currentLeft = parseFloat(img.style.left || '0') || 0;
-        const currentTop = parseFloat(img.style.top || '0') || 0;
+        const currentLeft = parseFloat(mediaEl.style.left || '0') || 0;
+        const currentTop = parseFloat(mediaEl.style.top || '0') || 0;
 
         dragRef.current = {
             mode: 'move', handle: 'center',
             startX: e.clientX, startY: e.clientY,
-            startW: imgRect.width,
+            startW: elRect.width,
             startLeft: currentLeft,
             startTop: currentTop,
         };
@@ -1162,10 +1162,10 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
 
         // Ghost preview
         const ghost = document.createElement('div');
-        ghost.style.cssText = `position:fixed;pointer-events:none;z-index:99999;background:${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(113,113,122,0.2)'};border:2px dashed ${borderCol};border-radius:14px;width:${imgRect.width}px;height:${imgRect.height}px;top:${imgRect.top}px;left:${imgRect.left}px;box-shadow:0 8px 24px rgba(0,0,0,0.25);`;
+        ghost.style.cssText = `position:fixed;pointer-events:none;z-index:99999;background:${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(113,113,122,0.2)'};border:2px dashed ${borderCol};border-radius:14px;width:${elRect.width}px;height:${elRect.height}px;top:${elRect.top}px;left:${elRect.left}px;box-shadow:0 8px 24px rgba(0,0,0,0.25);`;
         document.body.appendChild(ghost);
         ghostRef.current = ghost;
-        img.style.opacity = '0.35';
+        mediaEl.style.opacity = '0.35';
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
@@ -1174,10 +1174,10 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
         if (mode === 'resize') {
             let delta = e.clientX - startX;
             if (handle === 'bl' || handle === 'tl') delta = -delta;
-            const parentW = img.parentElement?.getBoundingClientRect().width || startW;
+            const parentW = mediaEl.parentElement?.getBoundingClientRect().width || startW;
             const newW = Math.max(60, Math.min(parentW * 1.5, startW + delta));
-            img.style.width = `${Math.round(newW)}px`;
-            setRect(img.getBoundingClientRect());
+            mediaEl.style.width = `${Math.round(newW)}px`;
+            setRect(mediaEl.getBoundingClientRect());
         } else if (mode === 'move' && ghostRef.current) {
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
@@ -1194,25 +1194,25 @@ function InlineImageOverlay({ img, onClose, editorRef }: {
             triggerSave();
         } else if (mode === 'move') {
             if (ghostRef.current) { ghostRef.current.remove(); ghostRef.current = null; }
-            img.style.opacity = '1';
+            mediaEl.style.opacity = '1';
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
             if (Math.sqrt(dx * dx + dy * dy) > 3) {
                 const newLeft = (startLeft || 0) + dx;
                 const newTop = (startTop || 0) + dy;
 
-                img.style.position = 'relative';
-                img.style.left = `${Math.round(newLeft)}px`;
-                img.style.top = `${Math.round(newTop)}px`;
-                img.style.zIndex = '30';
-                img.style.display = 'inline-block';
-                img.style.margin = '4px';
+                mediaEl.style.position = 'relative';
+                mediaEl.style.left = `${Math.round(newLeft)}px`;
+                mediaEl.style.top = `${Math.round(newTop)}px`;
+                mediaEl.style.zIndex = '30';
+                mediaEl.style.display = 'inline-block';
+                mediaEl.style.margin = '4px';
 
                 triggerSave();
             }
             triggerSave();
         }
-        setRect(img.getBoundingClientRect());
+        setRect(mediaEl.getBoundingClientRect());
     };
 
     const PAD = 6;
@@ -3378,11 +3378,11 @@ const RichTaskItem = React.memo(function RichTaskItem({ content, onChange, onEnt
 const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, activeBlockId, onFocus, onBlur }: { content: string, onChange: (c: string) => void, activeBlockId: string, onFocus?: () => void, onBlur?: () => void }) {
     const editorRef = useRef<HTMLDivElement>(null);
     const isFirstLoad = useRef(true);
-    const [selectedImg, setSelectedImg] = useState<HTMLImageElement | null>(null);
+    const [selectedMedia, setSelectedMedia] = useState<HTMLElement | null>(null);
 
     useEffect(() => {
         isFirstLoad.current = true;
-        setSelectedImg(null);
+        setSelectedMedia(null);
     }, [activeBlockId]);
 
     useEffect(() => {
@@ -3436,12 +3436,12 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             if (href) { e.preventDefault(); window.open(href, '_system'); }
             return;
         }
-        // Handle inline image clicks — hide soft keyboard and show overlay
-        const img = target.closest('img') as HTMLImageElement | null;
-        if (img) {
+        // Handle inline image or video clicks — hide soft keyboard and show overlay
+        const media = target.closest('img, video') as HTMLElement | null;
+        if (media) {
             e.preventDefault();
             hideKeyboard();
-            setSelectedImg(img);
+            setSelectedMedia(media);
             return;
         }
         // Handle inline task checkbox toggling inside text block
@@ -3459,7 +3459,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             }
         }
         // Click elsewhere — deselect overlay
-        setSelectedImg(null);
+        setSelectedMedia(null);
     };
 
     return (
@@ -3486,10 +3486,10 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                 {...({ placeholder: "Escribe algo aquí..." } as any)}
                 className="rich-text-editor w-full min-h-[30px] bg-transparent border-none outline-none text-base text-foreground relative empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 before:absolute before:pointer-events-none"
             />
-            {selectedImg && typeof document !== 'undefined' && (
-                <InlineImageOverlay
-                    img={selectedImg}
-                    onClose={() => setSelectedImg(null)}
+            {selectedMedia && typeof document !== 'undefined' && (
+                <InlineMediaOverlay
+                    mediaEl={selectedMedia}
+                    onClose={() => setSelectedMedia(null)}
                     editorRef={editorRef as React.RefObject<HTMLDivElement>}
                 />
             )}
