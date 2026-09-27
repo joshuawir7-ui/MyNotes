@@ -1137,36 +1137,36 @@ export default function TasksPage() {
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 onClick={() => setLostDaysHabit(null)}
-                                className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                                className="absolute inset-0 bg-black/20"
                             />
                             <motion.div
                                 initial={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}
                                 animate={{ opacity: 1, filter: "blur(0px)", y: 0, scale: 1 }}
                                 exit={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}
-                                className="relative w-full max-w-sm glass-panel p-6 rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-950 shadow-[0_20px_50px_rgba(0,0,0,0.25)] text-center flex flex-col items-center gap-4"
+                                className="relative w-full max-w-sm glass-panel p-6 rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121215] shadow-2xl text-center flex flex-col items-center gap-4 text-foreground dark:text-white"
                             >
                                 <button
                                     onClick={() => setLostDaysHabit(null)}
                                     className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                                 >
-                                    <XIcon className="w-5 h-5" />
+                                    <XIcon className="w-4 h-4" />
                                 </button>
 
-                                {/* Top circular icon */}
-                                <div className="w-16 h-16 rounded-full border-2 border-zinc-300 dark:border-zinc-700 flex items-center justify-center bg-zinc-100 dark:bg-zinc-900 text-foreground shadow-sm mt-2">
+                                {/* Top circular icon - smaller size */}
+                                <div className="w-11 h-11 rounded-full border border-zinc-200 dark:border-white/10 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/80 text-foreground shadow-sm mt-1">
                                     {(() => {
                                         const IconComponent = lostDaysHabit.icon && ICON_MAP[lostDaysHabit.icon] ? ICON_MAP[lostDaysHabit.icon] : Activity;
-                                        return <IconComponent className="w-8 h-8 text-zinc-800 dark:text-zinc-100" />;
+                                        return <IconComponent className="w-5 h-5 text-zinc-800 dark:text-zinc-100" />;
                                     })()}
                                 </div>
 
                                 {/* Habit Title */}
-                                <h3 className="text-xl font-bold tracking-tight text-foreground">
+                                <h3 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
                                     {lostDaysHabit.title}
                                 </h3>
 
                                 {/* Subtitle */}
-                                <p className="text-sm font-semibold text-foreground leading-snug">
+                                <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 leading-snug">
                                     {language === 'es' ? (
                                         <>Perdiste <span className="text-red-500 font-extrabold text-base">{lostDaysHabit.missed || 0}</span> veces este hábito, póngase al día</>
                                     ) : (
@@ -1176,7 +1176,7 @@ export default function TasksPage() {
 
                                 {/* Action Buttons Row */}
                                 <div className="flex items-center justify-center gap-2 w-full mt-2">
-                                    {/* Button 1: Cumplir hoy */}
+                                    {/* Button 1: Cumplir hoy (white background in light mode, dark styled in dark mode) */}
                                     {(() => {
                                         const todayStr = getLocalDateString();
                                         const isCompletedToday = lostDaysHabit.completedDates && Array.isArray(lostDaysHabit.completedDates)
@@ -1193,8 +1193,8 @@ export default function TasksPage() {
                                                 }}
                                                 className={`flex-1 py-3 px-3 rounded-xl font-extrabold text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 ${
                                                     isCompletedToday
-                                                        ? 'bg-green-500 text-white cursor-default shadow-green-500/20'
-                                                        : 'bg-zinc-300 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200 hover:bg-zinc-400 dark:hover:bg-zinc-600 cursor-pointer'
+                                                        ? 'bg-green-500 text-white cursor-default shadow-green-500/20 border border-green-500'
+                                                        : 'bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-800 dark:text-white dark:border-zinc-700 dark:hover:bg-zinc-700 cursor-pointer'
                                                 }`}
                                             >
                                                 {isCompletedToday ? <Check className="w-4 h-4" /> : null}
@@ -1215,7 +1215,7 @@ export default function TasksPage() {
                                         className={`flex-1 py-3 px-3 rounded-xl font-extrabold text-xs transition-all shadow-sm ${
                                             (lostDaysHabit.missed || 0) > 0
                                                 ? 'bg-black text-white dark:bg-white dark:text-black hover:scale-105 active:scale-95 cursor-pointer'
-                                                : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600 cursor-not-allowed'
+                                                : 'bg-zinc-100 text-zinc-400 border border-zinc-200 dark:bg-zinc-800/60 dark:text-zinc-600 dark:border-zinc-700/50 cursor-not-allowed'
                                         }`}
                                     >
                                         {language === 'es' ? 'Cumplir día pasado' : 'Complete past day'}
@@ -1229,7 +1229,7 @@ export default function TasksPage() {
                                             showToast(language === 'es' ? "Conteo de días perdidos reiniciado a 0" : "Lost days count reset to 0", "info");
                                             setLostDaysHabit(prev => prev ? { ...prev, missed: 0 } : null);
                                         }}
-                                        className="p-3 bg-zinc-100 dark:bg-zinc-800 text-foreground hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
+                                        className="p-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
                                         title={language === 'es' ? "Reiniciar a 0" : "Reset to 0"}
                                     >
                                         <RotateCcw className="w-4 h-4" />
@@ -1237,7 +1237,7 @@ export default function TasksPage() {
                                 </div>
 
                                 {/* Subtext */}
-                                <p className="text-[10px] text-muted-foreground/60 leading-tight mt-1 font-medium">
+                                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight mt-1 font-medium">
                                     {language === 'es'
                                         ? "También tiene la posibilidad de reiniciar el conteo de días perdidos a 0"
                                         : "You also have the option to reset the lost days count to 0"}
@@ -2113,12 +2113,6 @@ const HabitCard = memo(({
                 )}
                 <div
                     onClick={handleCardClick}
-                    onContextMenu={(e) => {
-                        if (habit.countLostDays && onOpenLostDaysModal) {
-                            e.preventDefault();
-                            onOpenLostDaysModal(habit);
-                        }
-                    }}
                     className={`relative z-10 glass-panel p-4 rounded-xl flex flex-col gap-3 cursor-pointer group transition-all shadow-sm select-none ${!isTodayActive
                         ? 'border border-border/50 bg-white/[0.02] opacity-40 grayscale'
                         : displayCompleted
