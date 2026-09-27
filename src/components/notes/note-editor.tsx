@@ -2140,6 +2140,7 @@ function NoteAudioBlock({ block, removeBlock }: any) {
 }
 
 function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange, noteId }: any) {
+    const language = useStore(state => state.language);
     const [showControls, setShowControls] = useState(true);
     const fileData = block.content || { url: '', name: '', type: '' };
     const hasFile = !!fileData.url;

@@ -75,6 +75,13 @@ export function getLocalImageSrc(uriOrBase64: string): string {
         }
         return Capacitor.convertFileSrc(path);
     }
+
+    // On Web (non-native), file:// and content:// resources cannot be loaded directly by browser security policy
+    if (typeof window !== 'undefined' && !Capacitor.isNativePlatform()) {
+        if (uriOrBase64.startsWith('file://') || uriOrBase64.startsWith('content://')) {
+            return '';
+        }
+    }
     
     // Fallback if isNativePlatform fails but window.Capacitor exists
     if (typeof window !== 'undefined' && (window as any).Capacitor && (window as any).Capacitor.convertFileSrc) {
