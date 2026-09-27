@@ -8,12 +8,13 @@ import { Reveal } from "@/components/ui/reveal"
 import { useStore, Transaction, Appointment } from "@/lib/store"
 import { translations } from "@/lib/translations"
 import { useState, useEffect, useMemo, useRef } from "react"
-import { Plus, Wallet, X, Trash2, Edit2, ArrowUpRight, ArrowDownRight, Calendar, DollarSign, Check, Coins, ChevronDown, AlertTriangle, TrendingUp, PieChart, RotateCcw, FileText } from "lucide-react"
+import { Plus, Wallet, X, Trash2, Edit2, ArrowUpRight, ArrowDownRight, Calendar, DollarSign, Check, Coins, ChevronDown, AlertTriangle, TrendingUp, PieChart, RotateCcw, FileText, Calculator } from "lucide-react"
 import { ExpenseNoteForm } from "@/components/balance/expense-note-form"
 import { ExpenseNoteCard } from "@/components/balance/expense-note-card"
 import { motion, AnimatePresence } from "framer-motion"
 import { BalanceOnboarding } from "@/components/balance/balance-onboarding"
 import { ResetBalanceModal } from "@/components/balance/reset-balance-modal"
+import { CalculatorModal } from "@/components/balance/calculator-modal"
 
 // Custom Calendar component matching the user's mockup design
 interface CustomCalendarProps {
@@ -253,6 +254,7 @@ export default function BalancePage() {
     // Form inputs & modal control
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [showExpenseNoteModal, setShowExpenseNoteModal] = useState(false)
+    const [showCalculatorModal, setShowCalculatorModal] = useState(false)
     const [txType, setTxType] = useState<"income" | "expense">("expense")
 
     const [txAmount, setTxAmount] = useState("")
@@ -1181,6 +1183,13 @@ export default function BalancePage() {
                             {/* Centered Actions Buttons */}
                             <div className="flex gap-4 justify-center w-full pt-1">
                                 <button
+                                    onClick={() => setShowCalculatorModal(true)}
+                                    className="p-3 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-foreground hover:bg-black/10 dark:hover:bg-white/10 rounded-2xl transition-all hover:scale-[1.05] active:scale-95 shadow-sm flex items-center justify-center shrink-0"
+                                    title={language === 'es' ? "Calculadora" : "Calculator"}
+                                >
+                                    <Calculator className="w-5 h-5 text-amber-500" />
+                                </button>
+                                <button
                                     onClick={() => handleQuickAction("income")}
                                     className="px-6 py-3 bg-[#5c5c5c] hover:bg-[#4d4d4d] text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow"
                                 >
@@ -1194,10 +1203,10 @@ export default function BalancePage() {
                                 </button>
                                 <button
                                     onClick={handleResetBalance}
-                                    className="p-3 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-500 rounded-2xl transition-all hover:scale-[1.05] active:scale-95"
+                                    className="p-3 text-rose-500 hover:text-rose-600 dark:text-rose-400 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-all hover:scale-110 active:scale-95 shrink-0 flex items-center justify-center"
                                     title={language === 'es' ? 'Reiniciar balance a $0' : 'Reset balance to $0'}
                                 >
-                                    <RotateCcw className="w-4 h-4" />
+                                    <RotateCcw className="w-5 h-5" />
                                 </button>
                             </div>
 
@@ -1779,6 +1788,19 @@ export default function BalancePage() {
             {showExpenseNoteModal && (
                 <ExpenseNoteForm onClose={() => setShowExpenseNoteModal(false)} />
             )}
+
+            <CalculatorModal
+                isOpen={showCalculatorModal}
+                onClose={() => setShowCalculatorModal(false)}
+                onApplyAmount={(amount) => {
+                    setQuickAmount(amount)
+                    showToast(
+                        language === 'es' ? `¡Monto ${amount}$ aplicado al balance!` : `Amount ${amount}$ applied to balance!`,
+                        "success"
+                    )
+                }}
+                language={language}
+            />
         </div>
     )
 }

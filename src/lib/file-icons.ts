@@ -24,6 +24,7 @@ export function getFileIcon(fileType: string = '', fileName: string = '') {
     
     if (FILE_TYPE_ICONS[ext]) {
         return { 
+            Icon: FileIcon,
             imageSrc: FILE_TYPE_ICONS[ext], 
             color: '', 
             bg: 'bg-transparent' 
@@ -32,6 +33,7 @@ export function getFileIcon(fileType: string = '', fileName: string = '') {
 
     return { 
         Icon: FileIcon, 
+        imageSrc: undefined,
         color: 'text-primary', 
         bg: 'bg-primary/20' 
     };
