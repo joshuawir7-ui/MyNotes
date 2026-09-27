@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, History, Trash2, Check, ArrowRight, Calculator, Delete } from "lucide-react"
+import { X, History, Trash2, Check, ArrowRight, Delete } from "lucide-react"
 
 interface CalculatorModalProps {
     isOpen: boolean
@@ -270,32 +270,25 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                     className="w-full max-w-[340px] sm:max-w-[370px] bg-white/75 dark:bg-zinc-900/80 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] rounded-[38px] p-5 relative overflow-hidden select-none flex flex-col gap-4 text-foreground"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {/* Header Bar */}
+                    {/* Header Bar (History toggle on left, Close button on right) */}
                     <div className="flex items-center justify-between px-1 pt-1">
                         <button
                             type="button"
                             onClick={() => setShowHistory(!showHistory)}
                             className={`p-2 rounded-2xl transition-all flex items-center gap-1.5 text-xs font-bold ${
                                 showHistory
-                                    ? "bg-amber-500 text-white shadow-md shadow-amber-500/30"
+                                    ? "bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 shadow-md"
                                     : "bg-black/5 dark:bg-white/10 text-muted-foreground hover:text-foreground"
                             }`}
                             title={language === "es" ? "Historial de operaciones" : "History"}
                         >
                             <History className="w-4 h-4" />
                             {history.length > 0 && (
-                                <span className="px-1.5 py-0.5 rounded-full bg-white/20 text-[10px] font-black leading-none">
+                                <span className="px-1.5 py-0.5 rounded-full bg-white/20 dark:bg-black/20 text-[10px] font-black leading-none">
                                     {history.length}
                                 </span>
                             )}
                         </button>
-
-                        <div className="flex items-center gap-1.5">
-                            <Calculator className="w-4 h-4 text-amber-500" />
-                            <span className="text-xs font-extrabold tracking-wider uppercase text-muted-foreground">
-                                {language === "es" ? "Calculadora" : "Calculator"}
-                            </span>
-                        </div>
 
                         <button
                             type="button"
@@ -363,7 +356,7 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                         )}
                     </AnimatePresence>
 
-                    {/* Translucent Display Container (Reference Image 3 aesthetic) */}
+                    {/* Translucent Display Container */}
                     <div className="bg-white/80 dark:bg-zinc-950/70 border border-white/60 dark:border-zinc-800/80 rounded-3xl p-4 shadow-inner flex flex-col justify-between min-h-[105px] text-right transition-all relative overflow-hidden">
                         {/* Upper expression line */}
                         <div className="text-xs sm:text-sm font-medium text-zinc-400 dark:text-zinc-500 h-5 flex items-center justify-end overflow-hidden truncate">
@@ -387,7 +380,7 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                                     className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95 ${
                                         copied
                                             ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
-                                            : "bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-400"
+                                            : "bg-zinc-950 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 shadow-sm"
                                     }`}
                                 >
                                     {copied ? (
@@ -435,8 +428,8 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                             onClick={() => handleOperator("/")}
                             className={`h-12 rounded-2xl font-black text-xl transition-all active:scale-95 shadow-md flex items-center justify-center ${
                                 operator === "/" && waitingForOperand
-                                    ? "bg-amber-600 text-white ring-2 ring-amber-400"
-                                    : "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20"
+                                    ? "bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-950 ring-2 ring-zinc-950 dark:ring-white"
+                                    : "bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-zinc-950/20"
                             }`}
                         >
                             ÷
@@ -469,8 +462,8 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                             onClick={() => handleOperator("*")}
                             className={`h-12 rounded-2xl font-black text-xl transition-all active:scale-95 shadow-md flex items-center justify-center ${
                                 operator === "*" && waitingForOperand
-                                    ? "bg-amber-600 text-white ring-2 ring-amber-400"
-                                    : "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20"
+                                    ? "bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-950 ring-2 ring-zinc-950 dark:ring-white"
+                                    : "bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-zinc-950/20"
                             }`}
                         >
                             ×
@@ -503,8 +496,8 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                             onClick={() => handleOperator("-")}
                             className={`h-12 rounded-2xl font-black text-xl transition-all active:scale-95 shadow-md flex items-center justify-center ${
                                 operator === "-" && waitingForOperand
-                                    ? "bg-amber-600 text-white ring-2 ring-amber-400"
-                                    : "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20"
+                                    ? "bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-950 ring-2 ring-zinc-950 dark:ring-white"
+                                    : "bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-zinc-950/20"
                             }`}
                         >
                             −
@@ -537,8 +530,8 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                             onClick={() => handleOperator("+")}
                             className={`h-12 rounded-2xl font-black text-xl transition-all active:scale-95 shadow-md flex items-center justify-center ${
                                 operator === "+" && waitingForOperand
-                                    ? "bg-amber-600 text-white ring-2 ring-amber-400"
-                                    : "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20"
+                                    ? "bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-950 ring-2 ring-zinc-950 dark:ring-white"
+                                    : "bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-zinc-950/20"
                             }`}
                         >
                             +
@@ -570,7 +563,7 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                         <button
                             type="button"
                             onClick={handleEquals}
-                            className="h-12 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xl transition-all active:scale-95 shadow-lg shadow-amber-500/20 flex items-center justify-center"
+                            className="h-12 rounded-2xl bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 font-black text-xl transition-all active:scale-95 shadow-md flex items-center justify-center"
                         >
                             =
                         </button>

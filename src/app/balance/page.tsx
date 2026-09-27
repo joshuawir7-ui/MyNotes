@@ -1187,7 +1187,7 @@ export default function BalancePage() {
                                     className="p-3 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-foreground hover:bg-black/10 dark:hover:bg-white/10 rounded-2xl transition-all hover:scale-[1.05] active:scale-95 shadow-sm flex items-center justify-center shrink-0"
                                     title={language === 'es' ? "Calculadora" : "Calculator"}
                                 >
-                                    <Calculator className="w-5 h-5 text-amber-500" />
+                                    <Calculator className="w-5 h-5 text-zinc-950 dark:text-white" />
                                 </button>
                                 <button
                                     onClick={() => handleQuickAction("income")}
@@ -1203,7 +1203,7 @@ export default function BalancePage() {
                                 </button>
                                 <button
                                     onClick={handleResetBalance}
-                                    className="p-3 text-rose-500 hover:text-rose-600 dark:text-rose-400 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-all hover:scale-110 active:scale-95 shrink-0 flex items-center justify-center"
+                                    className="p-3 text-zinc-950 dark:text-white hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-all hover:scale-110 active:scale-95 shrink-0 flex items-center justify-center"
                                     title={language === 'es' ? 'Reiniciar balance a $0' : 'Reset balance to $0'}
                                 >
                                     <RotateCcw className="w-5 h-5" />
