@@ -84,6 +84,25 @@ function NotePreviewRenderer({ note, isPinned = false }: { note: Note; isPinned?
                         </div>
                     );
                 }
+                if (block.type === 'file') {
+                    const fileObj = typeof block.content === 'object' ? block.content : null;
+                    const fileName = fileObj?.name || (typeof block.content === 'string' ? block.content : 'Archivo adjunto');
+                    const ext = (fileName.split('.').pop() || 'FILE').toUpperCase();
+                    let iconEmoji = "📎";
+                    if (ext === 'DOC' || ext === 'DOCX') iconEmoji = "📄";
+                    else if (ext === 'XLS' || ext === 'XLSX' || ext === 'CSV') iconEmoji = "📊";
+                    else if (ext === 'PPT' || ext === 'PPTX') iconEmoji = "📑";
+                    else if (ext === 'PDF') iconEmoji = "📕";
+                    else if (ext === 'MP3' || ext === 'WAV' || ext === 'M4A' || ext === 'OGG') iconEmoji = "🎵";
+
+                    return (
+                        <div key={block.id} className={`flex items-center gap-2 bg-white/5 ${isPinned ? 'p-2 rounded-lg' : 'p-3 rounded-xl'} border border-white/5`}>
+                            <span className="text-base">{iconEmoji}</span>
+                            <span className={`font-bold ${isPinned ? 'text-[11px] md:text-xs' : 'text-sm'} truncate`}>{fileName}</span>
+                            <span className="text-[9px] uppercase font-semibold opacity-60 ml-auto">{ext}</span>
+                        </div>
+                    );
+                }
                 return null;
             })}
         </div>

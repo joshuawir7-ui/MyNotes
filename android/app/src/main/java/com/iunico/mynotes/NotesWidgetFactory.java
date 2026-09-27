@@ -165,11 +165,15 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
                             String rawContent = block.optString("content", "");
                             
                             // 1. Extract inline images from text block for native widget
-                            java.util.regex.Pattern imgPattern = java.util.regex.Pattern.compile("(?i)<img[^>]+src=[\"']([^\"']+)[\"']");
+                            java.util.regex.Pattern imgPattern = java.util.regex.Pattern.compile("(?i)<img\\b[^>]*?\\b(?:src|data-local-uri|data-file-url|data-src)=[\"']([^\"']+)[\"']");
                             java.util.regex.Matcher imgMatcher = imgPattern.matcher(rawContent);
                             while (imgMatcher.find()) {
                                 String imgSrc = imgMatcher.group(1);
                                 if (imgSrc != null && !imgSrc.isEmpty()) {
+                                    // Skip small UI icon images (e.g. file badge icons like /icons/pdf.png, word.png, excel.png, etc.)
+                                    if (imgSrc.contains("/icons/") || imgSrc.contains("icons/") || (imgSrc.endsWith(".png") && (imgSrc.contains("pdf") || imgSrc.contains("word") || imgSrc.contains("excel") || imgSrc.contains("powerpoint") || imgSrc.contains("doc") || imgSrc.contains("ppt") || imgSrc.contains("xls")))) {
+                                        continue;
+                                    }
                                     Bitmap inlineBmp = decodeBase64(imgSrc);
                                     if (inlineBmp != null) {
                                         NoteItem imgItem = new NoteItem(inlineBmp);
@@ -195,13 +199,40 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
                                 }
                             }
 
-                            // 3. Extract inline file badges
-                            java.util.regex.Pattern filePattern = java.util.regex.Pattern.compile("(?is)<span[^>]*data-inline-file[^>]*data-file-name=[\"']([^\"']+)[\"'][^>]*>(.*?)</span>");
+                            // 3. Extract inline file badges (Word, Excel, PowerPoint, PDF, etc.)
+                            java.util.regex.Pattern filePattern = java.util.regex.Pattern.compile("(?is)<(div|span|a)[^>]*(?:data-inline-file|data-file-card|data-file-name)[^>]*>(.*?)</\\1>");
                             java.util.regex.Matcher fileMatcher = filePattern.matcher(rawContent);
                             while (fileMatcher.find()) {
-                                String fileName = fileMatcher.group(1);
+                                String fullTag = fileMatcher.group(0);
+                                String fileName = "";
+                                java.util.regex.Pattern namePattern = java.util.regex.Pattern.compile("(?i)data-file-name=[\"']([^\"']+)[\"']");
+                                java.util.regex.Matcher nameMatcher = namePattern.matcher(fullTag);
+                                if (nameMatcher.find()) {
+                                    fileName = nameMatcher.group(1);
+                                } else {
+                                    fileName = fullTag.replaceAll("(?i)<[^>]*>", "").replace("&nbsp;", " ").trim();
+                                    fileName = fileName.replaceAll("(?i)(abrir|open|eliminar|delete|🗑️)", "").trim();
+                                }
+
                                 if (fileName != null && !fileName.isEmpty()) {
-                                    NoteItem fileItem = new NoteItem("📎 <b>" + fileName + "</b>");
+                                    String ext = "";
+                                    int dotIdx = fileName.lastIndexOf('.');
+                                    if (dotIdx >= 0) ext = fileName.substring(dotIdx + 1).toLowerCase();
+
+                                    String iconPrefix = "📎";
+                                    if (ext.equals("doc") || ext.equals("docx")) {
+                                        iconPrefix = "📄 [Word]";
+                                    } else if (ext.equals("xls") || ext.equals("xlsx") || ext.equals("csv")) {
+                                        iconPrefix = "📊 [Excel]";
+                                    } else if (ext.equals("ppt") || ext.equals("pptx")) {
+                                        iconPrefix = "📑 [PowerPoint]";
+                                    } else if (ext.equals("pdf")) {
+                                        iconPrefix = "📕 [PDF]";
+                                    } else if (ext.equals("mp3") || ext.equals("wav") || ext.equals("m4a") || ext.equals("ogg")) {
+                                        iconPrefix = "🎵 [Audio]";
+                                    }
+
+                                    NoteItem fileItem = new NoteItem(iconPrefix + " <b>" + fileName + "</b>");
                                     fileItem.noteId = noteId;
                                     fileItem.blockId = blockId;
                                     fileItem.hasTaskList = noteHasTaskList;
@@ -211,7 +242,7 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
 
                             String textContent = rawContent.replaceAll("(?i)<img[^>]*>", "");
                             textContent = textContent.replaceAll("(?is)<span[^>]*data-inline-task[^>]*>.*?</span>", "");
-                            textContent = textContent.replaceAll("(?is)<span[^>]*data-inline-file[^>]*>.*?</span>", "");
+                            textContent = textContent.replaceAll("(?is)<(div|span|a)[^>]*(?:data-inline-file|data-file-card|data-file-name)[^>]*>.*?</\\1>", "");
                             
                             // Remove list container tags
                             textContent = textContent.replaceAll("(?i)</?(ul|ol)[^>]*>", "");
@@ -370,7 +401,24 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
                             } else {
                                 fileName = block.optString("content", "Archivo adjunto");
                             }
-                            NoteItem item = new NoteItem("📎 <b>" + fileName + "</b>");
+                            String ext = "";
+                            int dotIdx = fileName.lastIndexOf('.');
+                            if (dotIdx >= 0) ext = fileName.substring(dotIdx + 1).toLowerCase();
+
+                            String iconPrefix = "📎";
+                            if (ext.equals("doc") || ext.equals("docx")) {
+                                iconPrefix = "📄 [Word]";
+                            } else if (ext.equals("xls") || ext.equals("xlsx") || ext.equals("csv")) {
+                                iconPrefix = "📊 [Excel]";
+                            } else if (ext.equals("ppt") || ext.equals("pptx")) {
+                                iconPrefix = "📑 [PowerPoint]";
+                            } else if (ext.equals("pdf")) {
+                                iconPrefix = "📕 [PDF]";
+                            } else if (ext.equals("mp3") || ext.equals("wav") || ext.equals("m4a") || ext.equals("ogg")) {
+                                iconPrefix = "🎵 [Audio]";
+                            }
+
+                            NoteItem item = new NoteItem(iconPrefix + " <b>" + fileName + "</b>");
                             item.noteId = noteId;
                             item.blockId = blockId;
                             item.hasTaskList = noteHasTaskList;

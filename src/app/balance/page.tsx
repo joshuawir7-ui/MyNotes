@@ -478,13 +478,6 @@ export default function BalancePage() {
         })
 
         triggerFeedback(effectiveType, absVal)
-
-        showToast(
-            language === 'es'
-                ? (effectiveType === 'income' ? `Registrado: +${absVal}$` : `Registrado: -${absVal}$`)
-                : (effectiveType === 'income' ? `Registered: +${absVal}$` : `Registered: -${absVal}$`),
-            "success"
-        )
         setQuickAmount("")
     }
 
@@ -520,13 +513,6 @@ export default function BalancePage() {
 
         addTransaction(txPayload)
         triggerFeedback(effectiveTxType, absAmountNum)
-
-        showToast(
-            language === 'es'
-                ? (effectiveTxType === 'income' ? "Ingreso agregado exitosamente" : "Gasto registrado exitosamente")
-                : (effectiveTxType === 'income' ? "Income added successfully" : "Expense registered successfully"),
-            "success"
-        )
 
         setTxAmount("")
         setTxDescription("")
