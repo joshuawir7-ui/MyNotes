@@ -129,21 +129,55 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         }
         window.addEventListener('keydown', handleEscape)
 
-        if (typeof window === 'undefined' || !window.visualViewport) return
+        if (typeof window === 'undefined') return
 
-        const handleResize = () => {
+        const updateViewportOffset = () => {
             const vv = window.visualViewport
-            if (vv) {
-                const offset = window.innerHeight - vv.height
-                setViewportOffset(offset > 0 ? offset : 0)
+            if (!vv) {
+                setViewportOffset(0)
+                return
+            }
+            const winH = window.innerHeight
+            const vvH = vv.height
+            const vvTop = vv.offsetTop || 0
+
+            // If window.innerHeight has already resized to fit visualViewport (standard Android adjustResize mode),
+            // position:fixed bottom:0 is ALREADY resting flush on top of the soft keyboard!
+            if (Math.abs(winH - vvH) < 20) {
+                setViewportOffset(0)
+            } else {
+                // Otherwise calculate true offset above visualViewport
+                const diff = winH - vvH - vvTop
+                setViewportOffset(diff > 0 ? diff : 0)
             }
         }
 
-        window.visualViewport.addEventListener('resize', handleResize)
-        handleResize()
+        window.visualViewport?.addEventListener('resize', updateViewportOffset)
+        window.visualViewport?.addEventListener('scroll', updateViewportOffset)
+        window.addEventListener('resize', updateViewportOffset)
+        updateViewportOffset()
+
+        let kShowListener: any = null
+        let kHideListener: any = null
+        if (typeof window !== 'undefined' && (window as any).Capacitor?.Plugins?.Keyboard) {
+            try {
+                const Keyboard = (window as any).Capacitor.Plugins.Keyboard
+                Keyboard.addListener('keyboardDidShow', () => {
+                    setTimeout(updateViewportOffset, 50)
+                }).then((l: any) => { kShowListener = l })
+                Keyboard.addListener('keyboardDidHide', () => {
+                    setTimeout(updateViewportOffset, 50)
+                }).then((l: any) => { kHideListener = l })
+            } catch (e) {}
+        }
 
         return () => {
-            window.visualViewport?.removeEventListener('resize', handleResize)
+            window.removeEventListener('keydown', handleEscape)
+            window.visualViewport?.removeEventListener('resize', updateViewportOffset)
+            window.visualViewport?.removeEventListener('scroll', updateViewportOffset)
+            window.removeEventListener('resize', updateViewportOffset)
+            if (kShowListener) kShowListener.remove?.()
+            if (kHideListener) kHideListener.remove?.()
         }
     }, [])
 
