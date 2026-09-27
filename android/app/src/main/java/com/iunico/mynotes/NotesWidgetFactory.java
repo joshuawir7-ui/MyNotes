@@ -164,7 +164,7 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
                         if ("text".equals(type)) {
                             String rawContent = block.optString("content", "");
                             
-                            // Extract inline images from text block for native widget
+                            // 1. Extract inline images from text block for native widget
                             java.util.regex.Pattern imgPattern = java.util.regex.Pattern.compile("(?i)<img[^>]+src=[\"']([^\"']+)[\"']");
                             java.util.regex.Matcher imgMatcher = imgPattern.matcher(rawContent);
                             while (imgMatcher.find()) {
@@ -181,7 +181,37 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
                                 }
                             }
 
+                            // 2. Extract inline checkmark tasks from text block
+                            java.util.regex.Pattern taskPattern = java.util.regex.Pattern.compile("(?is)<span[^>]*data-inline-task[^>]*>(.*?)</span>");
+                            java.util.regex.Matcher taskMatcher = taskPattern.matcher(rawContent);
+                            while (taskMatcher.find()) {
+                                String taskInner = taskMatcher.group(1);
+                                boolean isChecked = taskInner.toLowerCase().contains("checked");
+                                String cleanTaskText = taskInner.replaceAll("(?i)<[^>]*>", "").replace("&nbsp;", " ").trim();
+                                if (!cleanTaskText.isEmpty()) {
+                                    NoteItem taskItem = new NoteItem(cleanTaskText, noteId, blockId, "inline_" + Math.random(), isChecked);
+                                    taskItem.hasTaskList = noteHasTaskList;
+                                    newNoteItems.add(taskItem);
+                                }
+                            }
+
+                            // 3. Extract inline file badges
+                            java.util.regex.Pattern filePattern = java.util.regex.Pattern.compile("(?is)<span[^>]*data-inline-file[^>]*data-file-name=[\"']([^\"']+)[\"'][^>]*>(.*?)</span>");
+                            java.util.regex.Matcher fileMatcher = filePattern.matcher(rawContent);
+                            while (fileMatcher.find()) {
+                                String fileName = fileMatcher.group(1);
+                                if (fileName != null && !fileName.isEmpty()) {
+                                    NoteItem fileItem = new NoteItem("📎 <b>" + fileName + "</b>");
+                                    fileItem.noteId = noteId;
+                                    fileItem.blockId = blockId;
+                                    fileItem.hasTaskList = noteHasTaskList;
+                                    newNoteItems.add(fileItem);
+                                }
+                            }
+
                             String textContent = rawContent.replaceAll("(?i)<img[^>]*>", "");
+                            textContent = textContent.replaceAll("(?is)<span[^>]*data-inline-task[^>]*>.*?</span>", "");
+                            textContent = textContent.replaceAll("(?is)<span[^>]*data-inline-file[^>]*>.*?</span>", "");
                             
                             // Remove list container tags
                             textContent = textContent.replaceAll("(?i)</?(ul|ol)[^>]*>", "");
@@ -332,6 +362,19 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
                                     newNoteItems.add(item);
                                 }
                             }
+                        } else if ("file".equals(type)) {
+                            JSONObject fileObj = block.optJSONObject("content");
+                            String fileName = "";
+                            if (fileObj != null) {
+                                fileName = fileObj.optString("name", "Archivo adjunto");
+                            } else {
+                                fileName = block.optString("content", "Archivo adjunto");
+                            }
+                            NoteItem item = new NoteItem("📎 <b>" + fileName + "</b>");
+                            item.noteId = noteId;
+                            item.blockId = blockId;
+                            item.hasTaskList = noteHasTaskList;
+                            newNoteItems.add(item);
                         }
                     }
                 }
@@ -601,7 +644,7 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
 
     @Override
     public int getViewTypeCount() {
-        return 1;
+        return 2;
     }
 
     @Override

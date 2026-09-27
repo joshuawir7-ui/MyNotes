@@ -160,13 +160,7 @@
 
         </LinearLayout>
 
-        <!-- ── Thin vertical divider between columns ─────────────────── -->
-        <FrameLayout
-            android:layout_width="1dp"
-            android:layout_height="match_parent"
-            android:background="#15000000"
-            android:layout_marginLeft="4dp"
-            android:layout_marginRight="4dp" />
+
 
         <!-- ── Column 2 (habits 4-6) ────────────────────────────────── -->
         <LinearLayout

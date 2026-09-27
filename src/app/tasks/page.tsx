@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useShallow } from "zustand/react/shallow"
 import { useStore, RecurrenceType, Task, getLocalDateString } from "@/lib/store"
 import { useState, useRef, useEffect, useMemo, memo } from "react"
-import { Plus, Check, Trash2, Camera, X as XIcon, Edit2, Layers, ChevronRight, ChevronDown, History, Pin, Sparkles } from "lucide-react"
+import { Plus, Check, Trash2, Camera, X as XIcon, Edit2, Layers, ChevronRight, ChevronDown, History, Pin, Sparkles, RotateCcw, Activity } from "lucide-react"
 import { WeeklyProgressChart } from "@/components/dashboard/weekly-progress-chart"
 import { Reveal } from "@/components/ui/reveal"
 import { Virtuoso } from "react-virtuoso"
@@ -71,12 +71,15 @@ export default function TasksPage() {
     const completedOnceHabits = useStore(useShallow(state => state.completedOnceHabits))
     const toggleTaskGroupPin = useStore(state => state.toggleTaskGroupPin)
     const showToast = useStore(state => state.showToast)
+    const decrementLostDays = useStore(state => state.decrementLostDays)
+    const resetLostDays = useStore(state => state.resetLostDays)
     const t = (translations[language]?.pages?.habits || translations['en'].pages.habits) as any
     const common = (translations[language]?.common || translations['en'].common) as any
     const [showCreator, setShowCreator] = useState(false)
     const [showGroupCreator, setShowGroupCreator] = useState(false)
     const [showHistoryModal, setShowHistoryModal] = useState(false)
     const [showNoteTasks, setShowNoteTasks] = useState(false)
+    const [lostDaysHabit, setLostDaysHabit] = useState<Task | null>(null)
     const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 
     useEffect(() => {
@@ -145,6 +148,7 @@ export default function TasksPage() {
     const [activeDays, setActiveDays] = useState<number[]>([1, 2, 3, 4, 5, 6, 0]) // Mon-Sun
     const [energyLevel, setEnergyLevel] = useState<'High' | 'Medium' | 'Low'>('Medium')
     const [habitType, setHabitType] = useState<'good' | 'bad'>('good')
+    const [countLostDays, setCountLostDays] = useState(false)
     const [isIconPickerOpen, setIsIconPickerOpen] = useState(false)
     const [isFrequencySelectOpen, setIsFrequencySelectOpen] = useState(false)
 
@@ -291,6 +295,7 @@ export default function TasksPage() {
         setActiveDays(habit.activeDays || [1, 2, 3, 4, 5, 6, 0])
         setEnergyLevel(habit.energyLevel || "Medium")
         setHabitType(habit.habitType || 'good')
+        setCountLostDays(habit.countLostDays || false)
         setShowCreator(true)
     }
 
@@ -521,7 +526,8 @@ export default function TasksPage() {
                 frequency,
                 photos: tempPhotos,
                 activeDays,
-                habitType
+                habitType,
+                countLostDays
             })
             setEditingHabit(null)
             showToast(language === 'es' ? "Hábito/Tarea actualizado" : "Habit/Task updated", "success")
@@ -536,7 +542,8 @@ export default function TasksPage() {
                 frequency,
                 photos: tempPhotos,
                 activeDays,
-                habitType
+                habitType,
+                countLostDays
             } as any)
             showToast(language === 'es' ? "Hábito/Tarea creado" : "Habit/Task created", "success")
         }
@@ -545,6 +552,7 @@ export default function TasksPage() {
         setTempPhotos([])
         setActiveDays([1, 2, 3, 4, 5, 6, 0])
         setHabitType('good')
+        setCountLostDays(false)
         setShowCreator(false)
     }
 
@@ -983,6 +991,7 @@ export default function TasksPage() {
                                                                     isCompleted={isCompleted}
                                                                     missed={missed}
                                                                     onEditHabit={startEditHabit}
+                                                                    onOpenLostDaysModal={setLostDaysHabit}
                                                                     updateTask={updateTask}
                                                                     setIsDeleting={setIsDeleting}
                                                                     handleToggleTask={handleToggleTask}
@@ -1118,6 +1127,125 @@ export default function TasksPage() {
                     title={common.confirmDelete || "¿Eliminar esta rutina?"}
                     message={language === 'es' ? "Esta acción no se puede deshacer y perderás tu progreso." : "This action cannot be undone and you will lose your progress."}
                 />
+
+                {/* Lost Days Interactive Popup Modal */}
+                <AnimatePresence>
+                    {lostDaysHabit && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setLostDaysHabit(null)}
+                                className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                            />
+                            <motion.div
+                                initial={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}
+                                animate={{ opacity: 1, filter: "blur(0px)", y: 0, scale: 1 }}
+                                exit={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}
+                                className="relative w-full max-w-sm glass-panel p-6 rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-950 shadow-[0_20px_50px_rgba(0,0,0,0.25)] text-center flex flex-col items-center gap-4"
+                            >
+                                <button
+                                    onClick={() => setLostDaysHabit(null)}
+                                    className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                                >
+                                    <XIcon className="w-5 h-5" />
+                                </button>
+
+                                {/* Top circular icon */}
+                                <div className="w-16 h-16 rounded-full border-2 border-zinc-300 dark:border-zinc-700 flex items-center justify-center bg-zinc-100 dark:bg-zinc-900 text-foreground shadow-sm mt-2">
+                                    {(() => {
+                                        const IconComponent = lostDaysHabit.icon && ICON_MAP[lostDaysHabit.icon] ? ICON_MAP[lostDaysHabit.icon] : Activity;
+                                        return <IconComponent className="w-8 h-8 text-zinc-800 dark:text-zinc-100" />;
+                                    })()}
+                                </div>
+
+                                {/* Habit Title */}
+                                <h3 className="text-xl font-bold tracking-tight text-foreground">
+                                    {lostDaysHabit.title}
+                                </h3>
+
+                                {/* Subtitle */}
+                                <p className="text-sm font-semibold text-foreground leading-snug">
+                                    {language === 'es' ? (
+                                        <>Perdiste <span className="text-red-500 font-extrabold text-base">{lostDaysHabit.missed || 0}</span> veces este hábito, póngase al día</>
+                                    ) : (
+                                        <>You missed <span className="text-red-500 font-extrabold text-base">{lostDaysHabit.missed || 0}</span> times this habit, catch up</>
+                                    )}
+                                </p>
+
+                                {/* Action Buttons Row */}
+                                <div className="flex items-center justify-center gap-2 w-full mt-2">
+                                    {/* Button 1: Cumplir hoy */}
+                                    {(() => {
+                                        const todayStr = getLocalDateString();
+                                        const isCompletedToday = lostDaysHabit.completedDates && Array.isArray(lostDaysHabit.completedDates)
+                                            ? lostDaysHabit.completedDates.includes(todayStr)
+                                            : lostDaysHabit.completed;
+
+                                        return (
+                                            <button
+                                                type="button"
+                                                disabled={isCompletedToday}
+                                                onClick={() => {
+                                                    handleToggleTask(lostDaysHabit);
+                                                    setLostDaysHabit(prev => prev ? { ...prev, completed: true, completedDates: [...(prev.completedDates || []), todayStr] } : null);
+                                                }}
+                                                className={`flex-1 py-3 px-3 rounded-xl font-extrabold text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 ${
+                                                    isCompletedToday
+                                                        ? 'bg-green-500 text-white cursor-default shadow-green-500/20'
+                                                        : 'bg-zinc-300 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200 hover:bg-zinc-400 dark:hover:bg-zinc-600 cursor-pointer'
+                                                }`}
+                                            >
+                                                {isCompletedToday ? <Check className="w-4 h-4" /> : null}
+                                                {language === 'es' ? 'Cumplir hoy' : 'Complete today'}
+                                            </button>
+                                        );
+                                    })()}
+
+                                    {/* Button 2: Cumplir día pasado */}
+                                    <button
+                                        type="button"
+                                        disabled={(lostDaysHabit.missed || 0) <= 0}
+                                        onClick={() => {
+                                            decrementLostDays(lostDaysHabit.id);
+                                            showToast(language === 'es' ? "Día pasado cumplido (-1 día)" : "Past day completed (-1 day)", "success");
+                                            setLostDaysHabit(prev => prev ? { ...prev, missed: Math.max(0, (prev.missed || 0) - 1) } : null);
+                                        }}
+                                        className={`flex-1 py-3 px-3 rounded-xl font-extrabold text-xs transition-all shadow-sm ${
+                                            (lostDaysHabit.missed || 0) > 0
+                                                ? 'bg-black text-white dark:bg-white dark:text-black hover:scale-105 active:scale-95 cursor-pointer'
+                                                : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        {language === 'es' ? 'Cumplir día pasado' : 'Complete past day'}
+                                    </button>
+
+                                    {/* Button 3: Reset count */}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            resetLostDays(lostDaysHabit.id);
+                                            showToast(language === 'es' ? "Conteo de días perdidos reiniciado a 0" : "Lost days count reset to 0", "info");
+                                            setLostDaysHabit(prev => prev ? { ...prev, missed: 0 } : null);
+                                        }}
+                                        className="p-3 bg-zinc-100 dark:bg-zinc-800 text-foreground hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
+                                        title={language === 'es' ? "Reiniciar a 0" : "Reset to 0"}
+                                    >
+                                        <RotateCcw className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                {/* Subtext */}
+                                <p className="text-[10px] text-muted-foreground/60 leading-tight mt-1 font-medium">
+                                    {language === 'es'
+                                        ? "También tiene la posibilidad de reiniciar el conteo de días perdidos a 0"
+                                        : "You also have the option to reset the lost days count to 0"}
+                                </p>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* Task Group Creator Modal */}
@@ -1322,6 +1450,40 @@ export default function TasksPage() {
                                                         {language === 'es' ? 'Mal Hábito' : 'Bad Habit'}
                                                     </button>
                                                 </div>
+                                            </div>
+
+                                            {/* ¿Contar días perdidos? */}
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
+                                                    {language === 'es' ? '¿Contar días perdidos?' : 'Count lost days?'}
+                                                </label>
+                                                <div className="flex gap-4">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setCountLostDays(true)}
+                                                        className={`flex-1 py-3 rounded-xl border-2 transition-all font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 ${countLostDays
+                                                            ? 'bg-black text-white dark:bg-white dark:text-black border-transparent shadow-lg'
+                                                            : 'bg-background/40 text-muted-foreground border-white/5 hover:border-white/20'
+                                                            }`}
+                                                    >
+                                                        {language === 'es' ? 'Si' : 'Yes'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setCountLostDays(false)}
+                                                        className={`flex-1 py-3 rounded-xl border-2 transition-all font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 ${!countLostDays
+                                                            ? 'bg-black text-white dark:bg-white dark:text-black border-transparent shadow-lg'
+                                                            : 'bg-background/40 text-muted-foreground border-white/5 hover:border-white/20'
+                                                            }`}
+                                                    >
+                                                        No
+                                                    </button>
+                                                </div>
+                                                <p className="text-[10px] text-muted-foreground/70 leading-relaxed font-medium mt-1">
+                                                    {language === 'es'
+                                                        ? "Ayuda a que en tareas puntuales en las que no puedes atrasarte, llevar un conteo activo de los días que no los haces, útil para ciertas tareas."
+                                                        : "Helps you maintain an active count of skipped days for time-sensitive tasks where you shouldn't fall behind."}
+                                                </p>
                                             </div>
 
                                             {/* Icono */}
@@ -1881,6 +2043,7 @@ const HabitCard = memo(({
     isCompleted,
     missed,
     onEditHabit,
+    onOpenLostDaysModal,
     updateTask,
     setIsDeleting,
     handleToggleTask,
@@ -1894,6 +2057,7 @@ const HabitCard = memo(({
     isCompleted: boolean;
     missed: number;
     onEditHabit: (habit: Task) => void;
+    onOpenLostDaysModal?: (habit: Task) => void;
     updateTask: any;
     setIsDeleting: (id: string | null) => void;
     handleToggleTask: (h: Task) => void;
@@ -1908,6 +2072,18 @@ const HabitCard = memo(({
     const currentDay = todayObj.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
     const isTodayActive = habit.recurrence === 'None' || habit.recurrence === 'Once' || !habit.activeDays || habit.activeDays.includes(currentDay)
     const displayCompleted = isCompleted || !isTodayActive
+
+    const handleCardClick = (e: React.MouseEvent) => {
+        if (!isTodayActive) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('button') || target.closest('input')) return;
+
+        if (habit.countLostDays && onOpenLostDaysModal) {
+            onOpenLostDaysModal(habit);
+        } else {
+            handleToggleTask(habit);
+        }
+    };
 
     return (
         <MobileContextMenu
@@ -1936,11 +2112,12 @@ const HabitCard = memo(({
                     </svg>
                 )}
                 <div
-                    onClick={(e) => {
-                        if (!isTodayActive) return;
-                        const target = e.target as HTMLElement;
-                        if (target.closest('button') || target.closest('input')) return;
-                        handleToggleTask(habit);
+                    onClick={handleCardClick}
+                    onContextMenu={(e) => {
+                        if (habit.countLostDays && onOpenLostDaysModal) {
+                            e.preventDefault();
+                            onOpenLostDaysModal(habit);
+                        }
                     }}
                     className={`relative z-10 glass-panel p-4 rounded-xl flex flex-col gap-3 cursor-pointer group transition-all shadow-sm select-none ${!isTodayActive
                         ? 'border border-border/50 bg-white/[0.02] opacity-40 grayscale'
@@ -1958,7 +2135,11 @@ const HabitCard = memo(({
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     if (isTodayActive) {
-                                        handleToggleTask(habit);
+                                        if (habit.countLostDays && onOpenLostDaysModal) {
+                                            onOpenLostDaysModal(habit);
+                                        } else {
+                                            handleToggleTask(habit);
+                                        }
                                     }
                                 }}
                                 className={`relative group/check flex-shrink-0 ${!isTodayActive ? 'cursor-not-allowed' : ''}`}
@@ -2053,15 +2234,28 @@ const HabitCard = memo(({
                         </div>
 
                         <div className="flex items-center gap-3 flex-shrink-0">
-                            {/* Missed Counter */}
-                            {missed > 0 && !displayCompleted && (
+                            {/* Missed Counter / Lost Days badge for habit that has countLostDays */}
+                            {habit.countLostDays ? (
+                                <div
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (onOpenLostDaysModal) onOpenLostDaysModal(habit);
+                                    }}
+                                    className={`flex flex-col items-end cursor-pointer hover:scale-105 transition-transform ${habit.habitType === 'bad' ? 'text-white' : 'text-red-400'}`}
+                                >
+                                    <div className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${habit.habitType === 'bad' ? 'opacity-90' : 'opacity-70'}`}>
+                                        {language === 'es' ? 'PERDIDO' : 'LOST'}
+                                    </div>
+                                    <div className="text-xl font-black leading-none">{missed}</div>
+                                </div>
+                            ) : (missed > 0 && !displayCompleted && (
                                 <div className={`flex flex-col items-end ${habit.habitType === 'bad' ? 'text-white' : 'text-red-400'}`}>
                                     <div className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${habit.habitType === 'bad' ? 'opacity-90' : 'opacity-70'}`}>
                                         {t.missed}
                                     </div>
                                     <div className="text-xl font-black leading-none">{missed}</div>
                                 </div>
-                            )}
+                            ))}
 
                             <div className="hidden md:flex items-center gap-1">
                                 <motion.button

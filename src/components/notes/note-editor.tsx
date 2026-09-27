@@ -745,6 +745,8 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                             {/* Inline Media & Elements Group */}
                             <InlineImageButton language={language} />
                             <InlineVideoButton language={language} />
+                            <InlineFileButton language={language} />
+                            <InlineTableButton language={language} />
                             <InlineTaskButton language={language} />
                             <InlineSeparatorButton language={language} />
 
@@ -1030,6 +1032,119 @@ function InlineVideoButton({ language }: { language: string }) {
                 <span className="text-[11px] font-bold">Vid</span>
             </button>
         </div>
+    );
+}
+
+/**
+ * InlineFileButton — inserts a document or audio file chip inside text block.
+ * Supports Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), PDF (.pdf), Audio (.mp3, .wav, etc.).
+ */
+function InlineFileButton({ language }: { language: string }) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const savedRangeRef = useRef<Range | null>(null);
+
+    const saveSelection = () => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+        }
+    };
+
+    const restoreSelection = () => {
+        const r = savedRangeRef.current;
+        if (!r) return;
+        const sel = window.getSelection();
+        if (sel) { sel.removeAllRanges(); sel.addRange(r); }
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (e.target) e.target.value = '';
+
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            const base64 = reader.result as string;
+            const { saveBase64File } = await import('@/lib/image-utils');
+            const localUri = await saveBase64File(base64, file.name);
+            const persistentUri = localUri || base64;
+
+            const iconInfo = getFileIcon('', file.name);
+            const iconSrc = iconInfo.imageSrc || '/icons/pdf.png';
+
+            const fileHtml = `<span data-inline-file="1" contenteditable="false" data-file-url="${persistentUri}" data-file-name="${file.name}" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;margin:4px 2px;border-radius:8px;background:rgba(120,120,120,0.15);border:1px solid rgba(120,120,120,0.25);cursor:pointer;vertical-align:middle;user-select:none;"><img src="${iconSrc}" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;" /><span style="font-size:12px;font-weight:600;vertical-align:middle;">${file.name}</span></span>&nbsp;`;
+
+            restoreSelection();
+            document.execCommand('insertHTML', false, fileHtml);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    return (
+        <div className="shrink-0">
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.mp3,.wav,.ogg,.m4a,text/plain"
+                className="hidden"
+                onChange={handleFileChange}
+            />
+            <button
+                onMouseDown={(e) => {
+                    e.preventDefault();
+                    saveSelection();
+                    hideKeyboard();
+                    fileInputRef.current?.click();
+                }}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10"
+                title={language === 'es' ? 'Insertar archivo en texto' : 'Insert file in text'}
+            >
+                <Paperclip className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
+                <span className="text-[11px] font-bold">{language === 'es' ? 'Archivo' : 'File'}</span>
+            </button>
+        </div>
+    );
+}
+
+/**
+ * InlineTableButton — inserts a table inside active text block.
+ */
+function InlineTableButton({ language }: { language: string }) {
+    const savedRangeRef = useRef<Range | null>(null);
+
+    const saveSelection = () => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+        }
+    };
+
+    const restoreSelection = () => {
+        const r = savedRangeRef.current;
+        if (!r) return;
+        const sel = window.getSelection();
+        if (sel) { sel.removeAllRanges(); sel.addRange(r); }
+    };
+
+    const handleInsertTable = () => {
+        saveSelection();
+        restoreSelection();
+        const tableHtml = `<br /><table data-inline-table="1" style="width:100%;border-collapse:collapse;margin:8px 0;border:1px solid rgba(150,150,150,0.3);"><tr style="background:rgba(150,150,150,0.15);"><th style="border:1px solid rgba(150,150,150,0.3);padding:8px;text-align:left;font-weight:bold;">Columna 1</th><th style="border:1px solid rgba(150,150,150,0.3);padding:8px;text-align:left;font-weight:bold;">Columna 2</th></tr><tr><td style="border:1px solid rgba(150,150,150,0.3);padding:8px;">Dato 1</td><td style="border:1px solid rgba(150,150,150,0.3);padding:8px;">Dato 2</td></tr></table><br />`;
+        document.execCommand('insertHTML', false, tableHtml);
+    };
+
+    return (
+        <button
+            onMouseDown={(e) => {
+                e.preventDefault();
+                handleInsertTable();
+            }}
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10 shrink-0"
+            title={language === 'es' ? 'Insertar Tabla' : 'Insert Table'}
+        >
+            <TableIcon className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
+            <span className="text-[11px] font-bold">{language === 'es' ? 'Tabla' : 'Table'}</span>
+        </button>
     );
 }
 

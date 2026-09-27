@@ -393,7 +393,7 @@ public class HabitActionReceiver extends BroadcastReceiver {
     // ─── Filter helpers ───────────────────────────────────────────────────────
 
     /**
-     * Returns all enabled daily habits with pending ones first, completed ones last.
+     * Returns all enabled daily habits active for today with pending ones first, completed ones last.
      * Limits to the first 6 to fit the 2×3 grid.
      */
     private static JSONArray filterAllDailyHabits(JSONArray allTasks) {
@@ -404,10 +404,32 @@ public class HabitActionReceiver extends BroadcastReceiver {
             sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
             String today = sdf.format(new java.util.Date());
 
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            int dayOfWeek = cal.get(java.util.Calendar.DAY_OF_WEEK); // 1 = Sunday, ..., 7 = Saturday
+            int jsDayOfWeek = dayOfWeek - 1; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
             for (int i = 0; i < allTasks.length(); i++) {
                 JSONObject t = allTasks.getJSONObject(i);
+                
+                // 1. Must be enabled
                 if (!t.optBoolean("enabled", true)) continue;
+                
+                // 2. Must be a Daily habit
                 if (!"Daily".equals(t.optString("recurrence", ""))) continue;
+
+                // 3. Must be active TODAY (check activeDays)
+                boolean isActiveDay = true;
+                JSONArray activeDays = t.optJSONArray("activeDays");
+                if (activeDays != null && activeDays.length() > 0) {
+                    isActiveDay = false;
+                    for (int k = 0; k < activeDays.length(); k++) {
+                        if (activeDays.optInt(k) == jsDayOfWeek) {
+                            isActiveDay = true;
+                            break;
+                        }
+                    }
+                }
+                if (!isActiveDay) continue;
 
                 if (isCompletedToday(t, today)) {
                     completed.put(t);
@@ -425,7 +447,7 @@ public class HabitActionReceiver extends BroadcastReceiver {
         return pending;
     }
 
-    /** Returns only pending (not-completed-today) daily habits — used for snapshot counts. */
+    /** Returns only pending (not-completed-today) daily habits active today — used for snapshot counts. */
     private static JSONArray filterPendingDailyHabits(JSONArray allTasks) {
         JSONArray pending = new JSONArray();
         try {
@@ -433,10 +455,28 @@ public class HabitActionReceiver extends BroadcastReceiver {
             sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
             String today = sdf.format(new java.util.Date());
 
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            int dayOfWeek = cal.get(java.util.Calendar.DAY_OF_WEEK);
+            int jsDayOfWeek = dayOfWeek - 1;
+
             for (int i = 0; i < allTasks.length(); i++) {
                 JSONObject t = allTasks.getJSONObject(i);
                 if (!t.optBoolean("enabled", true)) continue;
                 if (!"Daily".equals(t.optString("recurrence", ""))) continue;
+
+                boolean isActiveDay = true;
+                JSONArray activeDays = t.optJSONArray("activeDays");
+                if (activeDays != null && activeDays.length() > 0) {
+                    isActiveDay = false;
+                    for (int k = 0; k < activeDays.length(); k++) {
+                        if (activeDays.optInt(k) == jsDayOfWeek) {
+                            isActiveDay = true;
+                            break;
+                        }
+                    }
+                }
+                if (!isActiveDay) continue;
+
                 if (!isCompletedToday(t, today)) pending.put(t);
             }
         } catch (Exception e) {

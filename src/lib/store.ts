@@ -789,6 +789,14 @@ export const syncWidgetData = async (goals?: any[], appointments?: any[], notes?
                                 }
                                 return b;
                             }
+                            if (b.type === 'text' && typeof b.content === 'string') {
+                                // Strip overly large inline base64 images if they exceed 300KB to fit widget SharedPreferences
+                                let contentStr = b.content;
+                                if (contentStr.length > 500000) {
+                                    contentStr = contentStr.replace(/src=["']data:image\/[^;]+;base64,[^"']{30000,}["']/g, 'src=""');
+                                }
+                                return { ...b, content: contentStr };
+                            }
                             return b;
                         })
                         : note.blocks
@@ -876,6 +884,7 @@ export interface Task {
     missed?: number
     streak?: number
     enabled?: boolean // New: enable/disable habit
+    countLostDays?: boolean // Whether lost days should be tracked and counted
     shortcutKey?: number // 1-9
     photos: string[] // Base64 or local paths
     completionTimes: string[] // ISO timestamps for all completions
@@ -1131,6 +1140,8 @@ interface AppState {
     toggleTask: (taskId: string) => void
     deleteTask: (taskId: string) => void
     updateTask: (taskId: string, updates: Partial<Task>) => void
+    decrementLostDays: (taskId: string) => void
+    resetLostDays: (taskId: string) => void
     addProject: (project: Omit<Project, 'id' | 'progress' | 'milestones'>) => void
     addXP: (amount: number) => void
     incrementFocusTime: (minutes: number) => void
@@ -2593,6 +2604,32 @@ export const useStore = create<AppState>()(
                         const newTasks = state.tasks.map(t => t.id === taskId ? { ...t, missed: 0, streak: 0, lastUpdated: Date.now() } : t)
                         syncWidgetData(state.goals, state.appointments, state.notes, newTasks);
                         return { tasks: newTasks }
+                    });
+                },
+
+                decrementLostDays: (taskId) => {
+                    lastLocalTasksUpdate = Date.now();
+                    readAllTasksFromDisk(get().tasks).then(allTasks => {
+                        const finalTasks = allTasks.map(t => t.id === taskId ? { ...t, missed: Math.max(0, (t.missed || 0) - 1), lastUpdated: Date.now() } : t);
+                        saveAllTasksToDisk(finalTasks);
+                    });
+                    set((state) => {
+                        const newTasks = state.tasks.map(t => t.id === taskId ? { ...t, missed: Math.max(0, (t.missed || 0) - 1), lastUpdated: Date.now() } : t);
+                        syncWidgetData(state.goals, state.appointments, state.notes, newTasks);
+                        return { tasks: newTasks };
+                    });
+                },
+
+                resetLostDays: (taskId) => {
+                    lastLocalTasksUpdate = Date.now();
+                    readAllTasksFromDisk(get().tasks).then(allTasks => {
+                        const finalTasks = allTasks.map(t => t.id === taskId ? { ...t, missed: 0, lastUpdated: Date.now() } : t);
+                        saveAllTasksToDisk(finalTasks);
+                    });
+                    set((state) => {
+                        const newTasks = state.tasks.map(t => t.id === taskId ? { ...t, missed: 0, lastUpdated: Date.now() } : t);
+                        syncWidgetData(state.goals, state.appointments, state.notes, newTasks);
+                        return { tasks: newTasks };
                     });
                 },
 
