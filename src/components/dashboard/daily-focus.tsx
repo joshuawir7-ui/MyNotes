@@ -14,7 +14,7 @@ export function DailyFocusWidget() {
             streak: state.user.streak,
         }))
     )
-    const tasks = useStore(state => state.tasks)
+    const tasks = useStore(useShallow(state => state.tasks))
     const language = useStore(state => state.language)
     const appColor = useStore(state => state.appColor ?? 'purple')
     const t = translations[language].dashboard

@@ -3,6 +3,7 @@
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
 import { useState, useEffect, useMemo } from "react"
 import { useStore } from "@/lib/store"
+import { useShallow } from 'zustand/react/shallow'
 import { translations } from "@/lib/translations"
 import { motion } from "framer-motion"
 
@@ -26,7 +27,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 
 export function PulseChart() {
     const language = useStore(state => state.language)
-    const tasks = useStore(state => state.tasks)
+    const tasks = useStore(useShallow(state => state.tasks))
     const appColor = useStore(state => state.appColor ?? 'purple')
     const t = translations[language].dashboard.charts
 

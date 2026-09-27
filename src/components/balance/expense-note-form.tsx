@@ -7,7 +7,11 @@ import { saveBase64File, getOrCreateThumbnail, getLocalImageSrc } from '@/lib/im
 import { LocalImage } from '@/components/ui/local-image';
 
 export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
-    const { expenseNotes, addExpenseNote, updateExpenseNote, deleteExpenseNote, addTransaction } = useStore();
+    const expenseNotes = useStore(useShallow(state => state.expenseNotes));
+    const addExpenseNote = useStore(state => state.addExpenseNote);
+    const updateExpenseNote = useStore(state => state.updateExpenseNote);
+    const deleteExpenseNote = useStore(state => state.deleteExpenseNote);
+    const addTransaction = useStore(state => state.addTransaction);
     
     // Get real dynamic balance from transactions
     const transactions = useStore(useShallow(state => state.transactions ?? []));

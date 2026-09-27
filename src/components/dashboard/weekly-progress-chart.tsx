@@ -2,6 +2,7 @@
 
 import { Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Area, ComposedChart } from "recharts"
 import { useStore, getLocalDateString } from "@/lib/store"
+import { useShallow } from "zustand/react/shallow"
 import { translations } from "@/lib/translations"
 import { useMemo, useState, useEffect } from "react"
 import { X } from "lucide-react"
@@ -91,7 +92,7 @@ export function WeeklyProgressChart() {
     const appColor = useStore(state => state.appColor ?? 'purple')
     const dailySnapshots = useStore(state => state.dailySnapshots)
     const timerIsActive = useStore(state => state.timer?.isActive)
-    const tasks = useStore(state => state.tasks)
+    const tasks = useStore(useShallow(state => state.tasks))
     const t = (translations[language as keyof typeof translations]?.dashboard?.charts || translations['en'].dashboard.charts) as any
     const common = (translations[language as keyof typeof translations]?.common || translations['en'].common) as any
     const [showTimer, setShowTimer] = useState(false)

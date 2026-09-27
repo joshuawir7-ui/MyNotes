@@ -20,6 +20,8 @@ export function LocalImage({ src, alt = "", className, fallback, ...props }: Loc
         <img
             src={resolvedUrl}
             alt={alt}
+            decoding="async"
+            loading={props.loading || "lazy"}
             className={className}
             onError={(e) => {
                 e.currentTarget.style.display = 'none';
