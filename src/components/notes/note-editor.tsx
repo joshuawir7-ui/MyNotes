@@ -2139,6 +2139,119 @@ function NoteAudioBlock({ block, removeBlock }: any) {
     );
 }
 
+export async function openFileHelper(fileUrl: string, fileName: string, driveFileId?: string) {
+    if (!fileUrl && driveFileId) {
+        window.open(`https://drive.google.com/file/d/${driveFileId}/view`, '_blank');
+        return;
+    }
+    if (!fileUrl) {
+        useStore.getState().showToast("El archivo no contiene un enlace válido", "error");
+        return;
+    }
+
+    const ext = (fileName.split('.').pop() || '').toLowerCase();
+    const mimeTypeMap: Record<string, string> = {
+        'pdf': 'application/pdf',
+        'doc': 'application/msword',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls': 'application/vnd.ms-excel',
+        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'ppt': 'application/vnd.ms-powerpoint',
+        'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'mp3': 'audio/mpeg',
+        'wav': 'audio/wav',
+        'ogg': 'audio/ogg',
+        'm4a': 'audio/m4a',
+        'mp4': 'video/mp4'
+    };
+    const mimeType = mimeTypeMap[ext] || 'application/octet-stream';
+
+    // 1. Mobile Android/iOS Native platform
+    if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
+        let uri = fileUrl;
+        if (uri.startsWith('http://localhost/_capacitor_file_')) {
+            uri = uri.replace('http://localhost/_capacitor_file_', 'file://');
+        }
+        try {
+            if (uri.startsWith('file://')) {
+                const { WidgetSync } = await import('@/lib/store');
+                await WidgetSync.openFile({ url: uri, mimeType });
+            } else {
+                const { Share } = await import('@capacitor/share');
+                await Share.share({ title: fileName, url: uri, dialogTitle: 'Abrir con...' });
+            }
+        } catch (e) {
+            console.error("Native open file failed:", e);
+            if (driveFileId) {
+                window.open(`https://drive.google.com/file/d/${driveFileId}/view`, '_blank');
+            } else {
+                useStore.getState().showToast("No se pudo abrir el archivo en Android", "error");
+            }
+        }
+        return;
+    }
+
+    // 2. Web / Desktop Browser platform
+    if (fileUrl.startsWith('data:')) {
+        try {
+            const arr = fileUrl.split(',');
+            const mime = arr[0].match(/:(.*?);/)?.[1] || mimeType;
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            const blob = new Blob([u8arr], { type: mime });
+            const blobUrl = URL.createObjectURL(blob);
+
+            // PDFs & Images open in browser tab directly
+            if (['pdf', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
+                window.open(blobUrl, '_blank');
+            } else {
+                // Word, Excel, PowerPoint, MP3, etc. trigger clean direct file download
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = fileName || `archivo.${ext || 'bin'}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+            return;
+        } catch (e) {
+            console.error("Failed to parse base64 file data:", e);
+        }
+    }
+
+    if (fileUrl.startsWith('blob:') || fileUrl.startsWith('http')) {
+        if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
+            const a = document.createElement('a');
+            a.href = fileUrl;
+            a.download = fileName || 'archivo';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } else {
+            window.open(fileUrl, '_blank');
+        }
+        return;
+    }
+
+    if (fileUrl.startsWith('file://') || fileUrl.startsWith('content://')) {
+        if (driveFileId) {
+            window.open(`https://drive.google.com/file/d/${driveFileId}/view`, '_blank');
+        } else {
+            useStore.getState().showToast("Este archivo se guardó localmente en la app móvil.", "info");
+        }
+        return;
+    }
+
+    if (fileUrl.trim()) {
+        window.open(fileUrl, '_blank');
+    }
+}
+
 function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange, noteId }: any) {
     const language = useStore(state => state.language);
     const [showControls, setShowControls] = useState(true);
@@ -2154,144 +2267,24 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
         ext = (fileData.type?.split('/').pop() || fileData.type || '').toLowerCase();
     }
     const isAudio = ['mp3', 'wav', 'ogg', 'm4a', 'audio', 'mpeg'].includes(ext);
-    
-    const [showAudioPlayer, setShowAudioPlayer] = useState(false);
-    const [audioUrl, setAudioUrl] = useState('');
 
     const handleFileClick = async () => {
         if (isDownloading) return;
-        
-        let currentFileUri = fileData.url;
-        let needsDownload = !hasFile;
-        
-        if (typeof window !== 'undefined') {
-            if (Capacitor.isNativePlatform()) {
-                if (hasFile && currentFileUri) {
-                
-                if (currentFileUri.startsWith('http://localhost/_capacitor_file_')) {
-                        currentFileUri = currentFileUri.replace('http://localhost/_capacitor_file_', 'file://');
-                    }
-                    if (currentFileUri.startsWith('file://')) {
-                        try {
-                            const { Filesystem } = await import('@capacitor/filesystem');
-                            const statRes = await Filesystem.stat({ path: currentFileUri.replace('file://', '') });
-                            if (!statRes || statRes.type === 'directory') needsDownload = true;
-                        } catch(e) {
-                            needsDownload = true;
-                        }
-                    }
-                }
-
-                if (needsDownload && block.driveFileId && noteId) {
-                    setIsDownloadingState(true);
-                    const { useStore } = await import('@/lib/store');
-                    const success = await useStore.getState().downloadAttachment(noteId, block.id);
-                    setIsDownloadingState(false);
-                    if (success) {
-                        const updatedNote = useStore.getState().notes.find(n => n.id === noteId);
-                        const updatedBlock = updatedNote?.blocks.find(b => b.id === block.id);
-                        if (updatedBlock?.type === 'file' && updatedBlock.content?.url) {
-                            currentFileUri = updatedBlock.content.url;
-                        } else {
-                            useStore.getState().showToast("Error al abrir el archivo descargado", "error");
-                            return;
-                        }
-                    } else {
-                        useStore.getState().showToast("Error al descargar el archivo de la nube", "error");
-                        return;
-                    }
-                }
-                
-                if (!currentFileUri) return;
-                
-                try {
-                    const mimeTypeMap: Record<string, string> = {
-                        'pdf': 'application/pdf',
-                        'doc': 'application/msword',
-                        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'xls': 'application/vnd.ms-excel',
-                        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        'ppt': 'application/vnd.ms-powerpoint',
-                        'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                        'mp3': 'audio/mpeg',
-                        'wav': 'audio/wav',
-                        'mp4': 'video/mp4'
-                    };
-                    const ext = fileData.type?.toLowerCase() || '';
-                    const mimeType = mimeTypeMap[ext] || '*/*';
-                    
-                    if (currentFileUri.startsWith('http://localhost/_capacitor_file_')) {
-                        currentFileUri = currentFileUri.replace('http://localhost/_capacitor_file_', 'file://');
-                    }
-                    
-                    if (currentFileUri.startsWith('file://')) {
-                        const { WidgetSync } = await import('@/lib/store');
-                        await WidgetSync.openFile({ url: currentFileUri, mimeType });
-                    } else {
-                        const { Share } = await import('@capacitor/share');
-                        await Share.share({
-                            title: fileData.name,
-                            url: currentFileUri,
-                            dialogTitle: 'Abrir con...'
-                        });
-                    }
-                } catch (e) {
-                    console.error("Open/Share failed", e);
-                    window.open(getLocalImageSrc(currentFileUri), '_blank');
-                }
-            } else {
-                if (!hasFile) return;
-                const src = getLocalImageSrc(currentFileUri);
-                // Web / Windows Desktop browser logic
-                try {
-                    let fileToShare = null;
-                    if (src.startsWith('data:')) {
-                        const arr = src.split(',');
-                        const mime = arr[0].match(/:(.*?);/)?.[1] || '';
-                        const bstr = atob(arr[1]);
-                        let n = bstr.length;
-                        const u8arr = new Uint8Array(n);
-                        while(n--){
-                            u8arr[n] = bstr.charCodeAt(n);
-                        }
-                        fileToShare = new File([u8arr], fileData.name, { type: mime });
-                    } else if (src.startsWith('blob:') || src.startsWith('http')) {
-                        const response = await fetch(src);
-                        const blob = await response.blob();
-                        fileToShare = new File([blob], fileData.name, { type: blob.type });
-                    }
-
-                    if (fileToShare && navigator.canShare && navigator.canShare({ files: [fileToShare] })) {
-                                        await navigator.share({
-                            files: [fileToShare],
-                            title: fileData.name,
-                        });
-                        return; // Share dialog opened successfully
-                    }
-                } catch (e) {
-                    console.error("Web share failed", e);
-                }
-                
-                // Fallback si no soporta Web Share API o falla
-                if (block.driveFileId) {
-                    window.open(`https://drive.google.com/file/d/${block.driveFileId}/view`, '_blank');
+        if (!hasFile && block.driveFileId && noteId) {
+            setIsDownloadingState(true);
+            const { useStore } = await import('@/lib/store');
+            const success = await useStore.getState().downloadAttachment(noteId, block.id);
+            setIsDownloadingState(false);
+            if (success) {
+                const updatedNote = useStore.getState().notes.find(n => n.id === noteId);
+                const updatedBlock = updatedNote?.blocks.find(b => b.id === block.id);
+                if (updatedBlock?.type === 'file' && updatedBlock.content?.url) {
+                    openFileHelper(updatedBlock.content.url, updatedBlock.content.name || fileData.name, block.driveFileId);
                     return;
-                }
-
-                if (src.startsWith('data:')) {
-                    // Forzar descarga para Base64 ya que los navegadores bloquean abrir data URIs en nuevas pestañas
-                    const a = document.createElement('a');
-                    a.href = src;
-                    a.download = fileData.name || 'archivo';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                } else {
-                    // Dejar que el navegador decida (abrir o preguntar, dependiendo de la configuración y extensiones)
-                    window.open(src, '_blank');
                 }
             }
         }
+        openFileHelper(fileData.url, fileData.name, block.driveFileId);
     };
 
     return (
@@ -3720,51 +3713,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             }
             const fileUrl = fileCard.getAttribute('data-file-url') || '';
             const fileName = fileCard.getAttribute('data-file-name') || '';
-            if (fileUrl) {
-                // Open file with helper
-                const ext = (fileName.split('.').pop() || '').toLowerCase();
-                const mimeTypeMap: Record<string, string> = {
-                    'pdf': 'application/pdf',
-                    'doc': 'application/msword',
-                    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    'xls': 'application/vnd.ms-excel',
-                    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    'ppt': 'application/vnd.ms-powerpoint',
-                    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                    'mp3': 'audio/mpeg',
-                    'wav': 'audio/wav',
-                    'mp4': 'video/mp4'
-                };
-                const mimeType = mimeTypeMap[ext] || '*/*';
-
-                if (Capacitor.isNativePlatform()) {
-                    let uri = fileUrl;
-                    if (uri.startsWith('http://localhost/_capacitor_file_')) {
-                        uri = uri.replace('http://localhost/_capacitor_file_', 'file://');
-                    }
-                    if (uri.startsWith('file://')) {
-                        import('@/lib/store').then(({ WidgetSync }) => {
-                            WidgetSync.openFile({ url: uri, mimeType });
-                        });
-                    } else {
-                        import('@capacitor/share').then(({ Share }) => {
-                            Share.share({ title: fileName, url: uri, dialogTitle: 'Abrir con...' });
-                        });
-                    }
-                } else {
-                    const src = getLocalImageSrc(fileUrl);
-                    if (src.startsWith('data:')) {
-                        const a = document.createElement('a');
-                        a.href = src;
-                        a.download = fileName || 'archivo';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                    } else {
-                        window.open(src, '_blank');
-                    }
-                }
-            }
+            openFileHelper(fileUrl, fileName);
             return;
         }
 
