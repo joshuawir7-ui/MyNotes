@@ -2149,6 +2149,25 @@ export async function openFileHelper(fileUrl: string, fileName: string, driveFil
         return;
     }
 
+    // Resolve IndexedDB URIs (indexeddb://blob_...) for Web storage
+    if (fileUrl.startsWith('indexeddb://')) {
+        try {
+            const { createObjectURLFromIndexedDB } = await import('@/lib/blob-storage');
+            const resolvedUrl = await createObjectURLFromIndexedDB(fileUrl);
+            if (resolvedUrl) {
+                fileUrl = resolvedUrl;
+            } else if (driveFileId) {
+                window.open(`https://drive.google.com/file/d/${driveFileId}/view`, '_blank');
+                return;
+            } else {
+                useStore.getState().showToast("No se pudo recuperar el archivo del almacenamiento local", "error");
+                return;
+            }
+        } catch (e) {
+            console.error("IndexedDB resolution error:", e);
+        }
+    }
+
     const ext = (fileName.split('.').pop() || '').toLowerCase();
     const mimeTypeMap: Record<string, string> = {
         'pdf': 'application/pdf',
@@ -2225,10 +2244,10 @@ export async function openFileHelper(fileUrl: string, fileName: string, driveFil
     }
 
     if (fileUrl.startsWith('blob:') || fileUrl.startsWith('http')) {
-        if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
+        if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'mp3', 'wav', 'ogg'].includes(ext)) {
             const a = document.createElement('a');
             a.href = fileUrl;
-            a.download = fileName || 'archivo';
+            a.download = fileName || `archivo.${ext || 'bin'}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
