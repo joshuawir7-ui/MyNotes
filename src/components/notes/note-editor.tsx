@@ -1069,10 +1069,12 @@ function InlineFileButton({ language }: { language: string }) {
             const localUri = await saveBase64File(base64, file.name);
             const persistentUri = localUri || base64;
 
+            const ext = (file.name.split('.').pop() || 'FILE').toUpperCase();
             const iconInfo = getFileIcon('', file.name);
             const iconSrc = iconInfo.imageSrc || '/icons/pdf.png';
+            const openLabel = language === 'es' ? 'Abrir' : 'Open';
 
-            const fileHtml = `<span data-inline-file="1" contenteditable="false" data-file-url="${persistentUri}" data-file-name="${file.name}" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;margin:4px 2px;border-radius:8px;background:rgba(120,120,120,0.15);border:1px solid rgba(120,120,120,0.25);cursor:pointer;vertical-align:middle;user-select:none;"><img src="${iconSrc}" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;" /><span style="font-size:12px;font-weight:600;vertical-align:middle;">${file.name}</span></span>&nbsp;`;
+            const fileHtml = `<div data-inline-file="1" contenteditable="false" data-file-url="${persistentUri}" data-file-name="${file.name}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:12px 16px;margin:10px 0;border-radius:16px;background:rgba(255,255,255,0.95);border:1px solid rgba(0,0,0,0.1);box-shadow:0 1px 3px rgba(0,0,0,0.08);cursor:pointer;user-select:none;clear:both;"><div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;"><img src="${iconSrc}" style="width:38px;height:38px;object-fit:contain;flex-shrink:0;" /><div style="display:flex;flex-direction:column;min-width:0;flex:1;"><span style="font-size:14px;font-weight:700;color:#18181b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;">${file.name}</span><span style="font-size:11px;font-weight:600;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">${ext}</span></div></div><div style="display:flex;align-items:center;gap:8px;flex-shrink:0;"><button type="button" data-file-action="open" style="padding:6px 16px;background:#f4f4f5;color:#18181b;border:1px solid rgba(0,0,0,0.1);border-radius:9999px;font-size:12px;font-weight:700;cursor:pointer;">${openLabel}</button><button type="button" data-file-action="delete" style="padding:6px;background:transparent;color:#ef4444;border:none;border-radius:8px;cursor:pointer;font-size:14px;" title="Eliminar">🗑️</button></div></div><p><br></p>`;
 
             restoreSelection();
             document.execCommand('insertHTML', false, fileHtml);
@@ -2293,9 +2295,9 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
 
     return (
         <div
-            className={`relative group rounded-xl flex flex-col items-center justify-center transition-all ${hasFile || isDownloading
-                    ? 'p-4 bg-white/5 border border-white/10 min-h-[100px]'
-                    : 'border-2 border-dashed border-white/10 p-4 min-h-[120px] bg-black/20'
+            className={`relative group rounded-2xl flex flex-col items-center justify-center transition-all w-full my-2 ${hasFile || isDownloading
+                    ? 'p-3.5 bg-white dark:bg-[#18181c] border border-zinc-200/80 dark:border-white/10 shadow-sm'
+                    : 'border-2 border-dashed border-zinc-200 dark:border-white/10 p-4 min-h-[120px] bg-zinc-50 dark:bg-black/20'
                 }`}
             onMouseEnter={() => setShowControls(true)}
             onMouseLeave={() => setShowControls(false)}
@@ -2323,24 +2325,36 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
             isAudio ? (
                 <NoteAudioBlock block={block} removeBlock={removeBlock} />
             ) : (
-                <div className="flex items-center gap-4 w-full cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors group" onClick={handleFileClick}>
-                    <div className={`w-12 h-12 rounded-lg ${bg} ${color} flex items-center justify-center shrink-0 overflow-hidden relative`}>
-                        {Icon ? <Icon className="w-6 h-6" /> : <img src={imageSrc} alt="Icon" className="w-10 h-10 object-contain drop-shadow-md" />}
-                    </div>
-                    <div className="flex flex-col flex-1 min-w-0">
-                        <span className="text-sm font-medium text-foreground truncate">{fileData.name || 'Unknown File'}</span>
-                        <span className="text-xs text-muted-foreground truncate uppercase">{fileData.type || 'FILE'}</span>
-                    </div>
-                    {!isAudio && (
-                        <div className="shrink-0 ml-2">
-                            <button className="px-4 py-1.5 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm font-bold rounded-xl shadow-[0_4px_6px_-1px_rgba(0,0,0,0.14)] dark:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.4)] border border-black/10 dark:border-white/10 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all hover:scale-[1.02] active:scale-95">
-                                Open
-                            </button>
+                <div className="flex items-center justify-between gap-3 w-full cursor-pointer group" onClick={handleFileClick}>
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {imageSrc ? (
+                            <img src={imageSrc} alt="Icon" className="w-10 h-10 md:w-11 md:h-11 object-contain shrink-0 drop-shadow-sm" />
+                        ) : (
+                            <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl ${bg} ${color} flex items-center justify-center shrink-0`}>
+                                <Icon className="w-5 h-5" />
+                            </div>
+                        )}
+                        <div className="flex flex-col min-w-0 flex-1">
+                            <span className="text-sm font-bold text-zinc-900 dark:text-white truncate">{fileData.name || 'Archivo'}</span>
+                            <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mt-0.5">{ext ? ext.toUpperCase() : 'FILE'}</span>
                         </div>
-                    )}
-                    <button onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeBlock(block.id); }} className="p-2 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/10 rounded-md shrink-0" title="Eliminar archivo">
-                        <Trash2 className="w-4 h-4" />
-                    </button>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button
+                            type="button"
+                            className="px-4 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 text-xs font-bold rounded-full transition-all border border-zinc-200/80 dark:border-zinc-700/80 shadow-sm shrink-0 cursor-pointer"
+                        >
+                            {language === 'es' ? 'Abrir' : 'Open'}
+                        </button>
+                        <button
+                            type="button"
+                            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeBlock(block.id); }}
+                            className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-full transition-colors shrink-0"
+                            title="Eliminar archivo"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
             )
         ) : (
@@ -3693,6 +3707,66 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                 handleInput();
             }
         }
+        // Handle inline file card clicks (Word, Excel, PPT, PDF, MP3, etc.)
+        const fileCard = target.closest('[data-inline-file], [data-file-card]') as HTMLElement | null;
+        if (fileCard) {
+            e.preventDefault();
+            const actionAttr = target.getAttribute('data-file-action') || target.closest('[data-file-action]')?.getAttribute('data-file-action');
+            if (actionAttr === 'delete') {
+                fileCard.remove();
+                handleInput();
+                return;
+            }
+            const fileUrl = fileCard.getAttribute('data-file-url') || '';
+            const fileName = fileCard.getAttribute('data-file-name') || '';
+            if (fileUrl) {
+                // Open file with helper
+                const ext = (fileName.split('.').pop() || '').toLowerCase();
+                const mimeTypeMap: Record<string, string> = {
+                    'pdf': 'application/pdf',
+                    'doc': 'application/msword',
+                    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'xls': 'application/vnd.ms-excel',
+                    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'ppt': 'application/vnd.ms-powerpoint',
+                    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    'mp3': 'audio/mpeg',
+                    'wav': 'audio/wav',
+                    'mp4': 'video/mp4'
+                };
+                const mimeType = mimeTypeMap[ext] || '*/*';
+
+                if (Capacitor.isNativePlatform()) {
+                    let uri = fileUrl;
+                    if (uri.startsWith('http://localhost/_capacitor_file_')) {
+                        uri = uri.replace('http://localhost/_capacitor_file_', 'file://');
+                    }
+                    if (uri.startsWith('file://')) {
+                        import('@/lib/store').then(({ WidgetSync }) => {
+                            WidgetSync.openFile({ url: uri, mimeType });
+                        });
+                    } else {
+                        import('@capacitor/share').then(({ Share }) => {
+                            Share.share({ title: fileName, url: uri, dialogTitle: 'Abrir con...' });
+                        });
+                    }
+                } else {
+                    const src = getLocalImageSrc(fileUrl);
+                    if (src.startsWith('data:')) {
+                        const a = document.createElement('a');
+                        a.href = src;
+                        a.download = fileName || 'archivo';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    } else {
+                        window.open(src, '_blank');
+                    }
+                }
+            }
+            return;
+        }
+
         // Click elsewhere — deselect overlay
         setSelectedMedia(null);
     };
