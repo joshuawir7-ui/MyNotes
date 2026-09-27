@@ -1137,13 +1137,13 @@ export default function TasksPage() {
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 onClick={() => setLostDaysHabit(null)}
-                                className="absolute inset-0 bg-black/20"
+                                className="absolute inset-0 bg-transparent"
                             />
                             <motion.div
                                 initial={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}
                                 animate={{ opacity: 1, filter: "blur(0px)", y: 0, scale: 1 }}
                                 exit={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}
-                                className="relative w-full max-w-sm glass-panel p-6 rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121215] shadow-2xl text-center flex flex-col items-center gap-4 text-foreground dark:text-white"
+                                className="relative w-full max-w-md glass-panel p-6 rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121215] shadow-2xl text-center flex flex-col items-center gap-4 text-foreground dark:text-white"
                             >
                                 <button
                                     onClick={() => setLostDaysHabit(null)}
@@ -1176,7 +1176,7 @@ export default function TasksPage() {
 
                                 {/* Action Buttons Row */}
                                 <div className="flex items-center justify-center gap-2 w-full mt-2">
-                                    {/* Button 1: Cumplir hoy (white background in light mode, dark styled in dark mode) */}
+                                    {/* Button 1: Cumplir hoy */}
                                     {(() => {
                                         const todayStr = getLocalDateString();
                                         const isCompletedToday = lostDaysHabit.completedDates && Array.isArray(lostDaysHabit.completedDates)
@@ -1191,7 +1191,7 @@ export default function TasksPage() {
                                                     handleToggleTask(lostDaysHabit);
                                                     setLostDaysHabit(prev => prev ? { ...prev, completed: true, completedDates: [...(prev.completedDates || []), todayStr] } : null);
                                                 }}
-                                                className={`flex-1 py-3 px-3 rounded-xl font-extrabold text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 ${
+                                                className={`flex-1 h-11 px-3 rounded-xl font-extrabold text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap ${
                                                     isCompletedToday
                                                         ? 'bg-green-500 text-white cursor-default shadow-green-500/20 border border-green-500'
                                                         : 'bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-800 dark:text-white dark:border-zinc-700 dark:hover:bg-zinc-700 cursor-pointer'
@@ -1212,7 +1212,7 @@ export default function TasksPage() {
                                             showToast(language === 'es' ? "Día pasado cumplido (-1 día)" : "Past day completed (-1 day)", "success");
                                             setLostDaysHabit(prev => prev ? { ...prev, missed: Math.max(0, (prev.missed || 0) - 1) } : null);
                                         }}
-                                        className={`flex-1 py-3 px-3 rounded-xl font-extrabold text-xs transition-all shadow-sm ${
+                                        className={`flex-1 h-11 px-3 rounded-xl font-extrabold text-xs transition-all shadow-sm flex items-center justify-center whitespace-nowrap ${
                                             (lostDaysHabit.missed || 0) > 0
                                                 ? 'bg-black text-white dark:bg-white dark:text-black hover:scale-105 active:scale-95 cursor-pointer'
                                                 : 'bg-zinc-100 text-zinc-400 border border-zinc-200 dark:bg-zinc-800/60 dark:text-zinc-600 dark:border-zinc-700/50 cursor-not-allowed'
@@ -1229,7 +1229,7 @@ export default function TasksPage() {
                                             showToast(language === 'es' ? "Conteo de días perdidos reiniciado a 0" : "Lost days count reset to 0", "info");
                                             setLostDaysHabit(prev => prev ? { ...prev, missed: 0 } : null);
                                         }}
-                                        className="p-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
+                                        className="w-11 h-11 bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all shadow-sm flex items-center justify-center shrink-0 active:scale-95"
                                         title={language === 'es' ? "Reiniciar a 0" : "Reset to 0"}
                                     >
                                         <RotateCcw className="w-4 h-4" />
