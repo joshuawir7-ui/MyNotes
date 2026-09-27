@@ -974,3 +974,230 @@ html.dark.theme-black {
 .note-image-block-resizable .img-resize-handle.bm {
   left: calc(50% - 12px); bottom: 8px; cursor: s-resize;
 }
+
+/* ─── Frosted Glassmorphism Calculator Styles ─── */
+.calculator-modal {
+  position: relative;
+  width: 100%;
+  max-width: 370px;
+  padding: 24px;
+  border-radius: 36px;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.68) 0%,
+    rgba(255, 255, 255, 0.55) 100%
+  );
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1.5px solid rgba(255, 255, 255, 0.78);
+  box-shadow: 
+    0 24px 48px rgba(0, 0, 0, 0.18),
+    inset 0 0 24px rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.dark .calculator-modal {
+  background: linear-gradient(
+    145deg,
+    rgba(22, 26, 34, 0.78) 0%,
+    rgba(10, 12, 16, 0.82) 100%
+  );
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 24px 48px rgba(0, 0, 0, 0.5),
+    inset 0 0 24px rgba(255, 255, 255, 0.08);
+}
+
+.calculator-modal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.045'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+.calculator-modal > * {
+  position: relative;
+  z-index: 1;
+}
+
+.calc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.calc-header-pill,
+.calc-close-btn {
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  color: #1A1D21;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.dark .calc-header-pill,
+.dark .calc-close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+}
+
+.calc-screen {
+  background: rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 24px;
+  padding: 18px 20px 14px;
+  margin-bottom: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 6px 16px rgba(0, 0, 0, 0.04),
+    inset 0 2px 8px rgba(255, 255, 255, 0.75);
+}
+
+.dark .calc-screen {
+  background: rgba(14, 17, 23, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 6px 16px rgba(0, 0, 0, 0.2),
+    inset 0 2px 8px rgba(255, 255, 255, 0.08);
+}
+
+.calc-value {
+  font-size: 42px;
+  font-weight: 800;
+  color: #0B0D12;
+  text-align: right;
+  line-height: 1.1;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.dark .calc-value {
+  color: #FFFFFF;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.calc-screen-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+}
+
+.calc-result-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #1A1D21;
+  text-transform: uppercase;
+}
+
+.dark .calc-result-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.btn-use-balance {
+  background: linear-gradient(180deg, rgba(28, 32, 40, 0.95) 0%, rgba(10, 12, 16, 0.96) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 
+    0 6px 12px rgba(0, 0, 0, 0.28),
+    inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-use-balance:hover {
+  background: linear-gradient(180deg, rgba(38, 43, 54, 0.96) 0%, rgba(16, 19, 25, 0.98) 100%);
+  transform: translateY(-1px);
+  box-shadow: 
+    0 10px 20px rgba(0, 0, 0, 0.42),
+    inset 0 1px 2px rgba(255, 255, 255, 0.38);
+}
+
+.calc-keypad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.btn-glass-light {
+  height: 52px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.48);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 
+    0 6px 14px rgba(0, 0, 0, 0.06),
+    inset 0 1px 2px rgba(255, 255, 255, 0.9);
+  color: #0F1115;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dark .btn-glass-light {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #FFFFFF;
+  box-shadow: 
+    0 6px 14px rgba(0, 0, 0, 0.2),
+    inset 0 1px 2px rgba(255, 255, 255, 0.15);
+}
+
+.btn-glass-light:hover {
+  background: rgba(255, 255, 255, 0.65);
+  transform: translateY(-1px);
+}
+
+.dark .btn-glass-light:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.btn-glass-dark {
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(26, 30, 38, 0.94) 0%, rgba(10, 12, 16, 0.96) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 
+    0 8px 16px rgba(0, 0, 0, 0.35),
+    inset 0 1px 2px rgba(255, 255, 255, 0.28);
+  color: #FFFFFF;
+  font-size: 20px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-glass-dark:hover {
+  background: linear-gradient(180deg, rgba(38, 43, 54, 0.96) 0%, rgba(16, 19, 25, 0.98) 100%);
+  transform: translateY(-1px);
+  box-shadow: 
+    0 10px 20px rgba(0, 0, 0, 0.42),
+    inset 0 1px 2px rgba(255, 255, 255, 0.38);
+}

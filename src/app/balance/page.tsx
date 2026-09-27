@@ -1184,7 +1184,7 @@ export default function BalancePage() {
                             <div className="flex gap-4 justify-center w-full pt-1">
                                 <button
                                     onClick={() => setShowCalculatorModal(true)}
-                                    className="p-3 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-foreground hover:bg-black/10 dark:hover:bg-white/10 rounded-2xl transition-all hover:scale-[1.05] active:scale-95 shadow-sm flex items-center justify-center shrink-0"
+                                    className="p-3 text-zinc-950 dark:text-white hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-all hover:scale-110 active:scale-95 shrink-0 flex items-center justify-center"
                                     title={language === 'es' ? "Calculadora" : "Calculator"}
                                 >
                                     <Calculator className="w-5 h-5 text-zinc-950 dark:text-white" />

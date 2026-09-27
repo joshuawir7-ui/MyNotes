@@ -259,7 +259,7 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md"
                 onClick={onClose}
             >
                 <motion.div
@@ -267,24 +267,20 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9, y: 25 }}
                     transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                    className="w-full max-w-[340px] sm:max-w-[370px] bg-white/75 dark:bg-zinc-900/80 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] rounded-[38px] p-5 relative overflow-hidden select-none flex flex-col gap-4 text-foreground"
+                    className="calculator-modal select-none flex flex-col gap-3"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header Bar (History toggle on left, Close button on right) */}
-                    <div className="flex items-center justify-between px-1 pt-1">
+                    <div className="calc-header">
                         <button
                             type="button"
                             onClick={() => setShowHistory(!showHistory)}
-                            className={`p-2 rounded-2xl transition-all flex items-center gap-1.5 text-xs font-bold ${
-                                showHistory
-                                    ? "bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 shadow-md"
-                                    : "bg-black/5 dark:bg-white/10 text-muted-foreground hover:text-foreground"
-                            }`}
+                            className="calc-header-pill px-3 py-1 text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
                             title={language === "es" ? "Historial de operaciones" : "History"}
                         >
-                            <History className="w-4 h-4" />
+                            <History className="w-3.5 h-3.5" />
                             {history.length > 0 && (
-                                <span className="px-1.5 py-0.5 rounded-full bg-white/20 dark:bg-black/20 text-[10px] font-black leading-none">
+                                <span className="px-1.5 py-0.5 rounded-full bg-black/10 dark:bg-white/20 text-[10px] font-black leading-none">
                                     {history.length}
                                 </span>
                             )}
@@ -293,9 +289,9 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                         <button
                             type="button"
                             onClick={onClose}
-                            className="p-2 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-muted-foreground hover:text-foreground rounded-2xl transition-all active:scale-95"
+                            className="calc-close-btn p-1.5 transition-all active:scale-95 cursor-pointer"
                         >
-                            <X className="w-4.5 h-4.5" />
+                            <X className="w-4 h-4" />
                         </button>
                     </div>
 
@@ -306,7 +302,7 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: "auto" }}
                                 exit={{ opacity: 0, height: 0 }}
-                                className="bg-black/5 dark:bg-white/5 rounded-3xl p-3 border border-black/5 dark:border-white/10 overflow-hidden flex flex-col max-h-[220px]"
+                                className="bg-black/5 dark:bg-white/5 rounded-3xl p-3 border border-black/5 dark:border-white/10 overflow-hidden flex flex-col max-h-[220px] mb-2"
                             >
                                 <div className="flex items-center justify-between pb-2 mb-1 border-b border-black/5 dark:border-white/10 px-1">
                                     <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
@@ -356,32 +352,29 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                         )}
                     </AnimatePresence>
 
-                    {/* Translucent Display Container */}
-                    <div className="bg-white/80 dark:bg-zinc-950/70 border border-white/60 dark:border-zinc-800/80 rounded-3xl p-4 shadow-inner flex flex-col justify-between min-h-[105px] text-right transition-all relative overflow-hidden">
+                    {/* Display Screen */}
+                    <div className="calc-screen flex flex-col justify-between min-h-[110px] relative overflow-hidden">
                         {/* Upper expression line */}
-                        <div className="text-xs sm:text-sm font-medium text-zinc-400 dark:text-zinc-500 h-5 flex items-center justify-end overflow-hidden truncate">
+                        <div className="text-xs font-medium text-zinc-400 dark:text-zinc-500 h-5 flex items-center justify-end overflow-hidden truncate">
                             {equationStr}
                         </div>
 
-                        {/* Main large result line */}
-                        <div className="text-3xl sm:text-4xl font-black text-foreground tracking-tight overflow-x-auto custom-scrollbar leading-none py-1">
+                        {/* Main large result value */}
+                        <div className="calc-value font-extrabold tracking-tight overflow-x-auto custom-scrollbar leading-none">
                             {formatNumber(displayValue)}
                         </div>
 
-                        {/* Apply result to Balance button */}
-                        {onApplyAmount && (
-                            <div className="flex justify-between items-center pt-2 mt-1 border-t border-black/5 dark:border-white/5">
-                                <span className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider">
-                                    {language === "es" ? "Resultado" : "Result"}
-                                </span>
+                        {/* Display Footer: RESULTADO label + Black pill button */}
+                        <div className="calc-screen-footer">
+                            <span className="calc-result-label">
+                                {language === "es" ? "Resultado" : "Result"}
+                            </span>
+
+                            {onApplyAmount && (
                                 <button
                                     type="button"
                                     onClick={handleApply}
-                                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95 ${
-                                        copied
-                                            ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
-                                            : "bg-zinc-950 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 shadow-sm"
-                                    }`}
+                                    className="btn-use-balance flex items-center gap-1.5 active:scale-95"
                                 >
                                     {copied ? (
                                         <>
@@ -395,42 +388,38 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                                         </>
                                     )}
                                 </button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
 
                     {/* Keypad Grid (4 Columns x 5 Rows) */}
-                    <div className="grid grid-cols-4 gap-2.5 pt-1">
+                    <div className="calc-keypad">
                         {/* Row 1: C, ±, %, ÷ */}
                         <button
                             type="button"
                             onClick={handleClear}
-                            className="h-12 rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-foreground font-extrabold text-sm transition-all active:scale-95 shadow-sm"
+                            className="btn-glass-light active:scale-95"
                         >
                             C
                         </button>
                         <button
                             type="button"
                             onClick={handleToggleSign}
-                            className="h-12 rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-foreground font-extrabold text-sm transition-all active:scale-95 shadow-sm"
+                            className="btn-glass-light active:scale-95"
                         >
                             ±
                         </button>
                         <button
                             type="button"
                             onClick={handlePercentage}
-                            className="h-12 rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-foreground font-extrabold text-sm transition-all active:scale-95 shadow-sm"
+                            className="btn-glass-light active:scale-95"
                         >
                             %
                         </button>
                         <button
                             type="button"
                             onClick={() => handleOperator("/")}
-                            className={`h-12 rounded-2xl font-black text-xl transition-all active:scale-95 shadow-md flex items-center justify-center ${
-                                operator === "/" && waitingForOperand
-                                    ? "bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-950 ring-2 ring-zinc-950 dark:ring-white"
-                                    : "bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-zinc-950/20"
-                            }`}
+                            className={`btn-glass-dark active:scale-95 ${operator === "/" && waitingForOperand ? "ring-2 ring-white" : ""}`}
                         >
                             ÷
                         </button>
@@ -439,32 +428,28 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                         <button
                             type="button"
                             onClick={() => handleDigit("7")}
-                            className="h-12 rounded-2xl bg-white/90 dark:bg-zinc-800/70 hover:bg-white dark:hover:bg-zinc-750 text-foreground font-extrabold text-lg transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/5"
+                            className="btn-glass-light active:scale-95"
                         >
                             7
                         </button>
                         <button
                             type="button"
                             onClick={() => handleDigit("8")}
-                            className="h-12 rounded-2xl bg-white/90 dark:bg-zinc-800/70 hover:bg-white dark:hover:bg-zinc-750 text-foreground font-extrabold text-lg transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/5"
+                            className="btn-glass-light active:scale-95"
                         >
                             8
                         </button>
                         <button
                             type="button"
                             onClick={() => handleDigit("9")}
-                            className="h-12 rounded-2xl bg-white/90 dark:bg-zinc-800/70 hover:bg-white dark:hover:bg-zinc-750 text-foreground font-extrabold text-lg transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/5"
+                            className="btn-glass-light active:scale-95"
                         >
                             9
                         </button>
                         <button
                             type="button"
                             onClick={() => handleOperator("*")}
-                            className={`h-12 rounded-2xl font-black text-xl transition-all active:scale-95 shadow-md flex items-center justify-center ${
-                                operator === "*" && waitingForOperand
-                                    ? "bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-950 ring-2 ring-zinc-950 dark:ring-white"
-                                    : "bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-zinc-950/20"
-                            }`}
+                            className={`btn-glass-dark active:scale-95 ${operator === "*" && waitingForOperand ? "ring-2 ring-white" : ""}`}
                         >
                             ×
                         </button>
@@ -473,32 +458,28 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                         <button
                             type="button"
                             onClick={() => handleDigit("4")}
-                            className="h-12 rounded-2xl bg-white/90 dark:bg-zinc-800/70 hover:bg-white dark:hover:bg-zinc-750 text-foreground font-extrabold text-lg transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/5"
+                            className="btn-glass-light active:scale-95"
                         >
                             4
                         </button>
                         <button
                             type="button"
                             onClick={() => handleDigit("5")}
-                            className="h-12 rounded-2xl bg-white/90 dark:bg-zinc-800/70 hover:bg-white dark:hover:bg-zinc-750 text-foreground font-extrabold text-lg transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/5"
+                            className="btn-glass-light active:scale-95"
                         >
                             5
                         </button>
                         <button
                             type="button"
                             onClick={() => handleDigit("6")}
-                            className="h-12 rounded-2xl bg-white/90 dark:bg-zinc-800/70 hover:bg-white dark:hover:bg-zinc-750 text-foreground font-extrabold text-lg transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/5"
+                            className="btn-glass-light active:scale-95"
                         >
                             6
                         </button>
                         <button
                             type="button"
                             onClick={() => handleOperator("-")}
-                            className={`h-12 rounded-2xl font-black text-xl transition-all active:scale-95 shadow-md flex items-center justify-center ${
-                                operator === "-" && waitingForOperand
-                                    ? "bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-950 ring-2 ring-zinc-950 dark:ring-white"
-                                    : "bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-zinc-950/20"
-                            }`}
+                            className={`btn-glass-dark active:scale-95 ${operator === "-" && waitingForOperand ? "ring-2 ring-white" : ""}`}
                         >
                             −
                         </button>
@@ -507,32 +488,28 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                         <button
                             type="button"
                             onClick={() => handleDigit("1")}
-                            className="h-12 rounded-2xl bg-white/90 dark:bg-zinc-800/70 hover:bg-white dark:hover:bg-zinc-750 text-foreground font-extrabold text-lg transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/5"
+                            className="btn-glass-light active:scale-95"
                         >
                             1
                         </button>
                         <button
                             type="button"
                             onClick={() => handleDigit("2")}
-                            className="h-12 rounded-2xl bg-white/90 dark:bg-zinc-800/70 hover:bg-white dark:hover:bg-zinc-750 text-foreground font-extrabold text-lg transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/5"
+                            className="btn-glass-light active:scale-95"
                         >
                             2
                         </button>
                         <button
                             type="button"
                             onClick={() => handleDigit("3")}
-                            className="h-12 rounded-2xl bg-white/90 dark:bg-zinc-800/70 hover:bg-white dark:hover:bg-zinc-750 text-foreground font-extrabold text-lg transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/5"
+                            className="btn-glass-light active:scale-95"
                         >
                             3
                         </button>
                         <button
                             type="button"
                             onClick={() => handleOperator("+")}
-                            className={`h-12 rounded-2xl font-black text-xl transition-all active:scale-95 shadow-md flex items-center justify-center ${
-                                operator === "+" && waitingForOperand
-                                    ? "bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-950 ring-2 ring-zinc-950 dark:ring-white"
-                                    : "bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-zinc-950/20"
-                            }`}
+                            className={`btn-glass-dark active:scale-95 ${operator === "+" && waitingForOperand ? "ring-2 ring-white" : ""}`}
                         >
                             +
                         </button>
@@ -541,29 +518,29 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                         <button
                             type="button"
                             onClick={() => handleDigit("0")}
-                            className="h-12 rounded-2xl bg-white/90 dark:bg-zinc-800/70 hover:bg-white dark:hover:bg-zinc-750 text-foreground font-extrabold text-lg transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/5"
+                            className="btn-glass-light active:scale-95"
                         >
                             0
                         </button>
                         <button
                             type="button"
                             onClick={handleDecimal}
-                            className="h-12 rounded-2xl bg-white/90 dark:bg-zinc-800/70 hover:bg-white dark:hover:bg-zinc-750 text-foreground font-extrabold text-lg transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/5"
+                            className="btn-glass-light active:scale-95"
                         >
                             .
                         </button>
                         <button
                             type="button"
                             onClick={handleBackspace}
-                            className="h-12 rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-foreground font-extrabold text-sm transition-all active:scale-95 shadow-sm flex items-center justify-center"
+                            className="btn-glass-light active:scale-95 flex items-center justify-center"
                             title={language === "es" ? "Borrar último número" : "Backspace"}
                         >
-                            <Delete className="w-5 h-5 text-muted-foreground" />
+                            <Delete className="w-5 h-5 text-current" />
                         </button>
                         <button
                             type="button"
                             onClick={handleEquals}
-                            className="h-12 rounded-2xl bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 font-black text-xl transition-all active:scale-95 shadow-md flex items-center justify-center"
+                            className="btn-glass-dark active:scale-95"
                         >
                             =
                         </button>
