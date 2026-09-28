@@ -979,9 +979,9 @@ html.dark.theme-black {
 .calculator-modal {
   position: relative;
   width: 100%;
-  max-width: 370px;
-  padding: 24px;
-  border-radius: 36px;
+  max-width: 315px;
+  padding: 14px 16px 16px;
+  border-radius: 28px;
   background: linear-gradient(
     145deg,
     rgba(255, 255, 255, 0.68) 0%,
@@ -1028,7 +1028,7 @@ html.dark.theme-black {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .calc-header-pill,
@@ -1054,9 +1054,9 @@ html.dark.theme-black {
   background: rgba(255, 255, 255, 0.52);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-radius: 24px;
-  padding: 18px 20px 14px;
-  margin-bottom: 18px;
+  border-radius: 18px;
+  padding: 12px 14px 10px;
+  margin-bottom: 10px;
   border: 1px solid rgba(255, 255, 255, 0.85);
   box-shadow: 
     0 6px 16px rgba(0, 0, 0, 0.04),
@@ -1072,12 +1072,12 @@ html.dark.theme-black {
 }
 
 .calc-value {
-  font-size: 42px;
+  font-size: 32px;
   font-weight: 800;
   color: #0B0D12;
   text-align: right;
   line-height: 1.1;
-  padding-bottom: 12px;
+  padding-bottom: 6px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
@@ -1090,11 +1090,11 @@ html.dark.theme-black {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 10px;
+  padding-top: 6px;
 }
 
 .calc-result-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.5px;
   color: #1A1D21;
@@ -1110,9 +1110,9 @@ html.dark.theme-black {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: #FFFFFF;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 7px 16px;
+  padding: 5px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow: 
@@ -1133,12 +1133,12 @@ html.dark.theme-black {
 .calc-keypad {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 
 .btn-glass-light {
-  height: 52px;
-  border-radius: 16px;
+  height: 42px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.48);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -1147,7 +1147,7 @@ html.dark.theme-black {
     0 6px 14px rgba(0, 0, 0, 0.06),
     inset 0 1px 2px rgba(255, 255, 255, 0.9);
   color: #0F1115;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -1175,8 +1175,8 @@ html.dark.theme-black {
 }
 
 .btn-glass-dark {
-  height: 52px;
-  border-radius: 16px;
+  height: 42px;
+  border-radius: 14px;
   background: linear-gradient(180deg, rgba(26, 30, 38, 0.94) 0%, rgba(10, 12, 16, 0.96) 100%);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -1185,7 +1185,7 @@ html.dark.theme-black {
     0 8px 16px rgba(0, 0, 0, 0.35),
     inset 0 1px 2px rgba(255, 255, 255, 0.28);
   color: #FFFFFF;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   display: flex;
   align-items: center;
