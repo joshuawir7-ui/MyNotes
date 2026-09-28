@@ -1009,6 +1009,14 @@ html.dark.theme-black {
     inset 0 0 24px rgba(255, 255, 255, 0.08);
 }
 
+@media (min-width: 640px) {
+  .calculator-modal {
+    max-width: 620px;
+    padding: 18px 20px 20px;
+    border-radius: 32px;
+  }
+}
+
 .calculator-modal::before {
   content: "";
   position: absolute;

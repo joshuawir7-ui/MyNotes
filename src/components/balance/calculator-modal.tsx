@@ -295,255 +295,262 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                         </button>
                     </div>
 
-                    {/* Collapsible History Drawer */}
-                    <AnimatePresence>
-                        {showHistory && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="bg-black/5 dark:bg-white/5 rounded-3xl p-3 border border-black/5 dark:border-white/10 overflow-hidden flex flex-col max-h-[220px] mb-2"
-                            >
-                                <div className="flex items-center justify-between pb-2 mb-1 border-b border-black/5 dark:border-white/10 px-1">
-                                    <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-                                        {language === "es" ? "Historial de operaciones" : "Calculation History"}
+                    {/* Main Layout Area: Vertical Stack on Mobile (<640px), 2-Column Landscape Grid on Desktop (>=640px) */}
+                    <div className="flex flex-col sm:grid sm:grid-cols-2 gap-3 sm:gap-4 items-stretch">
+                        
+                        {/* Left Column (Desktop): Display Screen & History Drawer */}
+                        <div className="flex flex-col justify-between space-y-2 h-full">
+                            {/* Display Screen */}
+                            <div className="calc-screen flex flex-col justify-between min-h-[110px] sm:min-h-[220px] sm:h-full sm:mb-0 relative overflow-hidden">
+                                {/* Upper expression line */}
+                                <div className="text-xs font-medium text-zinc-400 dark:text-zinc-500 h-5 flex items-center justify-end overflow-hidden truncate">
+                                    {equationStr}
+                                </div>
+
+                                {/* Main large result value */}
+                                <div className="calc-value font-extrabold tracking-tight overflow-x-auto custom-scrollbar leading-none my-auto py-1">
+                                    {formatNumber(displayValue)}
+                                </div>
+
+                                {/* Display Footer: RESULTADO label + Black pill button */}
+                                <div className="calc-screen-footer">
+                                    <span className="calc-result-label">
+                                        {language === "es" ? "Resultado" : "Result"}
                                     </span>
-                                    {history.length > 0 && (
+
+                                    {onApplyAmount && (
                                         <button
                                             type="button"
-                                            onClick={clearHistory}
-                                            className="text-rose-500 hover:text-rose-600 p-1 hover:bg-rose-500/10 rounded-lg transition-colors text-xs flex items-center gap-1 font-bold"
-                                            title={language === "es" ? "Borrar historial" : "Clear history"}
+                                            onClick={handleApply}
+                                            className="btn-use-balance flex items-center gap-1.5 active:scale-95"
                                         >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                            {language === "es" ? "Borrar" : "Clear"}
+                                            {copied ? (
+                                                <>
+                                                    <Check className="w-3.5 h-3.5" />
+                                                    {language === "es" ? "¡Aplicado!" : "Applied!"}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {language === "es" ? "Usar en Balance" : "Use in Balance"}
+                                                    <ArrowRight className="w-3.5 h-3.5" />
+                                                </>
+                                            )}
                                         </button>
                                     )}
                                 </div>
+                            </div>
 
-                                <div className="overflow-y-auto space-y-1.5 pr-1 custom-scrollbar max-h-[160px]">
-                                    {history.length === 0 ? (
-                                        <div className="py-6 text-center text-xs text-muted-foreground">
-                                            {language === "es" ? "Aún no hay cálculos guardados" : "No calculation history yet"}
+                            {/* Collapsible History Drawer */}
+                            <AnimatePresence>
+                                {showHistory && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: "auto" }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className="bg-black/5 dark:bg-white/5 rounded-3xl p-3 border border-black/5 dark:border-white/10 overflow-hidden flex flex-col max-h-[200px]"
+                                    >
+                                        <div className="flex items-center justify-between pb-2 mb-1 border-b border-black/5 dark:border-white/10 px-1">
+                                            <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                                                {language === "es" ? "Historial de operaciones" : "Calculation History"}
+                                            </span>
+                                            {history.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={clearHistory}
+                                                    className="text-rose-500 hover:text-rose-600 p-1 hover:bg-rose-500/10 rounded-lg transition-colors text-xs flex items-center gap-1 font-bold"
+                                                    title={language === "es" ? "Borrar historial" : "Clear history"}
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    {language === "es" ? "Borrar" : "Clear"}
+                                                </button>
+                                            )}
                                         </div>
-                                    ) : (
-                                        history.map((item) => (
-                                            <div
-                                                key={item.id}
-                                                onClick={() => handleSelectHistoryItem(item)}
-                                                className="p-2.5 rounded-2xl bg-white/70 dark:bg-zinc-800/70 hover:bg-white dark:hover:bg-zinc-800 border border-black/5 dark:border-white/5 cursor-pointer transition-all flex justify-between items-center group active:scale-[0.98]"
-                                            >
-                                                <div className="flex flex-col min-w-0 pr-2">
-                                                    <span className="text-[10px] font-medium text-muted-foreground truncate">
-                                                        {item.expression}
-                                                    </span>
-                                                    <span className="text-sm font-extrabold text-foreground tracking-tight">
-                                                        = {formatNumber(item.result)}
-                                                    </span>
+
+                                        <div className="overflow-y-auto space-y-1.5 pr-1 custom-scrollbar max-h-[140px]">
+                                            {history.length === 0 ? (
+                                                <div className="py-6 text-center text-xs text-muted-foreground">
+                                                    {language === "es" ? "Aún no hay cálculos guardados" : "No calculation history yet"}
                                                 </div>
-                                                <span className="text-[9px] text-muted-foreground/60 shrink-0 font-medium">
-                                                    {item.timestamp}
-                                                </span>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Display Screen */}
-                    <div className="calc-screen flex flex-col justify-between min-h-[110px] relative overflow-hidden">
-                        {/* Upper expression line */}
-                        <div className="text-xs font-medium text-zinc-400 dark:text-zinc-500 h-5 flex items-center justify-end overflow-hidden truncate">
-                            {equationStr}
+                                            ) : (
+                                                history.map((item) => (
+                                                    <div
+                                                        key={item.id}
+                                                        onClick={() => handleSelectHistoryItem(item)}
+                                                        className="p-2.5 rounded-2xl bg-white/70 dark:bg-zinc-800/70 hover:bg-white dark:hover:bg-zinc-800 border border-black/5 dark:border-white/5 cursor-pointer transition-all flex justify-between items-center group active:scale-[0.98]"
+                                                    >
+                                                        <div className="flex flex-col min-w-0 pr-2">
+                                                            <span className="text-[10px] font-medium text-muted-foreground truncate">
+                                                                {item.expression}
+                                                            </span>
+                                                            <span className="text-sm font-extrabold text-foreground tracking-tight">
+                                                                = {formatNumber(item.result)}
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-[9px] text-muted-foreground/60 shrink-0 font-medium">
+                                                            {item.timestamp}
+                                                        </span>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
 
-                        {/* Main large result value */}
-                        <div className="calc-value font-extrabold tracking-tight overflow-x-auto custom-scrollbar leading-none">
-                            {formatNumber(displayValue)}
+                        {/* Right Column (Desktop): Keypad Grid (4 Columns x 5 Rows) */}
+                        <div className="calc-keypad">
+                            {/* Row 1: C, ±, %, ÷ */}
+                            <button
+                                type="button"
+                                onClick={handleClear}
+                                className="btn-glass-light active:scale-95"
+                            >
+                                C
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleToggleSign}
+                                className="btn-glass-light active:scale-95"
+                            >
+                                ±
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handlePercentage}
+                                className="btn-glass-light active:scale-95"
+                            >
+                                %
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleOperator("/")}
+                                className={`btn-glass-dark active:scale-95 ${operator === "/" && waitingForOperand ? "ring-2 ring-white" : ""}`}
+                            >
+                                ÷
+                            </button>
+
+                            {/* Row 2: 7, 8, 9, × */}
+                            <button
+                                type="button"
+                                onClick={() => handleDigit("7")}
+                                className="btn-glass-light active:scale-95"
+                            >
+                                7
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleDigit("8")}
+                                className="btn-glass-light active:scale-95"
+                            >
+                                8
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleDigit("9")}
+                                className="btn-glass-light active:scale-95"
+                            >
+                                9
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleOperator("*")}
+                                className={`btn-glass-dark active:scale-95 ${operator === "*" && waitingForOperand ? "ring-2 ring-white" : ""}`}
+                            >
+                                ×
+                            </button>
+
+                            {/* Row 3: 4, 5, 6, − */}
+                            <button
+                                type="button"
+                                onClick={() => handleDigit("4")}
+                                className="btn-glass-light active:scale-95"
+                            >
+                                4
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleDigit("5")}
+                                className="btn-glass-light active:scale-95"
+                            >
+                                5
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleDigit("6")}
+                                className="btn-glass-light active:scale-95"
+                            >
+                                6
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleOperator("-")}
+                                className={`btn-glass-dark active:scale-95 ${operator === "-" && waitingForOperand ? "ring-2 ring-white" : ""}`}
+                            >
+                                −
+                            </button>
+
+                            {/* Row 4: 1, 2, 3, + */}
+                            <button
+                                type="button"
+                                onClick={() => handleDigit("1")}
+                                className="btn-glass-light active:scale-95"
+                            >
+                                1
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleDigit("2")}
+                                className="btn-glass-light active:scale-95"
+                            >
+                                2
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleDigit("3")}
+                                className="btn-glass-light active:scale-95"
+                            >
+                                3
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleOperator("+")}
+                                className={`btn-glass-dark active:scale-95 ${operator === "+" && waitingForOperand ? "ring-2 ring-white" : ""}`}
+                            >
+                                +
+                            </button>
+
+                            {/* Row 5: 0, ., ⌫, = */}
+                            <button
+                                type="button"
+                                onClick={() => handleDigit("0")}
+                                className="btn-glass-light active:scale-95"
+                            >
+                                0
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDecimal}
+                                className="btn-glass-light active:scale-95"
+                            >
+                                .
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleBackspace}
+                                className="btn-glass-light active:scale-95 flex items-center justify-center"
+                                title={language === "es" ? "Borrar último número" : "Backspace"}
+                            >
+                                <Delete className="w-5 h-5 text-current" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleEquals}
+                                className="btn-glass-dark active:scale-95"
+                            >
+                                =
+                            </button>
                         </div>
-
-                        {/* Display Footer: RESULTADO label + Black pill button */}
-                        <div className="calc-screen-footer">
-                            <span className="calc-result-label">
-                                {language === "es" ? "Resultado" : "Result"}
-                            </span>
-
-                            {onApplyAmount && (
-                                <button
-                                    type="button"
-                                    onClick={handleApply}
-                                    className="btn-use-balance flex items-center gap-1.5 active:scale-95"
-                                >
-                                    {copied ? (
-                                        <>
-                                            <Check className="w-3.5 h-3.5" />
-                                            {language === "es" ? "¡Aplicado!" : "Applied!"}
-                                        </>
-                                    ) : (
-                                        <>
-                                            {language === "es" ? "Usar en Balance" : "Use in Balance"}
-                                            <ArrowRight className="w-3.5 h-3.5" />
-                                        </>
-                                    )}
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Keypad Grid (4 Columns x 5 Rows) */}
-                    <div className="calc-keypad">
-                        {/* Row 1: C, ±, %, ÷ */}
-                        <button
-                            type="button"
-                            onClick={handleClear}
-                            className="btn-glass-light active:scale-95"
-                        >
-                            C
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleToggleSign}
-                            className="btn-glass-light active:scale-95"
-                        >
-                            ±
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handlePercentage}
-                            className="btn-glass-light active:scale-95"
-                        >
-                            %
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleOperator("/")}
-                            className={`btn-glass-dark active:scale-95 ${operator === "/" && waitingForOperand ? "ring-2 ring-white" : ""}`}
-                        >
-                            ÷
-                        </button>
-
-                        {/* Row 2: 7, 8, 9, × */}
-                        <button
-                            type="button"
-                            onClick={() => handleDigit("7")}
-                            className="btn-glass-light active:scale-95"
-                        >
-                            7
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleDigit("8")}
-                            className="btn-glass-light active:scale-95"
-                        >
-                            8
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleDigit("9")}
-                            className="btn-glass-light active:scale-95"
-                        >
-                            9
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleOperator("*")}
-                            className={`btn-glass-dark active:scale-95 ${operator === "*" && waitingForOperand ? "ring-2 ring-white" : ""}`}
-                        >
-                            ×
-                        </button>
-
-                        {/* Row 3: 4, 5, 6, − */}
-                        <button
-                            type="button"
-                            onClick={() => handleDigit("4")}
-                            className="btn-glass-light active:scale-95"
-                        >
-                            4
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleDigit("5")}
-                            className="btn-glass-light active:scale-95"
-                        >
-                            5
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleDigit("6")}
-                            className="btn-glass-light active:scale-95"
-                        >
-                            6
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleOperator("-")}
-                            className={`btn-glass-dark active:scale-95 ${operator === "-" && waitingForOperand ? "ring-2 ring-white" : ""}`}
-                        >
-                            −
-                        </button>
-
-                        {/* Row 4: 1, 2, 3, + */}
-                        <button
-                            type="button"
-                            onClick={() => handleDigit("1")}
-                            className="btn-glass-light active:scale-95"
-                        >
-                            1
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleDigit("2")}
-                            className="btn-glass-light active:scale-95"
-                        >
-                            2
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleDigit("3")}
-                            className="btn-glass-light active:scale-95"
-                        >
-                            3
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleOperator("+")}
-                            className={`btn-glass-dark active:scale-95 ${operator === "+" && waitingForOperand ? "ring-2 ring-white" : ""}`}
-                        >
-                            +
-                        </button>
-
-                        {/* Row 5: 0, ., ⌫, = */}
-                        <button
-                            type="button"
-                            onClick={() => handleDigit("0")}
-                            className="btn-glass-light active:scale-95"
-                        >
-                            0
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleDecimal}
-                            className="btn-glass-light active:scale-95"
-                        >
-                            .
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleBackspace}
-                            className="btn-glass-light active:scale-95 flex items-center justify-center"
-                            title={language === "es" ? "Borrar último número" : "Backspace"}
-                        >
-                            <Delete className="w-5 h-5 text-current" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleEquals}
-                            className="btn-glass-dark active:scale-95"
-                        >
-                            =
-                        </button>
                     </div>
                 </motion.div>
             </motion.div>
