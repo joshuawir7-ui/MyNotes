@@ -362,18 +362,13 @@ const NoteThumbnail = memo(({ rawSrc }: { rawSrc: string | null }) => {
     if (!rawSrc || hasError) return null;
 
     return (
-        <div
-            className={`w-full h-32 sm:h-36 rounded-xl overflow-hidden mt-3 shrink-0 transition-opacity duration-300 relative flex items-center justify-center ${
-                showImage ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            }`}
-            style={{ background: 'linear-gradient(135deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.03) 100%)' }}
-        >
+        <div className={`w-full mt-3 shrink-0 flex justify-center transition-opacity duration-300 ${showImage ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             {resolvedUrl && !hasError && (
                 <img
                     src={resolvedUrl}
                     alt="Note thumbnail"
-                    className="w-full h-full object-contain"
-                    style={{ objectPosition: 'center center' }}
+                    className="max-w-full max-h-48 w-auto h-auto rounded-xl"
+                    style={{ borderRadius: '12px', display: 'block' }}
                     loading="lazy"
                     onLoad={() => setIsLoaded(true)}
                     onError={() => setHasError(true)}
