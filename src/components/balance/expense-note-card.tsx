@@ -20,7 +20,7 @@ export const ExpenseNoteCard = React.memo(({ note, currencySymbol }: ExpenseNote
                     <LocalImage 
                         src={imageSrc} 
                         alt={note.title || "Gasto"}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                         fallback={
                             <div className="w-16 h-16 rounded-xl shrink-0 bg-white/5 border border-white/10 flex items-center justify-center text-white/30">
                                 <ImageIcon className="w-6 h-6" />

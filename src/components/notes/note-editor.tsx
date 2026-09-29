@@ -895,9 +895,11 @@ function InlineImageButton({ language }: { language: string }) {
             const { saveBase64File } = await import('@/lib/image-utils');
             const localUri = await saveBase64File(base64, file.name);
             const { Capacitor } = await import('@capacitor/core');
+            // On web/desktop, always use base64 as display src — indexeddb:// URIs are not
+            // directly renderable by the browser. On native, use convertFileSrc for the file path.
             let displaySrc = base64;
-            if (localUri) {
-                displaySrc = Capacitor.isNativePlatform() ? Capacitor.convertFileSrc(localUri) : localUri;
+            if (localUri && Capacitor.isNativePlatform()) {
+                displaySrc = Capacitor.convertFileSrc(localUri);
             }
             const persistentUri = localUri || base64;
             // Use inline-block display by default so multiple images can naturally sit side-by-side!
@@ -931,6 +933,47 @@ function InlineImageButton({ language }: { language: string }) {
             </button>
         </div>
     );
+}
+
+/**
+ * Asynchronously resolves all inline <img> elements whose src is broken (indexeddb:// or empty)
+ * but have a data-local-uri attribute, converting them to live blob: URLs.
+ */
+export async function resolveInlineImages(container: HTMLElement | null) {
+    if (!container || typeof window === 'undefined') return;
+    const imgElements = container.querySelectorAll<HTMLImageElement>('img[data-inline-img="1"], img[data-local-uri]');
+    if (imgElements.length === 0) return;
+
+    const { createObjectURLFromIndexedDB } = await import('@/lib/blob-storage');
+    const { Capacitor } = await import('@capacitor/core');
+
+    for (let i = 0; i < imgElements.length; i++) {
+        const img = imgElements[i];
+        const localUri = img.getAttribute('data-local-uri');
+        const currentSrc = img.getAttribute('src') || '';
+
+        if (!localUri) continue;
+
+        // Already resolved to a usable URL — skip
+        if (currentSrc.startsWith('blob:') || currentSrc.startsWith('data:') ||
+            currentSrc.startsWith('http://') || currentSrc.startsWith('https://') ||
+            (currentSrc.startsWith('capacitor://') || currentSrc.startsWith('ionic://'))) {
+            continue;
+        }
+
+        if (localUri.startsWith('indexeddb://')) {
+            try {
+                const blobUrl = await createObjectURLFromIndexedDB(localUri);
+                if (blobUrl) {
+                    img.src = blobUrl;
+                }
+            } catch (err) {
+                console.error('[resolveInlineImages] Failed to load IndexedDB image blob:', err);
+            }
+        } else if ((localUri.startsWith('file://') || localUri.startsWith('/data/')) && Capacitor.isNativePlatform()) {
+            img.src = Capacitor.convertFileSrc(localUri);
+        }
+    }
 }
 
 /**
@@ -3675,6 +3718,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
         if (editorRef.current) {
             if (document.activeElement === editorRef.current && !isFirstLoad.current) {
                 resolveInlineVideos(editorRef.current);
+                resolveInlineImages(editorRef.current);
                 return;
             }
             cleanContainerStyle(editorRef.current);
@@ -3684,6 +3728,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                 isFirstLoad.current = false;
             }
             resolveInlineVideos(editorRef.current);
+            resolveInlineImages(editorRef.current);
         }
     }, [content]);
 
@@ -3692,6 +3737,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
     const handleInput = () => {
         if (editorRef.current) {
             resolveInlineVideos(editorRef.current);
+            resolveInlineImages(editorRef.current);
             const newContent = editorRef.current.innerHTML;
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             timeoutRef.current = setTimeout(() => {
