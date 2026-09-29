@@ -332,12 +332,23 @@ function getRawNoteThumbnail(blocks: any[] | undefined): string | null {
         } else if (b.type === 'video' && typeof b.thumbnailPath === 'string' && b.thumbnailPath.trim() !== '') {
             candidates.push(b.thumbnailPath);
         } else if (b.type === 'text' && typeof b.content === 'string' && b.content.includes('<img')) {
-            const regex = /<img\b[^>]*?\b(?:src|data-local-uri|data-file-url)=["']([^"']+)["']/gi;
-            let match;
-            while ((match = regex.exec(b.content)) !== null) {
-                const src = match[1];
-                if (src && !src.includes('/icons/') && !src.includes('icons/')) {
-                    candidates.push(src);
+            // Parse each <img> tag individually and prefer data-local-uri (stable, persistent)
+            // over src (which may be a stale blob:, a huge base64, or indexeddb://)
+            const imgTagRegex = /<img\b([^>]*?)(?:\/>|>)/gi;
+            let imgMatch;
+            while ((imgMatch = imgTagRegex.exec(b.content)) !== null) {
+                const attrs = imgMatch[1];
+                // Prefer data-local-uri (persistent IndexedDB / native file URI)
+                const localUriMatch = /\bdata-local-uri=["']([^"']+)["']/i.exec(attrs);
+                const srcMatch = /\bsrc=["']([^"']+)["']/i.exec(attrs);
+                const candidate = localUriMatch?.[1] || srcMatch?.[1];
+                if (
+                    candidate &&
+                    !candidate.startsWith('blob:') &&       // stale across sessions
+                    !candidate.includes('/icons/') &&
+                    !candidate.includes('icons/')
+                ) {
+                    candidates.push(candidate);
                 }
             }
         }
