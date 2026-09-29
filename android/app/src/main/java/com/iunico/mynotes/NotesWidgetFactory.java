@@ -165,12 +165,26 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
                             String rawContent = block.optString("content", "");
                             
                             // 1. Extract inline images from text block for native widget
-                            java.util.regex.Pattern imgPattern = java.util.regex.Pattern.compile("(?i)<img\\b[^>]*?\\b(?:src|data-local-uri|data-file-url|data-src)=[\"']([^\"']+)[\"']");
-                            java.util.regex.Matcher imgMatcher = imgPattern.matcher(rawContent);
-                            while (imgMatcher.find()) {
-                                String imgSrc = imgMatcher.group(1);
+                            java.util.regex.Pattern imgTagPattern = java.util.regex.Pattern.compile("(?i)<img\\b[^>]*>");
+                            java.util.regex.Matcher imgTagMatcher = imgTagPattern.matcher(rawContent);
+                            while (imgTagMatcher.find()) {
+                                String fullImgTag = imgTagMatcher.group(0);
+                                String imgSrc = "";
+
+                                java.util.regex.Pattern localUriPat = java.util.regex.Pattern.compile("(?i)data-local-uri=[\"']([^\"']+)[\"']");
+                                java.util.regex.Matcher localUriMat = localUriPat.matcher(fullImgTag);
+                                if (localUriMat.find()) {
+                                    imgSrc = localUriMat.group(1);
+                                } else {
+                                    java.util.regex.Pattern srcPat = java.util.regex.Pattern.compile("(?i)src=[\"']([^\"']+)[\"']");
+                                    java.util.regex.Matcher srcMat = srcPat.matcher(fullImgTag);
+                                    if (srcMat.find()) {
+                                        imgSrc = srcMat.group(1);
+                                    }
+                                }
+
                                 if (imgSrc != null && !imgSrc.isEmpty()) {
-                                    // Skip small UI icon images (e.g. file badge icons like /icons/pdf.png, word.png, excel.png, etc.)
+                                    // Skip small UI icon images
                                     if (imgSrc.contains("/icons/") || imgSrc.contains("icons/") || (imgSrc.endsWith(".png") && (imgSrc.contains("pdf") || imgSrc.contains("word") || imgSrc.contains("excel") || imgSrc.contains("powerpoint") || imgSrc.contains("doc") || imgSrc.contains("ppt") || imgSrc.contains("xls")))) {
                                         continue;
                                     }
@@ -442,12 +456,14 @@ public class NotesWidgetFactory implements RemoteViewsService.RemoteViewsFactory
                 int idx = input.indexOf("_capacitor_file_");
                 String filePath = input.substring(idx + "_capacitor_file_".length());
                 if (!filePath.startsWith("/")) filePath = "/" + filePath;
+                try { filePath = java.net.URLDecoder.decode(filePath, "UTF-8"); } catch (Exception e) {}
                 decoded = android.graphics.BitmapFactory.decodeFile(filePath);
             } else if (input.startsWith("file://") || input.startsWith("/")) {
                 String filePath = input;
                 if (filePath.startsWith("file://")) {
                     filePath = filePath.substring(7);
                 }
+                try { filePath = java.net.URLDecoder.decode(filePath, "UTF-8"); } catch (Exception e) {}
                 decoded = android.graphics.BitmapFactory.decodeFile(filePath);
             } else {
                 // Fallback for Base64 encoded images

@@ -11,15 +11,21 @@ interface ExpenseNoteCardProps {
 
 export const ExpenseNoteCard = React.memo(({ note, currencySymbol }: ExpenseNoteCardProps) => {
     const deleteExpenseNote = useStore(state => state.deleteExpenseNote);
+    const imageSrc = note.imageBlock?.localPath || note.imageBlock?.thumbnailPath;
 
     return (
         <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 mb-3 flex gap-4 transition-all hover:bg-white/10">
-            {note.imageBlock?.thumbnailPath || note.imageBlock?.localPath ? (
+            {imageSrc ? (
                 <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-black/20 flex items-center justify-center">
                     <LocalImage 
-                        src={note.imageBlock.thumbnailPath || note.imageBlock.localPath!} 
-                        alt={note.title}
+                        src={imageSrc} 
+                        alt={note.title || "Gasto"}
                         className="w-full h-full object-cover"
+                        fallback={
+                            <div className="w-16 h-16 rounded-xl shrink-0 bg-white/5 border border-white/10 flex items-center justify-center text-white/30">
+                                <ImageIcon className="w-6 h-6" />
+                            </div>
+                        }
                     />
                 </div>
             ) : (

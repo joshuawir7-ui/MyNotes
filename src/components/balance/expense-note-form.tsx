@@ -205,14 +205,14 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
 
                             {/* 4. Input "Imagen del producto" */}
                             <div className="mb-[20px] flex">
-                                {item.imageBlock?.localPath ? (
+                                {(item.imageBlock?.localPath || item.imageBlock?.thumbnailPath) ? (
                                     <div className="relative w-[180px] h-[140px] rounded-[12px] overflow-hidden border border-[#e5e7eb] dark:border-zinc-800 bg-[#f9fafb] dark:bg-zinc-800/50 group/img shrink-0">
-                                        <LocalImage src={item.imageBlock.localPath} alt="Producto" className="w-full h-full object-contain" />
+                                        <LocalImage src={item.imageBlock.localPath || item.imageBlock.thumbnailPath} alt="Producto" className="w-full h-full object-contain" />
                                         {!item.confirmado && (
                                             <button
                                                 type="button"
                                                 onClick={() => handleUpdateItem(item.id, { imageBlock: undefined })}
-                                                className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-red-600 transition-colors"
+                                                className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-red-600 transition-colors z-10"
                                             >
                                                 <X className="w-4 h-4" />
                                             </button>

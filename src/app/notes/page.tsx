@@ -317,24 +317,34 @@ const NoteCardSkeleton = () => (
 
 function getRawNoteThumbnail(blocks: any[] | undefined): string | null {
     if (!blocks || !Array.isArray(blocks)) return null;
+    const candidates: string[] = [];
+
     for (const b of blocks) {
         if (!b || typeof b !== 'object') continue;
         if (b.type === 'image' || b.type === 'drawing') {
             if (typeof b.content === 'string' && b.content.trim() !== '') {
-                if (b.content === 'drive://' && b.driveFileId) {
-                    return `drive://${b.driveFileId}`;
+                candidates.push(b.content === 'drive://' && b.driveFileId ? `drive://${b.driveFileId}` : b.content);
+            } else if (b.content && typeof b.content === 'object' && typeof b.content.url === 'string' && b.content.url.trim() !== '') {
+                candidates.push(b.content.url);
+            } else if (b.driveFileId && typeof b.driveFileId === 'string' && b.driveFileId.trim() !== '') {
+                candidates.push(`drive://${b.driveFileId}`);
+            }
+        } else if (b.type === 'video' && typeof b.thumbnailPath === 'string' && b.thumbnailPath.trim() !== '') {
+            candidates.push(b.thumbnailPath);
+        } else if (b.type === 'text' && typeof b.content === 'string' && b.content.includes('<img')) {
+            const regex = /<img\b[^>]*?\b(?:src|data-local-uri|data-file-url)=["']([^"']+)["']/gi;
+            let match;
+            while ((match = regex.exec(b.content)) !== null) {
+                const src = match[1];
+                if (src && !src.includes('/icons/') && !src.includes('icons/')) {
+                    candidates.push(src);
                 }
-                return b.content;
-            }
-            if (b.content && typeof b.content === 'object' && typeof b.content.url === 'string' && b.content.url.trim() !== '') {
-                return b.content.url;
-            }
-            if (b.driveFileId && typeof b.driveFileId === 'string' && b.driveFileId.trim() !== '') {
-                return `drive://${b.driveFileId}`;
             }
         }
     }
-    return null;
+
+    if (candidates.length === 0) return null;
+    return candidates[candidates.length - 1];
 }
 
 const NoteThumbnail = memo(({ rawSrc }: { rawSrc: string | null }) => {
@@ -349,21 +359,13 @@ const NoteThumbnail = memo(({ rawSrc }: { rawSrc: string | null }) => {
 
     const showImage = !!resolvedUrl && !hasError && isLoaded && !resolvedUrl.startsWith('indexeddb://') && !resolvedUrl.startsWith('drive://');
 
-    if (!rawSrc) {
-        return (
-            <div
-                className="flex-none w-[72px] h-[72px] rounded-xl overflow-hidden self-start mt-1 shrink-0 opacity-0 pointer-events-none"
-                aria-hidden="true"
-            />
-        );
-    }
+    if (!rawSrc || hasError) return null;
 
     return (
         <div
-            className={`flex-none w-[72px] h-[72px] rounded-xl overflow-hidden self-start mt-1 shrink-0 bg-black/10 dark:bg-white/5 transition-opacity duration-300 ${
+            className={`w-full h-32 sm:h-36 rounded-xl overflow-hidden mt-3 shrink-0 bg-black/10 dark:bg-white/5 transition-opacity duration-300 relative ${
                 showImage ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}
-            aria-hidden={!showImage}
         >
             {resolvedUrl && !hasError && (
                 <img
@@ -393,7 +395,7 @@ const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note;
         >
             <div
                 onClick={onEdit}
-                className="glass-panel p-6 rounded-2xl hover:scale-[1.02] transition-transform cursor-pointer group flex flex-row items-start justify-between min-h-[160px] gap-4 relative"
+                className="glass-panel p-5 sm:p-6 rounded-2xl hover:scale-[1.02] transition-transform cursor-pointer group flex flex-col justify-between min-h-[160px] gap-2 relative w-full"
             >
                 {/* Pin button */}
                 <button
@@ -403,9 +405,9 @@ const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note;
                 >
                     <Pin className={`w-4 h-4 ${note.isPinned ? 'fill-current' : ''}`} />
                 </button>
-                <div className="flex flex-col justify-between h-full flex-1 min-w-0 pt-2">
+                <div className="flex flex-col justify-between flex-1 min-w-0 pr-8">
                     <div>
-                        <h3 className={`text-xl font-bold mb-2 group-hover:text-primary transition-colors truncate ${!note.title ? 'text-muted-foreground italic' : ''}`}>
+                        <h3 className={`text-lg sm:text-xl font-bold mb-2 group-hover:text-primary transition-colors truncate ${!note.title ? 'text-muted-foreground italic' : ''}`}>
                             {typeof note.title === 'string' ? (note.title || t.untitled) : t.untitled}
                         </h3>
                         {/* Preview content */}
@@ -426,27 +428,28 @@ const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note;
                             })()}
                         </div>
                     </div>
-                    <div className="flex items-center justify-between mt-4">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <StickyNote className="w-3 h-3" />
-                            <span>{note.createdAt ? new Date(note.createdAt).toLocaleDateString() : 'No date'}</span>
-                        </div>
-                        <motion.button
-                            whileHover={{ scale: 1.2, rotate: 10 }}
-                            whileTap={{ scale: 0.8, rotate: -10 }}
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                onDelete()
-                            }}
-                            className="p-2 rounded-lg hover:bg-red-500/20 text-muted-foreground hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
-                            title="Delete Note"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </motion.button>
-                    </div>
                 </div>
 
                 <NoteThumbnail rawSrc={rawThumb} />
+
+                <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/5">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <StickyNote className="w-3 h-3" />
+                        <span>{note.createdAt ? new Date(note.createdAt).toLocaleDateString() : 'No date'}</span>
+                    </div>
+                    <motion.button
+                        whileHover={{ scale: 1.2, rotate: 10 }}
+                        whileTap={{ scale: 0.8, rotate: -10 }}
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onDelete()
+                        }}
+                        className="p-2 rounded-lg hover:bg-red-500/20 text-muted-foreground hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                        title="Delete Note"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </motion.button>
+                </div>
             </div>
         </MobileContextMenu>
     )

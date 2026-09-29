@@ -890,10 +890,18 @@ function InlineImageButton({ language }: { language: string }) {
         if (e.target) e.target.value = '';
 
         const reader = new FileReader();
-        reader.onloadend = () => {
+        reader.onloadend = async () => {
             const base64 = reader.result as string;
+            const { saveBase64File } = await import('@/lib/image-utils');
+            const localUri = await saveBase64File(base64, file.name);
+            const { Capacitor } = await import('@capacitor/core');
+            let displaySrc = base64;
+            if (localUri) {
+                displaySrc = Capacitor.isNativePlatform() ? Capacitor.convertFileSrc(localUri) : localUri;
+            }
+            const persistentUri = localUri || base64;
             // Use inline-block display by default so multiple images can naturally sit side-by-side!
-            const imgHtml = `<img src="${base64}" data-inline-img="1" style="display:inline-block;vertical-align:top;width:48%;max-width:100%;margin:4px;border-radius:12px;cursor:pointer;" alt="imagen" />`;
+            const imgHtml = `<img src="${displaySrc}" data-local-uri="${persistentUri}" data-inline-img="1" style="display:inline-block;vertical-align:top;width:48%;max-width:100%;margin:4px;border-radius:12px;cursor:pointer;" alt="imagen" />`;
             restoreSelection();
             document.execCommand('insertHTML', false, imgHtml);
         };
