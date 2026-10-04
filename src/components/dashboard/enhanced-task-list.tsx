@@ -11,6 +11,7 @@ export function EnhancedTaskList() {
     const updateTask = useStore(state => state.updateTask)
     const language = useStore(state => state.language)
     const showToast = useStore(state => state.showToast)
+    const appColor = useStore(state => state.appColor ?? 'purple')
     const t = translations[language].common
 
     const takenShortcutKeys = useMemo(() => {
@@ -264,11 +265,15 @@ export function EnhancedTaskList() {
                                         dotClass = "bg-zinc-700/20 dark:bg-zinc-800/30 border-transparent opacity-30 cursor-not-allowed";
                                         textClass = "text-zinc-500 dark:text-zinc-600 opacity-40";
                                     } else if (isCompleted) {
-                                        dotClass = "bg-primary border-primary scale-110 shadow-[0_0_8px_rgba(127,13,242,0.5)]";
-                                        textClass = "text-primary font-black";
+                                        dotClass = appColor === 'black'
+                                            ? "bg-black dark:bg-white text-white dark:text-black border-black dark:border-white scale-110 shadow-sm"
+                                            : "bg-purple-600 dark:bg-purple-500 text-white border-purple-600 dark:border-purple-500 scale-110 shadow-sm";
+                                        textClass = appColor === 'black' ? "text-foreground font-black" : "text-purple-600 dark:text-purple-400 font-black";
                                     } else if (isToday) {
-                                        dotClass = "bg-transparent border-2 border-primary/60 scale-105 animate-pulse";
-                                        textClass = "text-primary/80 font-bold";
+                                        dotClass = appColor === 'black'
+                                            ? "bg-transparent border-2 border-zinc-400 dark:border-zinc-500 scale-105 animate-pulse"
+                                            : "bg-transparent border-2 border-purple-500/60 scale-105 animate-pulse";
+                                        textClass = appColor === 'black' ? "text-foreground font-bold" : "text-purple-600 dark:text-purple-400 font-bold";
                                     } else if (isFuture) {
                                         dotClass = "bg-white/[0.03] dark:bg-white/[0.01] border border-white/5";
                                         textClass = "text-muted-foreground/40";

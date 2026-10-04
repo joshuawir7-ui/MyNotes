@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence, Variants } from "framer-motion"
-import { Settings, Bell, X, Download, Upload, Zap, Cloud, LogOut, RefreshCw, Loader2, Sparkles, Type, Plus, Trash2, FolderPlus } from "lucide-react"
+import { Settings, Bell, X, Download, Upload, Zap, Cloud, LogOut, RefreshCw, Loader2, Sparkles, Type, Plus, Trash2, FolderPlus, Gauge } from "lucide-react"
 import { useStore, readAllNotesFromDisk, readAllTasksFromDisk } from "@/lib/store"
 import { translations } from "@/lib/translations"
 import { ModeToggle } from "@/components/ui/mode-toggle"
@@ -32,6 +32,8 @@ export function SettingsDialog() {
     const setNotificationsEnabled = useStore(state => state.setNotificationsEnabled)
     const focusEffectEnabled = useStore(state => state.focusEffectEnabled)
     const setFocusEffectEnabled = useStore(state => state.setFocusEffectEnabled)
+    const performanceMode = useStore(state => state.performanceMode ?? false)
+    const setPerformanceMode = useStore(state => state.setPerformanceMode)
     const googleUser = useStore(state => state.googleUser)
     const setGoogleUser = useStore(state => state.setGoogleUser)
     const googleSessionExpired = useStore(state => state.googleSessionExpired)
@@ -878,6 +880,45 @@ export function SettingsDialog() {
                                                     }`}
                                             >
                                                 <span className={`inline-block h-4 w-4 transform rounded-full ${focusEffectEnabled ? 'bg-white dark:bg-zinc-900 translate-x-6' : 'bg-white translate-x-1'} transition-transform duration-300`} />
+                                            </button>
+                                        </motion.div>
+
+                                        {/* Performance Mode (Modo Rendimiento) */}
+                                        <motion.div 
+                                            onClick={() => {
+                                                if (setPerformanceMode) setPerformanceMode(!performanceMode);
+                                            }}
+                                            whileHover="hover"
+                                            whileTap="tap"
+                                            className="flex items-center justify-between p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <motion.div 
+                                                    animate={performanceMode ? "active" : "inactive"}
+                                                    whileHover="hover"
+                                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-300 ${
+                                                        performanceMode 
+                                                            ? "bg-amber-500/25 text-amber-500 dark:text-amber-400" 
+                                                            : "bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400"
+                                                    }`}
+                                                >
+                                                    <Gauge className="w-5 h-5" />
+                                                </motion.div>
+                                                <div>
+                                                    <p className="font-bold text-sm">{language === 'es' ? "Modo Rendimiento" : "Performance Mode"}</p>
+                                                    <p className="text-xs text-muted-foreground">{language === 'es' ? "Desactiva animaciones pesadas" : "Disable heavy animations"}</p>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                tabIndex={-1}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 pointer-events-none ${
+                                                    performanceMode ? 'bg-black dark:bg-white' : 'bg-zinc-300 dark:bg-zinc-700'
+                                                }`}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full ${
+                                                    performanceMode ? 'bg-white dark:bg-zinc-900 translate-x-6' : 'bg-white translate-x-1'
+                                                } transition-transform duration-300`} />
                                             </button>
                                         </motion.div>
 

@@ -140,6 +140,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const noteFontFamily = useStore(state => state.noteFontFamily ?? 'default');
     const customFonts = useStore(state => state.customFonts || []);
 
+    const performanceMode = useStore(state => state.performanceMode ?? false)
+
     useEffect(() => {
         if (typeof document !== 'undefined') {
             if (appColor === 'black') {
@@ -149,6 +151,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             }
         }
     }, [appColor]);
+
+    useEffect(() => {
+        if (typeof document !== 'undefined') {
+            if (performanceMode) {
+                document.documentElement.classList.add('performance-mode');
+            } else {
+                document.documentElement.classList.remove('performance-mode');
+            }
+        }
+    }, [performanceMode]);
 
     useEffect(() => {
         if (typeof document === 'undefined') return;

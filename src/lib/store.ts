@@ -1099,6 +1099,8 @@ interface AppState {
     taskGroups: TaskGroup[]
     celebration: { groupId: string, title: string } | null
     focusEffectEnabled: boolean
+    performanceMode: boolean
+    setPerformanceMode: (enabled: boolean) => void
     noteFontFamily: string
     customFonts: Array<{ id?: string; name: string; dataUrl: string; format?: string }>
     setNoteFontFamily: (fontFamily: string) => void
@@ -1817,6 +1819,17 @@ export const useStore = create<AppState>()(
                 taskGroups: [],
                 celebration: null,
                 focusEffectEnabled: true,
+                performanceMode: false,
+                setPerformanceMode: (enabled: boolean) => {
+                    set({ performanceMode: enabled });
+                    if (typeof document !== 'undefined') {
+                        if (enabled) {
+                            document.documentElement.classList.add('performance-mode');
+                        } else {
+                            document.documentElement.classList.remove('performance-mode');
+                        }
+                    }
+                },
                 noteFontFamily: 'default',
                 customFonts: [],
                 setNoteFontFamily: (fontFamily: string) => {

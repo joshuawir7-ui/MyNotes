@@ -1224,3 +1224,14 @@ html.dark.theme-black {
     0 10px 20px rgba(0, 0, 0, 0.42),
     inset 0 1px 2px rgba(255, 255, 255, 0.38);
 }
+
+/* ── Performance Mode Rules ─────────────────────────────────────────── */
+.performance-mode *,
+.performance-mode *::before,
+.performance-mode *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
