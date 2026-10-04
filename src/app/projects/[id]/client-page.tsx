@@ -23,9 +23,8 @@ export function ProjectClientPage({ id }: { id: string }) {
         }
     }, [loadAllTasks, unloadTasks])
 
-    if (!mounted) return <div className="min-h-screen bg-background" />
-
     const project = projects.find(p => p.id === id)
+    const appColor = useStore(state => state.appColor)
 
     if (!project) {
         return (
@@ -45,11 +44,13 @@ export function ProjectClientPage({ id }: { id: string }) {
 
     return (
         <div className="min-h-screen bg-background text-foreground p-6 sm:p-12 font-[family-name:var(--font-geist-sans)] transition-colors duration-300 relative selection:bg-primary/30">
-            {/* Ambient Background Gradients */}
-            <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20" />
-            </div>
+            {/* Ambient Background Gradients — Unrendered on theme-black */}
+            {appColor !== 'black' && (
+                <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                    <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20" />
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20" />
+                </div>
+            )}
 
             <div className="relative z-10 max-w-4xl mx-auto w-full pb-24 flex flex-col gap-8">
                 {/* Header */}

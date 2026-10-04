@@ -79,6 +79,11 @@ button, a, [role="button"] {
   --ring: #7f0df2;
   --radius: 0.75rem;
 
+  /* Theme Tokens */
+  --conservation-gradient: linear-gradient(to right, #38bdf8, #6366f1, #a855f7, #ec4899);
+  --conservation-completed: #00f0ff;
+  --neon-glow-shadow: 0 0 10px rgba(139, 92, 246, 0.5), 0 0 20px rgba(139, 92, 246, 0.3);
+
   /* ── Animation Easing Tokens ────────────────────────────────────────────
      Reusable easing curves for consistent, high-performance animations.
      Only animate transform / opacity / filter — never width/height/top/left.
@@ -116,14 +121,21 @@ button, a, [role="button"] {
   --border: #27272a;
   --input: #27272a;
   --ring: #d8b4fe;
+
+  --conservation-gradient: linear-gradient(to right, #38bdf8, #6366f1, #a855f7, #ec4899);
+  --conservation-completed: #00f0ff;
+  --neon-glow-shadow: 0 0 10px rgba(139, 92, 246, 0.5), 0 0 20px rgba(139, 92, 246, 0.3);
 }
 
-/* ── App Theme: Black Overrides ─────────────────────────────────────── */
+/* ── App Theme: Black Tokens (Eliminates Combat Overrides & Overdraw) ──── */
 :root.theme-black,
 html.theme-black {
   --primary: #000000;
   --primary-foreground: #ffffff;
   --ring: #000000;
+  --conservation-gradient: linear-gradient(to right, #71717a, #3f3f46, #18181b);
+  --conservation-completed: #18181b;
+  --neon-glow-shadow: none;
 }
 
 .dark:root.theme-black,
@@ -132,15 +144,18 @@ html.dark.theme-black {
   --primary: #ffffff;
   --primary-foreground: #000000;
   --ring: #ffffff;
+  --conservation-gradient: linear-gradient(to right, #a1a1aa, #d4d4d8, #ffffff);
+  --conservation-completed: #ffffff;
+  --neon-glow-shadow: none;
 }
 
-/* Overrides for hardcoded purple Tailwind utilities when black theme is active */
+/* Specific theme-black adjustments for semantic text, backgrounds, and borders */
 .theme-black .text-purple-400,
 .theme-black .text-purple-500,
 .theme-black .text-purple-600,
 .theme-black .text-purple-650,
 .theme-black .text-purple-700 {
-  color: #000000 !important;
+  color: var(--foreground);
 }
 
 .dark.theme-black .text-purple-400,
@@ -148,23 +163,23 @@ html.dark.theme-black {
 .dark.theme-black .text-purple-600,
 .dark.theme-black .text-purple-650,
 .dark.theme-black .text-purple-700 {
-  color: #ffffff !important;
+  color: var(--foreground);
 }
 
 .theme-black .bg-purple-500,
 .theme-black .bg-purple-600,
 .theme-black .bg-purple-700,
 .theme-black .bg-purple-800 {
-  background-color: #000000 !important;
-  color: #ffffff !important;
+  background-color: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .dark.theme-black .bg-purple-500,
 .dark.theme-black .bg-purple-600,
 .dark.theme-black .bg-purple-700,
 .dark.theme-black .bg-purple-800 {
-  background-color: #ffffff !important;
-  color: #000000 !important;
+  background-color: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .theme-black .bg-purple-50,
@@ -174,7 +189,7 @@ html.dark.theme-black {
 .theme-black .bg-purple-600\/10,
 .theme-black .bg-purple-600\/20,
 .theme-black .bg-purple-700\/20 {
-  background-color: rgba(0, 0, 0, 0.08) !important;
+  background-color: rgba(0, 0, 0, 0.08);
 }
 
 .dark.theme-black .bg-purple-50,
@@ -184,7 +199,7 @@ html.dark.theme-black {
 .dark.theme-black .bg-purple-600\/10,
 .dark.theme-black .bg-purple-600\/20,
 .dark.theme-black .bg-purple-700\/20 {
-  background-color: rgba(255, 255, 255, 0.15) !important;
+  background-color: rgba(255, 255, 255, 0.15);
 }
 
 .theme-black .border-purple-400,
@@ -192,7 +207,7 @@ html.dark.theme-black {
 .theme-black .border-purple-500\/20,
 .theme-black .border-purple-500\/30,
 .theme-black .border-purple-600 {
-  border-color: rgba(0, 0, 0, 0.25) !important;
+  border-color: var(--border);
 }
 
 .dark.theme-black .border-purple-400,
@@ -200,19 +215,19 @@ html.dark.theme-black {
 .dark.theme-black .border-purple-500\/20,
 .dark.theme-black .border-purple-500\/30,
 .dark.theme-black .border-purple-600 {
-  border-color: rgba(255, 255, 255, 0.25) !important;
+  border-color: var(--border);
 }
 
 .theme-black .shadow-purple-500\/5,
 .theme-black .shadow-purple-500\/10,
 .theme-black .shadow-purple-500\/20 {
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
 }
 
 .dark.theme-black .shadow-purple-500\/5,
 .dark.theme-black .shadow-purple-500\/10,
 .dark.theme-black .shadow-purple-500\/20 {
-  box-shadow: 0 10px 25px -5px rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 25px -5px rgba(255, 255, 255, 0.1);
 }
 
 .theme-black .neon-glow,
@@ -259,7 +274,7 @@ html.dark.theme-black {
 }
 
 @utility neon-glow {
-  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5), 0 0 20px rgba(139, 92, 246, 0.3);
+  box-shadow: var(--neon-glow-shadow);
 }
 
 @utility transform-gpu {

@@ -329,6 +329,11 @@ function getRawNoteThumbnail(blocks: any[] | undefined): string | null {
             } else if (b.driveFileId && typeof b.driveFileId === 'string' && b.driveFileId.trim() !== '') {
                 candidates.push(`drive://${b.driveFileId}`);
             }
+        } else if (b.type === 'expense-note') {
+            const expImg = typeof b.content === 'object' && b.content ? (b.content.imageUrl || b.content.image) : null;
+            if (typeof expImg === 'string' && expImg.trim() !== '') {
+                candidates.push(expImg);
+            }
         } else if (b.type === 'video' && typeof b.thumbnailPath === 'string' && b.thumbnailPath.trim() !== '') {
             candidates.push(b.thumbnailPath);
         } else if (b.type === 'text' && typeof b.content === 'string' && b.content.includes('<img')) {

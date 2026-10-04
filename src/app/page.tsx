@@ -176,10 +176,12 @@ export default function Home() {
   if (!isMounted) {
     return (
       <div className="min-h-screen bg-background text-foreground p-4 sm:p-8 font-[family-name:var(--font-geist-sans)] relative selection:bg-primary/30">
-        <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 transform-gpu" style={{ willChange: "transform" }}>
-          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20 transform-gpu" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20 transform-gpu" />
-        </div>
+        {appColor !== 'black' && (
+          <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 transform-gpu" style={{ willChange: "transform" }}>
+            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20 transform-gpu" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20 transform-gpu" />
+          </div>
+        )}
         <div className="relative z-10 max-w-4xl mx-auto w-full flex flex-col gap-4 pb-24 pt-0">
           <div className="h-20 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" />
           <div className="h-40 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" />
@@ -195,11 +197,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4 sm:p-8 font-[family-name:var(--font-geist-sans)] relative selection:bg-primary/30">
-      {/* Ambient Background Gradients */}
-      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 transform-gpu" style={{ willChange: "transform" }}>
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20 transform-gpu" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20 transform-gpu" />
-      </div>
+      {/* Ambient Background Gradients — Unrendered on theme-black to save GPU composition */}
+      {appColor !== 'black' && (
+        <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 transform-gpu" style={{ willChange: "transform" }}>
+          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20 transform-gpu" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20 transform-gpu" />
+        </div>
+      )}
 
       <div className="relative z-10 max-w-4xl mx-auto w-full flex flex-col gap-4 pb-24 text-center sm:text-left pt-0">
 
@@ -245,7 +249,7 @@ export default function Home() {
           {/* Active Conservation Goal Timeline */}
           {activeConservationGoal && timelineData && (
             <Reveal delay={0.25} margin="0px">
-              <div className="glass-panel p-3.5 sm:p-4 rounded-2xl relative overflow-hidden w-full flex flex-col gap-2.5 border border-purple-500/20 dark:border-purple-500/30 shadow-md shadow-purple-500/5 dark:shadow-purple-500/10 text-left">
+              <div className="glass-panel p-3.5 sm:p-4 rounded-2xl relative overflow-hidden w-full flex flex-col gap-2.5 border border-primary/20 shadow-md shadow-primary/5 text-left">
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
@@ -257,7 +261,7 @@ export default function Home() {
                         : `Conserve your starting balance of $${Number(activeConservationGoal.conservationStartBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} until ${activeConservationGoal.conservationGoalDate}`}
                     </p>
                   </div>
-                  <div className="p-1.5 bg-purple-500/10 text-purple-500 rounded-xl shrink-0">
+                  <div className="p-1.5 bg-primary/10 text-primary rounded-xl shrink-0">
                     <Coins className="w-4 h-4" />
                   </div>
                 </div>
@@ -265,12 +269,12 @@ export default function Home() {
                 {/* Timeline Bar (Narrow Y axis) */}
                 <div className="relative flex items-center justify-between w-full py-1 mt-1 select-none">
                   {/* Cylinder Gradient Track */}
-                  <div className="absolute left-2 right-2 top-1/2 -translate-y-1/2 h-2 bg-gradient-to-r from-sky-400 via-indigo-500 via-purple-600 to-pink-500 rounded-full z-0" />
+                  <div className="absolute left-2 right-2 top-1/2 -translate-y-1/2 h-2 rounded-full z-0" style={{ background: 'var(--conservation-gradient)' }} />
 
                   {/* Completed celeste overlay track */}
                   <div
-                    className="absolute left-2 top-1/2 -translate-y-1/2 h-2 bg-[#00f0ff] rounded-l-full z-10 transition-all duration-700 ease-out shadow-[0_0_8px_rgba(0,240,255,0.5)]"
-                    style={{ width: `calc(${timelineData.completedPercentage}% - 4px)` }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 h-2 rounded-l-full z-10 transition-all duration-700 ease-out shadow-[0_0_8px_rgba(0,240,255,0.5)]"
+                    style={{ width: `calc(${timelineData.completedPercentage}% - 4px)`, backgroundColor: 'var(--conservation-completed)' }}
                   />
 
                   {/* Nodes container */}
@@ -283,7 +287,7 @@ export default function Home() {
                         return (
                           <div
                             key={d.dateStr}
-                            className="w-8 h-8 rounded-full bg-white dark:bg-zinc-900 text-purple-700 dark:text-purple-400 font-extrabold text-xs z-20 flex items-center justify-center border-2 border-[#7030a0] shadow-md shrink-0"
+                            className="w-8 h-8 rounded-full bg-white dark:bg-zinc-900 text-foreground font-extrabold text-xs z-20 flex items-center justify-center border-2 border-primary shadow-md shrink-0"
                             title={d.dateStr}
                           >
                             {d.dayNum}
@@ -303,7 +307,7 @@ export default function Home() {
                         return (
                           <div
                             key={d.dateStr}
-                            className="w-7 h-7 rounded-full bg-white dark:bg-zinc-900 border-2 border-[#7030a0] text-purple-700 dark:text-purple-400 font-black text-[10px] z-20 flex items-center justify-center shadow-xs shrink-0"
+                            className="w-7 h-7 rounded-full bg-white dark:bg-zinc-900 border-2 border-primary/50 text-foreground font-black text-[10px] z-20 flex items-center justify-center shadow-xs shrink-0"
                             title={d.dateStr}
                           >
                             {d.dayNum}
@@ -473,7 +477,7 @@ export default function Home() {
             {/* Desktop Active Conservation Goal Timeline */}
             {activeConservationGoal && timelineData && (
               <Reveal delay={0.35} margin="0px">
-                <div className="glass-panel p-3.5 sm:p-4 rounded-2xl relative overflow-hidden w-full flex flex-col gap-2.5 border border-purple-500/20 dark:border-purple-500/30 shadow-md shadow-purple-500/5 dark:shadow-purple-500/10 text-left">
+                <div className="glass-panel p-3.5 sm:p-4 rounded-2xl relative overflow-hidden w-full flex flex-col gap-2.5 border border-primary/20 shadow-md shadow-primary/5 text-left">
                   <div className="flex justify-between items-center">
                     <div>
                       <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
@@ -485,7 +489,7 @@ export default function Home() {
                           : `Conserve your starting balance of $${Number(activeConservationGoal.conservationStartBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} until ${activeConservationGoal.conservationGoalDate}`}
                       </p>
                     </div>
-                    <div className="p-1.5 bg-purple-500/10 text-purple-500 rounded-xl shrink-0">
+                    <div className="p-1.5 bg-primary/10 text-primary rounded-xl shrink-0">
                       <Coins className="w-4 h-4" />
                     </div>
                   </div>
@@ -493,12 +497,12 @@ export default function Home() {
                   {/* Timeline Bar (Narrow Y axis) */}
                   <div className="relative flex items-center justify-between w-full py-1 mt-1 select-none">
                     {/* Cylinder Gradient Track */}
-                    <div className="absolute left-2 right-2 top-1/2 -translate-y-1/2 h-2 bg-gradient-to-r from-sky-400 via-indigo-500 via-purple-600 to-pink-500 rounded-full z-0" />
+                    <div className="absolute left-2 right-2 top-1/2 -translate-y-1/2 h-2 rounded-full z-0" style={{ background: 'var(--conservation-gradient)' }} />
 
                     {/* Completed celeste overlay track */}
                     <div
-                      className="absolute left-2 top-1/2 -translate-y-1/2 h-2 bg-[#00f0ff] rounded-l-full z-10 transition-all duration-700 ease-out shadow-[0_0_8px_rgba(0,240,255,0.5)]"
-                      style={{ width: `calc(${timelineData.completedPercentage}% - 4px)` }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 h-2 rounded-l-full z-10 transition-all duration-700 ease-out shadow-[0_0_8px_rgba(0,240,255,0.5)]"
+                      style={{ width: `calc(${timelineData.completedPercentage}% - 4px)`, backgroundColor: 'var(--conservation-completed)' }}
                     />
 
                     {/* Nodes container */}
@@ -511,7 +515,7 @@ export default function Home() {
                           return (
                             <div
                               key={d.dateStr}
-                              className="w-8 h-8 rounded-full bg-white dark:bg-zinc-900 text-purple-700 dark:text-purple-400 font-extrabold text-xs z-20 flex items-center justify-center border-2 border-[#7030a0] shadow-md shrink-0"
+                              className="w-8 h-8 rounded-full bg-white dark:bg-zinc-900 text-foreground font-extrabold text-xs z-20 flex items-center justify-center border-2 border-primary shadow-md shrink-0"
                               title={d.dateStr}
                             >
                               {d.dayNum}
@@ -531,7 +535,7 @@ export default function Home() {
                           return (
                             <div
                               key={d.dateStr}
-                              className="w-7 h-7 rounded-full bg-white dark:bg-zinc-900 border-2 border-[#7030a0] text-purple-700 dark:text-purple-400 font-black text-[10px] z-20 flex items-center justify-center shadow-xs shrink-0"
+                              className="w-7 h-7 rounded-full bg-white dark:bg-zinc-900 border-2 border-primary/50 text-foreground font-black text-[10px] z-20 flex items-center justify-center shadow-xs shrink-0"
                               title={d.dateStr}
                             >
                               {d.dayNum}

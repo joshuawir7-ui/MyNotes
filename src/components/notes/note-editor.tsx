@@ -862,6 +862,41 @@ export function hideKeyboard() {
 }
 
 /**
+ * Helper to persist image/video files pasted, dropped, or selected,
+ * returning persistent HTML with data-local-uri.
+ */
+export async function persistAndBuildMediaHtml(file: File, isVideo: boolean): Promise<string> {
+    const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+
+    let persistentUri: string;
+    let displaySrc: string;
+    try {
+        const { saveBase64File } = await import('@/lib/image-utils');
+        const { Capacitor } = await import('@capacitor/core');
+        const localUri = await saveBase64File(base64, file.name || (isVideo ? 'video.mp4' : 'image.jpg'));
+        persistentUri = localUri || base64;
+        displaySrc = base64;
+        if (localUri && Capacitor.isNativePlatform()) {
+            displaySrc = Capacitor.convertFileSrc(localUri);
+        }
+    } catch (err) {
+        console.error('Failed to persist media:', err);
+        persistentUri = base64;
+        displaySrc = base64;
+    }
+
+    if (isVideo) {
+        return `<video src="${displaySrc}" data-local-uri="${persistentUri}" data-inline-video="1" controls playsinline preload="metadata" style="max-width:100%;border-radius:12px;margin:4px 0;"></video>`;
+    }
+    return `<img src="${displaySrc}" data-local-uri="${persistentUri}" data-inline-img="1" style="display:inline-block;vertical-align:top;width:48%;max-width:100%;margin:4px;border-radius:12px;cursor:pointer;" alt="imagen" />`;
+}
+
+/**
  * InlineImageButton — inserts an image at cursor in a contenteditable text block.
  * Default styling: inline-block with 48% width so images sit side-by-side natively!
  * Icon: black in light mode, white in dark mode.
@@ -884,30 +919,14 @@ function InlineImageButton({ language }: { language: string }) {
         if (sel) { sel.removeAllRanges(); sel.addRange(r); }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
         if (e.target) e.target.value = '';
 
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-            const base64 = reader.result as string;
-            const { saveBase64File } = await import('@/lib/image-utils');
-            const localUri = await saveBase64File(base64, file.name);
-            const { Capacitor } = await import('@capacitor/core');
-            // On web/desktop, always use base64 as display src — indexeddb:// URIs are not
-            // directly renderable by the browser. On native, use convertFileSrc for the file path.
-            let displaySrc = base64;
-            if (localUri && Capacitor.isNativePlatform()) {
-                displaySrc = Capacitor.convertFileSrc(localUri);
-            }
-            const persistentUri = localUri || base64;
-            // Use inline-block display by default so multiple images can naturally sit side-by-side!
-            const imgHtml = `<img src="${displaySrc}" data-local-uri="${persistentUri}" data-inline-img="1" style="display:inline-block;vertical-align:top;width:48%;max-width:100%;margin:4px;border-radius:12px;cursor:pointer;" alt="imagen" />`;
-            restoreSelection();
-            document.execCommand('insertHTML', false, imgHtml);
-        };
-        reader.readAsDataURL(file);
+        const imgHtml = await persistAndBuildMediaHtml(file, false);
+        restoreSelection();
+        document.execCommand('insertHTML', false, imgHtml);
     };
 
     return (
@@ -3736,6 +3755,11 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
 
     const handleInput = () => {
         if (editorRef.current) {
+            // NO usar await aquí: resolveInlineImages/resolveInlineVideos solo actualizan
+            // el src visible a una URL blob: temporal para renderizado. Si se esperara su
+            // resolución antes de capturar innerHTML, se persistiría una URL blob: efímera
+            // (inválida tras recargar) en vez del data-local-uri permanente que ya viene
+            // grabado desde la inserción original (InlineImageButton/persistAndBuildMediaHtml). Es intencional.
             resolveInlineVideos(editorRef.current);
             resolveInlineImages(editorRef.current);
             const newContent = editorRef.current.innerHTML;
@@ -3746,7 +3770,32 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
         }
     };
 
-    const handlePaste = (e: React.ClipboardEvent) => {
+    const handlePaste = async (e: React.ClipboardEvent) => {
+        const items = e.clipboardData?.items;
+        if (items) {
+            for (const item of Array.from(items)) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    if (file) {
+                        const html = await persistAndBuildMediaHtml(file, false);
+                        document.execCommand('insertHTML', false, html);
+                        handleInput();
+                    }
+                    return;
+                } else if (item.type.startsWith('video/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    if (file) {
+                        const html = await persistAndBuildMediaHtml(file, true);
+                        document.execCommand('insertHTML', false, html);
+                        handleInput();
+                    }
+                    return;
+                }
+            }
+        }
+
         const text = e.clipboardData.getData('text/plain');
         const html = e.clipboardData.getData('text/html');
         e.preventDefault();
@@ -3758,8 +3807,10 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             contentToInsert = linkifyHTML(text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
         }
 
-        document.execCommand('insertHTML', false, contentToInsert);
-        handleInput();
+        if (contentToInsert) {
+            document.execCommand('insertHTML', false, contentToInsert);
+            handleInput();
+        }
     };
 
     const handleClick = (e: React.MouseEvent) => {
@@ -3848,6 +3899,17 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                     if (onBlur) onBlur();
                 }}
                 onPaste={handlePaste}
+                onDrop={async (e) => {
+                    const files = Array.from(e.dataTransfer?.files || []);
+                    const mediaFile = files.find(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
+                    if (mediaFile) {
+                        e.preventDefault();
+                        const html = await persistAndBuildMediaHtml(mediaFile, mediaFile.type.startsWith('video/'));
+                        document.execCommand('insertHTML', false, html);
+                        handleInput();
+                    }
+                }}
+                onDragOver={(e) => e.preventDefault()}
                 onClick={handleClick}
                 {...({ placeholder: "Escribe algo aquí..." } as any)}
                 className="rich-text-editor w-full min-h-[30px] bg-transparent border-none outline-none text-base text-foreground relative empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 before:absolute before:pointer-events-none"
