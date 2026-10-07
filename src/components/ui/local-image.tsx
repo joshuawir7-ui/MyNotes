@@ -9,7 +9,31 @@ interface LocalImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>
 }
 
 export function LocalImage({ src, alt = "", className, fallback, ...props }: LocalImageProps) {
-    const resolvedUrl = useLocalUrl(src);
+    const [isNearViewport, setIsNearViewport] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!containerRef.current || typeof IntersectionObserver === 'undefined') {
+            setIsNearViewport(true);
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setIsNearViewport(true);
+                    observer.disconnect();
+                }
+            },
+            { rootMargin: '200px' }
+        );
+
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, [src]);
+
+    // Only invoke useLocalUrl when image is near or within the viewport
+    const resolvedUrl = useLocalUrl(isNearViewport ? src : null);
     const [hasError, setHasError] = useState(false);
 
     useEffect(() => {
@@ -26,41 +50,39 @@ export function LocalImage({ src, alt = "", className, fallback, ...props }: Loc
         return null;
     }
 
-    if (hasError) {
-        // If effectiveSrc failed but original src is a valid data/http URL, try src
-        if (src && src !== effectiveSrc && (src.startsWith('data:') || src.startsWith('http') || src.startsWith('blob:'))) {
-            return (
+    return (
+        <div ref={containerRef} className="w-full h-full">
+            {hasError ? (
+                (src && src !== effectiveSrc && (src.startsWith('data:') || src.startsWith('http') || src.startsWith('blob:'))) ? (
+                    <img
+                        src={src}
+                        alt={alt}
+                        decoding="async"
+                        loading={props.loading || "lazy"}
+                        className={className}
+                        {...props}
+                    />
+                ) : (
+                    fallback ? <>{fallback}</> : null
+                )
+            ) : !effectiveSrc ? (
+                fallback ? <>{fallback}</> : (
+                    <div className={`animate-pulse bg-zinc-300/20 dark:bg-zinc-800/20 ${className || 'w-full h-48 rounded-xl'}`} />
+                )
+            ) : (
                 <img
-                    src={src}
+                    src={effectiveSrc}
                     alt={alt}
                     decoding="async"
                     loading={props.loading || "lazy"}
                     className={className}
+                    onError={(e) => {
+                        setHasError(true);
+                        props.onError?.(e);
+                    }}
                     {...props}
                 />
-            );
-        }
-        if (fallback) return <>{fallback}</>;
-        return null;
-    }
-
-    if (!effectiveSrc) {
-        if (fallback) return <>{fallback}</>;
-        return <div className={`animate-pulse bg-zinc-300/20 dark:bg-zinc-800/20 ${className || ''}`} />;
-    }
-
-    return (
-        <img
-            src={effectiveSrc}
-            alt={alt}
-            decoding="async"
-            loading={props.loading || "lazy"}
-            className={className}
-            onError={(e) => {
-                setHasError(true);
-                props.onError?.(e);
-            }}
-            {...props}
-        />
+            )}
+        </div>
     );
 }

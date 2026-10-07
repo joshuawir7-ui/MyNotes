@@ -273,6 +273,11 @@ html.dark.theme-black {
   contain: layout style paint;
 }
 
+@utility note-block-container {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 200px;
+}
+
 @utility neon-glow {
   box-shadow: var(--neon-glow-shadow);
 }
