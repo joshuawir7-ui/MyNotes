@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocalUrl } from "@/hooks/use-local-url";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 interface LocalImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> {
     src?: string | null;
