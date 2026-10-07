@@ -3283,7 +3283,7 @@ const BlockWrapper = React.memo(({
             onFocus={() => handleWrapperFocus(block.id, block.type)}
             onClick={() => handleWrapperFocus(block.id, block.type)}
             onBlur={(e) => handleWrapperBlur(e.currentTarget)}
-            className="group relative flex flex-col gap-2 w-full p-2.5 rounded-xl border border-transparent hover:border-white/5 hover:bg-white/[0.01] focus:border-white/10 focus:bg-white/[0.02] focus-within:border-white/10 focus-within:bg-white/[0.02] transition-all outline-none transform-gpu render-optimized note-block-container"
+            className="group relative flex flex-col gap-2 w-full p-2.5 rounded-xl border border-transparent hover:border-white/5 hover:bg-white/[0.01] focus:border-white/10 focus:bg-white/[0.02] focus-within:border-white/10 focus-within:bg-white/[0.02] transition-all outline-none transform-gpu render-optimized"
         >
             <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 flex items-center justify-between border-b border-white/5 pb-1.5 text-[10px] font-bold text-muted-foreground/60 dark:text-white/70 uppercase tracking-widest select-none transition-opacity duration-200">
                 <span className="flex items-center gap-1.5">
