@@ -398,7 +398,7 @@ export default function CalendarPage() {
                                 <PageDescription animate={false} size="lg" dancing="all">{t.description}</PageDescription>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4 bg-white/5 backdrop-blur-md rounded-2xl p-1.5 border border-white/10 shadow-lg">
+                        <div className="flex items-center gap-4 bg-white/10 dark:bg-zinc-900/90 md:backdrop-blur-md rounded-2xl p-1.5 border border-white/10 shadow-lg">
                             <button onClick={prevMonth} className="p-2.5 hover:bg-white/10 rounded-xl transition-all hover:scale-105 active:scale-95"><ChevronLeft className="w-5 h-5" /></button>
                             <span className="w-40 text-center font-bold text-sm tracking-tight">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</span>
                             <button onClick={nextMonth} className="p-2.5 hover:bg-white/10 rounded-xl transition-all hover:scale-105 active:scale-95"><ChevronRight className="w-5 h-5" /></button>
