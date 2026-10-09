@@ -32,6 +32,7 @@ import {
     PerfFlags
 } from "@/lib/perf-debug"
 import { PerfDebugModal } from "@/components/ui/perf-debug-modal"
+import { useIsMobile } from "@/hooks/use-is-mobile"
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -222,6 +223,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const [logoType, setLogoType] = useState<'text' | 'image'>('text')
     const router = useRouter()
     const pathname = usePathname()
+    const isMobile = useIsMobile()
 
     const [perfFlags, setPerfFlags] = useState<PerfFlags>(getPerfFlags())
     const [isPerfModalOpen, setIsPerfModalOpen] = useState(false)
@@ -963,7 +965,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <MotionConfig reducedMotion={perfFlags.perfNoMotion ? "always" : "user"}>
                 <LayoutGroup>
                     <motion.main
-                        layout={!perfFlags.perfNoLayout}
+                        layout={isMobile ? false : !perfFlags.perfNoLayout}
                         transition={{ type: "spring", stiffness: 260, damping: 28, mass: 0.9 }}
                         className="flex-1 max-w-full bg-background text-foreground md:ml-64 pt-4 md:pt-10 pb-32 md:pb-10 overflow-x-hidden"
                         suppressHydrationWarning
