@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { BalanceOnboarding } from "@/components/balance/balance-onboarding"
 import { ResetBalanceModal } from "@/components/balance/reset-balance-modal"
 import { CalculatorModal } from "@/components/balance/calculator-modal"
+import { DeferredSection } from "@/components/ui/deferred-section"
 
 // Custom Calendar component matching the user's mockup design
 interface CustomCalendarProps {
@@ -1216,7 +1217,8 @@ export default function BalancePage() {
                 </div>
 
                 {/* RIGHT COLUMN: Wallet History List */}
-                <div className="space-y-5 w-full flex flex-col justify-start min-w-0">
+                <DeferredSection order={1} minHeight={380} className="w-full">
+                    <div className="space-y-5 w-full flex flex-col justify-start min-w-0">
 
                     <Reveal margin="0px" duration={0.8} delay={0.2} className="w-full">
                         <div className="flex flex-col space-y-4 w-full">
@@ -1355,6 +1357,7 @@ export default function BalancePage() {
                     </Reveal>
 
                 </div>
+                </DeferredSection>
 
             </div>
 
