@@ -19,6 +19,8 @@ import { MobileContextMenu } from "@/components/ui/mobile-context-menu"
 import { IconPicker, ICON_MAP } from "@/components/ui/icon-picker"
 import { Trophy, Star, PartyPopper, Flame } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useProgressiveCount } from "@/hooks/use-progressive-count"
+import { DeferredSection } from "@/components/ui/deferred-section"
 
 const TourTooltip = ({
     children,
@@ -314,6 +316,10 @@ export default function TasksPage() {
         })
         return priorityGroups
     }, [habits])
+
+    const progressiveLimitHigh = useProgressiveCount(habitsByPriority.High.length, 'High', 8, 6)
+    const progressiveLimitMed = useProgressiveCount(habitsByPriority.Medium.length, 'Medium', 8, 6)
+    const progressiveLimitLow = useProgressiveCount(habitsByPriority.Low.length, 'Low', 8, 6)
 
     const activeHabitsMemo = useMemo(() => tasks.filter(t => t.isHabit), [tasks])
 
@@ -814,14 +820,8 @@ export default function TasksPage() {
                                                     </div>
                                                 </div>
 
-                                                <AnimatePresence>
-                                                    {!isCollapsed && (
-                                                        <motion.div
-                                                            initial={{ opacity: 0, height: 0 }}
-                                                            animate={{ opacity: 1, height: "auto" }}
-                                                            exit={{ opacity: 0, height: 0 }}
-                                                            className="space-y-4 overflow-hidden pt-2"
-                                                        >
+                                                {!isCollapsed && (
+                                                    <div className="space-y-4 overflow-hidden pt-2">
                                                             <div className="space-y-2">
                                                                 {group.tasks.map(task => (
                                                                     <MobileContextMenu
@@ -888,9 +888,8 @@ export default function TasksPage() {
                                                                     <Trash2 className="w-5 h-5" />
                                                                 </button>
                                                             </div>
-                                                        </motion.div>
+                                                        </div>
                                                     )}
-                                                </AnimatePresence>
                                             </motion.div>
                                         );
                                     })}
@@ -971,11 +970,13 @@ export default function TasksPage() {
                                             </div>
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    {groupedHabits.slice(0, renderLimit).map((habit: Task, index) => {
-                                                        const today = getLocalDateString()
-                                                        const isCompleted = habit.completedDates && Array.isArray(habit.completedDates) ? habit.completedDates.includes(today) : habit.completed
-                                                        const missed = getMissedDays(habit)
-                                                        const isSingleLast = groupedHabits.length % 2 !== 0 && index === groupedHabits.length - 1
+                                                    {(() => {
+                                                        const priorityLimit = priority === 'High' ? progressiveLimitHigh : priority === 'Medium' ? progressiveLimitMed : progressiveLimitLow;
+                                                        return groupedHabits.slice(0, priorityLimit).map((habit: Task, index) => {
+                                                            const today = getLocalDateString()
+                                                            const isCompleted = habit.completedDates && Array.isArray(habit.completedDates) ? habit.completedDates.includes(today) : habit.completed
+                                                            const missed = getMissedDays(habit)
+                                                            const isSingleLast = groupedHabits.length % 2 !== 0 && index === groupedHabits.length - 1
 
                                                         return (
                                                             <div
@@ -1003,7 +1004,7 @@ export default function TasksPage() {
                                                                 />
                                                             </div>
                                                         )
-                                                    })}
+                                                    })()}
                                             </div>
                                         </div>
                                     )
@@ -1058,14 +1059,8 @@ export default function TasksPage() {
                                     </div>
                                 </div>
 
-                                <AnimatePresence>
-                                    {showNoteTasks && (
-                                        <motion.div
-                                            initial={{ opacity: 0, height: 0 }}
-                                            animate={{ opacity: 1, height: "auto" }}
-                                            exit={{ opacity: 0, height: 0 }}
-                                            className="space-y-2 overflow-hidden"
-                                        >
+                                {showNoteTasks && (
+                                    <div className="space-y-2 pt-2">
                                             {noteTasksGroup.map(task => (
                                                 <div key={`${task.noteId}-${task.taskId}`} className="flex items-center justify-between group/task cursor-pointer p-1 rounded-lg hover:bg-white/5 transition-all" onClick={() => {
                                                     const note = notes.find(n => n.id === task.noteId);
@@ -1095,9 +1090,8 @@ export default function TasksPage() {
                                                     </div>
                                                 </div>
                                             ))}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                    </div>
+                                )}
                             </motion.div>
                         </Reveal>
                     )}
