@@ -4,6 +4,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useStore } from "@/lib/store"
+import { markNavStart } from "@/lib/perf-debug"
 import { useState, useEffect, useRef } from "react"
 import { translations } from "@/lib/translations"
 import { LanguageToggle } from "@/components/ui/language-toggle"
@@ -476,6 +477,7 @@ export function AppSidebar() {
                             <Link
                                 key={item.href}
                                 href={item.href}
+                                onClick={() => markNavStart(item.href)}
                                 id={item.href === '/tasks' ? "nav-item-tasks" : undefined}
                                 className={`relative flex items-center justify-center p-1 rounded-full transition-all duration-300 group shrink-0 ${isBlinking ? 'animate-pulse-green border border-green-500 bg-green-500/20' : ''
                                     }`}
@@ -520,6 +522,7 @@ export function AppSidebar() {
                             <Link
                                 key={item.href}
                                 href={item.href}
+                                onClick={() => markNavStart(item.href)}
                                 id={item.href === '/tasks' ? "nav-item-tasks-desktop" : undefined}
                                 className={`relative flex items-center justify-center md:px-4 md:py-3 rounded-2xl text-sm font-medium transition-colors duration-300 group
                                     ${isActive

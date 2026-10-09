@@ -11,10 +11,24 @@ import { LanguageToggle } from "@/components/ui/language-toggle"
 import { Capacitor } from "@capacitor/core"
 import { NotificationDialog } from "@/components/ui/notification-dialog"
 import { PriorityReminderSettings } from "@/components/ui/priority-reminder-settings"
+import { PerfDebugModal } from "@/components/ui/perf-debug-modal"
 import { useRouter } from "next/navigation"
 
 export function SettingsDialog() {
     const [isOpen, setIsOpen] = useState(false)
+    const [isPerfDebugOpen, setIsPerfDebugOpen] = useState(false)
+    const [versionClickCount, setVersionClickCount] = useState(0)
+
+    const handleVersionClick = () => {
+        setVersionClickCount(prev => {
+            const next = prev + 1;
+            if (next >= 7) {
+                setIsPerfDebugOpen(true);
+                return 0;
+            }
+            return next;
+        });
+    };
     const [mounted, setMounted] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const fontInputRef = useRef<HTMLInputElement>(null)
@@ -1387,12 +1401,6 @@ export function SettingsDialog() {
                                                                 </motion.button>
                                                             </div>
 
-                                                            {restoreProgress && (
-                                                                <div className="w-full text-center text-xs text-black dark:text-white font-medium mt-1 animate-pulse">
-                                                                    {restoreProgress}
-                                                                </div>
-                                                            )}
-
                                                             {/* Recover images from Drive revision history */}
                                                             <motion.button
                                                                 onClick={handleRecoverImages}
@@ -1421,6 +1429,18 @@ export function SettingsDialog() {
                                                                     {(t.lastSync || "Last backup: {date}").replace('{date}', lastCloudSync)}
                                                                 </p>
                                                             )}
+
+                                                            {/* Version & Hidden Debug Trigger */}
+                                                            <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/5 flex flex-col items-center justify-center gap-1">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={handleVersionClick}
+                                                                    className="text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors select-none py-1 px-3 rounded-full hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                                                                >
+                                                                    <Gauge className="w-3.5 h-3.5 opacity-60 text-primary" />
+                                                                    <span>MyNotes v1.0.0 {versionClickCount > 0 ? `(${7 - versionClickCount})` : ''}</span>
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1442,6 +1462,11 @@ export function SettingsDialog() {
                 message={notifState.message}
                 type={notifState.type}
                 confirmLabel={language === 'es' ? "Aceptar" : "OK"}
+            />
+
+            <PerfDebugModal
+                isOpen={isPerfDebugOpen}
+                onClose={() => setIsPerfDebugOpen(false)}
             />
         </>
     )

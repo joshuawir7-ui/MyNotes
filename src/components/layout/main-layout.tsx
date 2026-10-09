@@ -14,14 +14,24 @@ import { GlassToast } from "@/components/ui/glass-toast"
 import { CloudPrompt } from "@/components/ui/cloud-prompt"
 import { SyncConflictDialog } from "@/components/ui/sync-conflict-dialog"
 import { MIUIOnboardingDialog } from "@/components/ui/miui-onboarding"
-import { motion, AnimatePresence, LayoutGroup } from "framer-motion"
+import { motion, AnimatePresence, LayoutGroup, MotionConfig } from "framer-motion"
 import { useState, useRef } from "react"
-import { X, Sparkles } from "lucide-react"
+import { X, Sparkles, Gauge } from "lucide-react"
 import { App as CapacitorApp } from "@capacitor/app"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { NotificationManager } from "@/lib/notifications"
 import { registerWebNotifications, startWebNotificationPolling, stopWebNotificationPolling } from "@/lib/web-notifications"
 import { Capacitor } from '@capacitor/core'
+import {
+    getPerfFlags,
+    subscribePerfDebug,
+    markNavEnd,
+    recordStartupMark,
+    getLastNavDuration,
+    getNavMedian,
+    PerfFlags
+} from "@/lib/perf-debug"
+import { PerfDebugModal } from "@/components/ui/perf-debug-modal"
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -211,6 +221,51 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const welcomeModalRef = useRef<HTMLDivElement>(null)
     const [logoType, setLogoType] = useState<'text' | 'image'>('text')
     const router = useRouter()
+    const pathname = usePathname()
+
+    const [perfFlags, setPerfFlags] = useState<PerfFlags>(getPerfFlags())
+    const [isPerfModalOpen, setIsPerfModalOpen] = useState(false)
+    const [lastNavDuration, setLastNavDuration] = useState<number | null>(getLastNavDuration())
+    const [medianNav, setMedianNav] = useState<number | null>(getNavMedian())
+
+    useEffect(() => {
+        const unsub = subscribePerfDebug(() => {
+            setPerfFlags(getPerfFlags())
+            setLastNavDuration(getLastNavDuration())
+            setMedianNav(getNavMedian())
+        })
+        return unsub
+    }, [])
+
+    useEffect(() => {
+        markNavEnd()
+    }, [pathname])
+
+    useEffect(() => {
+        if (isHydrated) {
+            recordStartupMark('hydrated')
+        }
+    }, [isHydrated])
+
+    // Fix C: Preload heavy dynamic widgets in browser idle time
+    useEffect(() => {
+        const preload = () => {
+            import('@/components/dashboard/weekly-progress-chart');
+            import('@/components/dashboard/pulse-chart');
+            import('@/components/dashboard/quote-section');
+            import('@/components/dashboard/stats-cards');
+            import('@/components/dashboard/balance-mini-chart');
+            import('@/components/dashboard/daily-focus');
+            import('@/components/dashboard/enhanced-task-list');
+            import('@/components/dashboard/dashboard-widgets');
+        };
+        if ('requestIdleCallback' in window) {
+            const id = window.requestIdleCallback(preload, { timeout: 4000 });
+            return () => window.cancelIdleCallback(id);
+        }
+        const t = setTimeout(preload, 2500);
+        return () => clearTimeout(t);
+    }, []);
 
     const [showQuote, setShowQuote] = useState(true)
     const [randomQuote, setRandomQuote] = useState<{ quote: string; author: string }>({ quote: "", author: "" })
@@ -482,6 +537,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 currentStore.checkHabitStreaks();
                 currentStore.syncHabitsNotification();
                 currentStore.startTaskGroupReminder();
+                recordStartupMark('stage1End');
             }, 1000);
 
             // Stage 2 (3000ms): Pull widget data (Capacitor plugin calls)
@@ -495,6 +551,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 } catch (err) {
                     console.error("[Startup] Stage 2 pulling failed:", err);
                 }
+                recordStartupMark('stage2End');
             }, 3000);
         };
 
@@ -903,18 +960,38 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 The shift is animated via GPU transform instead of animating
                 margin-left (which triggers a full Layout/Reflow on every frame).
                 LayoutGroup is not needed here since <main> is the only layout participant. */}
-            <LayoutGroup>
-                <motion.main
-                    layout
-                    transition={{ type: "spring", stiffness: 260, damping: 28, mass: 0.9 }}
-                    className="flex-1 max-w-full bg-background text-foreground md:ml-64 pt-4 md:pt-10 pb-32 md:pb-10 overflow-x-hidden"
-                    suppressHydrationWarning
+            <MotionConfig reducedMotion={perfFlags.perfNoMotion ? "always" : "user"}>
+                <LayoutGroup>
+                    <motion.main
+                        layout={!perfFlags.perfNoLayout}
+                        transition={{ type: "spring", stiffness: 260, damping: 28, mass: 0.9 }}
+                        className="flex-1 max-w-full bg-background text-foreground md:ml-64 pt-4 md:pt-10 pb-32 md:pb-10 overflow-x-hidden"
+                        suppressHydrationWarning
+                    >
+                        <div className="px-4 md:px-12 max-w-7xl mx-auto w-full" suppressHydrationWarning>
+                            {children}
+                        </div>
+                    </motion.main>
+                </LayoutGroup>
+            </MotionConfig>
+
+            {/* Live Performance Navigation Overlay Badge */}
+            {(lastNavDuration !== null || Object.values(perfFlags).some(Boolean)) && (
+                <button
+                    onClick={() => setIsPerfModalOpen(true)}
+                    className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-[9990] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/80 dark:bg-zinc-900/90 text-white border border-white/20 shadow-xl backdrop-blur-md text-[11px] font-mono hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                    title="Abrir Debug de Rendimiento"
                 >
-                    <div className="px-4 md:px-12 max-w-7xl mx-auto w-full" suppressHydrationWarning>
-                        {children}
-                    </div>
-                </motion.main>
-            </LayoutGroup>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>⚡ {lastNavDuration !== null ? `${lastNavDuration}ms` : 'Perf'}</span>
+                    {medianNav !== null && <span className="text-zinc-400">({medianNav}ms)</span>}
+                </button>
+            )}
+
+            <PerfDebugModal
+                isOpen={isPerfModalOpen}
+                onClose={() => setIsPerfModalOpen(false)}
+            />
         </div>
     )
 }

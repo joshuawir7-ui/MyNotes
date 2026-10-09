@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import { ReactNode, useEffect, useRef, useState } from "react"
+import { getPerfFlags, subscribePerfDebug } from "@/lib/perf-debug"
 
 interface RevealProps {
     children: ReactNode
@@ -12,12 +13,14 @@ interface RevealProps {
     className?: string
 }
 
-export const Reveal = ({ children, delay = 0, width = "100%", margin = "-20px", duration = 0.4, className }: RevealProps) => {
+const MAX_DELAY = 0.12;    // max seconds
+const MAX_DURATION = 0.3;  // max seconds
+
+export const Reveal = ({ children, delay = 0, width = "100%", margin = "-20px", duration = 0.3, className }: RevealProps) => {
     const [isMobile, setIsMobile] = useState(false)
     const [isLowEnd, setIsLowEnd] = useState(false)
+    const [perfFlags, setPerfFlags] = useState(getPerfFlags())
     // Track whether the entrance animation is still running.
-    // "transform, opacity" is active only while animating; released to "auto" on completion
-    // to avoid accumulating dead GPU compositing layers across all dashboard cards.
     const [animatingWillChange, setAnimatingWillChange] = useState<"transform, opacity" | "auto">("transform, opacity")
     const domRef = useRef<HTMLDivElement>(null)
 
@@ -32,16 +35,30 @@ export const Reveal = ({ children, delay = 0, width = "100%", margin = "-20px", 
             setIsLowEnd(navigator.hardwareConcurrency <= 4)
         }
 
-        return () => window.removeEventListener("resize", checkMobile)
+        const unsub = subscribePerfDebug(() => {
+            setPerfFlags(getPerfFlags())
+        })
+
+        return () => {
+            window.removeEventListener("resize", checkMobile)
+            unsub()
+        }
     }, [])
 
-    const actualDuration = isLowEnd ? 0 : duration;
-    const actualDelay = isLowEnd ? 0 : delay;
+    const isNoReveal = perfFlags.perfNoReveal;
+    const actualDuration = isNoReveal || isLowEnd ? 0 : Math.min(duration ?? 0.3, MAX_DURATION);
+    const actualDelay = isNoReveal || isLowEnd ? 0 : Math.min(delay ?? 0, MAX_DELAY);
 
     const handleAnimationComplete = () => {
-        // Release the GPU compositing layer once the entrance animation finishes.
-        // Equivalent to: anim.finished.then(() => el.style.willChange = "auto")
         setAnimatingWillChange("auto")
+    }
+
+    if (isNoReveal) {
+        return (
+            <div style={{ width }} className={className || ""} ref={domRef}>
+                {children}
+            </div>
+        )
     }
 
     if (isMobile) {
@@ -49,7 +66,9 @@ export const Reveal = ({ children, delay = 0, width = "100%", margin = "-20px", 
             <div
                 style={{
                     width,
-                    animation: `fade-in-up-fast ${actualDuration}s cubic-bezier(0.22, 1, 0.36, 1) ${actualDelay}s both`,
+                    animation: actualDuration > 0
+                        ? `fade-in-up-fast ${actualDuration}s cubic-bezier(0.22, 1, 0.36, 1) ${actualDelay}s both`
+                        : 'none',
                 }}
                 className={`${className || ""} transform-gpu`}
                 ref={domRef}
@@ -61,7 +80,7 @@ export const Reveal = ({ children, delay = 0, width = "100%", margin = "-20px", 
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 8 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: margin }}
             transition={{

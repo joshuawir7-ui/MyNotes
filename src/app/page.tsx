@@ -1,6 +1,7 @@
 "use client"
 
 import { useStore, getLocalDateString } from "@/lib/store";
+import { recordStartupMark } from "@/lib/perf-debug";
 import { useShallow } from 'zustand/react/shallow';
 import { translations } from "@/lib/translations";
 import { Reveal } from "@/components/ui/reveal";
@@ -147,6 +148,7 @@ export default function Home() {
   }, [tasks, today]);
   useEffect(() => {
     setIsMounted(true);
+    recordStartupMark('firstRender');
 
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);

@@ -254,6 +254,29 @@ html.dark.theme-black {
   }
 }
 
+/* ── Paso 1: Performance Debug Flag Overrides ────────────────────────────── */
+html.perf-no-backdrop *,
+html.perf-no-backdrop *::before,
+html.perf-no-backdrop *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.perf-no-orbs [class*="blur-[120px]"],
+html.perf-no-orbs [class*="bg-purple-900"],
+html.perf-no-orbs [class*="bg-blue-900"] {
+  display: none !important;
+}
+
+html.perf-no-motion *,
+html.perf-no-motion *::before,
+html.perf-no-motion *::after {
+  animation-duration: 0.001s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0.001s !important;
+}
+
+
 /* Custom Glassmorphism Utilities */
 @utility glass-panel {
   @apply bg-white/90 dark:bg-zinc-950/85 border border-black/5 dark:border-white/10 shadow-lg md:bg-white/70 md:dark:bg-zinc-900/35 md:backdrop-blur-xl;

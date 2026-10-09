@@ -1,18 +1,8 @@
 import React from "react";
-import { DANCING_SCRIPT_BASE64 } from "@/lib/dancing-font";
 
 export default function Loading() {
   return (
     <div className="relative w-full min-h-[60vh] flex items-center justify-center py-12 px-4 select-none">
-      <style>{`
-        @font-face {
-          font-family: 'DancingScriptEmbedded';
-          src: url('${DANCING_SCRIPT_BASE64}') format('truetype');
-          font-weight: 400 700;
-          font-style: normal;
-          font-display: block;
-        }
-      `}</style>
       <div className="flex flex-col items-center justify-center">
         <svg
           viewBox="0 -40 550 330"
