@@ -973,37 +973,38 @@ export default function TasksPage() {
                                                     {(() => {
                                                         const priorityLimit = priority === 'High' ? progressiveLimitHigh : priority === 'Medium' ? progressiveLimitMed : progressiveLimitLow;
                                                         return groupedHabits.slice(0, priorityLimit).map((habit: Task, index) => {
-                                                            const today = getLocalDateString()
-                                                            const isCompleted = habit.completedDates && Array.isArray(habit.completedDates) ? habit.completedDates.includes(today) : habit.completed
-                                                            const missed = getMissedDays(habit)
-                                                            const isSingleLast = groupedHabits.length % 2 !== 0 && index === groupedHabits.length - 1
+                                                            const today = getLocalDateString();
+                                                            const isCompleted = habit.completedDates && Array.isArray(habit.completedDates) ? habit.completedDates.includes(today) : habit.completed;
+                                                            const missed = getMissedDays(habit);
+                                                            const isSingleLast = groupedHabits.length % 2 !== 0 && index === groupedHabits.length - 1;
 
-                                                        return (
-                                                            <div
-                                                                key={habit.id}
-                                                                style={{
-                                                                    animationDelay: `${Math.min(index, 8) * 0.05}s`,
-                                                                    animationFillMode: 'both'
-                                                                }}
-                                                                className={`${isSingleLast ? "md:col-span-2 md:justify-self-center w-full md:max-w-[calc(50%-8px)]" : "w-full"} animate-fade-in-up-fast render-optimized`}
-                                                            >
-                                                                <HabitCard
-                                                                    habit={habit}
-                                                                    isCompleted={isCompleted}
-                                                                    missed={missed}
-                                                                    onEditHabit={startEditHabit}
-                                                                    onOpenLostDaysModal={setLostDaysHabit}
-                                                                    updateTask={updateTask}
-                                                                    setIsDeleting={setIsDeleting}
-                                                                    handleToggleTask={handleToggleTask}
-                                                                    isHighPriorityHighlighted={isHighPriorityHighlighted}
-                                                                    isFocusEffectActive={isFocusEffectActive}
-                                                                    priority={priority}
-                                                                    t={t}
-                                                                    common={common}
-                                                                />
-                                                            </div>
-                                                        )
+                                                            return (
+                                                                <div
+                                                                    key={habit.id}
+                                                                    style={{
+                                                                        animationDelay: `${Math.min(index, 8) * 0.05}s`,
+                                                                        animationFillMode: 'both'
+                                                                    }}
+                                                                    className={`${isSingleLast ? "md:col-span-2 md:justify-self-center w-full md:max-w-[calc(50%-8px)]" : "w-full"} animate-fade-in-up-fast render-optimized`}
+                                                                >
+                                                                    <HabitCard
+                                                                        habit={habit}
+                                                                        isCompleted={isCompleted}
+                                                                        missed={missed}
+                                                                        onEditHabit={startEditHabit}
+                                                                        onOpenLostDaysModal={setLostDaysHabit}
+                                                                        updateTask={updateTask}
+                                                                        setIsDeleting={setIsDeleting}
+                                                                        handleToggleTask={handleToggleTask}
+                                                                        isHighPriorityHighlighted={isHighPriorityHighlighted}
+                                                                        isFocusEffectActive={isFocusEffectActive}
+                                                                        priority={priority}
+                                                                        t={t}
+                                                                        common={common}
+                                                                    />
+                                                                </div>
+                                                            );
+                                                        });
                                                     })()}
                                             </div>
                                         </div>
