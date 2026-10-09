@@ -38,7 +38,7 @@ export function PerfDebugModal({ isOpen, onClose }: PerfDebugModalProps) {
             setMedianNav(getNavMedian());
             setHistory(getNavHistory());
         });
-        return unsubscribe;
+        return () => { unsubscribe(); };
     }, []);
 
     if (!mounted || !isOpen) return null;

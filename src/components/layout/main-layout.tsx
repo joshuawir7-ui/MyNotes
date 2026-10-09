@@ -236,7 +236,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             setLastNavDuration(getLastNavDuration())
             setMedianNav(getNavMedian())
         })
-        return unsub
+        return () => { unsub(); }
     }, [])
 
     useEffect(() => {

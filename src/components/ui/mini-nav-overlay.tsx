@@ -19,7 +19,7 @@ export function MiniNavOverlay({ onOpenModal }: MiniNavOverlayProps) {
             setLastNav(getLastNavDuration());
             setMedianNav(getNavMedian());
         });
-        return unsubscribe;
+        return () => { unsubscribe(); };
     }, []);
 
     if (!mounted || lastNav === null) return null;
