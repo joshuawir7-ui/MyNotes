@@ -32,11 +32,65 @@ export async function saveBase64ImageToFile(base64Data: string, fileName?: strin
         });
 
         // URI that points to the file on the device
+        // Also write a compressed editor thumbnail next to the original (best-effort, never blocks saving)
+        if (!fileName) {
+            await saveEditorThumbnail(base64Data, name).catch(() => {});
+        }
         return savedFile.uri;
     } catch (err) {
         console.error("Failed to save image to filesystem:", err);
         return null;
     }
+}
+
+export const EDITOR_THUMB_PREFIX = 'edthumb_';
+const EDITOR_THUMB_MAX = 800;
+const EDITOR_THUMB_QUALITY = 0.75;
+
+/**
+ * Given a saved image URI (img_*.jpg), returns the URI of its compressed editor thumbnail,
+ * or null if the URI is not one we generate thumbnails for.
+ */
+export function getEditorThumbUri(uri: string | null | undefined): string | null {
+    if (!uri || typeof uri !== 'string') return null;
+    if (uri.startsWith('data:') || uri.startsWith('http') || uri.startsWith('indexeddb://') || uri.startsWith('drive://')) return null;
+    const idx = uri.lastIndexOf('/');
+    const base = uri.slice(idx + 1);
+    if (!base.startsWith('img_')) return null;
+    return uri.slice(0, idx + 1) + EDITOR_THUMB_PREFIX + base;
+}
+
+/** Decodes the image once, downscales to ~512px on the long side and stores it as edthumb_<name>. */
+async function saveEditorThumbnail(base64Data: string, name: string): Promise<void> {
+    if (typeof document === 'undefined') return;
+    const dataUrl = base64Data.startsWith('data:') ? base64Data : `data:image/jpeg;base64,${base64Data}`;
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        i.src = dataUrl;
+    });
+    let w = img.naturalWidth || img.width;
+    let h = img.naturalHeight || img.height;
+    if (!w || !h) return;
+    const scale = Math.min(1, EDITOR_THUMB_MAX / Math.max(w, h));
+    if (scale >= 1) return; // already small: the original is the thumbnail
+    w = Math.round(w * scale);
+    h = Math.round(h * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const out = canvas.toDataURL('image/jpeg', EDITOR_THUMB_QUALITY).split(',')[1];
+    await Filesystem.writeFile({
+        path: `${EDITOR_THUMB_PREFIX}${name}`,
+        data: out,
+        directory: Directory.Data,
+    });
 }
 
 /**

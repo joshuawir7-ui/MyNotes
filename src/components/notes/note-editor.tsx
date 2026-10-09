@@ -2,6 +2,7 @@
 
 import { getLocalImageSrc } from "@/lib/image-utils"
 import { useLocalUrl } from "@/hooks/use-local-url"
+import { getEditorThumbUri } from "@/lib/image-utils"
 import { getFileIcon } from "@/lib/file-icons"
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import { createPortal } from "react-dom"
@@ -1896,7 +1897,12 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
 
     useEffect(() => { setImageError(false); }, [block.content]);
 
-    const imageSrc = useLocalUrl(hasImage ? (imageError && block.driveFileId ? `drive://${block.driveFileId}` : block.content) : null);
+    // Prefer the compressed editor thumbnail (if one exists); fall back to the original on load error
+    const [thumbFailed, setThumbFailed] = useState(false);
+    useEffect(() => { setThumbFailed(false); }, [block.content]);
+    const thumbUri = hasImage && !imageError && !thumbFailed ? getEditorThumbUri(block.content) : null;
+    const usingThumb = !!thumbUri;
+    const imageSrc = useLocalUrl(hasImage ? (imageError && block.driveFileId ? `drive://${block.driveFileId}` : (thumbUri || block.content)) : null);
 
     useEffect(() => {
         if (hasImage && !isDownloading) {
@@ -2012,7 +2018,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                                 src={imageSrc}
                                 alt="Imagen adjunta"
                                 onClick={() => { if (!isDownloading) onImageClick?.(block.content); setShowControls(true); setTimeout(() => setShowControls(false), 4000); }}
-                                onError={() => setImageError(true)}
+                                onError={() => { if (usingThumb) setThumbFailed(true); else setImageError(true); }}
                             />
                         )}
                         {/* Sync badge */}

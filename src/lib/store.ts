@@ -336,14 +336,10 @@ const capacitorStorage = {
         if (typeof window === 'undefined') return;
 
         // Safety check to avoid overwriting stored data with an unhydrated initial state
-        try {
-            const parsed = JSON.parse(value);
-            if (parsed && parsed.state && parsed.state.isHydrated === false) {
-                console.warn("[Storage] Preventing write of unhydrated state to protect data");
-                return;
-            }
-        } catch (e) {
-            console.error("[Storage] JSON parse error in setItem safety check", e);
+        // Cheap string check instead of JSON.parse of the whole state on every write (main-thread cost)
+        if (value.includes('"isHydrated":false')) {
+            console.warn("[Storage] Preventing write of unhydrated state to protect data");
+            return;
         }
 
         // Cache the latest value in-memory immediately
@@ -729,6 +725,51 @@ let lastSyncedPriorityRemindersEnabled: boolean | null = null;
 let lastSyncedPriorityReminderSlots: string | null = null;
 let lastSyncedNoteFontFamily: string | null = null;
 
+// Dedicated worker for widget payload building (separate from the persist worker).
+let widgetWorker: Worker | null = null;
+let widgetWorkerFailed = false;
+let widgetJobId = 0;
+const widgetPending = new Map<number, { resolve: (v: any) => void; reject: (e: any) => void; job: any }>();
+
+const getWidgetWorker = (): Worker | null => {
+    if (widgetWorker || widgetWorkerFailed || typeof window === 'undefined' || typeof Worker === 'undefined') return widgetWorker;
+    try {
+        widgetWorker = new Worker(new URL('./widget-sync-worker.ts', import.meta.url));
+        widgetWorker.onmessage = (e: MessageEvent) => {
+            const p = widgetPending.get(e.data?.id);
+            if (!p) return;
+            widgetPending.delete(e.data.id);
+            if (e.data.error) p.reject(new Error(e.data.error)); else p.resolve(e.data.result);
+        };
+        widgetWorker.onerror = () => {
+            widgetWorkerFailed = true;
+            widgetWorker = null;
+            // Resolve anything in flight via main-thread fallback
+            widgetPending.forEach((p) => {
+                import('./widget-payload').then(m => p.resolve(m.buildWidgetPayload(p.job))).catch(p.reject);
+            });
+            widgetPending.clear();
+        };
+    } catch (e) {
+        widgetWorkerFailed = true;
+        widgetWorker = null;
+    }
+    return widgetWorker;
+};
+
+const buildWidgetPayloadAsync = async (job: any): Promise<Record<string, string>> => {
+    const worker = getWidgetWorker();
+    if (!worker) {
+        const { buildWidgetPayload } = await import('./widget-payload');
+        return buildWidgetPayload(job);
+    }
+    return new Promise((resolve, reject) => {
+        const id = ++widgetJobId;
+        widgetPending.set(id, { resolve, reject, job });
+        worker.postMessage({ id, ...job });
+    });
+};
+
 export const syncWidgetData = async (goals?: any[], appointments?: any[], notes?: any[], tasks?: any[], immediate = false) => {
     if (!isNative) return;
 
@@ -751,63 +792,17 @@ export const syncWidgetData = async (goals?: any[], appointments?: any[], notes?
 
             const updatePayload: any = {};
 
-            if (currentGoals !== lastSyncedGoals) {
-                // Strip large photo strings for native widget data transfers
-                const lightweightGoals = (currentGoals || []).map((g: any) => ({
-                    ...g,
-                    photos: undefined,
-                    objectives: Array.isArray(g.objectives) ? g.objectives.map((o: any) => ({ ...o, image: undefined })) : g.objectives
-                }));
-                updatePayload.goals = JSON.stringify(lightweightGoals);
-                lastSyncedGoals = currentGoals;
-            }
+            // Only collections whose reference changed are sent to the worker, which does the
+            // heavy mapping + JSON.stringify off the main thread.
+            const job: any = {};
+            if (currentGoals !== lastSyncedGoals) { job.goals = currentGoals || []; lastSyncedGoals = currentGoals; }
+            if (currentAppointments !== lastSyncedAppointments) { job.appointments = currentAppointments || []; lastSyncedAppointments = currentAppointments; }
+            if (currentTasks !== lastSyncedTasks) { job.tasks = currentTasks || []; lastSyncedTasks = currentTasks; }
+            if (currentNotes !== lastSyncedNotes) { job.notes = currentNotes || []; lastSyncedNotes = currentNotes; }
+            if (currentSnapshots !== lastSyncedSnapshots) { job.snapshots = currentSnapshots || {}; lastSyncedSnapshots = currentSnapshots; }
 
-            if (currentAppointments !== lastSyncedAppointments) {
-                updatePayload.appointments = JSON.stringify(currentAppointments || []);
-                lastSyncedAppointments = currentAppointments;
-            }
-
-            if (currentTasks !== lastSyncedTasks) {
-                const lightweightTasks = (currentTasks || []).map((t: any) => ({ ...t, photos: undefined }));
-                updatePayload.tasks = JSON.stringify(lightweightTasks);
-                lastSyncedTasks = currentTasks;
-            }
-
-            if (currentNotes !== lastSyncedNotes) {
-                // Keep all note blocks (including image and drawing blocks) for native widget preview
-                const lightweightNotes = (currentNotes || []).map((note: any) => ({
-                    ...note,
-                    blocks: Array.isArray(note.blocks)
-                        ? note.blocks.map((b: any) => {
-                            if ((b.type === 'image' || b.type === 'drawing') && typeof b.content === 'string') {
-                                const src = b.content;
-                                if (src.startsWith('file://') || src.startsWith('/') || src.startsWith('http') || src.startsWith('drive://') || src.includes('_capacitor_file_')) {
-                                    return b;
-                                }
-                                if (src.length > 500000) {
-                                    return { ...b, content: src.slice(0, 200000) };
-                                }
-                                return b;
-                            }
-                            if (b.type === 'text' && typeof b.content === 'string') {
-                                // Strip overly large inline base64 images if they exceed 300KB to fit widget SharedPreferences
-                                let contentStr = b.content;
-                                if (contentStr.length > 500000) {
-                                    contentStr = contentStr.replace(/src=["']data:image\/[^;]+;base64,[^"']{30000,}["']/g, 'src=""');
-                                }
-                                return { ...b, content: contentStr };
-                            }
-                            return b;
-                        })
-                        : note.blocks
-                }));
-                updatePayload.notes = JSON.stringify(lightweightNotes);
-                lastSyncedNotes = currentNotes;
-            }
-
-            if (currentSnapshots !== lastSyncedSnapshots) {
-                updatePayload.dailySnapshots = JSON.stringify(currentSnapshots || {});
-                lastSyncedSnapshots = currentSnapshots;
+            if (Object.keys(job).length > 0) {
+                Object.assign(updatePayload, await buildWidgetPayloadAsync(job));
             }
 
             if (currentNotificationsEnabled !== lastSyncedNotificationsEnabled) {
@@ -854,8 +849,8 @@ export const syncWidgetData = async (goals?: any[], appointments?: any[], notes?
     if (immediate) {
         await performSync();
     } else {
-        // Debounce by 2000ms to allow UI animations to finish smoothly
-        syncTimeout = setTimeout(performSync, 2000);
+        // Debounce by 4000ms: home-screen widgets don't need to reflect every keystroke
+        syncTimeout = setTimeout(performSync, 4000);
     }
 };
 
