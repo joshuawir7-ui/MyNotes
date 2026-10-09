@@ -450,12 +450,31 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         // Immediate: increment open count
         store.incrementAppOpenCount();
 
-        const runIdle = (fn: () => void, timeoutMs: number): (() => void) => {
+        // Touch & scroll tracking to avoid running Stage 2 during active user interaction
+        let lastInteractionTime = 0;
+        const markInteraction = () => {
+            lastInteractionTime = Date.now();
+        };
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('touchstart', markInteraction, { passive: true });
+            window.addEventListener('scroll', markInteraction, { passive: true });
+        }
+
+        const yieldToMain = async () => {
+            if (typeof window !== 'undefined' && 'scheduler' in window && typeof (window as any).scheduler?.yield === 'function') {
+                await (window as any).scheduler.yield();
+            } else {
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+        };
+
+        const runIdle = (fn: () => void | Promise<void>, timeoutMs: number): (() => void) => {
             if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-                const handle = window.requestIdleCallback(fn, { timeout: timeoutMs });
+                const handle = window.requestIdleCallback(() => { Promise.resolve(fn()).catch(console.error); }, { timeout: timeoutMs });
                 return () => window.cancelIdleCallback(handle);
             } else {
-                const handle = setTimeout(fn, timeoutMs);
+                const handle = setTimeout(() => { Promise.resolve(fn()).catch(console.error); }, timeoutMs);
                 return () => clearTimeout(handle);
             }
         };
@@ -471,6 +490,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 if (storeState.googleUser && !storeState.googleSessionExpired) {
                     storeState.syncCycle().catch(console.error);
                 }
+                await yieldToMain();
+
                 // On native (Android), first save locally, then sync cloud
                 if (isNative) {
                     try {
@@ -504,6 +525,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         });
                         console.log(`[Startup] Local backup saved: ${fileName}`);
 
+                        await yieldToMain();
+
                         // Rotate auto-backups, keep only 4 most recent
                         const dirResult = await Filesystem.readdir({ path: '', directory: Directory.Documents });
                         const autoBackupFiles = dirResult.files
@@ -527,34 +550,51 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     console.log("Startup auto-sync triggered after hydration");
                     currentStore.syncCycle().catch(console.error);
                 }
-            }, 1000);
+            }, 6000);
         };
 
         const runStage1And2 = () => {
-            // Stage 1 (1000ms): Light local logic (streaks, notifications, reminders)
-            cancelStage1 = runIdle(() => {
+            // Stage 1: Yielded local logic (streaks, notifications, reminders)
+            cancelStage1 = runIdle(async () => {
                 console.log("[Startup] Running Stage 1: Habit streaks and reminders");
                 const currentStore = useStore.getState();
-                currentStore.migrateBase64Images().catch(console.error);
+                await currentStore.migrateBase64Images().catch(console.error);
+                await yieldToMain();
                 currentStore.checkHabitStreaks();
+                await yieldToMain();
                 currentStore.syncHabitsNotification();
+                await yieldToMain();
                 currentStore.startTaskGroupReminder();
                 recordStartupMark('stage1End');
-            }, 1000);
+            }, 1200);
 
-            // Stage 2 (3000ms): Pull widget data (Capacitor plugin calls)
-            cancelStage2 = runIdle(async () => {
+            // Stage 2: Pull widget data (Capacitor plugin calls) - deferred during active interaction
+            const executeStage2 = async (startTime = Date.now()) => {
+                const now = Date.now();
+                const timeSinceTouch = now - lastInteractionTime;
+                const totalElapsed = now - startTime;
+
+                // If user touched screen in last 1000ms and total delay < 5000ms, retry in next idle frame
+                if (timeSinceTouch < 1000 && totalElapsed < 5000) {
+                    cancelStage2 = runIdle(() => executeStage2(startTime), 500);
+                    return;
+                }
+
                 console.log("[Startup] Running Stage 2: Pulling offline widget data");
                 const currentStore = useStore.getState();
                 try {
                     await currentStore.pullOfflineCompletedTasks();
+                    await yieldToMain();
                     await currentStore.pullOfflineNotes();
+                    await yieldToMain();
                     await currentStore.pullOfflineAppointments();
                 } catch (err) {
                     console.error("[Startup] Stage 2 pulling failed:", err);
                 }
                 recordStartupMark('stage2End');
-            }, 3000);
+            };
+
+            cancelStage2 = runIdle(() => executeStage2(), 3500);
         };
 
         if (useStore.persist.hasHydrated()) {
