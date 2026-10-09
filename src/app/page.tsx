@@ -13,6 +13,8 @@ import { Note } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
 import { GoalCard } from "@/components/dashboard/goal-card";
 import { Coins, AlertTriangle, X } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-is-mobile";
+import { DeferredSection } from "@/components/ui/deferred-section";
 
 const QuoteSection = dynamic(() => import("@/components/dashboard/quote-section").then(mod => mod.QuoteSection), { ssr: false, loading: () => <div className="h-20 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
 const PulseChart = dynamic(() => import("@/components/dashboard/pulse-chart").then(mod => mod.PulseChart), { ssr: false, loading: () => <div className="h-48 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
@@ -90,7 +92,7 @@ export default function Home() {
   const noteTranslations = (translations[language]?.pages?.notes || translations['en'].pages.notes) as any;
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useIsMobile();
   const [showWeeklyTooltip, setShowWeeklyTooltip] = useState(false);
   const [showConservationAlert, setShowConservationAlert] = useState(true);
   const tourStep = useStore(state => state.tourStep);
@@ -149,16 +151,6 @@ export default function Home() {
   useEffect(() => {
     setIsMounted(true);
     recordStartupMark('firstRender');
-
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
   }, []); // Run only on mount
 
   const handleNewNote = () => {
