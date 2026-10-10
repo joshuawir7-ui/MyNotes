@@ -276,12 +276,24 @@ html.perf-no-motion *::after {
   transition-duration: 0.001s !important;
 }
 
-/* ── Mobile Ambient Orb Optimization (Zero-cost radial-gradient) ──────────── */
+/* ── Mobile Ambient Background Glow (Seamless, zero-cost, borderless) ───────── */
 @media (max-width: 767px) {
+  /* Hide individual bounded child orb elements on mobile to prevent rectangular box cutoffs */
   [class*="blur-[120px]"] {
-    filter: none !important;
-    -webkit-filter: none !important;
-    background: radial-gradient(circle, rgba(147, 51, 234, 0.18) 0%, rgba(59, 130, 246, 0.08) 45%, rgba(0, 0, 0, 0) 70%) !important;
+    display: none !important;
+  }
+  
+  /* Smooth, seamless full-viewport radial gradients on the fixed ambient container */
+  .fixed.top-0.left-0.w-full.h-full.pointer-events-none {
+    background: 
+      radial-gradient(circle 350px at 0% 0%, rgba(168, 85, 247, 0.14) 0%, rgba(168, 85, 247, 0) 75%),
+      radial-gradient(circle 350px at 100% 100%, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0) 75%) !important;
+  }
+
+  .dark .fixed.top-0.left-0.w-full.h-full.pointer-events-none {
+    background: 
+      radial-gradient(circle 420px at 0% 0%, rgba(147, 51, 234, 0.28) 0%, rgba(147, 51, 234, 0) 75%),
+      radial-gradient(circle 420px at 100% 100%, rgba(37, 99, 235, 0.22) 0%, rgba(37, 99, 235, 0) 75%) !important;
   }
 }
 
