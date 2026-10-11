@@ -1,0 +1,47 @@
+<USER_REQUEST>
+# Instrucciones para el Agente — Lag periódico y sincronización incremental con la nube
+
+## 0. Síntoma
+
+Tras las últimas mejoras, el usuario nota que el lag bajó, pero sigue siendo fuerte. Aparece **después de abrir un apartado** y **se repite periódicamente**, "como si intentara cargar algo". Hipótesis a probar: trabajo periódico de sincronización (u otro temporizador) ocupando el hilo principal.
+
+## 1. El reporte de sincronización recibido NO se debe usar como base
+
+Motivos:
+
+1. **`sync-worker.ts` tiene unas 11 líneas.** Un archivo así no puede contener una fusión de notas y tareas. No se mostró quién lo llama ni qué cruza el `postMessage`.
+2. **Contradice el reporte anterior**, que describía `syncCycle` dentro de `store.ts`, una ventana de 25 s, descarga de metadatos de `mynotes_backup.json`, fusión nota por nota y tarea por tarea, `stripLargePayloads`, `uploadMissingAttachments`, `reconcileMediaManifest` y archivos JSON en `Filesystem`. El reporte nuevo habla de `localStorage`, "carga instantánea" y un worker que lo hace todo.
+3. **Cifras sin medir**: "60 FPS sostenidos", "sub-50 ms", "se re-renderiza únicamente lo que cambió".
+4. **Afirma que las imágenes se descargan "solo al ser visibles"**, pero esa carga diferida se revirtió. Describe el comportamiento ideal, no necesariamente el real.
+5. **No responde lo esencial**: cada cuánto corre, qué lo dispara, qué hace cuando no hay cambios y qué parte corre en el hilo principal.
+
+## 2. Por qué "segundo plano" no equivale a "sin lag"
+
+- La **espera de red** es asíncrona y no bloquea. Todo lo que ocurre antes y después **sí** corre en el hilo principal si no está en un worker: `JSON.parse`, la fusión, `JSON.stringify`, `set()` de Zustand (que re-renderiza), la persistencia y las llamadas al puente de Capacitor.
+- **Web Worker no es gratis.** `postMessage` copia los objetos con *structured clone* (CPU en ambos lados y doble memoria). Enviar un string ya serializado suele ser más barato que envia
+<truncated 9788 bytes>
+.watch`)
+- WatermelonDB: protocolo de sincronización (pull desde `lastPulledAt`, push de registros cambiados)
+- Joplin: sincronización con un archivo por elemento (Dropbox, OneDrive, Nextcloud)
+- Android WorkManager: intervalo mínimo de 15 minutos y ejecución aproximada
+- Guías de Capacitor sobre archivos grandes y el puente (`readFile` en base64, `convertFileSrc`)
+- Chrome: Long Tasks API (Chrome 58) y Long Animation Frames API (Chrome 123)
+- Documentación de Zustand: `persist` y `partialize`
+- Artículos sobre costo de `postMessage` y *structured clone*; localStorage síncrono
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-10-10T02:56:07-05:00.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\Dj Alex 507 Pty\Documents\Proyectos\Proyectos\Programacion\Inteligencia Artificial\Verificacion de Asistencia\src\main.js (LANGUAGE_JAVASCRIPT)
+- c:\Users\Dj Alex 507 Pty\Documents\Proyectos\Proyectos\Programacion\Inteligencia Artificial\Verificacion de Asistencia\.env (LANGUAGE_UNSPECIFIED)
+- c:\Users\Dj Alex 507 Pty\Documents\Proyectos\Proyectos\Programacion\Inteligencia Artificial\Verificacion de Asistencia\scratch\move_google_block.py (LANGUAGE_PYTHON)
+- c:\Users\Dj Alex 507 Pty\Documents\Proyectos\Proyectos\Programacion\Inteligencia Artificial\Verificacion de Asistencia\build-exe.cjs (LANGUAGE_JAVASCRIPT)
+- c:\Users\Dj Alex 507 Pty\Documents\Proyectos\Proyectos\Programacion\Inteligencia Artificial\Verificacion de Asistencia\electron\main.cjs (LANGUAGE_JAVASCRIPT)
+Running terminal commands:
+- npm run dev (in c:\Users\Dj Alex 507 Pty\Documents\Proyectos\Proyectos\Programacion\Inteligencia Artificial\Alhpa 01\MyNotes, running for 3m34s)
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from Gemini 3.6 Flash (High) to Gemini 3.1 Pro (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>

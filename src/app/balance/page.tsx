@@ -187,15 +187,122 @@ function CustomCalendar({ selectedDate, onSelectDate, onClear, language, minDate
     );
 }
 
+const WalletHistoryList = ({
+    transactions,
+    onSelectTx,
+    onDeleteTx,
+    language,
+    formatTransactionDate,
+    deleteConfirmText
+}: {
+    transactions: Transaction[];
+    onSelectTx: (tx: Transaction) => void;
+    onDeleteTx: (id: string) => void;
+    language: string;
+    formatTransactionDate: (d: string) => string;
+    deleteConfirmText: string;
+}) => {
+    const [isScrolledTop, setIsScrolledTop] = useState(true);
+
+    if (transactions.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center p-8 bg-white/5 border border-dashed border-black/10 dark:border-white/10 rounded-3xl text-center w-full">
+                <p className="text-xs text-muted-foreground">
+                    {language === 'es' ? "Aún no hay ingresos o gastos registrados." : "No income or expenses registered yet."}
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative w-full py-1">
+            <div className={`absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-background via-background/70 to-transparent pointer-events-none z-20 transition-opacity duration-300 ${!isScrolledTop ? 'opacity-100' : 'opacity-0'}`} />
+            <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-background via-background/70 to-transparent pointer-events-none z-20" />
+            <div
+                className="w-full max-h-[380px] md:max-h-[540px] px-1 py-3"
+                style={{
+                    maskImage: !isScrolledTop
+                        ? 'linear-gradient(to bottom, transparent 0px, black 36px, black calc(100% - 36px), transparent 100%)'
+                        : 'linear-gradient(to bottom, black 0px, black calc(100% - 36px), transparent 100%)',
+                    WebkitMaskImage: !isScrolledTop
+                        ? 'linear-gradient(to bottom, transparent 0px, black 36px, black calc(100% - 36px), transparent 100%)'
+                        : 'linear-gradient(to bottom, black 0px, black calc(100% - 36px), transparent 100%)'
+                }}
+            >
+                <Virtuoso
+                    style={{ height: '380px', maxHeight: '540px' }}
+                    atTopStateChange={(atTop) => setIsScrolledTop(atTop)}
+                    data={transactions}
+                    itemContent={(index, tx) => (
+                        <div className="px-3.5 py-1.5 w-full">
+                            <div
+                                key={tx.id}
+                                onClick={() => onSelectTx(tx)}
+                                className={`flex items-center justify-between p-4 rounded-3xl text-white border border-transparent relative group overflow-hidden w-full cursor-pointer hover:brightness-105 active:scale-[0.99] transition-all
+                                    ${tx.type === 'income'
+                                        ? 'bg-[#00b050] dark:bg-[#7030a0] dark:border-purple-400/40 dark:shadow-[0_0_18px_rgba(168,85,247,0.5),0_0_35px_rgba(112,48,160,0.3)] hover:dark:shadow-[0_0_25px_rgba(192,132,252,0.75),0_0_45px_rgba(147,51,234,0.45)]'
+                                        : 'bg-[#e60000] dark:bg-[#e60000] dark:border-rose-400/50 dark:shadow-[0_0_18px_rgba(255,40,40,0.55),0_0_35px_rgba(230,0,0,0.3)] hover:dark:shadow-[0_0_25px_rgba(255,80,80,0.85),0_0_45px_rgba(239,68,68,0.45)]'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-3 w-full pr-8">
+                                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+                                        {tx.type === 'income'
+                                            ? <ArrowUpRight className="w-5 h-5 text-[#00b050] dark:text-[#7030a0]" />
+                                            : <ArrowDownRight className="w-5 h-5 text-[#e60000]" />
+                                        }
+                                    </div>
+                                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                        <span className="font-extrabold text-sm tracking-tight sm:text-base leading-tight">
+                                            {tx.type === 'income'
+                                                ? (tx.amount < 0
+                                                    ? (language === 'es' ? `Gane ${tx.amount}${tx.currency || '$'}` : `Earned ${tx.amount}${tx.currency || '$'}`)
+                                                    : (language === 'es' ? `Gane +${tx.amount}${tx.currency || '$'}` : `Earned +${tx.amount}${tx.currency || '$'}`)
+                                                )
+                                                : (tx.amount < 0
+                                                    ? (language === 'es' ? `Gaste ${tx.amount}${tx.currency || '$'}` : `Spent ${tx.amount}${tx.currency || '$'}`)
+                                                    : (language === 'es' ? `Gaste -${tx.amount}${tx.currency || '$'}` : `Spent -${tx.amount}${tx.currency || '$'}`)
+                                                )
+                                            }
+                                        </span>
+                                        {tx.description && (
+                                            <span className="text-xs text-white/80 truncate font-medium leading-tight">
+                                                {tx.description}
+                                            </span>
+                                        )}
+                                        <span className="text-[10px] font-bold uppercase text-white/70 leading-tight mt-0.5 wallet-history-date">
+                                            {formatTransactionDate(tx.date)}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDeleteTx(tx.id);
+                                    }}
+                                    className="absolute top-1/2 right-2.5 -translate-y-1/2 p-2 bg-black/25 hover:bg-black/45 rounded-xl transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0 z-10"
+                                    title={deleteConfirmText}
+                                >
+                                    <Trash2 className="w-3.5 h-3.5 text-white" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                />
+            </div>
+        </div>
+    );
+};
+
 export default function BalancePage() {
     const language = useStore(state => state.language) || 'en'
     const rawTransactions = useStore(useShallow(state => state.transactions ?? []))
     const transactions = Array.isArray(rawTransactions) ? rawTransactions : []
     const balance = useMemo(() => {
-        return transactions.reduce((sum, t) => {
+        const raw = transactions.reduce((sum, t) => {
             const amt = Number(t.amount) || 0;
             return sum + (t.type === 'expense' ? -amt : amt);
         }, 0);
+        return Math.abs(raw) < 1e-9 ? 0 : Number(raw.toFixed(2));
     }, [transactions])
 
     const lastIncome = useMemo(() => {
@@ -250,7 +357,6 @@ export default function BalancePage() {
 
     // Managing 1-second floating blur feedback when adding income/expense
     const [recentFeedback, setRecentFeedback] = useState<{ id: string; type: 'income' | 'expense'; amount: number } | null>(null)
-    const [isScrolledTop, setIsScrolledTop] = useState(true)
 
     // Form inputs & modal control
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -918,32 +1024,34 @@ export default function BalancePage() {
         // balance = 0 → empty (no arc)
         // balance > 0 → black arc clockwise (to the right), proportional to savingsGoal
         // balance < 0 → red arc counter-clockwise (to the left), proportional to savingsGoal
-        const isNegative = balance < 0
-        const isZero = balance === 0
+        const isZero = Math.abs(balance) < 0.01
+        const isNegative = balance < -0.009
 
-        // For positive: how much of the goal is filled (min 8% so it's visible, max 100%)
-        // For negative: how much is owed (min 8%, max 100%)
-        const absPct = savingsGoal > 0
-            ? Math.min(Math.max((Math.abs(balance) / savingsGoal) * 100, 8), 100)
-            : 50
+        // For positive: how much of the goal is filled (max 100%)
+        // For negative: how much is owed (max 100%)
+        const absPct = (!isZero && savingsGoal > 0)
+            ? Math.min(Math.max((Math.abs(balance) / savingsGoal) * 100, 1), 100)
+            : 0
 
         // clockwise offset: full circle minus filled portion (standard SVG trick)
-        const clockwiseOffset = circumferenceBlack - (absPct / 100) * circumferenceBlack
+        const clockwiseOffset = isZero ? circumferenceBlack : (circumferenceBlack - (absPct / 100) * circumferenceBlack)
 
         return (
             <div className="relative w-56 h-56 sm:w-64 sm:h-64 lg:w-72 lg:h-72 flex items-center justify-center select-none bg-transparent mx-auto my-3 shrink-0 max-w-full">
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 240 240">
-                    {/* Exterior Grey Background Circular Track */}
-                    <circle
-                        cx="120"
-                        cy="120"
-                        r={radiusGrey}
-                        className="stroke-zinc-200/80 dark:stroke-zinc-800/40"
-                        strokeWidth={strokeWidthGrey}
-                        fill="none"
-                    />
+                    {/* Exterior Grey Background Circular Track (hidden if balance is 0) */}
+                    {!isZero && (
+                        <circle
+                            cx="120"
+                            cy="120"
+                            r={radiusGrey}
+                            className="stroke-zinc-200/80 dark:stroke-zinc-800/40"
+                            strokeWidth={strokeWidthGrey}
+                            fill="none"
+                        />
+                    )}
 
-                    {/* Progress arc — hidden when balance is 0, red+left when negative, black+right when positive */}
+                    {/* Progress arc - hidden when balance is 0, red+left when negative, black+right when positive */}
                     {!isZero && (
                         isNegative ? (
                             <g transform="translate(240, 0) scale(-1, 1)">
@@ -955,8 +1063,8 @@ export default function BalancePage() {
                                     strokeWidth={strokeWidthBlack}
                                     fill="none"
                                     strokeDasharray={circumferenceBlack}
-                                    initial={{ strokeDashoffset: circumferenceBlack }}
-                                    animate={{ strokeDashoffset: clockwiseOffset }}
+                                    initial={{ strokeDashoffset: circumferenceBlack, opacity: 0 }}
+                                    animate={{ strokeDashoffset: clockwiseOffset, opacity: 1 }}
                                     transition={{ duration: 1.2, ease: "easeOut" }}
                                     strokeLinecap="round"
                                     transform="rotate(-90 120 120)"
@@ -971,8 +1079,8 @@ export default function BalancePage() {
                                 strokeWidth={strokeWidthBlack}
                                 fill="none"
                                 strokeDasharray={circumferenceBlack}
-                                initial={{ strokeDashoffset: circumferenceBlack }}
-                                animate={{ strokeDashoffset: clockwiseOffset }}
+                                initial={{ strokeDashoffset: circumferenceBlack, opacity: 0 }}
+                                animate={{ strokeDashoffset: clockwiseOffset, opacity: 1 }}
                                 transition={{ duration: 1.2, ease: "easeOut" }}
                                 strokeLinecap="round"
                                 transform="rotate(-90 120 120)"
@@ -1240,95 +1348,14 @@ export default function BalancePage() {
                             </div>
 
                             {/* Wallet items stack */}
-                            {sortedTransactions.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center p-8 bg-white/5 border border-dashed border-black/10 dark:border-white/10 rounded-3xl text-center w-full">
-                                    <p className="text-xs text-muted-foreground">
-                                        {language === 'es' ? "Aún no hay ingresos o gastos registrados." : "No income or expenses registered yet."}
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="relative w-full py-1">
-                                    {/* Top soft fade overlay (only active when scrolled down from top) */}
-                                    <div className={`absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-background via-background/70 to-transparent pointer-events-none z-20 transition-opacity duration-300 ${!isScrolledTop ? 'opacity-100' : 'opacity-0'}`} />
-
-                                    {/* Bottom soft fade overlay */}
-                                    <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-background via-background/70 to-transparent pointer-events-none z-20" />
-
-                                    <div
-                                        className="w-full max-h-[380px] md:max-h-[540px] px-1 py-3"
-                                        style={{
-                                            maskImage: !isScrolledTop
-                                                ? 'linear-gradient(to bottom, transparent 0px, black 36px, black calc(100% - 36px), transparent 100%)'
-                                                : 'linear-gradient(to bottom, black 0px, black calc(100% - 36px), transparent 100%)',
-                                            WebkitMaskImage: !isScrolledTop
-                                                ? 'linear-gradient(to bottom, transparent 0px, black 36px, black calc(100% - 36px), transparent 100%)'
-                                                : 'linear-gradient(to bottom, black 0px, black calc(100% - 36px), transparent 100%)'
-                                        }}
-                                    >
-                                        <Virtuoso
-                                            style={{ height: '380px', maxHeight: '540px' }}
-                                            atTopStateChange={(atTop) => setIsScrolledTop(atTop)}
-                                            data={sortedTransactions}
-                                            itemContent={(index, tx) => (
-                                                <div className="px-3.5 py-1.5 w-full">
-                                                    <div
-                                                        key={tx.id}
-                                                        onClick={() => setSelectedTxDetails(tx)}
-                                                        className={`flex items-center justify-between p-4 rounded-3xl text-white border border-transparent relative group overflow-hidden w-full cursor-pointer hover:brightness-105 active:scale-[0.99] transition-all
-                                                            ${tx.type === 'income'
-                                                                ? 'bg-[#00b050] dark:bg-[#7030a0] dark:border-purple-400/40 dark:shadow-[0_0_18px_rgba(168,85,247,0.5),0_0_35px_rgba(112,48,160,0.3)] hover:dark:shadow-[0_0_25px_rgba(192,132,252,0.75),0_0_45px_rgba(147,51,234,0.45)]'
-                                                                : 'bg-[#e60000] dark:bg-[#e60000] dark:border-rose-400/50 dark:shadow-[0_0_18px_rgba(255,40,40,0.55),0_0_35px_rgba(230,0,0,0.3)] hover:dark:shadow-[0_0_25px_rgba(255,80,80,0.85),0_0_45px_rgba(239,68,68,0.45)]'
-                                                            }`}
-                                                    >
-                                                        <div className="flex items-center gap-3 w-full pr-8">
-                                                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-                                                                {tx.type === 'income'
-                                                                    ? <ArrowUpRight className="w-5 h-5 text-[#00b050] dark:text-[#7030a0]" />
-                                                                    : <ArrowDownRight className="w-5 h-5 text-[#e60000]" />
-                                                                }
-                                                            </div>
-
-                                                            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                                                                <span className="font-extrabold text-sm tracking-tight sm:text-base leading-tight">
-                                                                    {tx.type === 'income'
-                                                                        ? (tx.amount < 0
-                                                                            ? (language === 'es' ? `Gane ${tx.amount}${tx.currency || '$'}` : `Earned ${tx.amount}${tx.currency || '$'}`)
-                                                                            : (language === 'es' ? `Gane +${tx.amount}${tx.currency || '$'}` : `Earned +${tx.amount}${tx.currency || '$'}`)
-                                                                        )
-                                                                        : (tx.amount < 0
-                                                                            ? (language === 'es' ? `Gaste ${tx.amount}${tx.currency || '$'}` : `Spent ${tx.amount}${tx.currency || '$'}`)
-                                                                            : (language === 'es' ? `Gaste -${tx.amount}${tx.currency || '$'}` : `Spent -${tx.amount}${tx.currency || '$'}`)
-                                                                        )
-                                                                    }
-                                                                </span>
-                                                                {tx.description && (
-                                                                    <span className="text-xs text-white/80 truncate font-medium leading-tight">
-                                                                        {tx.description}
-                                                                    </span>
-                                                                )}
-                                                                <span className="text-[10px] font-bold uppercase text-white/70 leading-tight mt-0.5 wallet-history-date">
-                                                                    {formatTransactionDate(tx.date)}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                handleDeleteTransaction(tx.id)
-                                                            }}
-                                                            className="absolute top-1/2 right-2.5 -translate-y-1/2 p-2 bg-black/25 hover:bg-black/45 rounded-xl transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0 z-10"
-                                                            title={t.deleteTransactionConfirm}
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5 text-white" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        />
-                                    </div>
-                                </div>
-                            )}
+                            <WalletHistoryList
+                                transactions={sortedTransactions}
+                                onSelectTx={setSelectedTxDetails}
+                                onDeleteTx={handleDeleteTransaction}
+                                language={language}
+                                formatTransactionDate={formatTransactionDate}
+                                deleteConfirmText={t.deleteTransactionConfirm}
+                            />
                         </div>
                     </Reveal>
 

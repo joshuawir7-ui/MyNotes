@@ -13,7 +13,7 @@ import { CelebrationModal } from "@/components/ui/celebration-modal"
 import { GlassToast } from "@/components/ui/glass-toast"
 import { CloudPrompt } from "@/components/ui/cloud-prompt"
 import { SyncConflictDialog } from "@/components/ui/sync-conflict-dialog"
-import { MIUIOnboardingDialog } from "@/components/ui/miui-onboarding"
+import { NavigationLoader } from "@/components/ui/navigation-loader"
 import { motion, AnimatePresence, LayoutGroup, MotionConfig } from "framer-motion"
 import { useState, useRef } from "react"
 import { X, Sparkles, Gauge } from "lucide-react"
@@ -33,6 +33,7 @@ import {
 } from "@/lib/perf-debug"
 import { PerfDebugModal } from "@/components/ui/perf-debug-modal"
 import { useIsMobile } from "@/hooks/use-is-mobile"
+import { isIdle, whenIdle } from "@/lib/interaction-gate"
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -152,6 +153,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const customFonts = useStore(state => state.customFonts || []);
 
     const performanceMode = useStore(state => state.performanceMode ?? false)
+    const developerMode = useStore(state => state.developerMode ?? false)
 
     useEffect(() => {
         if (typeof document !== 'undefined') {
@@ -486,70 +488,72 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         const triggerStartupSync = async () => {
             // Stage 3 (6000ms): Run heavier operations: local filesystem backup and syncCycle
             cancelStage3 = runIdle(async () => {
-                const storeState = useStore.getState();
-                if (storeState.googleUser && !storeState.googleSessionExpired) {
-                    storeState.syncCycle().catch(console.error);
-                }
-                await yieldToMain();
-
-                // On native (Android), first save locally, then sync cloud
-                if (isNative) {
-                    try {
-                        const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
-                        const state = useStore.getState();
-                        const dataToExport = {
-                            notes: state.notes,
-                            tasks: state.tasks,
-                            goals: state.goals,
-                            appointments: state.appointments,
-                            projects: state.projects,
-                            taskGroups: state.taskGroups,
-                            dailySnapshots: state.dailySnapshots,
-                            user: state.user
-                        };
-                        const jsonStr = JSON.stringify(dataToExport);
-                        const now = new Date();
-                        const year = now.getFullYear();
-                        const month = String(now.getMonth() + 1).padStart(2, '0');
-                        const day = String(now.getDate()).padStart(2, '0');
-                        const hours = String(now.getHours()).padStart(2, '0');
-                        const minutes = String(now.getMinutes()).padStart(2, '0');
-                        const seconds = String(now.getSeconds()).padStart(2, '0');
-                        const timestamp = `${year}${month}${day}_${hours}${minutes}${seconds}`;
-                        const fileName = `mynotes_auto_backup_${timestamp}.json`;
-                        await Filesystem.writeFile({
-                            path: fileName,
-                            data: jsonStr,
-                            directory: Directory.Documents,
-                            encoding: Encoding.UTF8
-                        });
-                        console.log(`[Startup] Local backup saved: ${fileName}`);
-
-                        await yieldToMain();
-
-                        // Rotate auto-backups, keep only 4 most recent
-                        const dirResult = await Filesystem.readdir({ path: '', directory: Directory.Documents });
-                        const autoBackupFiles = dirResult.files
-                            .map(f => typeof f === 'string' ? f : f.name)
-                            .filter(name => name.startsWith('mynotes_auto_backup_') && name.endsWith('.json'))
-                            .sort();
-                        if (autoBackupFiles.length > 4) {
-                            const toDelete = autoBackupFiles.slice(0, autoBackupFiles.length - 4);
-                            for (const file of toDelete) {
-                                try { await Filesystem.deleteFile({ path: file, directory: Directory.Documents }); } catch (e) { }
-                            }
-                        }
-                    } catch (err) {
-                        console.error("[Startup] Local backup failed:", err);
+                whenIdle(async () => {
+                    const storeState = useStore.getState();
+                    if (storeState.googleUser && !storeState.googleSessionExpired) {
+                        storeState.syncCycle().catch(console.error);
                     }
-                }
+                    await yieldToMain();
 
-                // After local save completes (or on web), trigger cloud sync
-                const currentStore = useStore.getState();
-                if (currentStore.googleUser && !currentStore.googleSessionExpired) {
-                    console.log("Startup auto-sync triggered after hydration");
-                    currentStore.syncCycle().catch(console.error);
-                }
+                    // On native (Android), first save locally, then sync cloud
+                    if (isNative) {
+                        try {
+                            const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+                            const state = useStore.getState();
+                            const dataToExport = {
+                                notes: state.notes,
+                                tasks: state.tasks,
+                                goals: state.goals,
+                                appointments: state.appointments,
+                                projects: state.projects,
+                                taskGroups: state.taskGroups,
+                                dailySnapshots: state.dailySnapshots,
+                                user: state.user
+                            };
+                            const jsonStr = JSON.stringify(dataToExport);
+                            const now = new Date();
+                            const year = now.getFullYear();
+                            const month = String(now.getMonth() + 1).padStart(2, '0');
+                            const day = String(now.getDate()).padStart(2, '0');
+                            const hours = String(now.getHours()).padStart(2, '0');
+                            const minutes = String(now.getMinutes()).padStart(2, '0');
+                            const seconds = String(now.getSeconds()).padStart(2, '0');
+                            const timestamp = `${year}${month}${day}_${hours}${minutes}${seconds}`;
+                            const fileName = `mynotes_auto_backup_${timestamp}.json`;
+                            await Filesystem.writeFile({
+                                path: fileName,
+                                data: jsonStr,
+                                directory: Directory.Documents,
+                                encoding: Encoding.UTF8
+                            });
+                            console.log(`[Startup] Local backup saved: ${fileName}`);
+
+                            await yieldToMain();
+
+                            // Rotate auto-backups, keep only 4 most recent
+                            const dirResult = await Filesystem.readdir({ path: '', directory: Directory.Documents });
+                            const autoBackupFiles = dirResult.files
+                                .map(f => typeof f === 'string' ? f : f.name)
+                                .filter(name => name.startsWith('mynotes_auto_backup_') && name.endsWith('.json'))
+                                .sort();
+                            if (autoBackupFiles.length > 4) {
+                                const toDelete = autoBackupFiles.slice(0, autoBackupFiles.length - 4);
+                                for (const file of toDelete) {
+                                    try { await Filesystem.deleteFile({ path: file, directory: Directory.Documents }); } catch (e) { }
+                                }
+                            }
+                        } catch (err) {
+                            console.error("[Startup] Local backup failed:", err);
+                        }
+                    }
+
+                    // After local save completes (or on web), trigger cloud sync
+                    const currentStore = useStore.getState();
+                    if (currentStore.googleUser && !currentStore.googleSessionExpired) {
+                        console.log("Startup auto-sync triggered after hydration");
+                        currentStore.syncCycle().catch(console.error);
+                    }
+                }, 800);
             }, 6000);
         };
 
@@ -569,29 +573,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             }, 1200);
 
             // Stage 2: Pull widget data (Capacitor plugin calls) - deferred during active interaction
-            const executeStage2 = async (startTime = Date.now()) => {
-                const now = Date.now();
-                const timeSinceTouch = now - lastInteractionTime;
-                const totalElapsed = now - startTime;
-
-                // If user touched screen in last 1000ms and total delay < 5000ms, retry in next idle frame
-                if (timeSinceTouch < 1000 && totalElapsed < 5000) {
-                    cancelStage2 = runIdle(() => executeStage2(startTime), 500);
-                    return;
-                }
-
-                console.log("[Startup] Running Stage 2: Pulling offline widget data");
-                const currentStore = useStore.getState();
-                try {
-                    await currentStore.pullOfflineCompletedTasks();
-                    await yieldToMain();
-                    await currentStore.pullOfflineNotes();
-                    await yieldToMain();
-                    await currentStore.pullOfflineAppointments();
-                } catch (err) {
-                    console.error("[Startup] Stage 2 pulling failed:", err);
-                }
-                recordStartupMark('stage2End');
+            const executeStage2 = async () => {
+                whenIdle(async () => {
+                    console.log("[Startup] Running Stage 2: Pulling offline widget data");
+                    const currentStore = useStore.getState();
+                    try {
+                        await currentStore.pullOfflineCompletedTasks();
+                        await yieldToMain();
+                        await currentStore.pullOfflineNotes();
+                        await yieldToMain();
+                        await currentStore.pullOfflineAppointments();
+                    } catch (err) {
+                        console.error("[Startup] Stage 2 pulling failed:", err);
+                    }
+                    recordStartupMark('stage2End');
+                }, 800);
             };
 
             cancelStage2 = runIdle(() => executeStage2(), 3500);
@@ -994,6 +990,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <GlassToast />
             <CloudPrompt />
             <SyncConflictDialog />
+            <NavigationLoader />
             <AppSidebar />
             <FloatingTimer />
 
@@ -1003,22 +1000,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 margin-left (which triggers a full Layout/Reflow on every frame).
                 LayoutGroup is not needed here since <main> is the only layout participant. */}
             <MotionConfig reducedMotion={perfFlags.perfNoMotion ? "always" : "user"}>
-                <LayoutGroup>
-                    <motion.main
-                        layout={isMobile ? false : !perfFlags.perfNoLayout}
-                        transition={{ type: "spring", stiffness: 260, damping: 28, mass: 0.9 }}
-                        className="flex-1 max-w-full bg-background text-foreground md:ml-64 pt-4 md:pt-10 pb-32 md:pb-10 overflow-x-hidden"
-                        suppressHydrationWarning
-                    >
-                        <div className="px-4 md:px-12 max-w-7xl mx-auto w-full" suppressHydrationWarning>
-                            {children}
-                        </div>
-                    </motion.main>
-                </LayoutGroup>
+                <motion.main
+                    layout={false}
+                    className="flex-1 max-w-full bg-background text-foreground md:ml-64 pt-4 md:pt-10 pb-32 md:pb-10 overflow-x-hidden transition-[margin] duration-300 ease-in-out"
+                    suppressHydrationWarning
+                >
+                    <div className="px-4 md:px-12 max-w-7xl mx-auto w-full" suppressHydrationWarning>
+                        {children}
+                    </div>
+                </motion.main>
             </MotionConfig>
 
-            {/* Live Performance Navigation Overlay Badge */}
-            {(lastNavDuration !== null || Object.values(perfFlags).some(Boolean)) && (
+            {/* Live Performance Navigation Overlay Badge — Active ONLY when Modo Desarrollador is enabled */}
+            {developerMode && (lastNavDuration !== null || Object.values(perfFlags).some(Boolean)) && (
                 <button
                     onClick={() => setIsPerfModalOpen(true)}
                     className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-[9990] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/90 dark:bg-zinc-900/95 text-white border border-white/20 shadow-xl md:backdrop-blur-md text-[11px] font-mono hover:scale-105 active:scale-95 transition-all cursor-pointer"

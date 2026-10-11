@@ -13,7 +13,9 @@ import {
     getNavMedian,
     getNavHistory,
     clearNavHistory,
-    PerfFlags
+    getSyncMetrics,
+    PerfFlags,
+    SyncMetrics
 } from "@/lib/perf-debug"
 
 interface PerfDebugModalProps {
@@ -28,6 +30,7 @@ export function PerfDebugModal({ isOpen, onClose }: PerfDebugModalProps) {
     const [lastNav, setLastNav] = useState<number | null>(getLastNavDuration());
     const [medianNav, setMedianNav] = useState<number | null>(getNavMedian());
     const [history, setHistory] = useState<number[]>(getNavHistory());
+    const [sync, setSync] = useState<SyncMetrics>(getSyncMetrics());
 
     useEffect(() => {
         setMounted(true);
@@ -37,6 +40,7 @@ export function PerfDebugModal({ isOpen, onClose }: PerfDebugModalProps) {
             setLastNav(getLastNavDuration());
             setMedianNav(getNavMedian());
             setHistory(getNavHistory());
+            setSync(getSyncMetrics());
         });
         return () => { unsubscribe(); };
     }, []);
@@ -136,6 +140,34 @@ export function PerfDebugModal({ isOpen, onClose }: PerfDebugModalProps) {
                                     Historial: {history.join('ms, ')}ms
                                 </div>
                             )}
+                        </div>
+
+                        {/* Sync Metrics */}
+                        <div className="bg-zinc-100 dark:bg-zinc-900/60 p-4 rounded-2xl border border-zinc-200 dark:border-white/10 mb-5">
+                            <span className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-2 mb-3">
+                                <Sparkles className="w-4 h-4 text-primary" />
+                                Métricas de Sincronización
+                            </span>
+                            <div className="grid grid-cols-2 gap-3 text-center">
+                                <div className="bg-white dark:bg-zinc-950 p-3 rounded-xl border border-black/5 dark:border-white/10">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Ciclos Totales</span>
+                                    <span className="text-2xl font-black text-foreground font-mono">{sync.totalCycles}</span>
+                                </div>
+                                <div className="bg-white dark:bg-zinc-950 p-3 rounded-xl border border-black/5 dark:border-white/10">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Salidas Tempranas</span>
+                                    <span className="text-2xl font-black text-emerald-500 font-mono">{sync.earlyExits}</span>
+                                </div>
+                                <div className="bg-white dark:bg-zinc-950 p-3 rounded-xl border border-black/5 dark:border-white/10">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Syncs Completas</span>
+                                    <span className="text-2xl font-black text-amber-500 font-mono">{sync.fullSyncs}</span>
+                                </div>
+                                <div className="bg-white dark:bg-zinc-950 p-3 rounded-xl border border-black/5 dark:border-white/10">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block">Descargas</span>
+                                    <span className="text-2xl font-black text-indigo-400 font-mono">
+                                        {sync.bytesDownloaded > 1024 ? (sync.bytesDownloaded / 1024).toFixed(1) + ' KB' : sync.bytesDownloaded + ' B'}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Diagnostic Toggles */}

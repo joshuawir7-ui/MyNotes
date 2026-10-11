@@ -781,7 +781,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                             <InlineImageButton language={language} />
                             <InlineVideoButton language={language} />
                             <InlineFileButton language={language} />
-                            <InlineTableButton language={language} />
+                            <InlineTableButton language={language} onInsertBlock={() => addBlock('table', activeBlockId)} />
                             <InlineTaskButton language={language} />
                             <InlineSeparatorButton language={language} />
 
@@ -940,8 +940,7 @@ function InlineImageButton({ language }: { language: string }) {
                 onChange={handleFileChange}
             />
             <button
-                onMouseDown={(e) => {
-                    e.preventDefault();
+                onClick={() => {
                     saveSelection();
                     fileInputRef.current?.click();
                 }}
@@ -1124,8 +1123,7 @@ function InlineVideoButton({ language }: { language: string }) {
                 onChange={handleFileChange}
             />
             <button
-                onMouseDown={(e) => {
-                    e.preventDefault();
+                onClick={(e) => {
                     saveSelection();
                     hideKeyboard();
                     fileInputRef.current?.click();
@@ -1197,8 +1195,7 @@ function InlineFileButton({ language }: { language: string }) {
                 onChange={handleFileChange}
             />
             <button
-                onMouseDown={(e) => {
-                    e.preventDefault();
+                onClick={(e) => {
                     saveSelection();
                     hideKeyboard();
                     fileInputRef.current?.click();
@@ -1216,35 +1213,17 @@ function InlineFileButton({ language }: { language: string }) {
 /**
  * InlineTableButton — inserts a table inside active text block.
  */
-function InlineTableButton({ language }: { language: string }) {
-    const savedRangeRef = useRef<Range | null>(null);
-
-    const saveSelection = () => {
-        const sel = window.getSelection();
-        if (sel && sel.rangeCount > 0) {
-            savedRangeRef.current = sel.getRangeAt(0).cloneRange();
-        }
-    };
-
-    const restoreSelection = () => {
-        const r = savedRangeRef.current;
-        if (!r) return;
-        const sel = window.getSelection();
-        if (sel) { sel.removeAllRanges(); sel.addRange(r); }
-    };
-
-    const handleInsertTable = () => {
-        saveSelection();
-        restoreSelection();
-        const tableHtml = `<br /><table data-inline-table="1" style="width:100%;border-collapse:collapse;margin:8px 0;border:1px solid rgba(150,150,150,0.3);"><tr style="background:rgba(150,150,150,0.15);"><th style="border:1px solid rgba(150,150,150,0.3);padding:8px;text-align:left;font-weight:bold;">Columna 1</th><th style="border:1px solid rgba(150,150,150,0.3);padding:8px;text-align:left;font-weight:bold;">Columna 2</th></tr><tr><td style="border:1px solid rgba(150,150,150,0.3);padding:8px;">Dato 1</td><td style="border:1px solid rgba(150,150,150,0.3);padding:8px;">Dato 2</td></tr></table><br />`;
-        document.execCommand('insertHTML', false, tableHtml);
-    };
-
+function InlineTableButton({ language, onInsertBlock }: { language: string; onInsertBlock?: () => void }) {
     return (
         <button
             onMouseDown={(e) => {
                 e.preventDefault();
-                handleInsertTable();
+                if (onInsertBlock) {
+                    onInsertBlock();
+                } else {
+                    const tableHtml = `<br /><table data-inline-table="1" style="width:100%;border-collapse:collapse;margin:8px 0;border:1px solid rgba(150,150,150,0.3);"><tr style="background:rgba(150,150,150,0.15);"><th style="border:1px solid rgba(150,150,150,0.3);padding:8px;text-align:left;font-weight:bold;">Columna 1</th><th style="border:1px solid rgba(150,150,150,0.3);padding:8px;text-align:left;font-weight:bold;">Columna 2</th></tr><tr><td style="border:1px solid rgba(150,150,150,0.3);padding:8px;">Dato 1</td><td style="border:1px solid rgba(150,150,150,0.3);padding:8px;">Dato 2</td></tr></table><br />`;
+                    document.execCommand('insertHTML', false, tableHtml);
+                }
             }}
             className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10 shrink-0"
             title={language === 'es' ? 'Insertar Tabla' : 'Insert Table'}
@@ -3160,14 +3139,42 @@ const BlockRenderer = React.memo(function BlockRenderer({
                             ))}
                         </tbody>
                     </table>
-                    <div className="flex flex-wrap items-center gap-4 mt-2">
-                        <button onClick={addRow} className="text-xs text-primary hover:underline">+ {language === 'es' ? "Añadir Fila" : "Add Row"}</button>
-                        <button onClick={addColumn} className="text-xs text-primary hover:underline">+ {language === 'es' ? "Añadir Columna" : "Add Column"}</button>
+                    <div className="flex flex-wrap items-center gap-2 mt-3 p-2 bg-zinc-50 dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-white/10 select-none">
+                        <button
+                            type="button"
+                            onClick={addRow}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                        >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>{language === 'es' ? "Añadir Fila" : "Add Row"}</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={addColumn}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                        >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>{language === 'es' ? "Añadir Columna" : "Add Column"}</span>
+                        </button>
                         {rows.length > 1 && (
-                            <button onClick={removeRow} className="text-xs text-red-500/70 hover:text-red-500 hover:underline">- {language === 'es' ? "Quitar Fila" : "Remove Row"}</button>
+                            <button
+                                type="button"
+                                onClick={removeRow}
+                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold transition-all active:scale-95 cursor-pointer sm:ml-auto"
+                            >
+                                <Minus className="w-3.5 h-3.5" />
+                                <span>{language === 'es' ? "Quitar Fila" : "Remove Row"}</span>
+                            </button>
                         )}
                         {headers.length > 1 && (
-                            <button onClick={removeColumn} className="text-xs text-red-500/70 hover:text-red-500 hover:underline">- {language === 'es' ? "Quitar Columna" : "Remove Col"}</button>
+                            <button
+                                type="button"
+                                onClick={removeColumn}
+                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                            >
+                                <Minus className="w-3.5 h-3.5" />
+                                <span>{language === 'es' ? "Quitar Columna" : "Remove Col"}</span>
+                            </button>
                         )}
                     </div>
                 </div>
@@ -3454,18 +3461,17 @@ function HighlightButton({ color, label, onClick }: { color: string, label: stri
 
 function linkifyHTML(html: string): string {
     if (!html) return '';
-    // Split the HTML by anchor tags to avoid touching existing links
-    const parts = html.split(/(<a\b[^>]*>[\s\S]*?<\/a>)/gi);
+    // Split the HTML by <a> tags and all HTML tags (<img...>, <video...>, etc.) to avoid touching URLs inside tag attributes
+    const parts = html.split(/(<a\b[^>]*>[\s\S]*?<\/a>|<[^>]+>)/gi);
     const urlRegex = /(https?:\/\/(?:[^\s<"'](?!&(?:nbsp|quot|apos|lt|gt);))+)/gi;
 
     return parts.map((part, index) => {
-        // If index is odd, it's an <a> tag, return it as is
+        // If index is odd, it's an HTML tag or an existing <a> tag block, return it as is
         if (index % 2 !== 0) {
             return part;
         }
-        // If index is even, it's plain HTML text, so linkify it
+        // If index is even, it's plain HTML text outside tags, so linkify URLs
         return part.replace(urlRegex, (url) => {
-            // Trim trailing punctuation from the url and put it outside the <a> tag
             const trailingPunctuationRegex = /[.,!?;:]+$/;
             const match = url.match(trailingPunctuationRegex);
             if (match) {

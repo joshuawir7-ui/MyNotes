@@ -1,10 +1,8 @@
 "use client"
 
-import { motion } from "framer-motion"
-import { ReactNode, useEffect, useRef, useState } from "react"
+import React, { ReactNode, useEffect, useRef, useState } from "react"
 import { usePathname } from "next/navigation"
 import { getPerfFlags, subscribePerfDebug } from "@/lib/perf-debug"
-import { useIsMobile } from "@/hooks/use-is-mobile"
 
 interface RevealProps {
     children: ReactNode
@@ -15,109 +13,65 @@ interface RevealProps {
     className?: string
 }
 
-const MAX_DELAY = 0.12;    // max seconds
-const MAX_DURATION = 0.3;  // max seconds
-const MOBILE_ANIMATION_BUDGET = 6;
-
 // Track visited routes in this browser session
 const visitedRoutesInSession = new Set<string>();
 
-let activePathname = "";
-let pathRevealCounter = 0;
-
-function getPathRevealCount(pathname: string): number {
-    if (pathname !== activePathname) {
-        activePathname = pathname;
-        pathRevealCounter = 0;
-    }
-    pathRevealCounter += 1;
-    return pathRevealCounter;
-}
-
-export const Reveal = ({ children, delay = 0, width = "100%", margin = "-20px", duration = 0.3, className }: RevealProps) => {
-    const isMobile = useIsMobile()
+export const Reveal = ({ children, delay = 0, width = "100%", duration = 0.3, className }: RevealProps) => {
     const pathname = usePathname() || "/"
-    const [isLowEnd, setIsLowEnd] = useState(false)
     const [perfFlags, setPerfFlags] = useState(getPerfFlags())
-    const [animatingWillChange, setAnimatingWillChange] = useState<"transform, opacity" | "auto">("transform, opacity")
+    const [isFinished, setIsFinished] = useState(false)
     const domRef = useRef<HTMLDivElement>(null)
 
-    // Calculate budget & session status during render
-    const revealIndex = getPathRevealCount(pathname)
-    const isFirstVisitToRoute = !visitedRoutesInSession.has(pathname)
-    const withinBudget = revealIndex <= MOBILE_ANIMATION_BUDGET
+    // Evaluate animation decision ONCE per mount pass so re-renders do NOT swap node structures
+    const shouldAnimateRef = useRef<boolean | null>(null)
+    if (shouldAnimateRef.current === null) {
+        const isLowEnd = typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency || 4) <= 4 : false
+        const isFirstVisit = !visitedRoutesInSession.has(pathname)
+        const isNoReveal = getPerfFlags().perfNoReveal
+        shouldAnimateRef.current = !isNoReveal && !isLowEnd && isFirstVisit
+    }
 
     useEffect(() => {
-        if (typeof navigator !== 'undefined') {
-            setIsLowEnd(navigator.hardwareConcurrency <= 4)
-        }
-
-        // Mark current route as visited after mount
         visitedRoutesInSession.add(pathname)
 
         const unsub = subscribePerfDebug(() => {
             setPerfFlags(getPerfFlags())
         })
 
+        // Clean up animation properties after completion to leave a 100% clean static DOM node
+        const animDuration = Math.min(duration ?? 0.3, 0.35)
+        const animDelay = Math.min(delay ?? 0, 0.12)
+        const totalMs = (animDuration + animDelay) * 1000 + 80
+
+        const timer = setTimeout(() => {
+            setIsFinished(true)
+        }, totalMs)
+
         return () => {
             unsub()
+            clearTimeout(timer)
         }
-    }, [pathname])
+    }, [pathname, delay, duration])
 
-    const isNoReveal = perfFlags.perfNoReveal;
-    const shouldAnimate = !isNoReveal && !isLowEnd && isFirstVisitToRoute && withinBudget;
-
-    const actualDuration = shouldAnimate ? Math.min(duration ?? 0.3, MAX_DURATION) : 0;
-    const actualDelay = shouldAnimate ? Math.min(delay ?? 0, MAX_DELAY) : 0;
-
-    const handleAnimationComplete = () => {
-        setAnimatingWillChange("auto")
-    }
-
-    if (!shouldAnimate) {
-        return (
-            <div style={{ width }} className={className || ""} ref={domRef}>
-                {children}
-            </div>
-        )
-    }
-
-    if (isMobile) {
-        return (
-            <div
-                style={{
-                    width,
-                    animation: actualDuration > 0
-                        ? `fade-in-up-fast ${actualDuration}s cubic-bezier(0.22, 1, 0.36, 1) ${actualDelay}s backwards`
-                        : 'none',
-                }}
-                className={className || ""}
-                ref={domRef}
-            >
-                {children}
-            </div>
-        )
-    }
+    const shouldAnimate = shouldAnimateRef.current && !perfFlags.perfNoReveal && !isFinished
+    const actualDuration = Math.min(duration ?? 0.3, 0.35)
+    const actualDelay = Math.min(delay ?? 0, 0.12)
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: margin }}
-            transition={{
-                duration: actualDuration,
-                delay: actualDelay,
-                ease: [0.22, 1, 0.36, 1]
-            }}
+        <div
+            ref={domRef}
             style={{
                 width,
-                willChange: animatingWillChange,
+                ...(shouldAnimate ? {
+                    animation: `fade-in-up-fast ${actualDuration}s cubic-bezier(0.22, 1, 0.36, 1) ${actualDelay}s backwards`,
+                    willChange: 'transform, opacity',
+                } : {})
             }}
-            onAnimationComplete={handleAnimationComplete}
             className={className || ""}
         >
             {children}
-        </motion.div>
+        </div>
     )
 }
+
 

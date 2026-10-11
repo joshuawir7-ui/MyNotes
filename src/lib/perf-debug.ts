@@ -16,6 +16,13 @@ export interface StartupTimeline {
     stage2End: number | null;
 }
 
+export interface SyncMetrics {
+    totalCycles: number;
+    earlyExits: number;
+    fullSyncs: number;
+    bytesDownloaded: number;
+}
+
 const STORAGE_KEY = 'mynotes_perf_flags';
 const NAV_HISTORY_KEY = 'mynotes_perf_nav_history';
 
@@ -40,6 +47,14 @@ const startupTimeline: StartupTimeline = {
 
 let lastNavDuration: number | null = null;
 let navHistory: number[] = [];
+
+const syncMetrics: SyncMetrics = {
+    totalCycles: 0,
+    earlyExits: 0,
+    fullSyncs: 0,
+    bytesDownloaded: 0
+};
+
 const listeners = new Set<() => void>();
 
 export function getPerfFlags(): PerfFlags {
@@ -88,6 +103,24 @@ export function subscribePerfDebug(listener: () => void) {
 
 function notifyListeners() {
     listeners.forEach(fn => fn());
+}
+
+// ── Sync Metrics ────────────────────────────────────────────────────────────
+
+export function recordSyncMetric(type: 'earlyExit' | 'fullSync', bytes: number = 0) {
+    syncMetrics.totalCycles++;
+    if (type === 'earlyExit') {
+        syncMetrics.earlyExits++;
+    } else {
+        syncMetrics.fullSyncs++;
+    }
+    syncMetrics.bytesDownloaded += bytes;
+    console.log(`[Sync Metrics] Total: ${syncMetrics.totalCycles}, Early: ${syncMetrics.earlyExits}, Full: ${syncMetrics.fullSyncs}, Bytes: ${syncMetrics.bytesDownloaded}`);
+    notifyListeners();
+}
+
+export function getSyncMetrics(): SyncMetrics {
+    return { ...syncMetrics };
 }
 
 // ── Startup Timeline Marks ──────────────────────────────────────────────────

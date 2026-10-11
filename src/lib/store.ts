@@ -12,6 +12,9 @@ import { BackgroundTask } from '@capawesome/capacitor-background-task'
 
 const isNative = Capacitor.isNativePlatform();
 
+import { isIdle, whenIdle } from './interaction-gate';
+import { recordSyncMetric } from './perf-debug';
+
 export const WidgetSync = registerPlugin<{
     updateWidgetData: (data: { goals?: string, appointments?: string, notes?: string, tasks?: string, dailySnapshots?: string, notificationsEnabled?: string, isDarkMode?: string, pinnedNoteId?: string, priorityRemindersEnabled?: boolean, priorityReminderSlots?: string, noteFontFamily?: string }) => Promise<void>;
     showHabitNotification: (data: { tasks: string }) => Promise<void>;
@@ -1052,6 +1055,8 @@ interface AppState {
     lastUpdated?: number
     restoreProgress?: string | null
     cloudRestoreProgress: { done: number; total: number } | null
+    developerMode?: boolean
+    setDeveloperMode?: (active: boolean) => void
     toast: { message: string; type: 'success' | 'error' | 'info' | 'warning' } | null
     showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void
     clearToast: () => void
@@ -1825,6 +1830,8 @@ export const useStore = create<AppState>()(
                         }
                     }
                 },
+                developerMode: false,
+                setDeveloperMode: (active: boolean) => set({ developerMode: active }),
                 noteFontFamily: 'default',
                 customFonts: [],
                 setNoteFontFamily: (fontFamily: string) => {
@@ -3476,7 +3483,10 @@ export const useStore = create<AppState>()(
 
                             const metadata = {
                                 name: 'mynotes_backup.json',
-                                mimeType: 'application/json'
+                                mimeType: 'application/json',
+                                appProperties: {
+                                    lastUpdated: newTimestamp.toString()
+                                }
                             };
                             const boundary = 'foo_bar_baz';
                             const body = [
@@ -3557,6 +3567,11 @@ export const useStore = create<AppState>()(
                         return true;
                     }
 
+                    if (!force && !isIdle()) {
+                        console.log("[Sync] Usuario interactuando. Posponiendo syncCycle...");
+                        return false;
+                    }
+
                     isSyncing = true;
                     syncQueued = false;
                     try {
@@ -3581,7 +3596,7 @@ export const useStore = create<AppState>()(
                         await uploadMissingAttachments(token, get().notes);
 
                         const searchRes = await fetchWithTimeout(
-                            `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false`,
+                            `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false&fields=files(id,appProperties)`,
                             {
                                 headers: { Authorization: `Bearer ${token}` }
                             }
@@ -3617,7 +3632,10 @@ export const useStore = create<AppState>()(
 
                             const metadata = {
                                 name: 'mynotes_backup.json',
-                                mimeType: 'application/json'
+                                mimeType: 'application/json',
+                                appProperties: {
+                                    lastUpdated: dataToSync.lastUpdated.toString()
+                                }
                             };
                             const boundary = 'foo_bar_baz';
                             const body = [
@@ -3646,6 +3664,19 @@ export const useStore = create<AppState>()(
                             return true;
                         }
 
+                        const freshState = get();
+                        const localLastUpdated = freshState.lastUpdated || 0;
+                        const remoteLastUpdatedStr = existingFile.appProperties?.lastUpdated;
+                        const remoteLastUpdated = remoteLastUpdatedStr ? parseInt(remoteLastUpdatedStr, 10) : 0;
+
+                        // EARLY EXIT: If timestamps match, no changes occurred anywhere!
+                        if (remoteLastUpdated > 0 && localLastUpdated === remoteLastUpdated) {
+                            console.log("[Sync] Salida temprana: los timestamps locales y remotos coinciden perfectamente.");
+                            recordSyncMetric('earlyExit', 0);
+                            set({ isSyncingCloud: false, lastCloudSync: new Date().toLocaleString() });
+                            return true;
+                        }
+
                         console.log("Backup file found in Drive. Downloading to compare timestamps...");
                         const downloadRes = await fetchWithTimeout(
                             `https://www.googleapis.com/drive/v3/files/${existingFile.id}?alt=media`,
@@ -3659,10 +3690,9 @@ export const useStore = create<AppState>()(
                         }
 
                         const driveData = await downloadRes.json();
+                        const responseBytes = parseInt(downloadRes.headers.get('content-length') || '0', 10) || JSON.stringify(driveData).length;
+                        recordSyncMetric('fullSync', responseBytes);
                         const driveLastUpdated = (driveData && driveData.lastUpdated) || 0;
-
-                        const freshState = get();
-                        const localLastUpdated = freshState.lastUpdated || 0;
 
                         console.log(`[Sync] Timestamps — Local: ${localLastUpdated}, Drive: ${driveLastUpdated}`);
                         // DIAG: Log counts to identify which branch executes on mobile

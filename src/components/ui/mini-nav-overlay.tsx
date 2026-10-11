@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from "react"
 import { getLastNavDuration, getNavMedian, subscribePerfDebug } from "@/lib/perf-debug"
 import { Activity, Gauge } from "lucide-react"
+import { useStore } from "@/lib/store"
 
 interface MiniNavOverlayProps {
     onOpenModal: () => void;
 }
 
 export function MiniNavOverlay({ onOpenModal }: MiniNavOverlayProps) {
+    const developerMode = useStore(state => state.developerMode ?? false);
     const [lastNav, setLastNav] = useState<number | null>(getLastNavDuration());
     const [medianNav, setMedianNav] = useState<number | null>(getNavMedian());
     const [mounted, setMounted] = useState(false);
@@ -22,7 +24,7 @@ export function MiniNavOverlay({ onOpenModal }: MiniNavOverlayProps) {
         return () => { unsubscribe(); };
     }, []);
 
-    if (!mounted || lastNav === null) return null;
+    if (!mounted || !developerMode || lastNav === null) return null;
 
     return (
         <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[99990] flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/90 dark:bg-zinc-950/90 text-white backdrop-blur-md shadow-xl border border-white/20 text-xs font-mono select-none">
