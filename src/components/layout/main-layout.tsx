@@ -13,7 +13,6 @@ import { CelebrationModal } from "@/components/ui/celebration-modal"
 import { GlassToast } from "@/components/ui/glass-toast"
 import { CloudPrompt } from "@/components/ui/cloud-prompt"
 import { SyncConflictDialog } from "@/components/ui/sync-conflict-dialog"
-import { NavigationLoader } from "@/components/ui/navigation-loader"
 import { motion, AnimatePresence, LayoutGroup, MotionConfig } from "framer-motion"
 import { useState, useRef } from "react"
 import { X, Sparkles, Gauge } from "lucide-react"
@@ -990,7 +989,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <GlassToast />
             <CloudPrompt />
             <SyncConflictDialog />
-            <NavigationLoader />
             <AppSidebar />
             <FloatingTimer />
 
