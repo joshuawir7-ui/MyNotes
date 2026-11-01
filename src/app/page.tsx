@@ -5,7 +5,6 @@ import { recordStartupMark } from "@/lib/perf-debug";
 import { useShallow } from 'zustand/react/shallow';
 import { translations } from "@/lib/translations";
 import { Reveal } from "@/components/ui/reveal";
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import { NoteEditor } from "@/components/notes/note-editor";
@@ -15,15 +14,14 @@ import { GoalCard } from "@/components/dashboard/goal-card";
 import { Coins, AlertTriangle, X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { DeferredSection } from "@/components/ui/deferred-section";
-
-const QuoteSection = dynamic(() => import("@/components/dashboard/quote-section").then(mod => mod.QuoteSection), { ssr: false, loading: () => <div className="h-20 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
-const PulseChart = dynamic(() => import("@/components/dashboard/pulse-chart").then(mod => mod.PulseChart), { ssr: false, loading: () => <div className="h-48 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
-const StatsCards = dynamic(() => import("@/components/dashboard/stats-cards").then(mod => mod.StatsCards), { ssr: false, loading: () => <div className="h-24 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
-const BalanceMiniChart = dynamic(() => import("@/components/dashboard/balance-mini-chart").then(mod => mod.BalanceMiniChart), { ssr: false, loading: () => <div className="h-[140px] animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-2xl" /> });
-const DailyFocusWidget = dynamic(() => import("@/components/dashboard/daily-focus").then(mod => mod.DailyFocusWidget), { ssr: false, loading: () => <div className="h-40 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
-const EnhancedTaskList = dynamic(() => import("@/components/dashboard/enhanced-task-list").then(mod => mod.EnhancedTaskList), { ssr: false, loading: () => <div className="h-48 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
-const WeeklyProgressChart = dynamic(() => import("@/components/dashboard/weekly-progress-chart").then(mod => mod.WeeklyProgressChart), { ssr: false, loading: () => <div className="h-40 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
-const DashboardWidgets = dynamic(() => import("@/components/dashboard/dashboard-widgets").then(mod => mod.DashboardWidgets), { ssr: false, loading: () => <div className="h-36 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" /> });
+import { QuoteSection } from "@/components/dashboard/quote-section";
+import { PulseChart } from "@/components/dashboard/pulse-chart";
+import { StatsCards } from "@/components/dashboard/stats-cards";
+import { BalanceMiniChart } from "@/components/dashboard/balance-mini-chart";
+import { DailyFocusWidget } from "@/components/dashboard/daily-focus";
+import { EnhancedTaskList } from "@/components/dashboard/enhanced-task-list";
+import { WeeklyProgressChart } from "@/components/dashboard/weekly-progress-chart";
+import { DashboardWidgets } from "@/components/dashboard/dashboard-widgets";
 
 export default function Home() {
   const router = useRouter();
@@ -171,9 +169,9 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-background text-foreground p-4 sm:p-8 font-[family-name:var(--font-geist-sans)] relative selection:bg-primary/30">
         {appColor !== 'black' && (
-          <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 transform-gpu" style={{ willChange: "transform" }}>
-            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20 transform-gpu" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20 transform-gpu" />
+          <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20" />
           </div>
         )}
         <div className="relative z-10 max-w-4xl mx-auto w-full flex flex-col gap-4 pb-24 pt-0">
@@ -193,9 +191,9 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground p-4 sm:p-8 font-[family-name:var(--font-geist-sans)] relative selection:bg-primary/30">
       {/* Ambient Background Gradients — Unrendered on theme-black to save GPU composition */}
       {appColor !== 'black' && (
-        <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 transform-gpu" style={{ willChange: "transform" }}>
-          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20 transform-gpu" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20 transform-gpu" />
+        <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20" />
         </div>
       )}
 

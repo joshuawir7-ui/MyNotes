@@ -94,7 +94,6 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
     const [isLandscape, setIsLandscape] = useState(false)
     const [showHeader, setShowHeader] = useState(true)
-    const lastScrollTop = useRef(0)
     const contentContainerRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -106,11 +105,6 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         window.addEventListener('resize', checkOrientation)
         return () => window.removeEventListener('resize', checkOrientation)
     }, [])
-
-    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-        const scrollTop = e.currentTarget.scrollTop
-        lastScrollTop.current = scrollTop
-    }
 
     useEffect(() => {
         let backListener: any;
@@ -135,26 +129,22 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         const updateViewportOffset = () => {
             const vv = window.visualViewport
             if (!vv) {
-                setViewportOffset(0)
+                setViewportOffset(prev => prev === 0 ? 0 : 0)
                 return
             }
             const winH = window.innerHeight
             const vvH = vv.height
             const vvTop = vv.offsetTop || 0
 
-            // If window.innerHeight has already resized to fit visualViewport (standard Android adjustResize mode),
-            // position:fixed bottom:0 is ALREADY resting flush on top of the soft keyboard!
-            if (Math.abs(winH - vvH) < 20) {
-                setViewportOffset(0)
-            } else {
-                // Otherwise calculate true offset above visualViewport
-                const diff = winH - vvH - vvTop
-                setViewportOffset(diff > 0 ? diff : 0)
+            let nextOffset = 0
+            if (Math.abs(winH - vvH) >= 20) {
+                const diff = Math.round(winH - vvH - vvTop)
+                nextOffset = diff > 0 ? diff : 0
             }
+            setViewportOffset(prev => (prev === nextOffset ? prev : nextOffset))
         }
 
         window.visualViewport?.addEventListener('resize', updateViewportOffset)
-        window.visualViewport?.addEventListener('scroll', updateViewportOffset)
         window.addEventListener('resize', updateViewportOffset)
         updateViewportOffset()
 
@@ -175,7 +165,6 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         return () => {
             window.removeEventListener('keydown', handleEscape)
             window.visualViewport?.removeEventListener('resize', updateViewportOffset)
-            window.visualViewport?.removeEventListener('scroll', updateViewportOffset)
             window.removeEventListener('resize', updateViewportOffset)
             if (kShowListener) kShowListener.remove?.()
             if (kHideListener) kHideListener.remove?.()
@@ -475,7 +464,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
     }
 
     return (
-        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-background/95 md:backdrop-blur-sm flex items-center justify-center p-4">
             <div className="w-full max-w-4xl h-[90vh] bg-white dark:bg-[#0c0c0e] border border-zinc-200 dark:border-white/10 rounded-2xl flex flex-col relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
 
                 {/* PREMIUM HEADER - Collapse and adapt on landscape/portrait */}
@@ -611,8 +600,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                 {/* Content */}
                 <div
                     ref={contentContainerRef}
-                    onScroll={handleScroll}
-                    className="flex-1 overflow-y-auto p-5 md:p-8 space-y-2 note-font-container overscroll-contain touch-pan-y"
+                    className="flex-1 overflow-y-auto p-5 md:p-8 space-y-2 note-font-container overscroll-contain [webkit-overflow-scrolling:touch]"
                 >
 
                     {blocks.length === 0 && (
@@ -620,7 +608,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                             {language === 'es' ? "Comienza añadiendo un bloque desde la barra superior." : "Start by adding a block from the toolbar above."}
                         </div>
                     )}
-                    <AnimatePresence initial={false} mode="popLayout">
+                    <div className="space-y-2 w-full">
                         {blocks.filter(b => b && typeof b === 'object' && b.id).map((block, idx) => (
                             <BlockWrapper
                                 key={block.id}
@@ -639,7 +627,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                 noteId={note.id}
                             />
                         ))}
-                    </AnimatePresence>
+                    </div>
                 </div>
             </div>
             <ConfirmationDialog
@@ -960,6 +948,7 @@ function InlineImageButton({ language }: { language: string }) {
  */
 export async function resolveInlineImages(container: HTMLElement | null) {
     if (!container || typeof window === 'undefined') return;
+    const t0 = performance.now();
     const imgElements = container.querySelectorAll<HTMLImageElement>('img[data-inline-img="1"], img[data-local-uri]');
     if (imgElements.length === 0) return;
 
@@ -993,6 +982,8 @@ export async function resolveInlineImages(container: HTMLElement | null) {
             img.src = Capacitor.convertFileSrc(localUri);
         }
     }
+    const duration = (performance.now() - t0).toFixed(2);
+    console.log(`[PERF][resolveInlineImages] ${imgElements.length} imágenes procesadas en ${duration} ms`);
 }
 
 /**
@@ -1001,6 +992,7 @@ export async function resolveInlineImages(container: HTMLElement | null) {
  */
 export async function resolveInlineVideos(container: HTMLElement | null) {
     if (!container || typeof window === 'undefined') return;
+    const t0 = performance.now();
     const videoElements = container.querySelectorAll<HTMLVideoElement>('video[data-inline-video="1"], video[data-local-uri]');
     if (videoElements.length === 0) return;
 
@@ -1069,6 +1061,8 @@ export async function resolveInlineVideos(container: HTMLElement | null) {
             } catch (e) {}
         }
     }
+    const duration = (performance.now() - t0).toFixed(2);
+    console.log(`[PERF][resolveInlineVideos] ${videoElements.length} videos procesados en ${duration} ms`);
 }
 
 /**
@@ -3286,19 +3280,15 @@ const BlockWrapper = React.memo(({
     noteId: string;
 }) => {
     return (
-        <motion.div
+        <div
             id={`block-${block.id}`}
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -20 }}
-            transition={{ duration: 0.2 }}
             tabIndex={0}
             onFocus={() => handleWrapperFocus(block.id, block.type)}
             onClick={() => handleWrapperFocus(block.id, block.type)}
             onBlur={(e) => handleWrapperBlur(e.currentTarget)}
-            className="group relative flex flex-col gap-2 w-full p-2.5 rounded-xl border border-transparent hover:border-white/5 hover:bg-white/[0.01] focus:border-white/10 focus:bg-white/[0.02] focus-within:border-white/10 focus-within:bg-white/[0.02] transition-all outline-none transform-gpu render-optimized"
+            className="group relative flex flex-col gap-2 w-full p-2.5 rounded-xl border border-transparent hover:border-white/5 hover:bg-white/[0.01] focus:border-white/10 focus:bg-white/[0.02] focus-within:border-white/10 focus-within:bg-white/[0.02] transition-colors duration-150 outline-none"
         >
-            <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 flex items-center justify-between border-b border-white/5 pb-1.5 text-[10px] font-bold text-muted-foreground/60 dark:text-white/70 uppercase tracking-widest select-none transition-opacity duration-200">
+            <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 flex items-center justify-between border-b border-white/5 pb-1.5 text-[10px] font-bold text-muted-foreground/60 dark:text-white/70 uppercase tracking-widest select-none transition-opacity duration-150">
                 <span className="flex items-center gap-1.5">
                     {getBlockIconAndLabel(block.type, language)}
                 </span>
@@ -3344,7 +3334,7 @@ const BlockWrapper = React.memo(({
                     noteId={noteId}
                 />
             </div>
-        </motion.div>
+        </div>
     );
 }, (prevProps, nextProps) => {
     return prevProps.block === nextProps.block &&
@@ -3772,12 +3762,22 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             // resolución antes de capturar innerHTML, se persistiría una URL blob: efímera
             // (inválida tras recargar) en vez del data-local-uri permanente que ya viene
             // grabado desde la inserción original (InlineImageButton/persistAndBuildMediaHtml). Es intencional.
+            const t0 = performance.now();
             resolveInlineVideos(editorRef.current);
             resolveInlineImages(editorRef.current);
+            const durationResolvers = (performance.now() - t0).toFixed(2);
+
+            const tInner0 = performance.now();
             const newContent = editorRef.current.innerHTML;
+            const durationInner = (performance.now() - tInner0).toFixed(2);
+
+            console.log(`[PERF][handleInput] Tecla pulsada — resolveInline: ${durationResolvers} ms | innerHTML read: ${durationInner} ms (${(newContent.length / 1024).toFixed(2)} KB)`);
+
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             timeoutRef.current = setTimeout(() => {
+                const tChange0 = performance.now();
                 onChange(newContent);
+                console.log(`[PERF][handleInput] Debounce 500ms disparado -> onChange: ${(performance.now() - tChange0).toFixed(2)} ms`);
             }, 500); // 500ms debounce
         }
     };

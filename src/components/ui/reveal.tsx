@@ -16,10 +16,9 @@ interface RevealProps {
 // Track visited routes in this browser session
 const visitedRoutesInSession = new Set<string>();
 
-export const Reveal = ({ children, delay = 0, width = "100%", duration = 0.3, className }: RevealProps) => {
+export const Reveal = ({ children, delay = 0, width = "100%", duration = 0.25, className }: RevealProps) => {
     const pathname = usePathname() || "/"
     const [perfFlags, setPerfFlags] = useState(getPerfFlags())
-    const [isFinished, setIsFinished] = useState(false)
     const domRef = useRef<HTMLDivElement>(null)
 
     // Evaluate animation decision ONCE per mount pass so re-renders do NOT swap node structures
@@ -33,29 +32,15 @@ export const Reveal = ({ children, delay = 0, width = "100%", duration = 0.3, cl
 
     useEffect(() => {
         visitedRoutesInSession.add(pathname)
-
         const unsub = subscribePerfDebug(() => {
             setPerfFlags(getPerfFlags())
         })
+        return () => { unsub() }
+    }, [pathname])
 
-        // Clean up animation properties after completion to leave a 100% clean static DOM node
-        const animDuration = Math.min(duration ?? 0.3, 0.35)
-        const animDelay = Math.min(delay ?? 0, 0.12)
-        const totalMs = (animDuration + animDelay) * 1000 + 80
-
-        const timer = setTimeout(() => {
-            setIsFinished(true)
-        }, totalMs)
-
-        return () => {
-            unsub()
-            clearTimeout(timer)
-        }
-    }, [pathname, delay, duration])
-
-    const shouldAnimate = shouldAnimateRef.current && !perfFlags.perfNoReveal && !isFinished
-    const actualDuration = Math.min(duration ?? 0.3, 0.35)
-    const actualDelay = Math.min(delay ?? 0, 0.12)
+    const shouldAnimate = shouldAnimateRef.current && !perfFlags.perfNoReveal
+    const actualDuration = Math.min(duration ?? 0.25, 0.3)
+    const actualDelay = Math.min(delay ?? 0, 0.1)
 
     return (
         <div
@@ -63,8 +48,7 @@ export const Reveal = ({ children, delay = 0, width = "100%", duration = 0.3, cl
             style={{
                 width,
                 ...(shouldAnimate ? {
-                    animation: `fade-in-up-fast ${actualDuration}s cubic-bezier(0.22, 1, 0.36, 1) ${actualDelay}s backwards`,
-                    willChange: 'transform, opacity',
+                    animation: `fade-in-up-fast ${actualDuration}s cubic-bezier(0.22, 1, 0.36, 1) ${actualDelay}s both`,
                 } : {})
             }}
             className={className || ""}

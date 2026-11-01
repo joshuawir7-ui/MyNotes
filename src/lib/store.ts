@@ -345,6 +345,10 @@ const capacitorStorage = {
             return;
         }
 
+        const tCall = performance.now();
+        const kb = (value.length / 1024).toFixed(2);
+        console.log(`[PERF][capacitorStorage.setItem] Llamada recibida para '${name}' (${kb} KB). Programando debounce.`);
+
         // Cache the latest value in-memory immediately
         pendingWrites[name] = value;
 
@@ -355,6 +359,7 @@ const capacitorStorage = {
         const performWrite = async () => {
             const dataToWrite = pendingWrites[name];
             if (!dataToWrite) return;
+            const tStartWrite = performance.now();
 
             try {
                 // Safety check to avoid writing corrupted/empty state if something went wrong
@@ -365,6 +370,7 @@ const capacitorStorage = {
 
                 if (isNative) {
                     // 1. Backup the current file before overwriting
+                    const tBackup0 = performance.now();
                     try {
                         const existing = await Filesystem.readFile({
                             path: `${name}.json`,
@@ -380,20 +386,27 @@ const capacitorStorage = {
                             });
                         }
                     } catch (e) { } // It's okay if backup fails (e.g. file doesn't exist yet)
+                    const backupDuration = (performance.now() - tBackup0).toFixed(2);
 
                     // 2. Write the new data
+                    const tPrimary0 = performance.now();
                     await Filesystem.writeFile({
                         path: `${name}.json`,
                         data: dataToWrite,
                         directory: Directory.Data,
                         encoding: Encoding.UTF8,
                     });
+                    const primaryDuration = (performance.now() - tPrimary0).toFixed(2);
+                    const totalDuration = (performance.now() - tStartWrite).toFixed(2);
+                    console.log(`[PERF][capacitorStorage.setItem] DISCO '${name}': backup=${backupDuration}ms, write=${primaryDuration}ms, TOTAL I/O=${totalDuration}ms (esperó en debounce ${(tStartWrite - tCall).toFixed(2)}ms)`);
                 } else {
                     // Web fallback using idb-keyval
+                    const tIdb0 = performance.now();
                     await idbSet(name, dataToWrite);
+                    console.log(`[PERF][capacitorStorage.setItem] IndexedDB '${name}': ${(performance.now() - tIdb0).toFixed(2)} ms (esperó en debounce ${(tStartWrite - tCall).toFixed(2)}ms)`);
                 }
             } catch (e) {
-                console.error('Storage save error', e);
+                console.error('[PERF][capacitorStorage.setItem] Storage save error', e);
             }
         };
 
@@ -1217,9 +1230,18 @@ let notesSaveQueue: Promise<void> = Promise.resolve();
 let tasksSaveQueue: Promise<void> = Promise.resolve();
 
 function queueNotesSave(notes: Note[]) {
+    const tEnqueued = performance.now();
+    const count = notes.length;
     notesSaveQueue = notesSaveQueue
-        .then(() => saveAllNotesToDisk(notes))
-        .catch(err => console.error('[Store] Error guardando notas:', err));
+        .then(async () => {
+            const tStart = performance.now();
+            await saveAllNotesToDisk(notes);
+            const duration = (performance.now() - tStart).toFixed(2);
+            let kb = "0";
+            try { kb = (JSON.stringify(notes).length / 1024).toFixed(2); } catch (e) {}
+            console.log(`[PERF][queueNotesSave] Guardadas ${count} notas (${kb} KB). Duración I/O: ${duration} ms (tiempo total en cola: ${(performance.now() - tEnqueued).toFixed(2)} ms)`);
+        })
+        .catch(err => console.error('[PERF][queueNotesSave] Error guardando notas:', err));
 }
 
 function queueTasksSave(tasks: Task[]) {
@@ -1968,26 +1990,26 @@ export const useStore = create<AppState>()(
                 },
 
 
-                loadAllNotes: async () => {
+                loadAllNotes: async (force?: boolean) => {
+                    if (!force && get().areNotesLoaded && get().notes.length > 0) return;
                     const fullNotes = await readAllNotesFromDisk(get().notes);
                     originalSet({ notes: fullNotes, areNotesLoaded: true });
                 },
 
                 unloadNotes: async () => {
-                    const currentNotes = get().notes;
-                    await saveAllNotesToDisk(currentNotes);
-                    originalSet({ notes: currentNotes, areNotesLoaded: true });
+                    // Notes are automatically persisted via debounced queues on write.
+                    // Avoid blocking disk I/O and state re-renders on route navigation.
                 },
 
-                loadAllTasks: async () => {
+                loadAllTasks: async (force?: boolean) => {
+                    if (!force && get().areTasksLoaded && get().tasks.length > 0) return;
                     const fullTasks = await readAllTasksFromDisk(get().tasks);
                     originalSet({ tasks: fullTasks, areTasksLoaded: true });
                 },
 
                 unloadTasks: async () => {
-                    const currentTasks = get().tasks;
-                    await saveAllTasksToDisk(currentTasks);
-                    originalSet({ tasks: currentTasks, areTasksLoaded: true });
+                    // Tasks are automatically persisted via debounced queues on write.
+                    // Avoid blocking disk I/O and state re-renders on route navigation.
                 },
                 timer: {
                     timeLeft: 25 * 60,
@@ -4031,8 +4053,15 @@ export const useStore = create<AppState>()(
                     }
                 },
                 setItem: async (name: string, value: any) => {
+                    const t0 = performance.now();
                     if (!syncWorker) {
-                        await capacitorStorage.setItem(name, JSON.stringify(value));
+                        const tStr0 = performance.now();
+                        const serialized = JSON.stringify(value);
+                        const strDuration = (performance.now() - tStr0).toFixed(2);
+                        const kb = (serialized.length / 1024).toFixed(2);
+                        console.log(`[PERF][persist.setItem] JSON.stringify hilo principal: ${strDuration} ms (${kb} KB)`);
+                        await capacitorStorage.setItem(name, serialized);
+                        console.log(`[PERF][persist.setItem] Total setItem sin worker: ${(performance.now() - t0).toFixed(2)} ms`);
                         return;
                     }
                     return new Promise<void>((resolve) => {
@@ -4040,9 +4069,11 @@ export const useStore = create<AppState>()(
                             if (e.data.name === name) {
                                 syncWorker!.removeEventListener('message', handleMessage);
                                 if (e.data.error) {
-                                    console.error('Worker serialization failed', e.data.error);
+                                    console.error('[PERF][persist.setItem] Worker falló:', e.data.error);
                                     capacitorStorage.setItem(name, JSON.stringify(value)).then(resolve);
                                 } else {
+                                    const kb = (e.data.serialized.length / 1024).toFixed(2);
+                                    console.log(`[PERF][persist.setItem] Worker serializó ${kb} KB en ${(performance.now() - t0).toFixed(2)} ms`);
                                     capacitorStorage.setItem(name, e.data.serialized).then(resolve);
                                 }
                             }
@@ -4077,11 +4108,21 @@ export const useStore = create<AppState>()(
                     }
                 }
                 const { isSyncingCloud, syncError, tourStep, isTourManuallyStarted, ...rest } = serializableState;
-                return {
+                const result = {
                     ...rest,
                     areNotesLoaded: true,
                     areTasksLoaded: true
                 };
+                if (typeof window !== 'undefined') {
+                    try {
+                        const jsonStr = JSON.stringify(result);
+                        const kb = (jsonStr.length / 1024).toFixed(2);
+                        console.log(`[PERF][partialize] Tamaño JSON a persistir: ${kb} KB (notes: ${result.notes?.length ?? 0}, tasks: ${result.tasks?.length ?? 0})`);
+                    } catch (e) {
+                        console.warn('[PERF][partialize] Error calculando tamaño:', e);
+                    }
+                }
+                return result;
             }
         }
     )

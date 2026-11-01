@@ -1,7 +1,6 @@
 "use client"
 
-import dynamic from "next/dynamic"
-const AppSidebar = dynamic(() => import("@/components/layout/app-sidebar").then(mod => mod.AppSidebar), { ssr: false })
+import { AppSidebar } from "@/components/layout/app-sidebar"
 import { KeyboardShortcuts } from "@/components/layout/keyboard-shortcuts"
 import { translations } from "@/lib/translations"
 import { useStore, WidgetSync, syncWidgetData } from "@/lib/store"
@@ -250,25 +249,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         }
     }, [isHydrated])
 
-    // Fix C: Preload heavy dynamic widgets in browser idle time
-    useEffect(() => {
-        const preload = () => {
-            import('@/components/dashboard/weekly-progress-chart');
-            import('@/components/dashboard/pulse-chart');
-            import('@/components/dashboard/quote-section');
-            import('@/components/dashboard/stats-cards');
-            import('@/components/dashboard/balance-mini-chart');
-            import('@/components/dashboard/daily-focus');
-            import('@/components/dashboard/enhanced-task-list');
-            import('@/components/dashboard/dashboard-widgets');
-        };
-        if ('requestIdleCallback' in window) {
-            const id = window.requestIdleCallback(preload, { timeout: 4000 });
-            return () => window.cancelIdleCallback(id);
-        }
-        const t = setTimeout(preload, 2500);
-        return () => clearTimeout(t);
-    }, []);
 
     const [showQuote, setShowQuote] = useState(true)
     const [randomQuote, setRandomQuote] = useState<{ quote: string; author: string }>({ quote: "", author: "" })
@@ -558,18 +538,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         const runStage1And2 = () => {
             // Stage 1: Yielded local logic (streaks, notifications, reminders)
+            // Deferred to 3200ms and gated on user idle so the initial UI and first route render are completely unblocked
             cancelStage1 = runIdle(async () => {
-                console.log("[Startup] Running Stage 1: Habit streaks and reminders");
-                const currentStore = useStore.getState();
-                await currentStore.migrateBase64Images().catch(console.error);
-                await yieldToMain();
-                currentStore.checkHabitStreaks();
-                await yieldToMain();
-                currentStore.syncHabitsNotification();
-                await yieldToMain();
-                currentStore.startTaskGroupReminder();
-                recordStartupMark('stage1End');
-            }, 1200);
+                whenIdle(async () => {
+                    console.log("[Startup] Running Stage 1: Habit streaks and reminders");
+                    const currentStore = useStore.getState();
+                    await currentStore.migrateBase64Images().catch(console.error);
+                    await yieldToMain();
+                    currentStore.checkHabitStreaks();
+                    await yieldToMain();
+                    currentStore.syncHabitsNotification();
+                    await yieldToMain();
+                    currentStore.startTaskGroupReminder();
+                    recordStartupMark('stage1End');
+                }, 1000);
+            }, 3200);
 
             // Stage 2: Pull widget data (Capacitor plugin calls) - deferred during active interaction
             const executeStage2 = async () => {
@@ -586,10 +569,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         console.error("[Startup] Stage 2 pulling failed:", err);
                     }
                     recordStartupMark('stage2End');
-                }, 800);
+                }, 1000);
             };
 
-            cancelStage2 = runIdle(() => executeStage2(), 3500);
+            cancelStage2 = runIdle(() => executeStage2(), 4500);
         };
 
         if (useStore.persist.hasHydrated()) {
@@ -907,10 +890,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         showQuote ? (
                             <motion.div
                                 key="quote"
-                                initial={{ opacity: 0, filter: "blur(20px)" }}
-                                animate={{ opacity: 1, filter: "blur(0px)" }}
-                                exit={{ opacity: 0, filter: "blur(20px)" }}
-                                transition={{ duration: 0.8, ease: "easeInOut" }}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.35, ease: "easeOut" }}
                                 onClick={handleQuoteSkip}
                                 className="fixed inset-0 z-[99999] flex flex-col items-center justify-center p-8 select-none cursor-pointer bg-white dark:bg-zinc-950 text-center"
                             >
@@ -992,22 +975,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <AppSidebar />
             <FloatingTimer />
 
-            {/* motion.main + layout: Framer Motion captures the before/after position
-                of the <main> element when the sidebar appears/disappears (FLIP).
-                The shift is animated via GPU transform instead of animating
-                margin-left (which triggers a full Layout/Reflow on every frame).
-                LayoutGroup is not needed here since <main> is the only layout participant. */}
-            <MotionConfig reducedMotion={perfFlags.perfNoMotion ? "always" : "user"}>
-                <motion.main
-                    layout={false}
-                    className="flex-1 max-w-full bg-background text-foreground md:ml-64 pt-4 md:pt-10 pb-32 md:pb-10 overflow-x-hidden transition-[margin] duration-300 ease-in-out"
-                    suppressHydrationWarning
-                >
-                    <div className="px-4 md:px-12 max-w-7xl mx-auto w-full" suppressHydrationWarning>
-                        {children}
-                    </div>
-                </motion.main>
-            </MotionConfig>
+            <main
+                className="flex-1 max-w-full bg-background text-foreground md:ml-64 pt-4 md:pt-10 pb-32 md:pb-10 overflow-x-hidden"
+                suppressHydrationWarning
+            >
+                <div className="px-4 md:px-12 max-w-7xl mx-auto w-full" suppressHydrationWarning>
+                    {children}
+                </div>
+            </main>
 
             {/* Live Performance Navigation Overlay Badge — Active ONLY when Modo Desarrollador is enabled */}
             {developerMode && (lastNavDuration !== null || Object.values(perfFlags).some(Boolean)) && (

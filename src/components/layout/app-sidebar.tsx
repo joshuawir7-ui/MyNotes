@@ -100,238 +100,85 @@ function ShortcutPicker({ value, onChange }: { value?: number, onChange: (val?: 
 
 // ... (previous Animated components remain same)
 
-// Animated Icon Components
+// Animated Icon Components (CSS GPU-accelerated micro-transitions for 120fps navigation)
 const AnimatedTarget = ({ isActive, appColor }: { isActive: boolean; appColor?: string }) => (
-    <motion.div
-        variants={{
-            initial: { rotate: 0, scale: 1 },
-            hover: { rotate: 360, scale: 1.1 },
-            tap: { rotate: 720, scale: 0.8 },
-            active: { rotate: 15, scale: 1.2 }
-        }}
-        transition={{ duration: 0.8, ease: "easeInOut" }}
-    >
+    <div className={`transition-transform duration-200 ${isActive ? 'scale-110 rotate-6' : 'group-hover:scale-105'}`}>
         <Target className={`w-5 h-5 ${
             isActive 
-                ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-[#8b5cf6] drop-shadow-[0_0_8px_rgba(127,13,242,0.5)]')
+                ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-[#8b5cf6]')
                 : (appColor === 'black' ? 'text-muted-foreground group-hover:text-black dark:group-hover:text-white' : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-[#a78bfa]')
         }`} />
-    </motion.div>
+    </div>
 )
 
 const AnimatedSun = ({ isActive, appColor }: { isActive: boolean; appColor?: string }) => (
-    <motion.div
-        variants={{
-            initial: { rotate: isActive ? 90 : 0, scale: 1 },
-            hover: { rotate: 180, scale: 1.2 },
-            tap: { rotate: 270, scale: 0.85 },
-            active: { rotate: 180, scale: 1.3, filter: appColor === 'black' ? "none" : "drop-shadow(0 0 8px rgba(245, 158, 11, 0.6))" }
-        }}
-        transition={{ type: "spring", stiffness: 100 }}
-        className="relative flex items-center justify-center"
-    >
+    <div className={`transition-transform duration-200 ${isActive ? 'scale-110 rotate-90' : 'group-hover:scale-105'}`}>
         <Sun className={`w-5 h-5 ${
             isActive 
                 ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-amber-500')
                 : (appColor === 'black' ? 'text-muted-foreground group-hover:text-black dark:group-hover:text-white' : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-amber-400')
         }`} />
-    </motion.div>
+    </div>
 )
 
 const AnimatedTasks = ({ isActive, appColor }: { isActive: boolean; appColor?: string }) => (
-    <motion.div
-        variants={{
-            initial: { scale: 1, rotate: 0 },
-            hover: { scale: 1.2, x: [0, -2, 2, -2, 2, 0] },
-            tap: { scale: 0.8, rotate: -15 },
-            active: { scale: 1.2, rotate: -10, filter: appColor === 'black' ? "none" : "drop-shadow(0 0 8px rgba(34, 197, 94, 0.5))" }
-        }}
-        transition={{ duration: 0.4 }}
-    >
+    <div className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}>
         <CheckCircle2 className={`w-5 h-5 ${
             isActive 
                 ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-green-500')
                 : (appColor === 'black' ? 'text-muted-foreground group-hover:text-black dark:group-hover:text-white' : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-green-400')
         }`} />
-    </motion.div>
+    </div>
 )
 
 const AnimatedCalendar = ({ isActive, appColor }: { isActive: boolean; appColor?: string }) => (
-    <motion.div
-        variants={{
-            initial: { rotateX: 0, scale: 1 },
-            hover: { rotateX: 360, scale: 1.1 },
-            tap: { rotateX: 720, scale: 0.8 },
-            active: { scale: 1.2, y: -2, rotateZ: 5 }
-        }}
-        transition={{ duration: 0.8, ease: "backOut" }}
-        style={{ perspective: 1000, transformStyle: "preserve-3d" }}
-    >
+    <div className={`transition-transform duration-200 ${isActive ? 'scale-110 -translate-y-0.5' : 'group-hover:scale-105'}`}>
         <CalendarIcon className={`w-5 h-5 ${
             isActive 
-                ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-[#8b5cf6] drop-shadow-[0_0_8px_rgba(127,13,242,0.4)]')
+                ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-[#8b5cf6]')
                 : (appColor === 'black' ? 'text-muted-foreground group-hover:text-black dark:group-hover:text-white' : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-[#a78bfa]')
         }`} />
-    </motion.div>
+    </div>
 )
 
 const AnimatedLayers = ({ isActive, appColor }: { isActive: boolean; appColor?: string }) => (
-    <motion.div
-        variants={{
-            initial: { scale: 1, y: 0 },
-            hover: { scale: 0.8, y: -2 },
-            tap: { scale: 1.2, y: 5 },
-            active: { scale: 1.2, y: -3, filter: appColor === 'black' ? "none" : "drop-shadow(0 0 8px rgba(59, 130, 246, 0.5))" }
-        }}
-        transition={{ type: "spring", stiffness: 400, damping: 10 }}
-    >
+    <div className={`transition-transform duration-200 ${isActive ? 'scale-110 -translate-y-0.5' : 'group-hover:scale-105'}`}>
         <Layers className={`w-5 h-5 ${
             isActive 
                 ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-blue-500')
                 : (appColor === 'black' ? 'text-muted-foreground group-hover:text-black dark:group-hover:text-white' : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-blue-400')
         }`} />
-    </motion.div>
+    </div>
 )
 
 const AnimatedArchive = ({ isActive, appColor }: { isActive: boolean; appColor?: string }) => (
-    <motion.div className="relative">
-        <motion.div
-            variants={{
-                initial: { y: 0, rotate: 0, scale: 1 },
-                hover: { y: -4, rotate: -5, scale: 1.1 },
-                tap: { y: -8, rotate: 5, scale: 0.85 },
-                active: { y: -3, rotate: 5, scale: 1.2, filter: appColor === 'black' ? "none" : "drop-shadow(0 0 8px rgba(236, 72, 153, 0.5))" }
-            }}
-            transition={{ type: "spring", stiffness: 300 }}
-        >
-            <Archive className={`w-5 h-5 ${
-                isActive 
-                    ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-pink-500')
-                    : (appColor === 'black' ? 'text-muted-foreground group-hover:text-black dark:group-hover:text-white' : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-pink-400')
-            }`} />
-        </motion.div>
-    </motion.div>
+    <div className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}>
+        <Archive className={`w-5 h-5 ${
+            isActive 
+                ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-pink-500')
+                : (appColor === 'black' ? 'text-muted-foreground group-hover:text-black dark:group-hover:text-white' : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-pink-400')
+        }`} />
+    </div>
 )
 
 const AnimatedNotes = ({ isActive, appColor }: { isActive: boolean; appColor?: string }) => (
-    <motion.div className="relative flex items-center justify-center">
-        {/* Ghost pages effect */}
-        <motion.div
-            className={`absolute ${appColor === 'black' ? 'text-black/10 dark:text-white/10' : 'text-primary/10 dark:text-amber-500/10'}`}
-            variants={{
-                initial: { x: 0, y: 0, opacity: 0, rotate: 0 },
-                hover: { x: -4, y: 4, opacity: 0.6, rotate: -5 }
-            }}
-            transition={{ type: "spring", stiffness: 200, damping: 10 }}
-        >
-            <FileText className="w-5 h-5" />
-        </motion.div>
-        <motion.div
-            className={`absolute ${appColor === 'black' ? 'text-black/5 dark:text-white/5' : 'text-primary/5 dark:text-amber-500/5'}`}
-            variants={{
-                initial: { x: 0, y: 0, opacity: 0, rotate: 0 },
-                hover: { x: -8, y: 8, opacity: 0.3, rotate: -10 }
-            }}
-            transition={{ type: "spring", stiffness: 200, damping: 10, delay: 0.05 }}
-        >
-            <FileText className="w-5 h-5" />
-        </motion.div>
-
-        {/* Main Icon */}
-        <motion.div
-            className="relative z-10"
-            variants={{
-                initial: { scale: 1, rotate: 0, filter: "drop-shadow(0 0 0px rgba(0,0,0,0))" },
-                hover: {
-                    scale: 1.1,
-                    rotate: 5,
-                    filter: appColor === 'black' ? "none" : [
-                        "drop-shadow(0 0 0px rgba(245, 158, 11, 0))",
-                        "drop-shadow(0 0 8px rgba(245, 158, 11, 0.4))",
-                        "drop-shadow(0 0 0px rgba(245, 158, 11, 0))"
-                    ]
-                },
-                active: {
-                    scale: 1.2,
-                    rotate: -5,
-                    filter: appColor === 'black' ? "none" : "drop-shadow(0 0 10px rgba(245, 158, 11, 0.6))"
-                },
-                tap: { scale: 0.85, rotate: 10 }
-            }}
-            transition={{
-                rotate: { type: "spring", stiffness: 300 },
-                filter: { duration: 1.5, repeat: Infinity }
-            }}
-        >
-            <FileText className={`w-5 h-5 ${
-                isActive 
-                    ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-amber-500')
-                    : (appColor === 'black' ? 'text-muted-foreground group-hover:text-black dark:group-hover:text-white' : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-amber-400')
-            }`} />
-        </motion.div>
-
-        {/* Floating Pencil with Flourish */}
-        <motion.div
-            className="absolute -top-2 -right-2 z-20"
-            initial="initial"
-            whileHover="hover"
-            variants={{
-                initial: { opacity: 0, scale: 0, rotate: 45, x: 10 },
-                hover: {
-                    opacity: 1,
-                    scale: 1,
-                    rotate: [45, -15, 25, 0],
-                    x: 0,
-                    y: [0, -2, 0]
-                }
-            }}
-            transition={{
-                opacity: { duration: 0.2 },
-                scale: { type: "spring", stiffness: 200 },
-                y: { duration: 2, repeat: Infinity, ease: "easeInOut" }
-            }}
-        >
-            <Pencil className={`w-3.5 h-3.5 ${appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-amber-500'} drop-shadow-md`} />
-
-            {/* Creative Spark particles */}
-            {[0, 1, 2].map((i) => (
-                <motion.div
-                    key={i}
-                    className={`absolute top-0 left-0 w-1 h-1 ${appColor === 'black' ? 'bg-black dark:bg-white' : 'bg-amber-400'} rounded-full`}
-                    animate={{
-                        opacity: [0, 1, 0],
-                        scale: [0, 1.2, 0],
-                        x: [0, (i - 1) * 15],
-                        y: [0, -15 - (i * 5)],
-                    }}
-                    transition={{
-                        duration: 1,
-                        repeat: Infinity,
-                        delay: i * 0.2,
-                        ease: "easeOut"
-                    }}
-                />
-            ))}
-        </motion.div>
-    </motion.div>
+    <div className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}>
+        <FileText className={`w-5 h-5 ${
+            isActive 
+                ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-amber-500')
+                : (appColor === 'black' ? 'text-muted-foreground group-hover:text-black dark:group-hover:text-white' : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-amber-400')
+        }`} />
+    </div>
 )
 
 const AnimatedWallet = ({ isActive, appColor }: { isActive: boolean; appColor?: string }) => (
-    <motion.div
-        variants={{
-            initial: { scale: 1, rotate: 0 },
-            hover: { scale: 1.15, rotate: [0, -10, 10, -5, 5, 0] },
-            tap: { scale: 0.85, rotate: -15 },
-            active: { scale: 1.25, rotate: 5, filter: appColor === 'black' ? "none" : "drop-shadow(0 0 8px rgba(16, 185, 129, 0.6))" }
-        }}
-        transition={{ duration: 0.5 }}
-    >
+    <div className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}>
         <Wallet className={`w-5 h-5 ${
             isActive 
-                ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]')
+                ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-emerald-500')
                 : (appColor === 'black' ? 'text-muted-foreground group-hover:text-black dark:group-hover:text-white' : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-emerald-400')
         }`} />
-    </motion.div>
+    </div>
 )
 
 export function AppSidebar() {
@@ -420,7 +267,7 @@ export function AppSidebar() {
         <aside className="fixed z-50 transition-all duration-300 ease-in-out
             bottom-4 left-3 right-3 mx-auto w-[88%] max-w-xs sm:max-w-sm h-12 flex flex-row items-center px-1.5 py-0 
             rounded-full border border-black/10 dark:border-white/10 shadow-2xl
-            bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md
+            bg-white/95 dark:bg-zinc-900/95 md:backdrop-blur-md
             md:top-4 md:bottom-4 md:left-4 md:right-auto md:mx-0 md:w-60 md:h-auto md:border md:flex-col md:pt-8 md:pb-8 md:px-4 md:overflow-y-auto md:bg-white/90 dark:md:bg-zinc-900/90 md:shadow-2xl md:rounded-[2.5rem] no-scrollbar">
 
             {/* Logo/Brand Area (Desktop only) */}
@@ -479,26 +326,18 @@ export function AppSidebar() {
                                 href={item.href}
                                 onClick={() => markNavStart(item.href)}
                                 id={item.href === '/tasks' ? "nav-item-tasks" : undefined}
-                                className={`relative flex items-center justify-center p-1 rounded-full transition-all duration-300 group shrink-0 ${isBlinking ? 'animate-pulse-green border border-green-500 bg-green-500/20' : ''
+                                className={`relative flex items-center justify-center p-1.5 rounded-full transition-all duration-150 group shrink-0 ${isBlinking ? 'animate-pulse-green border border-green-500 bg-green-500/20' : ''
                                     }`}
                                 title={isMounted ? item.label : ""}
                             >
                                 {isActive && appColor !== 'black' && (
-                                    <motion.div
-                                        layoutId="mobile-nav-active"
-                                        className="absolute inset-0 bg-primary/10 rounded-full z-0"
-                                        transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                                    <div
+                                        className="absolute inset-0 bg-primary/15 rounded-full z-0 pointer-events-none transition-colors duration-150"
                                     />
                                 )}
-                                <motion.div
-                                    initial="initial"
-                                    whileHover="hover"
-                                    whileTap="tap"
-                                    animate={isActive ? "active" : "initial"}
-                                    className="relative z-10 flex items-center justify-center scale-90"
-                                >
+                                <div className={`relative z-10 flex items-center justify-center transition-transform duration-150 ${isActive ? 'scale-105' : 'scale-90 opacity-70 group-hover:opacity-100'}`}>
                                     <item.icon isActive={isActive} appColor={appColor} />
-                                </motion.div>
+                                </div>
                             </Link>
                         )
                     })}
@@ -514,43 +353,34 @@ export function AppSidebar() {
 
             {/* Desktop-only Navigation (Hidden on Mobile) */}
             <nav className="hidden md:flex md:flex-col md:items-stretch md:space-y-1 shrink-0 w-full relative">
-                <AnimatePresence mode="popLayout">
-                    {navItems.map((item) => {
-                        const isActive = pathname === item.href
-                        const isBlinking = item.href === '/tasks' && tourStep === 0
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                onClick={() => markNavStart(item.href)}
-                                id={item.href === '/tasks' ? "nav-item-tasks-desktop" : undefined}
-                                className={`relative flex items-center justify-center md:px-4 md:py-3 rounded-2xl text-sm font-medium transition-colors duration-300 group
-                                    ${isActive
-                                        ? (appColor === 'black' ? 'text-black dark:text-white font-bold' : 'text-primary')
-                                        : 'text-muted-foreground hover:text-foreground'
-                                    } ${isBlinking ? 'animate-pulse-green border border-green-500/50 bg-green-500/10' : ''}`}
-                                title={isMounted ? item.label : ""}
-                            >
-                                {isActive && appColor !== 'black' && (
-                                    <motion.div
-                                        layoutId="sidebar-active-pill"
-                                        className="absolute inset-0 bg-primary/10 rounded-2xl z-0"
-                                        transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                                    />
-                                )}
-                                <motion.div
-                                    initial="initial"
-                                    whileHover="hover"
-                                    whileTap="tap"
-                                    className="relative z-10 flex flex-row items-center justify-start gap-3 w-full"
-                                >
-                                    <item.icon isActive={isActive} appColor={appColor} />
-                                    <span className="inline-block">{isMounted ? item.label : ""}</span>
-                                </motion.div>
-                            </Link>
-                        )
-                    })}
-                </AnimatePresence>
+                {navItems.map((item) => {
+                    const isActive = pathname === item.href
+                    const isBlinking = item.href === '/tasks' && tourStep === 0
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => markNavStart(item.href)}
+                            id={item.href === '/tasks' ? "nav-item-tasks-desktop" : undefined}
+                            className={`relative flex items-center justify-center md:px-4 md:py-3 rounded-2xl text-sm font-medium transition-colors duration-200 group
+                                ${isActive
+                                    ? (appColor === 'black' ? 'text-black dark:text-white font-bold' : 'text-primary')
+                                    : 'text-muted-foreground hover:text-foreground'
+                                } ${isBlinking ? 'animate-pulse-green border border-green-500/50 bg-green-500/10' : ''}`}
+                            title={isMounted ? item.label : ""}
+                        >
+                            {isActive && appColor !== 'black' && (
+                                <div
+                                    className="absolute inset-0 bg-primary/10 rounded-2xl z-0 pointer-events-none"
+                                />
+                            )}
+                            <div className="relative z-10 flex flex-row items-center justify-start gap-3 w-full">
+                                <item.icon isActive={isActive} appColor={appColor} />
+                                <span className="inline-block">{isMounted ? item.label : ""}</span>
+                            </div>
+                        </Link>
+                    )
+                })}
             </nav>
 
             {/* Projects Section - Desktop only */}

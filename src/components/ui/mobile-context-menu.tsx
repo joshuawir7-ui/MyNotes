@@ -39,19 +39,21 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
         }
     }, [isOpen])
 
-    const handleTouchStart = () => {
-        setIsLongPressing(false)
+    const touchStartPos = useRef<{ x: number, y: number } | null>(null)
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (e.touches.length > 0) {
+            touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        }
+        if (longPressTimer.current) clearTimeout(longPressTimer.current)
         longPressTimer.current = setTimeout(() => {
-            setIsLongPressing(true)
             setIsOpen(true)
             if (typeof navigator !== 'undefined' && navigator.vibrate) {
                 try {
-                    navigator.vibrate(50) // Haptic feedback
-                } catch (e) {
-                    // Ignore haptic feedback errors
-                }
+                    navigator.vibrate(50)
+                } catch (e) { }
             }
-        }, 600) // 600ms for long press
+        }, 550)
     }
 
     const handleTouchEnd = () => {
@@ -59,12 +61,17 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
             clearTimeout(longPressTimer.current)
             longPressTimer.current = null
         }
+        touchStartPos.current = null
     }
 
-    const handleTouchMove = () => {
-        if (longPressTimer.current) {
-            clearTimeout(longPressTimer.current)
-            longPressTimer.current = null
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (longPressTimer.current && touchStartPos.current && e.touches.length > 0) {
+            const dx = Math.abs(e.touches[0].clientX - touchStartPos.current.x)
+            const dy = Math.abs(e.touches[0].clientY - touchStartPos.current.y)
+            if (dx > 10 || dy > 10) {
+                clearTimeout(longPressTimer.current)
+                longPressTimer.current = null
+            }
         }
     }
 
@@ -81,7 +88,7 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
         >
             {children}
 
-            {mounted && createPortal(
+            {mounted && isOpen && createPortal(
                 <AnimatePresence>
                     {isOpen && (
                         <>

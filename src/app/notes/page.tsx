@@ -142,6 +142,18 @@ export default function NotesPage() {
     // Let's simple create a "ghost" note in the editor and save it when verified? 
     // Or just iterate notes to find the one with title "Untitled Note" and recent date.
 
+    const handleEditNote = React.useCallback((note: Note) => {
+        setEditingNote(note)
+    }, [])
+
+    const handleDeleteNote = React.useCallback((id: string) => {
+        setIsDeleting(id)
+    }, [])
+
+    const handleTogglePin = React.useCallback((id: string) => {
+        toggleNotePin(id)
+    }, [toggleNotePin])
+
     return (
         <div className="p-6 h-full container mx-auto max-w-5xl">
             <WelcomeNotesModal />
@@ -232,42 +244,30 @@ export default function NotesPage() {
                             <NoteCardSkeleton />
                         </div>
                     ) : (
-                        // Plain CSS grid — no virtualization.
-                        // VirtuosoGrid was causing scroll-position jumps: it measures each row height
-                        // dynamically and corrects the scroll offset whenever a measurement changes.
-                        // Since thumbnail images load asynchronously, each card's height was
-                        // changing post-render → Virtuoso corrected scroll → visible jump.
-                        // For a local notes list (rarely >500 items) a simple grid is faster,
-                        // stable, and eliminates this entire category of scroll bugs.
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
                             {/* Create new note button */}
-                            <motion.div
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
+                            <div
                                 onClick={() => {
                                     const newNote = addNote({ title: "", blocks: [{ id: Math.random().toString(36).substring(7), type: 'text', content: '' }], tags: [] })
                                     setEditingNote(newNote)
                                     showToast(language === 'es' ? "Nota creada" : "Note created", "success")
                                 }}
-                                className="glass-panel p-6 rounded-2xl border-dashed border-white/20 hover:border-primary/50 transition-colors flex flex-col items-center justify-center text-center cursor-pointer min-h-[200px] group relative overflow-hidden"
+                                className="glass-panel p-6 rounded-2xl border-dashed border-white/20 hover:border-primary/50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 flex flex-col items-center justify-center text-center cursor-pointer min-h-[200px] group relative overflow-hidden"
                             >
                                 <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <div className={`w-12 h-12 rounded-full ${appColor === 'black' ? 'bg-transparent text-foreground' : 'bg-white/5 group-hover:bg-primary/20 group-hover:text-primary'} flex items-center justify-center mb-4 mx-auto transition-all`}>
                                     <Plus className="w-6 h-6" />
                                 </div>
                                 <span className="font-medium">{t.create}</span>
-                            </motion.div>
+                            </div>
 
                             {sortedNotes.map((note) => (
                                 <NoteCard
                                     key={note.id}
                                     note={note}
-                                    onEdit={() => setEditingNote(note)}
-                                    onDelete={() => setIsDeleting(note.id)}
-                                    onTogglePin={(e) => {
-                                        e.stopPropagation();
-                                        toggleNotePin(note.id);
-                                    }}
+                                    onEdit={handleEditNote}
+                                    onDelete={handleDeleteNote}
+                                    onTogglePin={handleTogglePin}
                                     t={t}
                                 />
                             ))}
@@ -386,6 +386,7 @@ const NoteThumbnail = memo(({ rawSrc }: { rawSrc: string | null }) => {
                     className="max-w-full max-h-48 w-auto h-auto rounded-xl"
                     style={{ borderRadius: '12px', display: 'block' }}
                     loading="lazy"
+                    decoding="async"
                     onLoad={() => setIsLoaded(true)}
                     onError={() => setHasError(true)}
                 />
@@ -395,24 +396,53 @@ const NoteThumbnail = memo(({ rawSrc }: { rawSrc: string | null }) => {
 });
 NoteThumbnail.displayName = "NoteThumbnail";
 
-const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note; onEdit: () => void; onDelete: () => void; onTogglePin: (e: React.MouseEvent) => void; t: any }) => {
+const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note; onEdit: (note: Note) => void; onDelete: (id: string) => void; onTogglePin: (id: string) => void; t: any }) => {
     const rawThumb = useMemo(() => getRawNoteThumbnail(note.blocks), [note.blocks]);
+
+    const previewText = useMemo(() => {
+        try {
+            if (!note.blocks || !Array.isArray(note.blocks) || note.blocks.length === 0) return t.empty;
+            const firstBlock = note.blocks[0];
+            if (firstBlock && typeof firstBlock === 'object' && firstBlock.type === 'text' && typeof firstBlock.content === 'string') {
+                const snippet = firstBlock.content.slice(0, 300);
+                const cleanText = snippet.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+                return cleanText || t.empty;
+            }
+            return `[${note.blocks?.length || 0} Blocks]`;
+        } catch (e) {
+            return "...";
+        }
+    }, [note.blocks, t.empty]);
+
+    const handleCardClick = React.useCallback(() => {
+        onEdit(note);
+    }, [note, onEdit]);
+
+    const handlePinClick = React.useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        onTogglePin(note.id);
+    }, [note.id, onTogglePin]);
+
+    const handleDeleteClick = React.useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        onDelete(note.id);
+    }, [note.id, onDelete]);
 
     return (
         <MobileContextMenu
             title={note.title || t.untitled}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onTogglePin={() => onTogglePin({ stopPropagation: () => {} } as any)}
+            onEdit={handleCardClick}
+            onDelete={() => onDelete(note.id)}
+            onTogglePin={() => onTogglePin(note.id)}
             isPinned={note.isPinned}
         >
             <div
-                onClick={onEdit}
-                className="glass-panel p-5 sm:p-6 rounded-2xl hover:scale-[1.02] transition-transform cursor-pointer group flex flex-col justify-between min-h-[160px] gap-2 relative w-full"
+                onClick={handleCardClick}
+                className="glass-panel p-5 sm:p-6 rounded-2xl hover:scale-[1.02] transition-transform duration-150 cursor-pointer group flex flex-col justify-between min-h-[160px] gap-2 relative w-full"
             >
                 {/* Pin button */}
                 <button
-                    onClick={onTogglePin}
+                    onClick={handlePinClick}
                     className={`absolute top-3 right-3 p-1.5 rounded-full transition-all z-10 bg-white dark:bg-zinc-900 shadow-md border border-black/5 dark:border-white/10 ${note.isPinned ? 'text-zinc-700 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100'}`}
                     title={note.isPinned ? "Desfijar nota" : "Fijar nota"}
                 >
@@ -425,20 +455,7 @@ const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note;
                         </h3>
                         {/* Preview content */}
                         <div className="text-sm text-muted-foreground overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', textOverflow: 'ellipsis' }}>
-                            {(() => {
-                                try {
-                                    if (!note.blocks || !Array.isArray(note.blocks) || note.blocks.length === 0) return t.empty
-                                    const firstBlock = note.blocks[0]
-                                    if (firstBlock && typeof firstBlock === 'object' && firstBlock.type === 'text' && typeof firstBlock.content === 'string') {
-                                        const cleanText = firstBlock.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
-                                        return cleanText || t.empty
-                                    }
-                                    return `[${note.blocks?.length || 0} Blocks]`
-                                } catch (e) {
-                                    console.error("Preview error:", e)
-                                    return "..."
-                                }
-                            })()}
+                            {previewText}
                         </div>
                     </div>
                 </div>
@@ -450,22 +467,27 @@ const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note;
                         <StickyNote className="w-3 h-3" />
                         <span>{note.createdAt ? new Date(note.createdAt).toLocaleDateString() : 'No date'}</span>
                     </div>
-                    <motion.button
-                        whileHover={{ scale: 1.2, rotate: 10 }}
-                        whileTap={{ scale: 0.8, rotate: -10 }}
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            onDelete()
-                        }}
-                        className="p-2 rounded-lg hover:bg-red-500/20 text-muted-foreground hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                    <button
+                        onClick={handleDeleteClick}
+                        className="p-2 rounded-lg hover:bg-red-500/20 text-muted-foreground hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 active:scale-90"
                         title="Delete Note"
                     >
                         <Trash2 className="w-4 h-4" />
-                    </motion.button>
+                    </button>
                 </div>
             </div>
         </MobileContextMenu>
-    )
-})
-NoteCard.displayName = "NoteCard"
+    );
+}, (prev, next) => {
+    return prev.note.id === next.note.id &&
+        prev.note.title === next.note.title &&
+        prev.note.isPinned === next.note.isPinned &&
+        prev.note.lastUpdated === next.note.lastUpdated &&
+        prev.note.blocks === next.note.blocks &&
+        prev.t === next.t &&
+        prev.onEdit === next.onEdit &&
+        prev.onDelete === next.onDelete &&
+        prev.onTogglePin === next.onTogglePin;
+});
+NoteCard.displayName = "NoteCard";
 
