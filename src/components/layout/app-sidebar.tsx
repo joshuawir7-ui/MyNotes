@@ -197,6 +197,7 @@ export function AppSidebar() {
 
     const [isMobileDevice, setIsMobileDevice] = useState(false)
     const [isAPK, setIsAPK] = useState(false)
+    const [isLiteDevice, setIsLiteDevice] = useState(false)
 
     useEffect(() => {
         setIsMounted(true)
@@ -208,6 +209,16 @@ export function AppSidebar() {
         }
         checkDevice()
         window.addEventListener('resize', checkDevice)
+
+        // Low-end device detection for cheaper blur (nav-glass-lite)
+        if (typeof navigator !== 'undefined') {
+            const nav = navigator as any
+            const lowMemory = typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 2
+            const lowCores = typeof nav.hardwareConcurrency === 'number' && nav.hardwareConcurrency <= 4
+            if (lowMemory || lowCores) {
+                setIsLiteDevice(true)
+            }
+        }
 
         // Only toggle if not an APK/Mobile View?
         // User wants it 'tal como estaba' for desktop
@@ -264,11 +275,12 @@ export function AppSidebar() {
     }
 
     return (
-        <aside className="fixed z-50 transition-all duration-300 ease-in-out
-            bottom-4 left-3 right-3 mx-auto w-[88%] max-w-xs sm:max-w-sm h-12 flex flex-row items-center px-1.5 py-0 
-            rounded-full border border-black/10 dark:border-white/10 shadow-2xl
-            bg-white/95 dark:bg-zinc-900/95 md:backdrop-blur-md
-            md:top-4 md:bottom-4 md:left-4 md:right-auto md:mx-0 md:w-60 md:h-auto md:border md:flex-col md:pt-8 md:pb-8 md:px-4 md:overflow-y-auto md:bg-white/90 dark:md:bg-zinc-900/90 md:shadow-2xl md:rounded-[2.5rem] no-scrollbar">
+        <aside
+            className={`nav-glass ${isLiteDevice ? 'nav-glass-lite' : ''} fixed z-50
+            bottom-4 left-3 right-3 mx-auto w-[88%] max-w-xs sm:max-w-sm h-[50px] flex flex-row items-center px-1.5 py-0
+            rounded-full
+            md:top-4 md:bottom-4 md:left-4 md:right-auto md:mx-0 md:w-60 md:h-auto md:flex-col md:pt-8 md:pb-8 md:px-4 md:overflow-y-auto md:!bg-white/95 dark:md:!bg-zinc-900/95 md:shadow-2xl md:rounded-[2.5rem] md:before:hidden md:[box-shadow:0_20px_60px_rgba(0,0,0,0.12)] no-scrollbar`}
+        >
 
             {/* Logo/Brand Area (Desktop only) */}
             <div className="hidden md:flex flex-col items-center mb-8 shrink-0">
