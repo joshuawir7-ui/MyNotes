@@ -254,9 +254,9 @@ html.dark.theme-black {
 }
 
 /* ── Paso 1: Performance Debug Flag Overrides ────────────────────────────── */
-html.perf-no-backdrop *:not(.nav-shell):not(.nav-glass):not(.bl):not(.bl1):not(.bl2):not(.bl3):not(.bl4),
-html.perf-no-backdrop *:not(.nav-shell):not(.nav-glass):not(.bl)::before,
-html.perf-no-backdrop *:not(.nav-shell):not(.nav-glass):not(.bl)::after {
+html.perf-no-backdrop *:not(.nav-glass),
+html.perf-no-backdrop *:not(.nav-glass)::before,
+html.perf-no-backdrop *:not(.nav-glass)::after {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
@@ -303,61 +303,50 @@ html.perf-no-motion *::after {
   contain: layout style;
 }
 
-/* ── Mobile Bottom Nav — Progressive Multi-Layer Frosted Glass ───────────── */
-.nav-shell{
-  position:fixed; left:12px; right:12px; z-index:50;
-  bottom:calc(16px + env(safe-area-inset-bottom, 0px));
-  height:64px; border-radius:32px; box-sizing:border-box;
-  box-shadow:0 14px 34px rgba(20,24,40,.14), 0 3px 10px rgba(20,24,40,.07);
-  /* PROHIBIDO en este elemento: overflow, opacity, transform, filter, will-change, mask, clip-path */
+/* ── Mobile Bottom Nav — Frosted Glass ───────────────────────────────────── */
+.nav-glass {
+  --glass-top: rgba(255,255,255,0.42);
+  --glass-bottom: rgba(255,255,255,0.82);
+  position: fixed;
+  isolation: isolate;
+  background: linear-gradient(180deg, var(--glass-top) 0%, var(--glass-bottom) 100%);
+  -webkit-backdrop-filter: blur(18px) saturate(1.8);
+  backdrop-filter: blur(18px) saturate(1.8);
+  border: 1px solid rgba(255,255,255,0.6);
+  box-shadow:
+    0 10px 30px rgba(20,24,40,0.12),
+    0 2px 6px rgba(20,24,40,0.06),
+    inset 0 1px 0 rgba(255,255,255,0.85);
 }
-.nav-glass{ position:absolute; inset:0; border-radius:inherit; pointer-events:none; }
-.nav-glass > i{ position:absolute; inset:0; display:block; border-radius:inherit; box-sizing:border-box; }
 
-/* 4 capas de blur: cada una visible solo en su franja vertical */
-.bl1{ -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);
-  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 25%,transparent 50%);
-          mask-image:linear-gradient(to bottom,#000 0%,#000 25%,transparent 50%); }
-.bl2{ -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px);
-  -webkit-mask-image:linear-gradient(to bottom,transparent 15%,#000 40%,#000 55%,transparent 72%);
-          mask-image:linear-gradient(to bottom,transparent 15%,#000 40%,#000 55%,transparent 72%); }
-.bl3{ -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
-  -webkit-mask-image:linear-gradient(to bottom,transparent 40%,#000 65%,#000 75%,transparent 92%);
-          mask-image:linear-gradient(to bottom,transparent 40%,#000 65%,#000 75%,transparent 92%); }
-.bl4{ -webkit-backdrop-filter:blur(18px) saturate(1.5); backdrop-filter:blur(18px) saturate(1.5);
-  -webkit-mask-image:linear-gradient(to bottom,transparent 62%,#000 88%,#000 100%);
-          mask-image:linear-gradient(to bottom,transparent 62%,#000 88%,#000 100%); }
+/* brillo suave superior, sin elemento extra */
+.nav-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0) 45%);
+}
 
-/* color: claro/transparente arriba, blanco denso abajo */
-.tint{ background:linear-gradient(to bottom,
-  rgba(255,255,255,.26) 0%, rgba(255,255,255,.55) 45%, rgba(255,255,255,.84) 100%); }
+.dark .nav-glass {
+  --glass-top: rgba(40,42,54,0.50);
+  --glass-bottom: rgba(22,23,30,0.82);
+  border-color: rgba(255,255,255,0.10);
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+}
 
-/* borde y brillo */
-.rim{ border:1px solid rgba(255,255,255,.7);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.95), inset 0 -10px 18px rgba(255,255,255,.30);
-  background:linear-gradient(to bottom, rgba(255,255,255,.30), rgba(255,255,255,0) 40%); }
+/* gama baja: blur más barato, mismo aspecto general */
+.nav-glass-lite {
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
+  backdrop-filter: blur(10px) saturate(1.4);
+}
 
-.nav-items{ position:relative; z-index:1; height:100%; display:flex;
-  align-items:center; justify-content:space-around; padding:0 14px; }
-
-/* modo oscuro */
-.dark .nav-shell{ box-shadow:0 14px 34px rgba(0,0,0,.55), 0 3px 10px rgba(0,0,0,.30); }
-.dark .tint{ background:linear-gradient(to bottom,
-  rgba(40,42,54,.30) 0%, rgba(30,32,42,.58) 45%, rgba(18,19,26,.84) 100%); }
-.dark .rim{ border-color:rgba(255,255,255,.10);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.10);
-  background:linear-gradient(to bottom, rgba(255,255,255,.06), rgba(255,255,255,0) 40%); }
-
-/* dispositivos de gama baja: 2 capas en vez de 4 */
-.nav-glass[data-lite="true"] .bl1,
-.nav-glass[data-lite="true"] .bl3{ display:none; }
-.nav-glass[data-lite="true"] .bl4{ -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); }
-
-/* sin soporte de backdrop-filter: fondo casi opaco */
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .bl{ display:none; }
-  .tint{ background:rgba(255,255,255,.92); }
-  .dark .tint{ background:rgba(22,23,30,.94); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .nav-glass { --glass-top: rgba(255,255,255,0.90); --glass-bottom: rgba(255,255,255,0.96); }
+  .dark .nav-glass { --glass-top: rgba(30,31,40,0.94); --glass-bottom: rgba(22,23,30,0.97); }
 }
 
 @utility render-optimized {
