@@ -1065,6 +1065,8 @@ interface AppState {
     isSyncingCloud: boolean
     syncError: string | null
     lastCloudSync?: string
+    /** Epoch ms del último sync terminado. Usar ESTE para cooldown; lastCloudSync es solo para mostrar. */
+    lastCloudSyncAt?: number
     lastUpdated?: number
     restoreProgress?: string | null
     cloudRestoreProgress: { done: number; total: number } | null
@@ -1102,8 +1104,8 @@ interface AppState {
     
     // Actions
     setGoogleUser: (user: GoogleUser | null) => void
-    syncWithGoogleDrive: () => Promise<boolean>
-    syncCycle: (force?: boolean) => Promise<boolean>
+    syncWithGoogleDrive: (isAuthRetry?: boolean) => Promise<boolean>
+    syncCycle: (force?: boolean, isAuthRetry?: boolean) => Promise<boolean>
     downloadAttachment: (noteId: string, blockId: string) => Promise<boolean>
     inAppNotificationDates: number[]
     notificationsEnabled: boolean
@@ -1276,8 +1278,96 @@ async function fetchWithTimeout(resource: string, options: any = {}, timeout = 6
     }
 }
 
+// ── Subida del backup a Drive (contenido + appProperties.lastUpdated) ─────────────────────────
+// Drive v3 (files.update): una subida `uploadType=media` NO toca los metadatos, por eso antes la
+// salida temprana de syncCycle dejaba de funcionar tras la primera edición. Ahora el contenido y
+// appProperties.lastUpdated viajan en UNA sola petición multipart (atómica: o se aplican ambos o ninguno).
+// INVARIANTE CRÍTICA: `lastUpdated` debe ser el MISMO número que se escribe en el store local
+// (originalSet) y en `data.lastUpdated`. Los llamadores calculan `newTimestamp` UNA vez y lo reutilizan.
+// Los valores de appProperties deben ser strings (límite: clave+valor ≤ 124 bytes; sobra de largo).
+const BACKUP_MULTIPART_LIMIT = 4.5 * 1024 * 1024; // Drive recomienda multipart para ≤ 5 MB
+
+const repairBackupMetadata = async (token: string, fileId: string, lastUpdated: number) => {
+    // Solo metadatos: PATCH /drive/v3/files/{id}. Se usa para reparar appProperties desfasadas.
+    const res = await fetchWithTimeout(
+        `https://www.googleapis.com/drive/v3/files/${fileId}`,
+        {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ appProperties: { lastUpdated: String(lastUpdated) } })
+        }
+    );
+    if (!res.ok) {
+        const errBody = await res.text().catch(() => 'Unknown error');
+        throw new Error(`Metadata repair failed (${res.status}): ${errBody}`);
+    }
+    console.log(`[PERF][sync] ${perfStamp()} phase=repairBackupMetadata lastUpdated=${lastUpdated}`);
+};
+
+const patchBackupToDrive = async (token: string, fileId: string, data: any, lastUpdated: number) => {
+    const json = JSON.stringify(data);
+    if (json.length <= BACKUP_MULTIPART_LIMIT) {
+        const boundary = 'mynotes_backup_boundary';
+        const metadata = { appProperties: { lastUpdated: String(lastUpdated) } };
+        const body = [
+            `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`,
+            `--${boundary}\r\nContent-Type: application/json\r\n\r\n${json}\r\n`,
+            `--${boundary}--`
+        ].join('');
+        return fetchWithTimeout(
+            `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`,
+            {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': `multipart/related; boundary=${boundary}`
+                },
+                body
+            }
+        );
+    }
+    // Respaldo para JSON muy grande: dos pasos (NO atómico). Si falla el segundo, el contenido ya quedó
+    // subido con data.lastUpdated == local; el siguiente ciclo lo detecta (appProps ≠ local) y repara
+    // los metadatos en la rama "idénticos" sin perder datos.
+    const res = await fetchWithTimeout(
+        `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+        {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: json
+        }
+    );
+    if (!res.ok) return res;
+    try {
+        await repairBackupMetadata(token, fileId, lastUpdated);
+    } catch (e) {
+        console.warn('[Sync] Metadatos no actualizados tras subida en 2 pasos; se repararán en el próximo ciclo.', e);
+    }
+    return res;
+};
+
+/** Cuenta bloques con driveFileId: sirve para detectar si uploadMissingAttachments cambió notas en el sitio. */
+const countAttachmentDriveIds = (notes: Note[] | undefined): number => {
+    let n = 0;
+    for (const note of notes || []) for (const b of (note.blocks || [])) if (b.driveFileId) n++;
+    return n;
+};
+
 // Helper to strip massive base64 payloads to reduce JSON size
-export const stripLargePayloads = (notes: Note[]): Note[] => {
+export const stripLargePayloads = (notes: Note[]): Note[] =>
+    // isDownloading es estado local de UI (ya vive en useDownloadingStore): jamás debe subirse a Drive.
+    stripLargePayloadsRaw(notes).map(note => ({
+        ...note,
+        blocks: note.blocks.map((b: any) => {
+            if (b && 'isDownloading' in b) {
+                const { isDownloading, ...rest } = b;
+                return rest;
+            }
+            return b;
+        })
+    }));
+
+const stripLargePayloadsRaw = (notes: Note[]): Note[] => {
     return notes.map(note => ({
         ...note,
         blocks: note.blocks.map(block => {
@@ -1781,6 +1871,20 @@ export const silentRefreshGoogleToken = async (): Promise<string | null> => {
     }
 };
 
+/**
+ * Claves de estado que NO son datos del usuario: cambiarlas no debe marcar la nube como sucia
+ * ni mover `lastUpdated`. IMPORTANTE para la salida temprana de syncCycle: `syncError` e
+ * `isSyncingCloud` se escriben al inicio de CADA ciclo; si movieran `lastUpdated`, el valor local
+ * nunca coincidiría con `appProperties.lastUpdated` de Drive y la salida temprana jamás ocurriría.
+ */
+const NON_DATA_KEYS = new Set<string>([
+    'isSyncingCloud', 'syncError', 'lastCloudSync', 'lastCloudSyncAt',
+    'timer', 'googleUser', 'googleSessionExpired', 'toast', 'priorityReminderSettings'
+]);
+
+/** Marca de fin de sync: texto para la UI + número para cooldown/comparaciones (nunca Date.parse(toLocaleString)). */
+const syncStamp = () => ({ lastCloudSync: new Date().toLocaleString(), lastCloudSyncAt: Date.now() });
+
 export const useStore = create<AppState>()(
     persist(
         (originalSet, get) => {
@@ -1791,7 +1895,7 @@ export const useStore = create<AppState>()(
                         if (partialState) {
                             const keys = Object.keys(partialState);
                             const isTimerOnly = keys.length === 1 && keys[0] === 'timer';
-                            const isSyncOnly = keys.every(k => k === 'isSyncingCloud' || k === 'lastCloudSync' || k === 'timer' || k === 'googleUser' || k === 'googleSessionExpired' || k === 'toast' || k === 'priorityReminderSettings');
+                            const isSyncOnly = keys.every(k => NON_DATA_KEYS.has(k));
                             if (!isTimerOnly && !isSyncOnly) {
                                 markCloudSyncDirty();
                                 return { ...partialState, lastUpdated: Date.now() };
@@ -1804,7 +1908,7 @@ export const useStore = create<AppState>()(
                     if (partialState) {
                         const keys = Object.keys(partialState);
                         const isTimerOnly = keys.length === 1 && keys[0] === 'timer';
-                        const isSyncOnly = keys.every(k => k === 'isSyncingCloud' || k === 'lastCloudSync' || k === 'timer' || k === 'googleUser' || k === 'googleSessionExpired' || k === 'toast' || k === 'priorityReminderSettings');
+                        const isSyncOnly = keys.every(k => NON_DATA_KEYS.has(k));
                         if (!isTimerOnly && !isSyncOnly) {
                             markCloudSyncDirty();
                             (originalSet as any)({ ...partialState, lastUpdated: Date.now() }, replace);
@@ -1902,6 +2006,7 @@ export const useStore = create<AppState>()(
                 isSyncingCloud: false,
                 syncError: null,
                 lastCloudSync: undefined,
+                lastCloudSyncAt: undefined,
                 lastUpdated: 0,
                 restoreProgress: null,
                 cloudRestoreProgress: null,
@@ -3333,7 +3438,7 @@ export const useStore = create<AppState>()(
 
                         set({
                             isSyncingCloud: false,
-                            lastCloudSync: new Date().toLocaleString()
+                            ...syncStamp()
                         });
 
                         setTimeout(() => {
@@ -3351,7 +3456,7 @@ export const useStore = create<AppState>()(
                     }
                 },
 
-                syncWithGoogleDrive: async () => {
+                syncWithGoogleDrive: async (isAuthRetry: boolean = false) => {
                     if (getPerfFlags().perfNoSync) { console.log(`[PERF][sync] ${perfStamp()} phase=syncWithGoogleDrive:blocked(perf-no-sync)`); return false; }
                     console.log(`[PERF][sync] ${perfStamp()} phase=syncWithGoogleDrive:start`);
                     if (syncInProgress) {
@@ -3371,7 +3476,7 @@ export const useStore = create<AppState>()(
 
                     if (user.isDemo) {
                         await new Promise(resolve => setTimeout(resolve, 1500));
-                        set({ isSyncingCloud: false, lastCloudSync: new Date().toLocaleString() });
+                        set({ isSyncingCloud: false, ...syncStamp() });
                         return true;
                     }
 
@@ -3476,23 +3581,14 @@ export const useStore = create<AppState>()(
                             };
 
                             const fileId = existingFile.id;
-                            const updateRes = await fetchWithTimeout(
-                                `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
-                                {
-                                    method: 'PATCH',
-                                    headers: {
-                                        Authorization: `Bearer ${token}`,
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify(dataToSync)
-                                }
-                            );
+                            const updateRes = await patchBackupToDrive(token, fileId, dataToSync, newTimestamp);
                             if (!updateRes.ok) {
                                 const errBody = await updateRes.text().catch(() => "Unknown error");
                                 throw new Error(`Update failed (${updateRes.status}): ${errBody}`);
                             }
                         } else {
                             const state = get();
+                            const newTimestamp = Date.now();
                             dataToSync = {
                                 notes: stripLargePayloads(fullNotes),
                                 tasks: fullTasks,
@@ -3507,8 +3603,10 @@ export const useStore = create<AppState>()(
                                 dailySnapshots: state.dailySnapshots,
                                 user: state.user,
                                 deletedItems: state.deletedItems || {},
-                                lastUpdated: state.lastUpdated || Date.now()
+                                lastUpdated: newTimestamp
                             };
+
+                            originalSet({ lastUpdated: newTimestamp });
 
                             const metadata = {
                                 name: 'mynotes_backup.json',
@@ -3541,7 +3639,7 @@ export const useStore = create<AppState>()(
                             }
                         }
 
-                        set({ isSyncingCloud: false, lastCloudSync: new Date().toLocaleString() });
+                        set({ isSyncingCloud: false, ...syncStamp() });
                         return true;
                     } catch (err: any) {
                         console.error("Google Drive sync error", err);
@@ -3570,7 +3668,7 @@ export const useStore = create<AppState>()(
                     }
                 },
 
-                syncCycle: async (force: boolean = false) => {
+                syncCycle: async (force: boolean = false, isAuthRetry: boolean = false) => {
                     if (getPerfFlags().perfNoSync) { console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:blocked(perf-no-sync)`); return false; }
                     const tSyncCycleStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
                     console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:start force=${force} dirty=${isCloudSyncDirty}`);
@@ -3585,11 +3683,11 @@ export const useStore = create<AppState>()(
                     
                     // Parse lastCloudSync
                     let lastSyncTime = 0;
-                    if (state.lastCloudSync) {
-                        // Assuming lastCloudSync is a string like Date().toLocaleString(), wait!
-                        // In store.ts it's set as: lastCloudSync: new Date().toLocaleString()
-                        // Date.parse might fail depending on locale. It's safer to use a new timestamp field, but we can try parsing.
-                        const parsed = Date.parse(state.lastCloudSync);
+                    if (state.lastCloudSyncAt) {
+                        // Cooldown basado en lastCloudSyncAt (epoch ms numérico). Nunca parsear lastCloudSync:
+                        // (lastCloudSync es texto localizado: Date.parse da NaN o invierte día/mes en es-*)
+                        // (el campo numérico lastCloudSyncAt reemplaza al parseo anterior).
+                        const parsed = state.lastCloudSyncAt as number;
                         if (!isNaN(parsed)) lastSyncTime = parsed;
                     }
                     const timeSinceLastSync = now - lastSyncTime;
@@ -3618,7 +3716,7 @@ export const useStore = create<AppState>()(
 
                     if (user.isDemo) {
                         await new Promise(resolve => setTimeout(resolve, 1000));
-                        set({ isSyncingCloud: false, lastCloudSync: new Date().toLocaleString() });
+                        set({ isSyncingCloud: false, ...syncStamp() });
                         return true;
                     }
 
@@ -3692,7 +3790,7 @@ export const useStore = create<AppState>()(
                                 throw new Error(`Create failed (${createRes.status}): ${errBody}`);
                             }
 
-                            set({ isSyncingCloud: false, lastCloudSync: new Date().toLocaleString() });
+                            set({ isSyncingCloud: false, ...syncStamp() });
                             return true;
                         }
 
@@ -3705,7 +3803,7 @@ export const useStore = create<AppState>()(
                         if (remoteLastUpdated > 0 && localLastUpdated === remoteLastUpdated) {
                             console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:earlyExit localTS=${localLastUpdated} remoteTS=${remoteLastUpdated}`);
                             recordSyncMetric('earlyExit', 0);
-                            set({ isSyncingCloud: false, lastCloudSync: new Date().toLocaleString() });
+                            set({ isSyncingCloud: false, ...syncStamp() });
                             return true;
                         }
 
@@ -3773,7 +3871,7 @@ export const useStore = create<AppState>()(
                                 deletedItems: mergedDeletedItems,
                                 lastUpdated: driveLastUpdated,
                                 isSyncingCloud: false,
-                                lastCloudSync: new Date().toLocaleString(),
+                                ...syncStamp(),
                                 areNotesLoaded: true,
                                 areTasksLoaded: true
                             });
@@ -3809,23 +3907,13 @@ export const useStore = create<AppState>()(
                                 lastUpdated: newTimestamp
                             };
 
-                            const uploadRes = await fetchWithTimeout(
-                                `https://www.googleapis.com/upload/drive/v3/files/${existingFile.id}?uploadType=media`,
-                                {
-                                    method: 'PATCH',
-                                    headers: {
-                                        Authorization: `Bearer ${token}`,
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify(dataToUpload)
-                                }
-                            );
+                            const uploadRes = await patchBackupToDrive(token, existingFile.id, dataToUpload, newTimestamp);
                             if (!uploadRes.ok) {
                                 const errBody = await uploadRes.text().catch(() => 'Unknown error');
                                 throw new Error(`Upload failed (${uploadRes.status}): ${errBody}`);
                             }
 
-                            originalSet({ lastUpdated: newTimestamp, isSyncingCloud: false, lastCloudSync: new Date().toLocaleString() });
+                            originalSet({ lastUpdated: newTimestamp, isSyncingCloud: false, ...syncStamp() });
                             return true;
                         }
 
@@ -3873,7 +3961,7 @@ export const useStore = create<AppState>()(
                                 deletedItems: mergedDeletedItems,
                                 lastUpdated: newTimestamp,
                                 isSyncingCloud: false,
-                                lastCloudSync: new Date().toLocaleString(),
+                                ...syncStamp(),
                                 areNotesLoaded: true,
                                 areTasksLoaded: true
                             });
@@ -3900,17 +3988,7 @@ export const useStore = create<AppState>()(
                             };
 
                             const fileId = existingFile.id;
-                            const updateRes = await fetchWithTimeout(
-                                `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
-                                {
-                                    method: 'PATCH',
-                                    headers: {
-                                        Authorization: `Bearer ${token}`,
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify(dataToUpload)
-                                }
-                            );
+                            const updateRes = await patchBackupToDrive(token, fileId, dataToUpload, newTimestamp);
                             if (!updateRes.ok) {
                                 const errBody = await updateRes.text().catch(() => "Unknown error");
                                 throw new Error(`Update failed (${updateRes.status}): ${errBody}`);
@@ -3957,6 +4035,8 @@ export const useStore = create<AppState>()(
                             const mergedSnapshots4 = mergeDailySnapshots(freshState.dailySnapshots, driveData.dailySnapshots);
                             const mergedUser4 = mergeUser(freshState.user, driveData.user);
 
+                            const newTimestamp4 = Date.now();
+
                             await saveAllNotesToDisk(mergedNotes4);
                             await saveAllTasksToDisk(mergedTasks4);
 
@@ -3974,8 +4054,9 @@ export const useStore = create<AppState>()(
                                 dailySnapshots: mergedSnapshots4,
                                 user: mergedUser4,
                                 deletedItems: mergedDeletedItems4,
+                                lastUpdated: newTimestamp4,
                                 isSyncingCloud: false,
-                                lastCloudSync: new Date().toLocaleString(),
+                                ...syncStamp(),
                                 areNotesLoaded: true,
                                 areTasksLoaded: true
                             });
@@ -3999,19 +4080,9 @@ export const useStore = create<AppState>()(
                                 dailySnapshots: mergedSnapshots4,
                                 user: mergedUser4,
                                 deletedItems: mergedDeletedItems4,
-                                lastUpdated: driveLastUpdated
+                                lastUpdated: newTimestamp4
                             };
-                            const updateRes4 = await fetchWithTimeout(
-                                `https://www.googleapis.com/upload/drive/v3/files/${existingFile.id}?uploadType=media`,
-                                {
-                                    method: 'PATCH',
-                                    headers: {
-                                        Authorization: `Bearer ${token}`,
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify(dataToUpload4)
-                                }
-                            );
+                            const updateRes4 = await patchBackupToDrive(token, existingFile.id, dataToUpload4, newTimestamp4);
                             if (!updateRes4.ok) {
                                 console.warn(`[Sync] Case 4 upload warning: ${updateRes4.status}`);
                             }
@@ -4020,7 +4091,14 @@ export const useStore = create<AppState>()(
 
                         // Truly identical — no action needed
                         console.log('[Sync] Identical timestamps and content. No action needed.');
-                        set({ isSyncingCloud: false });
+                        if (!remoteLastUpdated || remoteLastUpdated !== localLastUpdated) {
+                            try {
+                                await repairBackupMetadata(token, existingFile.id, localLastUpdated);
+                            } catch (e) {
+                                console.warn('[Sync] Fallo reparando metadatos en estado idéntico', e);
+                            }
+                        }
+                        set({ isSyncingCloud: false, ...syncStamp() });
                         return true;
 
                     } catch (err: any) {
