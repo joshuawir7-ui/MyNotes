@@ -373,7 +373,7 @@ export function PriorityReminderSettings() {
     return (
         <>
             {/* Card container — same style as other settings sections */}
-            <div className="flex flex-col gap-3 p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+            <div className="flex flex-col gap-3 p-4 glass-card rounded-2xl">
 
                 {/* Header row: icon + title + toggle */}
                 <motion.div

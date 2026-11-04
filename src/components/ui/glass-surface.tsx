@@ -9,7 +9,7 @@ export function useGlassLite() {
 }
 
 type Props = {
-  variant: "sheet" | "bar-top";
+  variant: "sheet" | "sheet-action" | "bar-top";
   as?: ElementType;
   className?: string;
   style?: React.CSSProperties;
@@ -29,7 +29,7 @@ export function GlassSurface({
   const perf = useStore((s: any) => !!s.performanceMode);
 
   useEffect(() => {
-    if (variant === "sheet") {
+    if (variant === "sheet" || variant === "sheet-action") {
       const prev = parseInt(document.body.dataset.modalOpen || "0", 10);
       document.body.dataset.modalOpen = String(prev + 1);
       return () => {
@@ -62,3 +62,4 @@ export function GlassSurface({
     </Tag>
   );
 }
+

@@ -12,6 +12,7 @@ import { Capacitor } from "@capacitor/core"
 import { NotificationDialog } from "@/components/ui/notification-dialog"
 import { PriorityReminderSettings } from "@/components/ui/priority-reminder-settings"
 import { PerfDebugModal } from "@/components/ui/perf-debug-modal"
+import { GlassSurface } from "@/components/ui/glass-surface"
 import { useRouter } from "next/navigation"
 
 export function SettingsDialog() {
@@ -798,15 +799,18 @@ export function SettingsDialog() {
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 onClick={() => setIsOpen(false)}
-                                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                                className="glass-scrim--light"
                             />
 
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                                className="relative w-full max-w-sm md:max-w-3xl bg-white dark:bg-zinc-900 rounded-[2rem] p-6 md:p-8 shadow-2xl border border-black/10 dark:border-white/10 overflow-y-auto max-h-[90vh] no-scrollbar"
+                            <GlassSurface
+                                as={motion.div}
+                                variant="sheet"
+                                initial={{ scale: 0.95, y: 20 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.95, y: 20 }}
+                                className="relative w-full max-w-sm md:max-w-3xl rounded-[2rem]"
                             >
+                                <div className="p-6 md:p-8 overflow-y-auto max-h-[90vh] no-scrollbar">
                                 <button
                                     onClick={() => setIsOpen(false)}
                                     className="absolute top-4 right-4 p-2 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
@@ -830,7 +834,7 @@ export function SettingsDialog() {
                                             }}
                                             whileHover="hover"
                                             whileTap="tap"
-                                            className="flex items-center justify-between p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
+                                            className="flex items-center justify-between p-4 glass-card rounded-2xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
                                         >
                                             <div className="flex items-center gap-3">
                                                 <motion.div 
@@ -869,7 +873,7 @@ export function SettingsDialog() {
                                             }}
                                             whileHover="hover"
                                             whileTap="tap"
-                                            className="flex items-center justify-between p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
+                                            className="flex items-center justify-between p-4 glass-card rounded-2xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
                                         >
                                             <div className="flex items-center gap-3">
                                                 <motion.div 
@@ -906,7 +910,7 @@ export function SettingsDialog() {
                                             }}
                                             whileHover="hover"
                                             whileTap="tap"
-                                            className="flex items-center justify-between p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
+                                            className="flex items-center justify-between p-4 glass-card rounded-2xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
                                         >
                                             <div className="flex items-center gap-3">
                                                 <motion.div 
@@ -945,7 +949,7 @@ export function SettingsDialog() {
                                             }}
                                             whileHover="hover"
                                             whileTap="tap"
-                                            className="flex items-center justify-between p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
+                                            className="flex items-center justify-between p-4 glass-card rounded-2xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
                                         >
                                             <div className="flex items-center gap-3">
                                                 <motion.div 
@@ -985,7 +989,7 @@ export function SettingsDialog() {
                                             }}
                                             whileHover="hover"
                                             whileTap="tap"
-                                            className="flex items-center justify-between p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
+                                            className="flex items-center justify-between p-4 glass-card rounded-2xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
                                         >
                                             <div className="flex items-center gap-3">
                                                 <motion.div 
@@ -1001,7 +1005,7 @@ export function SettingsDialog() {
                                         </motion.div>
 
                                         {/* Theme & Language Toggles */}
-                                        <div className="flex items-center justify-between gap-4 p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+                                        <div className="flex items-center justify-between gap-4 p-4 glass-card rounded-2xl">
                                             <div className="flex-1 flex flex-col justify-center items-center gap-2 border-r border-black/10 dark:border-white/10 pr-4">
                                                 <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t.theme || "Theme"}</p>
                                                 <div className="scale-125">
@@ -1017,7 +1021,7 @@ export function SettingsDialog() {
                                         </div>
 
                                         {/* App Colors Selector */}
-                                        <div className="flex flex-col gap-3 p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+                                        <div className="flex flex-col gap-3 p-4 glass-card rounded-2xl">
                                             <div className="flex items-center justify-between">
                                                 <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
                                                     {language === 'es' ? "Colores de la App" : "App Colors"}
@@ -1060,7 +1064,7 @@ export function SettingsDialog() {
                                         </div>
 
                                         {/* Fuentes de letras en Notas */}
-                                        <div className="flex flex-col gap-3 p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+                                        <div className="flex flex-col gap-3 p-4 glass-card rounded-2xl">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <Type className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -1192,7 +1196,7 @@ export function SettingsDialog() {
                                         </div>
 
                                         {/* Guided Onboarding Replay */}
-                                        <div className="flex flex-col gap-2 p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+                                        <div className="flex flex-col gap-2 p-4 glass-card rounded-2xl">
                                             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">
                                                 {language === 'es' ? "Guía de bienvenida" : "Welcome Guide"}
                                             </p>
@@ -1210,7 +1214,7 @@ export function SettingsDialog() {
                                         </div>
 
                                         {/* Data Management */}
-                                        <div className="flex flex-col gap-2 p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+                                        <div className="flex flex-col gap-2 p-4 glass-card rounded-2xl">
                                             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-2">
                                                 {language === 'es' ? "Gestión de Datos" : "Data Management"}
                                             </p>
@@ -1312,7 +1316,7 @@ export function SettingsDialog() {
                                     {/* Right Column: Google Cloud Sync */}
                                     <div className="space-y-4">
                                         {/* Cloud Sync with Google */}
-                                        <div className="flex flex-col gap-2 p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+                                        <div className="flex flex-col gap-2 p-4 glass-card rounded-2xl">
                                             <div className="flex justify-between items-center mb-1">
                                                 <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
                                                     {t.cloudSync || "Cloud Sync"}
@@ -1489,7 +1493,8 @@ export function SettingsDialog() {
                                         </div>
                                     </div>
                                 </div>
-                            </motion.div>
+                                </div>
+                            </GlassSurface>
                         </div>
                     )}
                 </AnimatePresence>,

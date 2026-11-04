@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { Trash2, Edit2, Pin } from "lucide-react"
+import { GlassSurface } from "@/components/ui/glass-surface"
 
 interface MobileContextMenuProps {
     onEdit?: () => void
@@ -97,78 +98,80 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 onClick={() => setIsOpen(false)}
-                                className="fixed inset-0 bg-black/60 z-[999]"
-                                style={{ backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+                                className="glass-scrim--light z-[999]"
                             />
-                            <motion.div
+                            <GlassSurface
+                                as={motion.div}
+                                variant="sheet-action"
                                 initial={{ y: "100%" }}
                                 animate={{ y: 0 }}
                                 exit={{ y: "100%" }}
                                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                                className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-card/95 border-t border-white/10 rounded-t-3xl p-6 pb-10 z-[1000] shadow-2xl text-foreground"
-                                style={{ backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}
+                                className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto rounded-t-3xl z-[1000] text-foreground"
                             >
-                                <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-6" />
+                                <div className="p-6 pb-10">
+                                    <div className="w-12 h-1.5 bg-black/15 dark:bg-white/15 rounded-full mx-auto mb-6" />
 
-                                {title && (
-                                    <h3 className="text-lg font-bold mb-6 text-center px-4">{title}</h3>
-                                )}
+                                    {title && (
+                                        <h3 className="text-lg font-bold mb-6 text-center px-4">{title}</h3>
+                                    )}
 
-                                <div className="flex flex-col gap-3">
-                                    {onEdit && (
+                                    <div className="flex flex-col gap-3">
+                                        {onEdit && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    onEdit()
+                                                    setIsOpen(false)
+                                                }}
+                                                className="flex items-center gap-4 p-4 rounded-2xl glass-card hover:bg-white/80 dark:hover:bg-white/10 transition-colors text-left w-full"
+                                            >
+                                                <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 dark:text-blue-400">
+                                                    <Edit2 className="w-5 h-5" />
+                                                </div>
+                                                <span className="font-semibold text-lg">Editar</span>
+                                            </button>
+                                        )}
+
+                                        {onTogglePin && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    onTogglePin()
+                                                    setIsOpen(false)
+                                                }}
+                                                className="flex items-center gap-4 p-4 rounded-2xl glass-card hover:bg-white/80 dark:hover:bg-white/10 transition-colors text-left w-full"
+                                            >
+                                                <div className="w-10 h-10 rounded-full bg-zinc-500/20 flex items-center justify-center text-zinc-600 dark:text-zinc-400">
+                                                    <Pin className={`w-5 h-5 ${isPinned ? 'fill-current' : ''}`} />
+                                                </div>
+                                                <span className="font-semibold text-lg">{isPinned ? 'Desfijar' : 'Fijar'}</span>
+                                            </button>
+                                        )}
+
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation()
-                                                onEdit()
+                                                onDelete()
                                                 setIsOpen(false)
                                             }}
-                                            className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors text-left w-full"
+                                            className="flex items-center gap-4 p-4 rounded-2xl bg-red-500/12 border border-red-500/20 hover:bg-red-500/20 transition-colors text-left w-full"
                                         >
-                                            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                                                <Edit2 className="w-5 h-5" />
+                                            <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 dark:text-red-400">
+                                                <Trash2 className="w-5 h-5" />
                                             </div>
-                                            <span className="font-semibold text-lg">Editar</span>
+                                            <span className="font-semibold text-lg text-red-500 dark:text-red-400">Eliminar</span>
                                         </button>
-                                    )}
 
-                                    {onTogglePin && (
                                         <button
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                onTogglePin()
-                                                setIsOpen(false)
-                                            }}
-                                            className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors text-left w-full"
+                                            onClick={() => setIsOpen(false)}
+                                            className="mt-2 flex items-center justify-center gap-2 p-4 rounded-2xl glass-card font-bold w-full transition-colors hover:bg-white/80 dark:hover:bg-white/10"
                                         >
-                                            <div className="w-10 h-10 rounded-full bg-zinc-500/20 flex items-center justify-center text-zinc-400">
-                                                <Pin className={`w-5 h-5 ${isPinned ? 'fill-current' : ''}`} />
-                                            </div>
-                                            <span className="font-semibold text-lg">{isPinned ? 'Desfijar' : 'Fijar'}</span>
+                                            Cancelar
                                         </button>
-                                    )}
-
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            onDelete()
-                                            setIsOpen(false)
-                                        }}
-                                        className="flex items-center gap-4 p-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 transition-colors text-left w-full"
-                                    >
-                                        <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-400">
-                                            <Trash2 className="w-5 h-5" />
-                                        </div>
-                                        <span className="font-semibold text-lg text-red-400">Eliminar</span>
-                                    </button>
-
-                                    <button
-                                        onClick={() => setIsOpen(false)}
-                                        className="mt-2 flex items-center justify-center gap-2 p-4 rounded-2xl border border-white/10 font-bold w-full transition-colors hover:bg-white/5"
-                                    >
-                                        Cancelar
-                                    </button>
+                                    </div>
                                 </div>
-                            </motion.div>
+                            </GlassSurface>
                         </>
                     )}
                 </AnimatePresence>,

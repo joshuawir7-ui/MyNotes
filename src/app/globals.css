@@ -368,57 +368,96 @@ html.perf-no-motion *::after {
 .glass-content{ position:relative; z-index:1; border-radius:inherit; }
 
 /* scrim sin blur */
-.glass-scrim{ position:fixed; inset:0; background:rgba(10,12,20,.30); }
-.dark .glass-scrim{ background:rgba(0,0,0,.50); }
+.glass-scrim{ position:fixed; inset:0; background:rgba(10,12,20,.26); }
+.dark .glass-scrim{ background:rgba(0,0,0,.48); }
+.glass-scrim--light{ position:fixed; inset:0; background:rgba(10,12,20,.16); }
+.dark .glass-scrim--light{ background:rgba(0,0,0,.36); }
 
 /* tarjetas y campos internos: translúcidos, SIN backdrop-filter */
-.glass-card{ background:rgba(255,255,255,.55); border:1px solid rgba(255,255,255,.65);
-  box-shadow:0 1px 2px rgba(20,24,40,.05), inset 0 1px 0 rgba(255,255,255,.8); }
-.glass-field{ background:rgba(255,255,255,.65); border:1px solid rgba(20,24,40,.08); }
-.dark .glass-card{ background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.08);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06); }
-.dark .glass-field{ background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.10); }
+.glass-card{ background:rgba(255,255,255,.65); border:1px solid rgba(255,255,255,.78);
+  box-shadow:0 1px 2px rgba(20,24,40,.05), inset 0 1px 0 rgba(255,255,255,.88); }
+.glass-field{ background:rgba(255,255,255,.82); border:1px solid rgba(20,24,40,.10); }
+.dark .glass-card{ background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.10);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07); }
+.dark .glass-field{ background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.12); }
 
-/* ---------- SHEET: más claro arriba, más denso abajo ---------- */
+/* ---------- SHEET: más blanco y denso para modales grandes (Nueva Meta, Ajustes, Gane, Gasto) ---------- */
 .glass--sheet{ box-shadow:0 24px 60px rgba(20,24,40,.22), 0 6px 18px rgba(20,24,40,.10); }
-.glass--sheet .g1{ -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
-  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 30%,transparent 55%);
-          mask-image:linear-gradient(to bottom,#000 0%,#000 30%,transparent 55%); }
-.glass--sheet .g2{ -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
-  -webkit-mask-image:linear-gradient(to bottom,transparent 25%,#000 50%,#000 62%,transparent 80%);
-          mask-image:linear-gradient(to bottom,transparent 25%,#000 50%,#000 62%,transparent 80%); }
-.glass--sheet .g3{ -webkit-backdrop-filter:blur(20px) saturate(1.5); backdrop-filter:blur(20px) saturate(1.5);
-  -webkit-mask-image:linear-gradient(to bottom,transparent 60%,#000 85%,#000 100%);
-          mask-image:linear-gradient(to bottom,transparent 60%,#000 85%,#000 100%); }
+.glass--sheet .g1{ -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 32%,transparent 58%);
+          mask-image:linear-gradient(to bottom,#000 0%,#000 32%,transparent 58%); }
+.glass--sheet .g2{ -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 22%,#000 48%,#000 66%,transparent 84%);
+          mask-image:linear-gradient(to bottom,transparent 22%,#000 48%,#000 66%,transparent 84%); }
+.glass--sheet .g3{ -webkit-backdrop-filter:blur(26px) saturate(1.5); backdrop-filter:blur(26px) saturate(1.5);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 55%,#000 82%,#000 100%);
+          mask-image:linear-gradient(to bottom,transparent 55%,#000 82%,#000 100%); }
 .glass--sheet .tint{ background:linear-gradient(to bottom,
-  rgba(255,255,255,.62) 0%, rgba(255,255,255,.78) 45%, rgba(255,255,255,.90) 100%); }
-.glass--sheet .rim{ border:1px solid rgba(255,255,255,.70);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.95);
-  background:linear-gradient(to bottom, rgba(255,255,255,.30), rgba(255,255,255,0) 35%); }
+  rgba(255,255,255,.78) 0%, rgba(255,255,255,.88) 45%, rgba(255,255,255,.95) 100%); }
+.glass--sheet .rim{ border:1px solid rgba(255,255,255,.78);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.96);
+  background:linear-gradient(to bottom, rgba(255,255,255,.35), rgba(255,255,255,0) 35%); }
 .dark .glass--sheet{ box-shadow:0 24px 60px rgba(0,0,0,.60), 0 6px 18px rgba(0,0,0,.35); }
 .dark .glass--sheet .tint{ background:linear-gradient(to bottom,
-  rgba(34,36,48,.62) 0%, rgba(28,30,40,.78) 45%, rgba(18,19,26,.90) 100%); }
-.dark .glass--sheet .rim{ border-color:rgba(255,255,255,.10);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
-  background:linear-gradient(to bottom, rgba(255,255,255,.06), rgba(255,255,255,0) 35%); }
+  rgba(32,34,46,.76) 0%, rgba(24,26,36,.86) 45%, rgba(16,17,24,.94) 100%); }
+.dark .glass--sheet .rim{ border-color:rgba(255,255,255,.12);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10);
+  background:linear-gradient(to bottom, rgba(255,255,255,.07), rgba(255,255,255,0) 35%); }
 
-/* ---------- BAR-TOP: denso en el borde superior, se desvanece hacia abajo ---------- */
-.glass--bar-top .glass-layers{ inset:0 0 -28px 0; border-radius:0; }
+/* ---------- SHEET-ACTION: hoja de acciones/hábito con borde superior muy ligero (como cinta de inicio) ---------- */
+.glass--sheet-action{ box-shadow:0 -12px 44px rgba(20,24,40,.16), 0 20px 50px rgba(20,24,40,.18); }
+.glass--sheet-action .g1{ -webkit-backdrop-filter:blur(2.5px); backdrop-filter:blur(2.5px);
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 22%,transparent 42%);
+          mask-image:linear-gradient(to bottom,#000 0%,#000 22%,transparent 42%); }
+.glass--sheet-action .g2{ -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 14%,#000 34%,#000 54%,transparent 74%);
+          mask-image:linear-gradient(to bottom,transparent 14%,#000 34%,#000 54%,transparent 74%); }
+.glass--sheet-action .g3{ -webkit-backdrop-filter:blur(14px) saturate(1.4); backdrop-filter:blur(14px) saturate(1.4);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 46%,#000 76%,#000 100%);
+          mask-image:linear-gradient(to bottom,transparent 46%,#000 76%,#000 100%); }
+.glass--sheet-action .tint{ background:linear-gradient(to bottom,
+  rgba(255,255,255,.26) 0%,
+  rgba(255,255,255,.48) 24%,
+  rgba(255,255,255,.70) 56%,
+  rgba(255,255,255,.86) 100%); }
+.glass--sheet-action .rim{ border:1px solid rgba(255,255,255,.68);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.92);
+  background:linear-gradient(to bottom, rgba(255,255,255,.26), rgba(255,255,255,0) 28%); }
+.dark .glass--sheet-action{ box-shadow:0 -12px 44px rgba(0,0,0,.50), 0 20px 50px rgba(0,0,0,.55); }
+.dark .glass--sheet-action .tint{ background:linear-gradient(to bottom,
+  rgba(34,36,48,.30) 0%,
+  rgba(30,32,44,.52) 24%,
+  rgba(24,26,36,.74) 56%,
+  rgba(18,19,26,.88) 100%); }
+.dark .glass--sheet-action .rim{ border-color:rgba(255,255,255,.12);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10);
+  background:linear-gradient(to bottom, rgba(255,255,255,.06), rgba(255,255,255,0) 28%); }
+
+/* ---------- BAR-TOP: denso en la fila de título, se desvanece justo en la fila de herramientas ---------- */
+.glass--bar-top .glass-layers{ inset:0; border-radius:0; }
 .glass--bar-top .glass-layers > i{ border-radius:0; }
 .glass--bar-top .g1{ -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px);
-  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 55%,transparent 78%);
-          mask-image:linear-gradient(to bottom,#000 0%,#000 55%,transparent 78%); }
-.glass--bar-top .g2{ -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px);
-  -webkit-mask-image:linear-gradient(to bottom,transparent 40%,#000 66%,#000 80%,transparent 92%);
-          mask-image:linear-gradient(to bottom,transparent 40%,#000 66%,#000 80%,transparent 92%); }
-.glass--bar-top .g3{ -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
-  -webkit-mask-image:linear-gradient(to bottom,transparent 70%,#000 90%,transparent 100%);
-          mask-image:linear-gradient(to bottom,transparent 70%,#000 90%,transparent 100%); }
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 38%,transparent 60%);
+          mask-image:linear-gradient(to bottom,#000 0%,#000 38%,transparent 60%); }
+.glass--bar-top .g2{ -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 32%,#000 54%,#000 72%,transparent 90%);
+          mask-image:linear-gradient(to bottom,transparent 32%,#000 54%,#000 72%,transparent 90%); }
+.glass--bar-top .g3{ -webkit-backdrop-filter:blur(3.5px); backdrop-filter:blur(3.5px);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 60%,#000 82%,transparent 100%);
+          mask-image:linear-gradient(to bottom,transparent 60%,#000 82%,transparent 100%); }
 .glass--bar-top .tint{ background:linear-gradient(to bottom,
-  rgba(255,255,255,.90) 0%, rgba(255,255,255,.84) 55%, rgba(255,255,255,.55) 78%, rgba(255,255,255,0) 100%); }
+  rgba(255,255,255,.95) 0%,
+  rgba(255,255,255,.88) 42%,
+  rgba(255,255,255,.60) 68%,
+  rgba(255,255,255,.22) 90%,
+  rgba(255,255,255,.04) 100%); }
 .glass--bar-top .rim{ border:0; box-shadow:none; background:none; }
 .dark .glass--bar-top .tint{ background:linear-gradient(to bottom,
-  rgba(20,21,28,.92) 0%, rgba(20,21,28,.86) 55%, rgba(20,21,28,.58) 78%, rgba(20,21,28,0) 100%); }
+  rgba(18,19,24,.95) 0%,
+  rgba(18,19,24,.88) 42%,
+  rgba(18,19,24,.62) 68%,
+  rgba(18,19,24,.24) 90%,
+  rgba(18,19,24,.04) 100%); }
 
 /* ---------- GAMA BAJA: una sola capa, sin máscara ---------- */
 .glass[data-lite="true"] .g1, .glass[data-lite="true"] .g2{ display:none; }
@@ -431,8 +470,8 @@ html.perf-no-motion *::after {
 .dark .glass[data-perf="true"] .tint{ background:rgba(20,21,28,.96); }
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
   .glass .g1, .glass .g2, .glass .g3{ display:none; }
-  .glass--sheet .tint{ background:rgba(255,255,255,.94); }
-  .dark .glass--sheet .tint{ background:rgba(20,21,28,.96); }
+  .glass--sheet .tint, .glass--sheet-action .tint{ background:rgba(255,255,255,.94); }
+  .dark .glass--sheet .tint, .dark .glass--sheet-action .tint{ background:rgba(20,21,28,.96); }
 }
 body[data-modal-open] .nav-glass .bl{ display:none; }
 

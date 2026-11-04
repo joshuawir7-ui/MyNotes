@@ -470,7 +470,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
     return createPortal(
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-            <div className="w-full max-w-4xl h-[90vh] bg-white dark:bg-[#0c0c0e] border border-zinc-200 dark:border-white/10 rounded-2xl flex flex-col relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="w-full max-w-4xl h-[90vh] bg-white dark:bg-[#0c0c0e] border border-zinc-200 dark:border-white/10 rounded-2xl flex flex-col relative overflow-hidden shadow-2xl">
 
                 {/* PREMIUM GLASS HEADER - Floating above content with bar-top progressive blur */}
                 <GlassSurface variant="bar-top" className="absolute top-0 inset-x-0 z-20">

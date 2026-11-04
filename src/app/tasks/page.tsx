@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useShallow } from "zustand/react/shallow"
 import { useStore, RecurrenceType, Task, getLocalDateString } from "@/lib/store"
 import { useState, useRef, useEffect, useMemo, memo } from "react"
+import { createPortal } from "react-dom"
+import { GlassSurface } from "@/components/ui/glass-surface"
 import { Plus, Check, Trash2, Camera, X as XIcon, Edit2, Layers, ChevronRight, ChevronDown, History, Pin, Sparkles, RotateCcw, Activity } from "lucide-react"
 import { WeeklyProgressChart } from "@/components/dashboard/weekly-progress-chart"
 import { Reveal } from "@/components/ui/reveal"
@@ -1306,28 +1308,32 @@ export default function TasksPage() {
             </AnimatePresence>
 
             {/* Creator Modal */}
-            <AnimatePresence>
-                {showCreator && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => {
-                                setShowCreator(false)
-                                if (tourStep !== null) {
-                                    endTour()
-                                }
-                            }}
-                            className="absolute inset-0 bg-black/60 backdrop-blur-md"
-                        />
-                        <motion.div
-                            initial={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}
-                            animate={{ opacity: 1, filter: "blur(0px)", y: 0, scale: 1 }}
-                            exit={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}
-                            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                            className="relative w-full max-w-lg md:max-w-3xl glass-panel p-6 sm:p-8 rounded-3xl border border-zinc-200 dark:border-white/10 bg-card shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[90vh]"
-                        >
+            {isMounted && createPortal(
+                <AnimatePresence>
+                    {showCreator && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => {
+                                    setShowCreator(false)
+                                    if (tourStep !== null) {
+                                        endTour()
+                                    }
+                                }}
+                                className="glass-scrim--light"
+                            />
+                            <GlassSurface
+                                as={motion.div}
+                                variant="sheet"
+                                initial={{ y: 20, scale: 0.95 }}
+                                animate={{ y: 0, scale: 1 }}
+                                exit={{ y: 20, scale: 0.95 }}
+                                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                                className="relative w-full max-w-lg md:max-w-3xl rounded-3xl"
+                            >
+                                <div className="p-6 sm:p-8 flex flex-col max-h-[90vh]">
                             <div className="flex justify-between items-center mb-6 flex-shrink-0">
                                 <div className="flex flex-col">
                                     <h3 className="text-2xl font-black tracking-tight">
@@ -1373,7 +1379,7 @@ export default function TasksPage() {
                                                     placeholder={title ? "" : placeholderExamples[placeholderIndex]}
                                                     value={title}
                                                     onChange={(e) => setTitle(e.target.value)}
-                                                    className="w-full h-14 bg-background/50 border border-zinc-200 dark:border-white/10 rounded-xl px-5 outline-none focus:border-zinc-400 dark:focus:border-white/20 text-lg font-medium transition-all"
+                                                    className="w-full h-14 glass-field rounded-xl px-5 outline-none focus:border-zinc-400 dark:focus:border-white/20 text-lg font-medium transition-all"
                                                     autoFocus
                                                 />
                                                 <AnimatePresence>
@@ -1894,10 +1900,13 @@ export default function TasksPage() {
                                     </div>
                                 </form>
                             </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+                                </div>
+                            </GlassSurface>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
 
             {/* History Modal */}
             <AnimatePresence>

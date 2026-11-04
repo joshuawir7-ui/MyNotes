@@ -8,6 +8,8 @@ import { Reveal } from "@/components/ui/reveal"
 import { useStore, Transaction, Appointment } from "@/lib/store"
 import { translations } from "@/lib/translations"
 import { useState, useEffect, useMemo, useRef } from "react"
+import { createPortal } from "react-dom"
+import { GlassSurface } from "@/components/ui/glass-surface"
 import { Plus, Wallet, X, Trash2, Edit2, ArrowUpRight, ArrowDownRight, Calendar, DollarSign, Check, Coins, ChevronDown, AlertTriangle, TrendingUp, PieChart, RotateCcw, FileText, Calculator } from "lucide-react"
 import { ExpenseNoteForm } from "@/components/balance/expense-note-form"
 import { ExpenseNoteCard } from "@/components/balance/expense-note-card"
@@ -1161,7 +1163,14 @@ export default function BalancePage() {
                                 {language === 'es' ? "Recuperado" : "Recovered"}
                             </button>
                             <button
-                                onClick={() => setDismissedReminders(prev => [...prev, appt.id])}
+                                onClick={() => {
+                                    setDismissedReminders(prev => [...prev, appt.id])
+                                    updateAppointment(appt.id, { status: 'completed' })
+                                    if (appt.notes?.startsWith('recovery_reminder:')) {
+                                        const txId = appt.notes.replace('recovery_reminder:', '')
+                                        updateTransaction(txId, { recoveryDate: undefined })
+                                    }
+                                }}
                                 className="text-rose-500 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-500/10 transition-colors"
                                 title={language === 'es' ? "Quitar" : "Dismiss"}
                             >
@@ -1389,22 +1398,27 @@ export default function BalancePage() {
             </div>
 
             {/* GASTE / GANE Unified Modal */}
-            <AnimatePresence>
-                {isModalOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-                        onClick={() => setIsModalOpen(false)}
-                    >
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white dark:bg-[#0c0c0c] w-full max-w-md p-6 sm:p-8 rounded-[40px] border border-black/5 dark:border-white/10 shadow-2xl relative"
-                            onClick={(e) => e.stopPropagation()}
-                        >
+            {mounted && createPortal(
+                <AnimatePresence>
+                    {isModalOpen && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="glass-scrim"
+                                onClick={() => setIsModalOpen(false)}
+                            />
+                            <GlassSurface
+                                as={motion.div}
+                                variant="sheet"
+                                initial={{ scale: 0.95, y: 20 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.95, y: 20 }}
+                                className="w-full max-w-md rounded-[40px] relative"
+                                onClick={(e: any) => e.stopPropagation()}
+                            >
+                                <div className="p-6 sm:p-8 relative">
                             <button
                                 onClick={() => setIsModalOpen(false)}
                                 className="absolute top-6 left-6 p-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-500 dark:text-zinc-400 rounded-full border border-zinc-200 dark:border-zinc-700 transition-all hover:scale-110 active:scale-95"
@@ -1430,7 +1444,7 @@ export default function BalancePage() {
                                             value={txAmount}
                                             onChange={(e) => setTxAmount(e.target.value)}
                                             placeholder={txType === 'expense' ? "Monto (ej: -12)" : "Monto (ej: -12)"}
-                                            className="w-full bg-white border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 rounded-2xl px-4 py-3 focus:outline-none focus:border-zinc-400 focus:ring-0 text-center font-bold text-sm text-foreground placeholder:text-zinc-400"
+                                            className="w-full glass-field rounded-2xl px-4 py-3 focus:outline-none focus:border-zinc-400 focus:ring-0 text-center font-bold text-sm text-foreground placeholder:text-zinc-400"
                                         />
                                     </div>
 
@@ -1472,7 +1486,7 @@ export default function BalancePage() {
                                             ? (language === 'es' ? "¿Quieres especificar en que ganaste ese capital?" : "Want to specify what you earned this capital from?")
                                             : (language === 'es' ? "¿En que gastaste?" : "What did you spend on?")}
                                         rows={3}
-                                        className="w-full bg-white border border-zinc-200 dark:border-zinc-800 dark:bg-zinc-900 rounded-2xl px-4 py-3 focus:outline-none focus:border-zinc-400 focus:ring-0 text-sm text-foreground placeholder:text-zinc-400"
+                                        className="w-full glass-field rounded-2xl px-4 py-3 focus:outline-none focus:border-zinc-400 focus:ring-0 text-sm text-foreground placeholder:text-zinc-400"
                                     />
                                 </div>
 
@@ -1559,10 +1573,13 @@ export default function BalancePage() {
                                 </div>
 
                             </form>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                                </div>
+                            </GlassSurface>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
 
             {/* ── CLEAR ALL HISTORY CONFIRMATION MODAL ── */}
             <AnimatePresence>
