@@ -53,6 +53,7 @@ if (isNative) {
 }
 
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
+import { mergeBackupData, sanitizeDataForDriveUpload, shouldEarlyExit } from './sync-logic'
 
 const writeDebounces: Record<string, any> = {};
 const pendingWrites: Record<string, string> = {};
@@ -3474,220 +3475,9 @@ export const useStore = create<AppState>()(
                 },
 
                 syncWithGoogleDrive: async (isAuthRetry: boolean = false) => {
-                    if (getPerfFlags().perfNoSync) { console.log(`[PERF][sync] ${perfStamp()} phase=syncWithGoogleDrive:blocked(perf-no-sync)`); return false; }
-                    console.log(`[PERF][sync] ${perfStamp()} phase=syncWithGoogleDrive:start`);
-                    if (syncInProgress) {
-                        console.log("[Sync] Ya hay una sincronización en curso, se omite esta llamada");
-                        return false;
-                    }
-                    syncInProgress = true;
-                    try {
-                        if (get().isSyncingCloud) {
-                            console.log("Cloud sync already in progress, skipping syncWithGoogleDrive.");
-                            return false;
-                        }
-                    const user = get().googleUser;
-                    if (!user) return false;
-
-                    set({ isSyncingCloud: true, syncError: null });
-
-                    if (user.isDemo) {
-                        await new Promise(resolve => setTimeout(resolve, 1500));
-                        set({ isSyncingCloud: false, ...syncStamp() });
-                        return true;
-                    }
-
-                    try {
-                        const token = user.accessToken;
-                        if (!token) throw new Error("No access token");
-                        await uploadMissingAttachments(token, get().notes);
-
-                        const fullNotes = await readAllNotesFromDisk(get().notes);
-                        const fullTasks = await readAllTasksFromDisk(get().tasks);
-
-                        const searchRes = await fetchWithTimeout(
-                            `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false`,
-                            {
-                                headers: { Authorization: `Bearer ${token}` }
-                            }
-                        );
-                        if (!searchRes.ok) {
-                            const errBody = await searchRes.text().catch(() => "Unknown error");
-                            throw new Error(`Search failed (${searchRes.status}): ${errBody}`);
-                        }
-                        const searchData = await searchRes.json();
-                        const existingFile = searchData.files?.[0];
-
-                        let dataToSync: any = null;
-
-                        if (existingFile) {
-                            // Fetch remote data first to merge it
-                            const downloadRes = await fetchWithTimeout(
-                                `https://www.googleapis.com/drive/v3/files/${existingFile.id}?alt=media`,
-                                {
-                                    headers: { Authorization: `Bearer ${token}` }
-                                }
-                            );
-                            if (!downloadRes.ok) {
-                                const errBody = await downloadRes.text().catch(() => "Unknown error");
-                                throw new Error(`Download before sync failed (${downloadRes.status}): ${errBody}`);
-                            }
-
-                            const driveData = await downloadRes.json();
-                            const state = get();
-
-                            const mergedDeletedItems = mergeDeletedItems(state.deletedItems, driveData.deletedItems);
-
-                            const mergedNotes = mergeNotesLists(fullNotes, driveData.notes, true, mergedDeletedItems);
-                            const mergedTasks = mergeLists(fullTasks, driveData.tasks, true, mergedDeletedItems);
-                            const mergedGoals = mergeLists(state.goals, driveData.goals, true, mergedDeletedItems);
-                            const mergedAppointments = mergeLists(state.appointments, driveData.appointments, true, mergedDeletedItems);
-                            const mergedProjects = mergeLists(state.projects, driveData.projects, true, mergedDeletedItems);
-                            const mergedTaskGroups = mergeLists(state.taskGroups, driveData.taskGroups, true, mergedDeletedItems);
-                            const mergedCompletedOnceHabits = mergeLists(state.completedOnceHabits || [], driveData.completedOnceHabits || [], true, mergedDeletedItems);
-                            const mergedTransactions = mergeLists(state.transactions || [], driveData.transactions || [], true, mergedDeletedItems);
-                            const mergedExpenseNotes = mergeLists(state.expenseNotes || [], driveData.expenseNotes || [], true, mergedDeletedItems);
-                            const mergedSavingsGoal = driveData.lastUpdated && state.lastUpdated && state.lastUpdated > driveData.lastUpdated ? (state.savingsGoal ?? 400) : (driveData.savingsGoal ?? 400);
-                            const mergedSnapshots = mergeDailySnapshots(state.dailySnapshots, driveData.dailySnapshots);
-                            const mergedUser = mergeUser(state.user, driveData.user);
-                            const newTimestamp = Date.now();
-
-                            console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:saveDiskAndOriginalSet:start newTS=${newTimestamp}`);
-                            await saveAllNotesToDisk(mergedNotes);
-                            await saveAllTasksToDisk(mergedTasks);
-
-                            // Use originalSet to bypass lastUpdated wrapper override
-                            originalSet({
-                                notes: mergedNotes,
-                                tasks: mergedTasks,
-                                goals: mergedGoals,
-                                appointments: mergedAppointments,
-                                projects: mergedProjects,
-                                taskGroups: mergedTaskGroups,
-                                completedOnceHabits: mergedCompletedOnceHabits,
-                                transactions: mergedTransactions,
-                                expenseNotes: mergedExpenseNotes,
-                                savingsGoal: mergedSavingsGoal,
-                                dailySnapshots: mergedSnapshots,
-                                user: mergedUser,
-                                deletedItems: mergedDeletedItems,
-                                lastUpdated: newTimestamp,
-                                areNotesLoaded: true,
-                                areTasksLoaded: true
-                            });
-
-                            setTimeout(() => {
-                                syncWidgetData(mergedGoals, mergedAppointments, mergedNotes, mergedTasks).catch(console.error);
-                            }, 0);
-
-                            dataToSync = {
-                                notes: stripLargePayloads(mergedNotes),
-                                tasks: mergedTasks,
-                                goals: mergedGoals,
-                                appointments: mergedAppointments,
-                                projects: mergedProjects,
-                                taskGroups: mergedTaskGroups,
-                                completedOnceHabits: mergedCompletedOnceHabits,
-                                transactions: mergedTransactions,
-                                expenseNotes: mergedExpenseNotes,
-                                savingsGoal: mergedSavingsGoal,
-                                dailySnapshots: mergedSnapshots,
-                                user: mergedUser,
-                                deletedItems: mergedDeletedItems,
-                                lastUpdated: newTimestamp
-                            };
-
-                            const fileId = existingFile.id;
-                            const updateRes = await patchBackupToDrive(token, fileId, dataToSync, newTimestamp);
-                            if (!updateRes.ok) {
-                                const errBody = await updateRes.text().catch(() => "Unknown error");
-                                throw new Error(`Update failed (${updateRes.status}): ${errBody}`);
-                            }
-                        } else {
-                            const state = get();
-                            const newTimestamp = Date.now();
-                            dataToSync = {
-                                notes: stripLargePayloads(fullNotes),
-                                tasks: fullTasks,
-                                goals: state.goals,
-                                appointments: state.appointments,
-                                projects: state.projects,
-                                taskGroups: state.taskGroups,
-                                completedOnceHabits: state.completedOnceHabits || [],
-                                transactions: state.transactions || [],
-                                expenseNotes: state.expenseNotes || [],
-                                savingsGoal: state.savingsGoal || 400,
-                                dailySnapshots: state.dailySnapshots,
-                                user: state.user,
-                                deletedItems: state.deletedItems || {},
-                                lastUpdated: newTimestamp
-                            };
-
-                            originalSet({ lastUpdated: newTimestamp });
-
-                            const metadata = {
-                                name: 'mynotes_backup.json',
-                                mimeType: 'application/json',
-                                appProperties: {
-                                    lastUpdated: newTimestamp.toString()
-                                }
-                            };
-                            const boundary = 'foo_bar_baz';
-                            const body = [
-                                `\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}`,
-                                `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(dataToSync)}`,
-                                `\r\n--${boundary}--`
-                            ].join('');
-
-                            const createRes = await fetchWithTimeout(
-                                'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-                                {
-                                    method: 'POST',
-                                    headers: {
-                                        Authorization: `Bearer ${token}`,
-                                        'Content-Type': `multipart/related; boundary=${boundary}`
-                                    },
-                                    body
-                                }
-                            );
-                            if (!createRes.ok) {
-                                const errBody = await createRes.text().catch(() => "Unknown error");
-                                throw new Error(`Create failed (${createRes.status}): ${errBody}`);
-                            }
-                        }
-
-                        set({ isSyncingCloud: false, ...syncStamp() });
-                        return true;
-                    } catch (err: any) {
-                        console.error("Google Drive sync error", err);
-                        const msg = String(err).toLowerCase();
-                        const isAuthError = msg.includes("401") || msg.includes("unauthenticated") || msg.includes("invalid credentials") || msg.includes("autherror") || msg.includes("auth_error");
-                        if (isAuthError) {
-                            if (isAuthRetry) {
-                                console.warn("[Sync] Reintento de autenticación en syncWithGoogleDrive ya realizado; abortando.");
-                                set({ isSyncingCloud: false, syncError: "Auth retry failed" });
-                                return false;
-                            }
-                            // Intentar renovar el token silenciosamente antes de mostrar error al usuario
-                            const newToken = await silentRefreshGoogleToken();
-                            if (newToken) {
-                                // Token renovado: reintentar sync una vez
-                                set({ isSyncingCloud: false });
-                                return get().syncWithGoogleDrive(true);
-                            }
-                            const errMsg = get().language === 'es'
-                                ? "Sesión de Google expirada. Por favor, inicia sesión nuevamente."
-                                : "Google session expired. Please sign in again.";
-                            set({ googleSessionExpired: true, isSyncingCloud: false, syncError: errMsg });
-                            get().showToast(get().language === 'es' ? "Debe reconectar su cuenta" : "Please reconnect your account", "error");
-                        } else {
-                            set({ isSyncingCloud: false, syncError: err?.message || String(err) });
-                        }
-                        return false;
-                    }
-                    } finally {
-                        syncInProgress = false;
-                    }
+                    // Redirige al ciclo unificado de sincronización forzando ejecución inmediata (bypass de cooldown/idle).
+                    // Unifica los candados (isSyncing) y garantiza que el botón manual use la misma lógica pura protegida.
+                    return get().syncCycle(true, isAuthRetry);
                 },
 
                 syncCycle: async (force: boolean = false, isAuthRetry: boolean = false) => {
@@ -3765,7 +3555,7 @@ export const useStore = create<AppState>()(
                             const freshState = get();
                             const fullNotes = await readAllNotesFromDisk(freshState.notes);
                             const fullTasks = await readAllTasksFromDisk(freshState.tasks);
-                            const dataToSync = {
+                            const rawData = {
                                 notes: stripLargePayloads(fullNotes),
                                 tasks: fullTasks,
                                 goals: freshState.goals,
@@ -3774,12 +3564,14 @@ export const useStore = create<AppState>()(
                                 taskGroups: freshState.taskGroups,
                                 completedOnceHabits: freshState.completedOnceHabits || [],
                                 transactions: freshState.transactions || [],
+                                expenseNotes: freshState.expenseNotes || [],
                                 savingsGoal: freshState.savingsGoal || 400,
                                 dailySnapshots: freshState.dailySnapshots,
                                 user: freshState.user,
                                 deletedItems: freshState.deletedItems || {},
                                 lastUpdated: Date.now()
                             };
+                            const dataToSync = sanitizeDataForDriveUpload(rawData);
                             const jsonStr = JSON.stringify(dataToSync);
 
                             const metadata = {
@@ -3797,7 +3589,7 @@ export const useStore = create<AppState>()(
                             ].join('');
 
                             const createRes = await fetchWithTimeout(
-                                'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+                                'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,md5Checksum',
                                 {
                                     method: 'POST',
                                     headers: {
@@ -3811,8 +3603,10 @@ export const useStore = create<AppState>()(
                                 const errBody = await createRes.text().catch(() => "Unknown error");
                                 throw new Error(`Create failed (${createRes.status}): ${errBody}`);
                             }
+                            await recordUploadedMd5(createRes);
 
                             set({ isSyncingCloud: false, ...syncStamp() });
+                            isCloudSyncDirty = false;
                             return true;
                         }
 
@@ -3864,48 +3658,56 @@ export const useStore = create<AppState>()(
                         // DIAG: Log counts to identify which branch executes on mobile
                         console.log(`[Sync][DIAG] Drive counts — notes:${(driveData.notes||[]).length} tasks:${(driveData.tasks||[]).length} goals:${(driveData.goals||[]).length} appointments:${(driveData.appointments||[]).length} expenseNotes:${(driveData.expenseNotes||[]).length} transactions:${(driveData.transactions||[]).length}`);
 
-                        // ── Helper to count real items with content ──────────────────────────
-                        const driveHasData = [
-                            driveData.notes, driveData.tasks, driveData.goals, driveData.appointments, driveData.expenseNotes, driveData.transactions
-                        ].some(arr => Array.isArray(arr) && arr.length > 0);
-
-                        // ── Read disk data to ensure in-memory state didn't miss anything ──────
-                        // The in-memory state might be empty if notes/tasks weren't loaded yet,
-                        // but the disk (via readAllNotesFromDisk) always has the full dataset.
+                        // ── Fusión pura de datos y decisión de convergencia (sync-logic) ──────
                         const diskNotes = await readAllNotesFromDisk(freshState.notes);
                         const diskTasks = await readAllTasksFromDisk(freshState.tasks);
 
-                        const localHasData = [
-                            diskNotes, diskTasks, freshState.goals, freshState.appointments, freshState.expenseNotes, freshState.transactions
-                        ].some(arr => Array.isArray(arr) && arr.length > 0);
+                        const localDataToMerge = {
+                            notes: diskNotes,
+                            tasks: diskTasks,
+                            goals: freshState.goals || [],
+                            appointments: freshState.appointments || [],
+                            projects: freshState.projects || [],
+                            taskGroups: freshState.taskGroups || [],
+                            completedOnceHabits: freshState.completedOnceHabits || [],
+                            transactions: freshState.transactions || [],
+                            expenseNotes: freshState.expenseNotes || [],
+                            savingsGoal: freshState.savingsGoal ?? 400,
+                            dailySnapshots: freshState.dailySnapshots || {},
+                            user: freshState.user,
+                            deletedItems: freshState.deletedItems || {},
+                            lastUpdated: localLastUpdated
+                        };
 
-                        // DIAG: Log local state for mobile investigation
-                        console.log(`[Sync][DIAG] Local counts — notes:${diskNotes.length} tasks:${diskTasks.length} goals:${(freshState.goals||[]).length} appointments:${(freshState.appointments||[]).length} expenseNotes:${(freshState.expenseNotes||[]).length} transactions:${(freshState.transactions||[]).length}`);
-                        console.log(`[Sync][DIAG] localHasData=${localHasData}, driveHasData=${driveHasData}, localTS=${localLastUpdated}, driveTS=${driveLastUpdated}`);
+                        const useLocalForConflicts = localLastUpdated > driveLastUpdated;
+                        const { merged, changedLocal, changedRemote } = mergeBackupData(localDataToMerge, driveData, useLocalForConflicts);
 
-                        // ── Case 1: Local is fresh/empty, Drive has real data → pulling from Drive ─
-                        if (!localHasData && driveHasData) {
-                            console.log('[Sync] Local has no data but Drive does → pulling from Drive.');
-                            const mergedDeletedItems = mergeDeletedItems(freshState.deletedItems, driveData.deletedItems);
+                        if (abortIfUserEdited()) return false;
 
-                            await saveAllNotesToDisk(driveData.notes || []);
-                            await saveAllTasksToDisk(driveData.tasks || []);
+                        // Rama A: Drive necesita actualización (local tenía cambios o merge conjunto con novedades)
+                        if (changedRemote) {
+                            console.log(`[Sync] Local tiene cambios más recientes o merge conjunto -> guardando en disco y subiendo a Drive.`);
+                            const uploadTimestamp = Math.max(localLastUpdated, driveLastUpdated, Date.now());
+
+                            await saveAllNotesToDisk(merged.notes);
+                            await saveAllTasksToDisk(merged.tasks);
+                            if (abortIfUserEdited()) return false;
 
                             originalSet({
-                                notes: driveData.notes || [],
-                                tasks: driveData.tasks || [],
-                                goals: driveData.goals || [],
-                                appointments: driveData.appointments || [],
-                                projects: driveData.projects || [],
-                                taskGroups: driveData.taskGroups || [],
-                                completedOnceHabits: driveData.completedOnceHabits || [],
-                                transactions: driveData.transactions || [],
-                                expenseNotes: driveData.expenseNotes || [],
-                                savingsGoal: driveData.savingsGoal ?? 400,
-                                dailySnapshots: driveData.dailySnapshots || {},
-                                user: mergeUser(freshState.user, driveData.user),
-                                deletedItems: mergedDeletedItems,
-                                lastUpdated: driveLastUpdated,
+                                notes: merged.notes,
+                                tasks: merged.tasks,
+                                goals: merged.goals,
+                                appointments: merged.appointments,
+                                projects: merged.projects,
+                                taskGroups: merged.taskGroups,
+                                completedOnceHabits: merged.completedOnceHabits,
+                                transactions: merged.transactions,
+                                expenseNotes: merged.expenseNotes,
+                                savingsGoal: merged.savingsGoal,
+                                dailySnapshots: merged.dailySnapshots,
+                                user: merged.user,
+                                deletedItems: merged.deletedItems,
+                                lastUpdated: uploadTimestamp,
                                 isSyncingCloud: false,
                                 ...syncStamp(),
                                 areNotesLoaded: true,
@@ -3913,230 +3715,72 @@ export const useStore = create<AppState>()(
                             });
 
                             setTimeout(() => {
-                                const s = get();
-                                syncWidgetData(s.goals, s.appointments, s.notes, s.tasks).catch(console.error);
+                                syncWidgetData(merged.goals, merged.appointments, merged.notes, merged.tasks).catch(console.error);
                             }, 0);
-                            return true;
-                        }
 
-                        // ── Case 2: Drive is empty but Local has data → push to Drive ──────────
-                        if (localHasData && !driveHasData) {
-                            console.log('[Sync] Local has data but Drive does not → pushing to Drive.');
-                            // Re-use diskNotes/diskTasks already read above (avoids double disk read)
-                            const fullNotes = diskNotes;
-                            const fullTasks = diskTasks;
-                            const newTimestamp = Date.now();
-                            const dataToUpload = {
-                                notes: stripLargePayloads(fullNotes),
-                                tasks: fullTasks,
-                                goals: freshState.goals,
-                                appointments: freshState.appointments,
-                                projects: freshState.projects,
-                                taskGroups: freshState.taskGroups,
-                                completedOnceHabits: freshState.completedOnceHabits || [],
-                                transactions: freshState.transactions || [],
-                                expenseNotes: freshState.expenseNotes || [],
-                                savingsGoal: freshState.savingsGoal ?? 400,
-                                dailySnapshots: freshState.dailySnapshots,
-                                user: freshState.user,
-                                deletedItems: freshState.deletedItems || {},
-                                lastUpdated: newTimestamp
-                            };
-
-                            const uploadRes = await patchBackupToDrive(token, existingFile.id, dataToUpload, newTimestamp);
-                            if (!uploadRes.ok) {
-                                const errBody = await uploadRes.text().catch(() => 'Unknown error');
-                                throw new Error(`Upload failed (${uploadRes.status}): ${errBody}`);
-                            }
-
-                            // Si el usuario editó durante la subida, NO movemos lastUpdated (su edición queda pendiente y sube en el próximo ciclo).
-                            if (userEditVersion === versionAtStart) {
-                                originalSet({ lastUpdated: newTimestamp, isSyncingCloud: false, ...syncStamp() });
-                            } else {
-                                originalSet({ isSyncingCloud: false, ...syncStamp() });
-                            }
-                            return true;
-                        }
-
-                        // ── Case 3: Timestamps differ → merge (existing logic) ─────────────────
-                        if (localLastUpdated !== driveLastUpdated) {
-                            if (abortIfUserEdited()) return false;
-                            const useLocalForConflicts = localLastUpdated > driveLastUpdated;
-                            console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:merge11Collections:start useLocal=${useLocalForConflicts}`);
-
-                            // Re-use diskNotes/diskTasks already read above (avoids double disk read)
-                            const fullNotes = diskNotes;
-                            const fullTasks = diskTasks;
-
-                            const mergedDeletedItems = mergeDeletedItems(freshState.deletedItems, driveData.deletedItems);
-                            const mergedNotes = mergeNotesLists(fullNotes, driveData.notes, useLocalForConflicts, mergedDeletedItems);
-                            const mergedTasks = mergeLists(fullTasks, driveData.tasks, useLocalForConflicts, mergedDeletedItems);
-                            const mergedGoals = mergeLists(freshState.goals, driveData.goals, useLocalForConflicts, mergedDeletedItems);
-                            const mergedAppointments = mergeLists(freshState.appointments, driveData.appointments, useLocalForConflicts, mergedDeletedItems);
-                            const mergedProjects = mergeLists(freshState.projects, driveData.projects, useLocalForConflicts, mergedDeletedItems);
-                            const mergedTaskGroups = mergeLists(freshState.taskGroups, driveData.taskGroups, useLocalForConflicts, mergedDeletedItems);
-                            const mergedCompletedOnceHabits = mergeLists(freshState.completedOnceHabits || [], driveData.completedOnceHabits || [], useLocalForConflicts, mergedDeletedItems);
-                            const mergedTransactions = mergeLists(freshState.transactions || [], driveData.transactions || [], useLocalForConflicts, mergedDeletedItems);
-                            const mergedExpenseNotes = mergeLists(freshState.expenseNotes || [], driveData.expenseNotes || [], useLocalForConflicts, mergedDeletedItems);
-                            const mergedSavingsGoal = useLocalForConflicts ? (freshState.savingsGoal ?? 400) : (driveData.savingsGoal ?? 400);
-                            const mergedSnapshots = mergeDailySnapshots(freshState.dailySnapshots, driveData.dailySnapshots);
-                            const mergedUser = mergeUser(freshState.user, driveData.user);
-                            const newTimestamp = Math.max(localLastUpdated, driveLastUpdated);
-
-                            console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:saveDiskAndOriginalSet:start newTS=${newTimestamp}`);
-                            await saveAllNotesToDisk(mergedNotes);
-                            await saveAllTasksToDisk(mergedTasks);
-                            // Edición del usuario durante las escrituras a disco: no aplicar este merge sobre su estado más nuevo.
-                            if (abortIfUserEdited()) return false;
-
-                            originalSet({
-                                notes: mergedNotes,
-                                tasks: mergedTasks,
-                                goals: mergedGoals,
-                                appointments: mergedAppointments,
-                                projects: mergedProjects,
-                                taskGroups: mergedTaskGroups,
-                                completedOnceHabits: mergedCompletedOnceHabits,
-                                transactions: mergedTransactions,
-                                expenseNotes: mergedExpenseNotes,
-                                savingsGoal: mergedSavingsGoal,
-                                dailySnapshots: mergedSnapshots,
-                                user: mergedUser,
-                                deletedItems: mergedDeletedItems,
-                                lastUpdated: newTimestamp,
-                                isSyncingCloud: false,
-                                ...syncStamp(),
-                                areNotesLoaded: true,
-                                areTasksLoaded: true
+                            const sanitizedUpload = sanitizeDataForDriveUpload({
+                                ...merged,
+                                notes: stripLargePayloads(merged.notes),
+                                lastUpdated: uploadTimestamp
                             });
 
-                            setTimeout(() => {
-                                syncWidgetData(mergedGoals, mergedAppointments, mergedNotes, mergedTasks).catch(console.error);
-                            }, 0);
-
-                            const dataToUpload = {
-                                notes: stripLargePayloads(mergedNotes),
-                                tasks: mergedTasks,
-                                goals: mergedGoals,
-                                appointments: mergedAppointments,
-                                projects: mergedProjects,
-                                taskGroups: mergedTaskGroups,
-                                completedOnceHabits: mergedCompletedOnceHabits,
-                                transactions: mergedTransactions,
-                                expenseNotes: mergedExpenseNotes,
-                                savingsGoal: mergedSavingsGoal,
-                                dailySnapshots: mergedSnapshots,
-                                user: mergedUser,
-                                deletedItems: mergedDeletedItems,
-                                lastUpdated: newTimestamp
-                            };
-
-                            const fileId = existingFile.id;
-                            const updateRes = await patchBackupToDrive(token, fileId, dataToUpload, newTimestamp);
+                            const updateRes = await patchBackupToDrive(token, existingFile.id, sanitizedUpload, uploadTimestamp);
                             if (!updateRes.ok) {
                                 const errBody = await updateRes.text().catch(() => "Unknown error");
                                 throw new Error(`Update failed (${updateRes.status}): ${errBody}`);
                             }
+                            isCloudSyncDirty = false;
                             return true;
                         }
 
-                        // ── Case 4: Same timestamps AND both have data → check for real differences ──
-                        // If content actually differs, merge (drive wins for equal-timestamp conflicts).
-                        console.log('[Sync] Same timestamp and both have data. Checking for content differences...');
+                        // Rama B: Drive tenía cambios más nuevos y local no tenía nada pendiente -> adopción de Drive (0 ping-pong)
+                        if (changedLocal && !changedRemote) {
+                            console.log(`[Sync] Remoto tiene cambios y local no tenía nada nuevo -> adoptando remoto (convergencia sin ping-pong).`);
+                            const finalTs = driveLastUpdated;
 
-                        const localNoteIds = new Set((freshState.notes || []).map((n: any) => n.id));
-                        const driveNoteIds = new Set((driveData.notes || []).map((n: any) => n.id));
-                        const noteCountDiffers = localNoteIds.size !== driveNoteIds.size;
-                        const localTaskCount = (freshState.tasks || []).length;
-                        const driveTaskCount = (driveData.tasks || []).length;
-                        // FIX: Also compare expenseNotes and transactions — previously ignored,
-                        // causing mobile to see "identical" when only expenseNotes differed.
-                        const localExpenseCount = (freshState.expenseNotes || []).length;
-                        const driveExpenseCount = (driveData.expenseNotes || []).length;
-                        const localTxCount = (freshState.transactions || []).length;
-                        const driveTxCount = (driveData.transactions || []).length;
-
-                        console.log(`[Sync][DIAG] Case 4 compare — notes:${localNoteIds.size}vs${driveNoteIds.size} tasks:${localTaskCount}vs${driveTaskCount} expenses:${localExpenseCount}vs${driveExpenseCount} tx:${localTxCount}vs${driveTxCount}`);
-
-                        if (noteCountDiffers || localTaskCount !== driveTaskCount || localExpenseCount !== driveExpenseCount || localTxCount !== driveTxCount) {
-                            // Real differences found — do a silent merge favouring drive for conflicts
-                            console.log('[Sync] Real content differences detected with same timestamp → silent merge (drive wins conflicts).');
-                            const fullNotes = await readAllNotesFromDisk(freshState.notes);
-                            const fullTasks = await readAllTasksFromDisk(freshState.tasks);
-
-                            // Same-timestamp merge: drive wins conflicts (useLocalForConflicts = false)
-                            const mergedDeletedItems4 = mergeDeletedItems(freshState.deletedItems, driveData.deletedItems);
-                            const mergedNotes4 = mergeNotesLists(fullNotes, driveData.notes, false, mergedDeletedItems4);
-                            const mergedTasks4 = mergeLists(fullTasks, driveData.tasks, false, mergedDeletedItems4);
-                            const mergedGoals4 = mergeLists(freshState.goals, driveData.goals, false, mergedDeletedItems4);
-                            const mergedAppointments4 = mergeLists(freshState.appointments, driveData.appointments, false, mergedDeletedItems4);
-                            const mergedProjects4 = mergeLists(freshState.projects || [], driveData.projects || [], false, mergedDeletedItems4);
-                            const mergedTaskGroups4 = mergeLists(freshState.taskGroups || [], driveData.taskGroups || [], false, mergedDeletedItems4);
-                            const mergedCompletedOnceHabits4 = mergeLists(freshState.completedOnceHabits || [], driveData.completedOnceHabits || [], false, mergedDeletedItems4);
-                            const mergedTransactions4 = mergeLists(freshState.transactions || [], driveData.transactions || [], false, mergedDeletedItems4);
-                            const mergedExpenseNotes4 = mergeLists(freshState.expenseNotes || [], driveData.expenseNotes || [], false, mergedDeletedItems4);
-                            const mergedSavingsGoal4 = driveData.savingsGoal ?? freshState.savingsGoal ?? 400;
-                            const mergedSnapshots4 = mergeDailySnapshots(freshState.dailySnapshots, driveData.dailySnapshots);
-                            const mergedUser4 = mergeUser(freshState.user, driveData.user);
-
-                            // Mismo timestamp en ambos lados: se conserva (NO se fabrica uno nuevo, evita ping-pong entre dispositivos).
-                            const newTimestamp4 = driveLastUpdated;
-
-                            await saveAllNotesToDisk(mergedNotes4);
-                            await saveAllTasksToDisk(mergedTasks4);
+                            await saveAllNotesToDisk(merged.notes);
+                            await saveAllTasksToDisk(merged.tasks);
                             if (abortIfUserEdited()) return false;
 
                             originalSet({
-                                notes: mergedNotes4,
-                                tasks: mergedTasks4,
-                                goals: mergedGoals4,
-                                appointments: mergedAppointments4,
-                                projects: mergedProjects4,
-                                taskGroups: mergedTaskGroups4,
-                                completedOnceHabits: mergedCompletedOnceHabits4,
-                                transactions: mergedTransactions4,
-                                expenseNotes: mergedExpenseNotes4,
-                                savingsGoal: mergedSavingsGoal4,
-                                dailySnapshots: mergedSnapshots4,
-                                user: mergedUser4,
-                                deletedItems: mergedDeletedItems4,
-                                lastUpdated: newTimestamp4,
+                                notes: merged.notes,
+                                tasks: merged.tasks,
+                                goals: merged.goals,
+                                appointments: merged.appointments,
+                                projects: merged.projects,
+                                taskGroups: merged.taskGroups,
+                                completedOnceHabits: merged.completedOnceHabits,
+                                transactions: merged.transactions,
+                                expenseNotes: merged.expenseNotes,
+                                savingsGoal: merged.savingsGoal,
+                                dailySnapshots: merged.dailySnapshots,
+                                user: merged.user,
+                                deletedItems: merged.deletedItems,
+                                lastUpdated: finalTs,
                                 isSyncingCloud: false,
                                 ...syncStamp(),
                                 areNotesLoaded: true,
-                                areTasksLoaded: true
+                                areTasksLoaded: true,
+                                ...(remoteMd5 ? { lastSyncedMd5: remoteMd5 } : {})
                             });
 
                             setTimeout(() => {
-                                syncWidgetData(mergedGoals4, mergedAppointments4, mergedNotes4, mergedTasks4).catch(console.error);
+                                syncWidgetData(merged.goals, merged.appointments, merged.notes, merged.tasks).catch(console.error);
                             }, 0);
 
-                            // Upload the merged result so both devices converge
-                            const dataToUpload4 = {
-                                notes: stripLargePayloads(mergedNotes4),
-                                tasks: mergedTasks4,
-                                goals: mergedGoals4,
-                                appointments: mergedAppointments4,
-                                projects: mergedProjects4,
-                                taskGroups: mergedTaskGroups4,
-                                completedOnceHabits: mergedCompletedOnceHabits4,
-                                transactions: mergedTransactions4,
-                                expenseNotes: mergedExpenseNotes4,
-                                savingsGoal: mergedSavingsGoal4,
-                                dailySnapshots: mergedSnapshots4,
-                                user: mergedUser4,
-                                deletedItems: mergedDeletedItems4,
-                                lastUpdated: newTimestamp4
-                            };
-                            const updateRes4 = await patchBackupToDrive(token, existingFile.id, dataToUpload4, newTimestamp4);
-                            if (!updateRes4.ok) {
-                                console.warn(`[Sync] Case 4 upload warning: ${updateRes4.status}`);
+                            if (!remoteLastUpdated || remoteLastUpdated !== finalTs) {
+                                try {
+                                    await repairBackupMetadata(token, existingFile.id, finalTs);
+                                } catch (e) {
+                                    console.warn('[Sync] Fallo reparando metadatos tras adopción remota', e);
+                                }
                             }
+                            isCloudSyncDirty = false;
                             return true;
                         }
 
-                        // Truly identical — no action needed
-                        console.log('[Sync] Identical timestamps and content. No action needed.');
+                        // Rama C: Local y Remoto 100% idénticos comprobados campo a campo
+                        console.log('[Sync] Contenido idéntico comprobado campo por campo. No se requiere acción.');
                         if (!remoteLastUpdated || remoteLastUpdated !== localLastUpdated) {
                             try {
                                 await repairBackupMetadata(token, existingFile.id, localLastUpdated);
@@ -4144,7 +3788,12 @@ export const useStore = create<AppState>()(
                                 console.warn('[Sync] Fallo reparando metadatos en estado idéntico', e);
                             }
                         }
-                        set({ isSyncingCloud: false, ...syncStamp(), ...(remoteMd5 ? { lastSyncedMd5: remoteMd5 } : {}) });
+                        set({
+                            isSyncingCloud: false,
+                            ...syncStamp(),
+                            ...(remoteMd5 ? { lastSyncedMd5: remoteMd5 } : {})
+                        });
+                        isCloudSyncDirty = false;
                         return true;
 
                     } catch (err: any) {
