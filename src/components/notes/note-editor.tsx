@@ -98,6 +98,28 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
     const [mounted, setMounted] = useState(false)
     useEffect(() => setMounted(true), [])
     const contentContainerRef = useRef<HTMLDivElement>(null)
+    const headerGlassRef = useRef<HTMLDivElement>(null)
+
+    // Dead-zone guard: when content scrolls underneath the top header/toolbar, deactivate any active editing/selection inside that zone
+    const handleContentScroll = useCallback(() => {
+        if (typeof document === 'undefined' || !headerGlassRef.current || !contentContainerRef.current) return;
+        const headerBottom = headerGlassRef.current.getBoundingClientRect().bottom - 6;
+        const activeEl = document.activeElement as HTMLElement | null;
+        if (activeEl && contentContainerRef.current.contains(activeEl)) {
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) {
+                const rangeRect = sel.getRangeAt(0).getBoundingClientRect();
+                if (rangeRect && rangeRect.height > 0 && rangeRect.bottom < headerBottom) {
+                    activeEl.blur();
+                    return;
+                }
+            }
+            const elRect = activeEl.getBoundingClientRect();
+            if (elRect.bottom < headerBottom) {
+                activeEl.blur();
+            }
+        }
+    }, []);
 
     useEffect(() => {
         if (typeof window === 'undefined') return
@@ -472,8 +494,15 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
             <div className="w-full max-w-4xl h-[90vh] bg-white dark:bg-[#0c0c0e] border border-zinc-200 dark:border-white/10 rounded-2xl flex flex-col relative overflow-hidden shadow-2xl">
 
-                {/* PREMIUM GLASS HEADER - Floating above content with bar-top progressive blur */}
-                <GlassSurface variant="bar-top" className="absolute top-0 inset-x-0 z-20">
+                {/* PREMIUM GLASS HEADER - Floating above content with bar-top progressive blur & dead zone */}
+                <GlassSurface
+                    ref={headerGlassRef}
+                    variant="bar-top"
+                    className="absolute top-0 inset-x-0 z-40 select-none"
+                    style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 40 }}
+                    onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                >
                     <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showHeader
                             ? (isLandscape ? 'max-h-16 opacity-100 py-2 px-4' : 'max-h-48 opacity-100 p-3 md:p-5')
                             : 'max-h-0 opacity-0 py-0 border-none pointer-events-none'
@@ -606,6 +635,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                 {/* Content - Scrolls underneath the floating glass header */}
                 <div
                     ref={contentContainerRef}
+                    onScroll={handleContentScroll}
                     className={`flex-1 overflow-y-auto px-5 md:px-8 pb-8 space-y-2 note-font-container overscroll-contain [webkit-overflow-scrolling:touch] ${
                         isLandscape ? 'pt-16' : 'pt-28 md:pt-32'
                     }`}
@@ -1376,9 +1406,20 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
     } | null>(null);
     const ghostRef = useRef<HTMLDivElement | null>(null);
 
-    // Keep rect synced with scroll/resize
+    // Keep rect synced with scroll/resize and close if scrolled into header dead zone
     useEffect(() => {
-        const update = () => setRect(mediaEl.getBoundingClientRect());
+        const update = () => {
+            const nextRect = mediaEl.getBoundingClientRect();
+            const headerEl = document.querySelector('.glass--bar-top');
+            if (headerEl) {
+                const headerBottom = headerEl.getBoundingClientRect().bottom - 6;
+                if (nextRect.top < headerBottom) {
+                    onClose();
+                    return;
+                }
+            }
+            setRect(nextRect);
+        };
         window.addEventListener('scroll', update, true);
         window.addEventListener('resize', update);
         return () => {

@@ -108,6 +108,7 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
                                 exit={{ y: "100%" }}
                                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
                                 className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto rounded-t-3xl z-[1000] text-foreground"
+                                style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000 }}
                             >
                                 <div className="p-6 pb-10">
                                     <div className="w-12 h-1.5 bg-black/15 dark:bg-white/15 rounded-full mx-auto mb-6" />
