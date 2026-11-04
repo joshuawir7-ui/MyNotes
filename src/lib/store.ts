@@ -1816,7 +1816,12 @@ export let isCloudSyncDirty = false;
 let cloudSyncDebounceTimeout: any = null;
 let syncInProgress = false;
 
+/** Contador de ediciones del usuario. Un syncCycle lo captura al empezar: si cambia mientras sincroniza,
+ *  NO debe sobrescribir el estado local ni mover lastUpdated hacia atrás (la edición se subirá en el siguiente ciclo). */
+let userEditVersion = 0;
+
 export const markCloudSyncDirty = () => {
+    userEditVersion++;
     isCloudSyncDirty = true;
     if (cloudSyncDebounceTimeout) clearTimeout(cloudSyncDebounceTimeout);
     cloudSyncDebounceTimeout = setTimeout(() => {
@@ -3797,6 +3802,16 @@ export const useStore = create<AppState>()(
                         }
 
                         const freshState = get();
+                        const versionAtStart = userEditVersion;
+                        // Si el usuario edita mientras sincronizamos, no pisamos su edición ni retrocedemos lastUpdated:
+                        // abortamos antes de aplicar el merge y dejamos la nube marcada como sucia para el siguiente ciclo.
+                        const abortIfUserEdited = (): boolean => {
+                            if (userEditVersion === versionAtStart) return false;
+                            console.log('[Sync] Edición del usuario durante el ciclo: se aborta la aplicación del merge y se reintenta.');
+                            set({ isSyncingCloud: false });
+                            markCloudSyncDirty();
+                            return true;
+                        };
                         const localLastUpdated = freshState.lastUpdated || 0;
                         const remoteLastUpdatedStr = existingFile.appProperties?.lastUpdated;
                         const remoteLastUpdated = remoteLastUpdatedStr ? parseInt(remoteLastUpdatedStr, 10) : 0;
@@ -3915,12 +3930,18 @@ export const useStore = create<AppState>()(
                                 throw new Error(`Upload failed (${uploadRes.status}): ${errBody}`);
                             }
 
-                            originalSet({ lastUpdated: newTimestamp, isSyncingCloud: false, ...syncStamp() });
+                            // Si el usuario editó durante la subida, NO movemos lastUpdated (su edición queda pendiente y sube en el próximo ciclo).
+                            if (userEditVersion === versionAtStart) {
+                                originalSet({ lastUpdated: newTimestamp, isSyncingCloud: false, ...syncStamp() });
+                            } else {
+                                originalSet({ isSyncingCloud: false, ...syncStamp() });
+                            }
                             return true;
                         }
 
                         // ── Case 3: Timestamps differ → merge (existing logic) ─────────────────
                         if (localLastUpdated !== driveLastUpdated) {
+                            if (abortIfUserEdited()) return false;
                             const useLocalForConflicts = localLastUpdated > driveLastUpdated;
                             console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:merge11Collections:start useLocal=${useLocalForConflicts}`);
 
@@ -3946,6 +3967,8 @@ export const useStore = create<AppState>()(
                             console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:saveDiskAndOriginalSet:start newTS=${newTimestamp}`);
                             await saveAllNotesToDisk(mergedNotes);
                             await saveAllTasksToDisk(mergedTasks);
+                            // Edición del usuario durante las escrituras a disco: no aplicar este merge sobre su estado más nuevo.
+                            if (abortIfUserEdited()) return false;
 
                             originalSet({
                                 notes: mergedNotes,
@@ -4037,10 +4060,12 @@ export const useStore = create<AppState>()(
                             const mergedSnapshots4 = mergeDailySnapshots(freshState.dailySnapshots, driveData.dailySnapshots);
                             const mergedUser4 = mergeUser(freshState.user, driveData.user);
 
-                            const newTimestamp4 = Date.now();
+                            // Mismo timestamp en ambos lados: se conserva (NO se fabrica uno nuevo, evita ping-pong entre dispositivos).
+                            const newTimestamp4 = driveLastUpdated;
 
                             await saveAllNotesToDisk(mergedNotes4);
                             await saveAllTasksToDisk(mergedTasks4);
+                            if (abortIfUserEdited()) return false;
 
                             originalSet({
                                 notes: mergedNotes4,
