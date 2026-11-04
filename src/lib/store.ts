@@ -3643,12 +3643,17 @@ export const useStore = create<AppState>()(
                         const msg = String(err).toLowerCase();
                         const isAuthError = msg.includes("401") || msg.includes("unauthenticated") || msg.includes("invalid credentials") || msg.includes("autherror") || msg.includes("auth_error");
                         if (isAuthError) {
+                            if (isAuthRetry) {
+                                console.warn("[Sync] Reintento de autenticación en syncWithGoogleDrive ya realizado; abortando.");
+                                set({ isSyncingCloud: false, syncError: "Auth retry failed" });
+                                return false;
+                            }
                             // Intentar renovar el token silenciosamente antes de mostrar error al usuario
                             const newToken = await silentRefreshGoogleToken();
                             if (newToken) {
                                 // Token renovado: reintentar sync una vez
                                 set({ isSyncingCloud: false });
-                                return get().syncWithGoogleDrive();
+                                return get().syncWithGoogleDrive(true);
                             }
                             const errMsg = get().language === 'es'
                                 ? "Sesión de Google expirada. Por favor, inicia sesión nuevamente."
@@ -4103,11 +4108,16 @@ export const useStore = create<AppState>()(
                         const msg = String(err).toLowerCase();
                         const isAuthError = msg.includes("401") || msg.includes("unauthenticated") || msg.includes("invalid credentials") || msg.includes("autherror") || msg.includes("auth_error");
                         if (isAuthError) {
+                            if (isAuthRetry) {
+                                console.warn("[Sync] Reintento de autenticación en syncCycle ya realizado; abortando sin bucle.");
+                                set({ isSyncingCloud: false });
+                                return false;
+                            }
                             // Intentar renovar el token silenciosamente antes de mostrar error al usuario
                             const newToken = await silentRefreshGoogleToken();
                             if (newToken) {
                                 set({ isSyncingCloud: false });
-                                return get().syncCycle();
+                                return get().syncCycle(force, true);
                             }
                             const errMsg = get().language === 'es'
                                 ? "Sesión de Google expirada. Por favor, inicia sesión nuevamente."
@@ -4222,15 +4232,6 @@ export const useStore = create<AppState>()(
                     areNotesLoaded: true,
                     areTasksLoaded: true
                 };
-                if (typeof window !== 'undefined') {
-                    try {
-                        const jsonStr = JSON.stringify(result);
-                        const kb = (jsonStr.length / 1024).toFixed(2);
-                        console.log(`[PERF][partialize] Tamaño JSON a persistir: ${kb} KB (notes: ${result.notes?.length ?? 0}, tasks: ${result.tasks?.length ?? 0})`);
-                    } catch (e) {
-                        console.warn('[PERF][partialize] Error calculando tamaño:', e);
-                    }
-                }
                 return result;
             }
         }
