@@ -343,7 +343,7 @@ html.perf-no-motion *::after {
 /* modo oscuro */
 .dark .nav-shell{ box-shadow:0 14px 34px rgba(0,0,0,.55), 0 3px 10px rgba(0,0,0,.30); }
 .dark .tint{ background:linear-gradient(to bottom,
-  rgba(40,42,54,.30) 0%, rgba(30,32,42,.58) 45%, rgba(18,19,26,.84) 100%); }
+  rgba(26,26,26,.30) 0%, rgba(18,18,18,.58) 45%, rgba(12,12,12,.86) 100%); }
 .dark .rim{ border-color:rgba(255,255,255,.10);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.10);
   background:linear-gradient(to bottom, rgba(255,255,255,.06), rgba(255,255,255,0) 40%); }
@@ -357,7 +357,7 @@ html.perf-no-motion *::after {
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
   .bl{ display:none; }
   .tint{ background:rgba(255,255,255,.92); }
-  .dark .tint{ background:rgba(22,23,30,.94); }
+  .dark .tint{ background:rgba(14,14,14,.94); }
 }
 
 
@@ -369,68 +369,74 @@ html.perf-no-motion *::after {
 .glass-content{ position:relative; z-index:1; border-radius:inherit; }
 
 /* scrim sin blur */
-.glass-scrim{ position:fixed; inset:0; background:rgba(10,12,20,.26); }
-.dark .glass-scrim{ background:rgba(0,0,0,.48); }
-.glass-scrim--light{ position:fixed; inset:0; background:rgba(10,12,20,.16); }
-.dark .glass-scrim--light{ background:rgba(0,0,0,.36); }
+.glass-scrim{ position:fixed; inset:0; background:rgba(0,0,0,.26); }
+.dark .glass-scrim{ background:rgba(0,0,0,.52); }
+.glass-scrim--light{ position:fixed; inset:0; background:rgba(0,0,0,.16); }
+.dark .glass-scrim--light{ background:rgba(0,0,0,.40); }
 
 /* tarjetas y campos internos: translúcidos, SIN backdrop-filter */
 .glass-card{ background:rgba(255,255,255,.65); border:1px solid rgba(255,255,255,.78);
   box-shadow:0 1px 2px rgba(20,24,40,.05), inset 0 1px 0 rgba(255,255,255,.88); }
 .glass-field{ background:rgba(255,255,255,.82); border:1px solid rgba(20,24,40,.10); }
-.dark .glass-card{ background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.10);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.07); }
-.dark .glass-field{ background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.12); }
+.dark .glass-card{ background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.10);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06); }
+.dark .glass-field{ background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.12); }
 
 /* ---------- SHEET: más blanco y denso para modales grandes (Nueva Meta, Ajustes, Gane, Gasto) ---------- */
 .glass--sheet{ box-shadow:0 24px 60px rgba(20,24,40,.22), 0 6px 18px rgba(20,24,40,.10); }
-.glass--sheet .g1{ -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
-  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 32%,transparent 58%);
-          mask-image:linear-gradient(to bottom,#000 0%,#000 32%,transparent 58%); }
-.glass--sheet .g2{ -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px);
-  -webkit-mask-image:linear-gradient(to bottom,transparent 22%,#000 48%,#000 66%,transparent 84%);
-          mask-image:linear-gradient(to bottom,transparent 22%,#000 48%,#000 66%,transparent 84%); }
+.glass--sheet .g1{ -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  -webkit-mask-image:linear-gradient(to bottom,#000 0px,#000 20px,transparent 44px);
+          mask-image:linear-gradient(to bottom,#000 0px,#000 20px,transparent 44px); }
+.glass--sheet .g2{ -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 16px,#000 36px,#000 58px,transparent 84px);
+          mask-image:linear-gradient(to bottom,transparent 16px,#000 36px,#000 58px,transparent 84px); }
 .glass--sheet .g3{ -webkit-backdrop-filter:blur(26px) saturate(1.5); backdrop-filter:blur(26px) saturate(1.5);
-  -webkit-mask-image:linear-gradient(to bottom,transparent 55%,#000 82%,#000 100%);
-          mask-image:linear-gradient(to bottom,transparent 55%,#000 82%,#000 100%); }
+  -webkit-mask-image:linear-gradient(to bottom,transparent 50px,#000 88px,#000 100%);
+          mask-image:linear-gradient(to bottom,transparent 50px,#000 88px,#000 100%); }
 .glass--sheet .tint{ background:linear-gradient(to bottom,
-  rgba(255,255,255,.78) 0%, rgba(255,255,255,.88) 45%, rgba(255,255,255,.95) 100%); }
+  rgba(255,255,255,.78) 0px, rgba(255,255,255,.88) 88px, rgba(255,255,255,.95) 100%); }
 .glass--sheet .rim{ border:none; box-shadow:none;
   background:linear-gradient(to bottom, rgba(255,255,255,.28), rgba(255,255,255,0) 35%); }
-.dark .glass--sheet{ box-shadow:0 24px 60px rgba(0,0,0,.60), 0 6px 18px rgba(0,0,0,.35); }
+.dark .glass--sheet{ box-shadow:0 24px 60px rgba(0,0,0,.65), 0 6px 18px rgba(0,0,0,.40); }
+.dark .glass--sheet .g1{ -webkit-backdrop-filter:blur(8px) saturate(0); backdrop-filter:blur(8px) saturate(0); }
+.dark .glass--sheet .g2{ -webkit-backdrop-filter:blur(16px) saturate(0); backdrop-filter:blur(16px) saturate(0); }
+.dark .glass--sheet .g3{ -webkit-backdrop-filter:blur(26px) saturate(0); backdrop-filter:blur(26px) saturate(0); }
 .dark .glass--sheet .tint{ background:linear-gradient(to bottom,
-  rgba(32,34,46,.76) 0%, rgba(24,26,36,.86) 45%, rgba(16,17,24,.94) 100%); }
+  rgba(18,18,18,.80) 0px, rgba(14,14,14,.88) 88px, rgba(10,10,10,.95) 100%); }
 .dark .glass--sheet .rim{ border:none; box-shadow:none;
-  background:linear-gradient(to bottom, rgba(255,255,255,.06), rgba(255,255,255,0) 35%); }
+  background:linear-gradient(to bottom, rgba(255,255,255,.05), rgba(255,255,255,0) 35%); }
 
-/* ---------- SHEET-ACTION: hoja de acciones/hábito con borde superior muy ligero (como cinta de inicio) ---------- */
+/* ---------- SHEET-ACTION: 3 capas principales de blur concentradas en la franja superior (~0px a 90px) ---------- */
 .glass--sheet-action{ box-shadow:0 -12px 44px rgba(20,24,40,.16), 0 20px 50px rgba(20,24,40,.18); }
-.glass--sheet-action .g1{ -webkit-backdrop-filter:blur(2.5px); backdrop-filter:blur(2.5px);
-  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 22%,transparent 42%);
-          mask-image:linear-gradient(to bottom,#000 0%,#000 22%,transparent 42%); }
-.glass--sheet-action .g2{ -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px);
-  -webkit-mask-image:linear-gradient(to bottom,transparent 14%,#000 34%,#000 54%,transparent 74%);
-          mask-image:linear-gradient(to bottom,transparent 14%,#000 34%,#000 54%,transparent 74%); }
+.glass--sheet-action .g1{ -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);
+  -webkit-mask-image:linear-gradient(to bottom,#000 0px,#000 18px,transparent 40px);
+          mask-image:linear-gradient(to bottom,#000 0px,#000 18px,transparent 40px); }
+.glass--sheet-action .g2{ -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 14px,#000 34px,#000 56px,transparent 80px);
+          mask-image:linear-gradient(to bottom,transparent 14px,#000 34px,#000 56px,transparent 80px); }
 .glass--sheet-action .g3{ -webkit-backdrop-filter:blur(14px) saturate(1.4); backdrop-filter:blur(14px) saturate(1.4);
-  -webkit-mask-image:linear-gradient(to bottom,transparent 46%,#000 76%,#000 100%);
-          mask-image:linear-gradient(to bottom,transparent 46%,#000 76%,#000 100%); }
+  -webkit-mask-image:linear-gradient(to bottom,transparent 48px,#000 86px,#000 100%);
+          mask-image:linear-gradient(to bottom,transparent 48px,#000 86px,#000 100%); }
 .glass--sheet-action .tint{ background:linear-gradient(to bottom,
-  rgba(255,255,255,.26) 0%,
-  rgba(255,255,255,.48) 24%,
-  rgba(255,255,255,.70) 56%,
-  rgba(255,255,255,.86) 100%); }
+  rgba(255,255,255,.22) 0px,
+  rgba(255,255,255,.48) 38px,
+  rgba(255,255,255,.78) 86px,
+  rgba(255,255,255,.88) 100%); }
 .glass--sheet-action .rim{ border:1px solid rgba(255,255,255,.68);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.92);
   background:linear-gradient(to bottom, rgba(255,255,255,.26), rgba(255,255,255,0) 28%); }
-.dark .glass--sheet-action{ box-shadow:0 -12px 44px rgba(0,0,0,.50), 0 20px 50px rgba(0,0,0,.55); }
+.dark .glass--sheet-action{ box-shadow:0 -12px 44px rgba(0,0,0,.55), 0 20px 50px rgba(0,0,0,.60); }
+.dark .glass--sheet-action .g1{ -webkit-backdrop-filter:blur(2px) saturate(0); backdrop-filter:blur(2px) saturate(0); }
+.dark .glass--sheet-action .g2{ -webkit-backdrop-filter:blur(6px) saturate(0); backdrop-filter:blur(6px) saturate(0); }
+.dark .glass--sheet-action .g3{ -webkit-backdrop-filter:blur(14px) saturate(0); backdrop-filter:blur(14px) saturate(0); }
 .dark .glass--sheet-action .tint{ background:linear-gradient(to bottom,
-  rgba(34,36,48,.30) 0%,
-  rgba(30,32,44,.52) 24%,
-  rgba(24,26,36,.74) 56%,
-  rgba(18,19,26,.88) 100%); }
-.dark .glass--sheet-action .rim{ border-color:rgba(255,255,255,.12);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.10);
-  background:linear-gradient(to bottom, rgba(255,255,255,.06), rgba(255,255,255,0) 28%); }
+  rgba(22,22,22,.24) 0px,
+  rgba(17,17,17,.50) 38px,
+  rgba(13,13,13,.80) 86px,
+  rgba(10,10,10,.90) 100%); }
+.dark .glass--sheet-action .rim{ border-color:rgba(255,255,255,.10);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+  background:linear-gradient(to bottom, rgba(255,255,255,.05), rgba(255,255,255,0) 28%); }
 
 /* ---------- BAR-TOP: abajo (barra scroll lateral) más claro, hacia arriba progresivamente más difuminado ---------- */
 .glass--bar-top{ position:absolute; top:0; left:0; right:0; z-index:40; }
@@ -453,13 +459,14 @@ html.perf-no-motion *::after {
   rgba(255,255,255,.10) 92%,
   rgba(255,255,255,0) 100%); }
 .glass--bar-top .rim{ border:0; box-shadow:none; background:none; }
+.dark .glass--bar-top .g1{ -webkit-backdrop-filter:blur(20px) saturate(1); backdrop-filter:blur(20px) saturate(1); }
 .dark .glass--bar-top .tint{ background:linear-gradient(to bottom,
-  rgba(14,15,20,.95) 0%,
-  rgba(14,15,20,.86) 36%,
-  rgba(14,15,20,.64) 60%,
-  rgba(14,15,20,.34) 80%,
-  rgba(14,15,20,.12) 92%,
-  rgba(14,15,20,0) 100%); }
+  rgba(12,12,12,.95) 0%,
+  rgba(12,12,12,.86) 36%,
+  rgba(12,12,12,.64) 60%,
+  rgba(12,12,12,.34) 80%,
+  rgba(12,12,12,.12) 92%,
+  rgba(12,12,12,0) 100%); }
 
 /* ---------- GAMA BAJA: una sola capa, sin máscara ---------- */
 .glass[data-lite="true"] .g1, .glass[data-lite="true"] .g2{ display:none; }
@@ -469,11 +476,11 @@ html.perf-no-motion *::after {
 /* ---------- MODO RENDIMIENTO / SIN SOPORTE: sin blur, tinte casi opaco ---------- */
 .glass[data-perf="true"] .g1, .glass[data-perf="true"] .g2, .glass[data-perf="true"] .g3{ display:none; }
 .glass[data-perf="true"] .tint{ background:rgba(255,255,255,.94); }
-.dark .glass[data-perf="true"] .tint{ background:rgba(20,21,28,.96); }
+.dark .glass[data-perf="true"] .tint{ background:rgba(14,14,14,.96); }
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
   .glass .g1, .glass .g2, .glass .g3{ display:none; }
   .glass--sheet .tint, .glass--sheet-action .tint{ background:rgba(255,255,255,.94); }
-  .dark .glass--sheet .tint, .dark .glass--sheet-action .tint{ background:rgba(20,21,28,.96); }
+  .dark .glass--sheet .tint, .dark .glass--sheet-action .tint{ background:rgba(14,14,14,.96); }
 }
 body[data-modal-open] .nav-glass .bl{ display:none; }
 
