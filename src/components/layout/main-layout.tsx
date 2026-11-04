@@ -835,24 +835,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
-    // Auto-sync to Google Drive 10 seconds after a change if logged in, or immediately when app/page closes
+    // Instant sync when closing/leaving tab on web
     useEffect(() => {
-        let syncTimeout: NodeJS.Timeout;
-        let lastTimestamp = useStore.getState().lastUpdated;
-
-        const unsubscribe = useStore.subscribe((state) => {
-            if (state.lastUpdated !== lastTimestamp) {
-                lastTimestamp = state.lastUpdated;
-                if (state.googleUser && !state.googleSessionExpired) {
-                    clearTimeout(syncTimeout);
-                    syncTimeout = setTimeout(() => {
-                        import('../../lib/store').then(({ triggerBackgroundSync }) => triggerBackgroundSync());
-                    }, 2000);
-                }
-            }
-        });
-
-        // Instant sync when closing/leaving tab on web
         const handleBeforeUnload = () => {
             const state = useStore.getState();
             if (state.googleUser && !state.googleSessionExpired) {
@@ -863,8 +847,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         window.addEventListener('beforeunload', handleBeforeUnload);
 
         return () => {
-            clearTimeout(syncTimeout);
-            unsubscribe();
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
     }, []);

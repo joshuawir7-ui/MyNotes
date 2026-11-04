@@ -2467,31 +2467,28 @@ export const useStore = create<AppState>()(
                 },
 
                 updateNoteBlockContent: (noteId, blockId, content) => {
-                    const now = Date.now();
-                    lastLocalNotesUpdate = now;
-
-                    // 1. UI inmediata (sin await)
-                    set((state) => {
+                    // Descargar una imagen/adjunto desde Drive a local es hidratación de caché, NO una edición del usuario.
+                    // Usamos originalSet para NO ensuciar la nube (markCloudSyncDirty) ni mover lastUpdated.
+                    originalSet((state) => {
                         const newNotes = state.notes.map(n => n.id === noteId ? {
                             ...n,
-                            lastUpdated: now,
                             blocks: n.blocks.map(b => b.id === blockId ? { ...b, content, isDownloading: false } : b)
-                        } : n)
-                        syncWidgetData(state.goals, state.appointments, newNotes)
-                        return { notes: newNotes }
+                        } : n);
+                        return { notes: newNotes };
                     });
 
-                    // 2. Persiste con snapshot ya actualizado
+                    // Persiste el nuevo URI a disco local
                     queueNotesSave(get().notes);
                 },
 
                 setBlockDownloading: (noteId, blockId, isDownloading) => {
-                    set((state) => ({
+                    // Estado transitorio de UI: usar originalSet para no alterar lastUpdated ni ensuciar la nube.
+                    originalSet((state) => ({
                         notes: state.notes.map(n => n.id === noteId ? {
                             ...n,
                             blocks: n.blocks.map(b => b.id === blockId ? { ...b, isDownloading } : b)
                         } : n)
-                    }))
+                    }));
                 },
 
                 deleteNote: (id) => {
@@ -4182,6 +4179,27 @@ export const useStore = create<AppState>()(
                     if (error) {
                         console.error("Hydration error:", error);
                     }
+                    // Limpiar isDownloading de cualquier bloque que hubiera quedado colgado
+                    if (rehydratedState && Array.isArray(rehydratedState.notes)) {
+                        let hadStuckDownloading = false;
+                        const cleanedNotes = rehydratedState.notes.map(note => {
+                            if (!note.blocks) return note;
+                            let blockChanged = false;
+                            const cleanedBlocks = note.blocks.map(b => {
+                                if (b && b.isDownloading) {
+                                    blockChanged = true;
+                                    hadStuckDownloading = true;
+                                    const { isDownloading, ...clean } = b;
+                                    return clean;
+                                }
+                                return b;
+                            });
+                            return blockChanged ? { ...note, blocks: cleanedBlocks } : note;
+                        });
+                        if (hadStuckDownloading) {
+                            useStore.setState({ notes: cleanedNotes });
+                        }
+                    }
                     // Set isHydrated to true when hydration finishes
                     useStore.setState({ isHydrated: true });
                     
@@ -4317,8 +4335,15 @@ export const checkAndEnqueueMissingImages = async () => {
     }
 };
 
-useStore.subscribe((state, prevState) => {
-    if (state.lastCloudSync !== prevState.lastCloudSync && state.lastCloudSync) {
+let lastKnownAttachmentCount = -1;
+useStore.subscribe((state) => {
+    // Solo verificar descargas pendientes de imágenes si los adjuntos con DriveFileId cambiaron
+    // (p. ej. tras una restauración o tras un merge que incorporó nuevas notas con adjuntos).
+    // Evita escanear y encolar en cada ciclo inactivo donde no cambió nada.
+    if (!state.notes) return;
+    const currentAttachmentCount = countAttachmentDriveIds(state.notes);
+    if (currentAttachmentCount > 0 && currentAttachmentCount !== lastKnownAttachmentCount) {
+        lastKnownAttachmentCount = currentAttachmentCount;
         setTimeout(() => checkAndEnqueueMissingImages().catch(console.error), 1000);
     }
 });
