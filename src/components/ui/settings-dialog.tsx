@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence, Variants } from "framer-motion"
 import { Settings, Bell, X, Download, Upload, Zap, Cloud, LogOut, RefreshCw, Loader2, Sparkles, Type, Plus, Trash2, FolderPlus, Gauge, Code } from "lucide-react"
-import { useStore, readAllNotesFromDisk, readAllTasksFromDisk } from "@/lib/store"
+import { useStore, readAllNotesFromDisk, readAllTasksFromDisk, markCloudSyncDirty } from "@/lib/store"
 import { translations } from "@/lib/translations"
 import { ModeToggle } from "@/components/ui/mode-toggle"
 import { LanguageToggle } from "@/components/ui/language-toggle"
@@ -642,6 +642,7 @@ export function SettingsDialog() {
                         user: data.user || state.user,
                         lastUpdated: Date.now()
                     }));
+                    markCloudSyncDirty(); // importar backup cambia datos sincronizables: setState directo no marca sucio
                     showToast(
                         language === 'es' ? "Datos locales cargados" : "Local data loaded",
                         "success"
@@ -755,6 +756,7 @@ export function SettingsDialog() {
                     user: data.user || state.user,
                     lastUpdated: Date.now()
                 }));
+                markCloudSyncDirty(); // importar backup cambia datos sincronizables: setState directo no marca sucio
                 showToast(
                     language === 'es' ? "Datos locales cargados" : "Local data loaded",
                     "success"
