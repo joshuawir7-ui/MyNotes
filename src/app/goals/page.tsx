@@ -13,6 +13,8 @@ import { PageDescription } from "@/components/ui/page-description"
 import { useTheme } from "next-themes"
 import { DatePicker } from "@/components/ui/date-picker"
 import { CustomSelect } from "@/components/ui/custom-select"
+import { createPortal } from "react-dom"
+import { GlassSurface } from "@/components/ui/glass-surface"
 
 export default function GoalsPage() {
     const language = useStore(state => state.language)
@@ -146,220 +148,237 @@ export default function GoalsPage() {
                 </div>
             </Reveal>
 
-            <AnimatePresence>
-                {isCreating && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-                    >
-                        <motion.div
-                            className="bg-white dark:bg-[#0a0a0a] w-full max-w-lg p-6 sm:p-8 rounded-3xl border border-black/5 dark:border-white/10 shadow-2xl relative overflow-y-auto max-h-[90vh] custom-scrollbar"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <button
+            {mounted && typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {isCreating && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            {/* Scrim: only animates opacity, NO backdrop-filter */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="glass-scrim"
                                 onClick={() => setIsCreating(false)}
-                                className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors"
+                            />
+
+                            {/* Modal Panel: animates ONLY transform (scale, y), NO opacity on panel */}
+                            <motion.div
+                                initial={{ scale: 0.95, y: 15 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.95, y: 15 }}
+                                transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                                className="relative z-10 w-full max-w-lg"
+                                onClick={(e) => e.stopPropagation()}
                             >
-                                <X className="w-5 h-5" />
-                            </button>
+                                <GlassSurface variant="sheet" className="w-full rounded-3xl">
+                                    <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto custom-scrollbar relative">
+                                        <button
+                                            onClick={() => setIsCreating(false)}
+                                            className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors z-20 cursor-pointer"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </button>
 
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-3 bg-primary/20 rounded-2xl text-primary">
-                                    <Target className="w-6 h-6" />
-                                </div>
-                                <h2 className="text-2xl font-bold">{t.newGoal}</h2>
-                            </div>
-
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <div>
-                                    <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">{t.goalName}</label>
-                                    <input
-                                        autoFocus
-                                        required
-                                        type="text"
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        placeholder={t.placeholderGeneral}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-colors"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">{t.goalType}</label>
-                                    <CustomSelect
-                                        options={[
-                                            { label: t.typeManual || (language === 'es' ? "Progreso Manual" : "Manual Progress"), value: "general" },
-                                            { label: t.typeChecklist || (language === 'es' ? "Cumplimiento de objetivos (Mini tareas)" : "By Objectives"), value: "checklist" }
-                                        ]}
-                                        value={type}
-                                        onChange={(val) => setType(val as GoalType)}
-                                    />
-                                </div>
-
-                                <div className="flex items-center gap-3 bg-black/[0.02] dark:bg-white/5 p-4 rounded-2xl border border-black/5 dark:border-white/5">
-                                    <input
-                                        type="checkbox"
-                                        id="hasBudget"
-                                        checked={hasBudget}
-                                        onChange={(e) => setHasBudget(e.target.checked)}
-                                        className="w-4 h-4 rounded text-primary focus:ring-primary border-white/10 bg-white/5 cursor-pointer accent-primary"
-                                    />
-                                    <label htmlFor="hasBudget" className="text-sm font-medium text-foreground select-none cursor-pointer">
-                                        {language === 'es' ? "¿Establecer presupuesto / meta de ahorro?" : "Set budget / savings goal?"}
-                                    </label>
-                                </div>
-
-                                {hasBudget && (
-                                    <div className="space-y-4 bg-black/[0.02] dark:bg-white/5 p-4 rounded-2xl border border-black/5 dark:border-white/5 animate-in fade-in slide-in-from-top-1 duration-250">
-                                        <div>
-                                            <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground/60 mb-2">
-                                                {language === 'es' ? "Presupuesto Objetivo ($)" : "Target Budget ($)"}
-                                            </label>
-                                            <input
-                                                required
-                                                type="number"
-                                                min="1"
-                                                value={targetBudget}
-                                                onChange={(e) => setTargetBudget(e.target.value)}
-                                                placeholder="Ej: 500"
-                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-colors"
-                                            />
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="p-3 bg-primary/20 rounded-2xl text-primary">
+                                                <Target className="w-6 h-6" />
+                                            </div>
+                                            <h2 className="text-2xl font-bold">{t.newGoal}</h2>
                                         </div>
-                                    </div>
-                                )}
 
-                                {type === 'checklist' && (
-                                    <div className="space-y-3 bg-black/[0.02] dark:bg-white/5 p-4 rounded-2xl border border-black/5 dark:border-white/5">
-                                        <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground/60 text-left">{t.stepsToComplete || "Pasos para completar"}</label>
-                                        
-                                        {/* List of current temp objectives */}
-                                        {objectives.length > 0 && (
-                                            <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
-                                                {objectives.map((obj, index) => (
-                                                    <div key={index} className="flex items-center justify-between bg-black/5 dark:bg-black/20 px-3 py-2 rounded-xl border border-black/5 dark:border-white/5">
-                                                        <div className="flex items-center gap-3">
-                                                            {obj.image && (
-                                                                <LocalImage src={obj.image} alt="" className="w-8 h-8 rounded object-cover border border-white/10 shrink-0" />
-                                                            )}
-                                                            <span className="text-sm opacity-90 text-left">{obj.title}</span>
+                                        <form onSubmit={handleSubmit} className="space-y-6">
+                                            <div>
+                                                <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">{t.goalName}</label>
+                                                <input
+                                                    autoFocus
+                                                    required
+                                                    type="text"
+                                                    value={title}
+                                                    onChange={(e) => setTitle(e.target.value)}
+                                                    placeholder={t.placeholderGeneral}
+                                                    className="w-full glass-field rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-colors"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">{t.goalType}</label>
+                                                <CustomSelect
+                                                    options={[
+                                                        { label: t.typeManual || (language === 'es' ? "Progreso Manual" : "Manual Progress"), value: "general" },
+                                                        { label: t.typeChecklist || (language === 'es' ? "Cumplimiento de objetivos (Mini tareas)" : "By Objectives"), value: "checklist" }
+                                                    ]}
+                                                    value={type}
+                                                    onChange={(val) => setType(val as GoalType)}
+                                                />
+                                            </div>
+
+                                            <div className="flex items-center gap-3 glass-card p-4 rounded-2xl">
+                                                <input
+                                                    type="checkbox"
+                                                    id="hasBudget"
+                                                    checked={hasBudget}
+                                                    onChange={(e) => setHasBudget(e.target.checked)}
+                                                    className="w-4 h-4 rounded text-primary focus:ring-primary border-white/10 bg-white/5 cursor-pointer accent-primary"
+                                                />
+                                                <label htmlFor="hasBudget" className="text-sm font-medium text-foreground select-none cursor-pointer">
+                                                    {language === 'es' ? "¿Establecer presupuesto / meta de ahorro?" : "Set budget / savings goal?"}
+                                                </label>
+                                            </div>
+
+                                            {hasBudget && (
+                                                <div className="space-y-4 glass-card p-4 rounded-2xl animate-in fade-in slide-in-from-top-1 duration-250">
+                                                    <div>
+                                                        <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground/60 mb-2">
+                                                            {language === 'es' ? "Presupuesto Objetivo ($)" : "Target Budget ($)"}
+                                                        </label>
+                                                        <input
+                                                            required
+                                                            type="number"
+                                                            min="1"
+                                                            value={targetBudget}
+                                                            onChange={(e) => setTargetBudget(e.target.value)}
+                                                            placeholder="Ej: 500"
+                                                            className="w-full glass-field rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-colors"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {type === 'checklist' && (
+                                                <div className="space-y-3 glass-card p-4 rounded-2xl">
+                                                    <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground/60 text-left">{t.stepsToComplete || "Pasos para completar"}</label>
+                                                    
+                                                    {/* List of current temp objectives */}
+                                                    {objectives.length > 0 && (
+                                                        <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                                                            {objectives.map((obj, index) => (
+                                                                <div key={index} className="flex items-center justify-between glass-field px-3 py-2 rounded-xl">
+                                                                    <div className="flex items-center gap-3">
+                                                                        {obj.image && (
+                                                                            <LocalImage src={obj.image} alt="" className="w-8 h-8 rounded object-cover border border-white/10 shrink-0" />
+                                                                        )}
+                                                                        <span className="text-sm opacity-90 text-left">{obj.title}</span>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleRemoveObjective(index)}
+                                                                        className="text-muted-foreground hover:text-red-400 p-1 rounded-full transition-colors"
+                                                                    >
+                                                                        <X className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
                                                         </div>
+                                                    )}
+
+                                                    {/* Preview of attached photo for the new objective */}
+                                                    {tempObjectivePhoto && (
+                                                        <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-black/5 dark:border-white/10 flex-shrink-0 mb-2">
+                                                            <LocalImage src={tempObjectivePhoto} alt="" className="w-full h-full object-cover" />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setTempObjectivePhoto(null)}
+                                                                className="absolute top-0.5 right-0.5 p-0.5 bg-black/50 rounded-full text-white hover:bg-red-500 transition-colors"
+                                                            >
+                                                                <X className="w-3 h-3" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Input to add a new objective */}
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={newObjectiveTitle}
+                                                            onChange={(e) => setNewObjectiveTitle(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.preventDefault();
+                                                                    handleAddObjective();
+                                                                }
+                                                            }}
+                                                            placeholder={t.addStepPlaceholder || "Agrega un paso..."}
+                                                            className="flex-1 glass-field rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                                                        />
+                                                        
+                                                        {/* Camera upload button */}
+                                                        <label className="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 cursor-pointer transition-all shrink-0">
+                                                            <Camera className="w-4.5 h-4.5" />
+                                                            <input type="file" className="hidden" accept="image/*" onChange={handleObjectiveFileChange} />
+                                                        </label>
+
                                                         <button
                                                             type="button"
-                                                            onClick={() => handleRemoveObjective(index)}
-                                                            className="text-muted-foreground hover:text-red-400 p-1 rounded-full transition-colors"
+                                                            onClick={handleAddObjective}
+                                                            className="px-4 py-2 bg-primary/20 text-primary font-bold text-xs rounded-xl hover:bg-primary/30 transition-all active:scale-[0.98]"
                                                         >
-                                                            <X className="w-4 h-4" />
+                                                            {language === 'es' ? "Añadir" : "Add"}
                                                         </button>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                                </div>
+                                            )}
 
-                                        {/* Preview of attached photo for the new objective */}
-                                        {tempObjectivePhoto && (
-                                            <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-black/5 dark:border-white/10 flex-shrink-0 mb-2">
-                                                <LocalImage src={tempObjectivePhoto} alt="" className="w-full h-full object-cover" />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setTempObjectivePhoto(null)}
-                                                    className="absolute top-0.5 right-0.5 p-0.5 bg-black/50 rounded-full text-white hover:bg-red-500 transition-colors"
-                                                >
-                                                    <X className="w-3 h-3" />
-                                                </button>
+                                            <div>
+                                                <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">{t.descriptionLabel}</label>
+                                                <textarea
+                                                    value={description}
+                                                    onChange={(e) => setDescription(e.target.value)}
+                                                    placeholder={t.descriptionPlaceholder}
+                                                    rows={3}
+                                                    className="w-full glass-field rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-colors resize-none"
+                                                />
                                             </div>
-                                        )}
 
-                                        {/* Input to add a new objective */}
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                value={newObjectiveTitle}
-                                                onChange={(e) => setNewObjectiveTitle(e.target.value)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        e.preventDefault();
-                                                        handleAddObjective();
-                                                    }
-                                                }}
-                                                placeholder={t.addStepPlaceholder || "Agrega un paso..."}
-                                                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary/50 transition-colors"
-                                            />
-                                            
-                                            {/* Camera upload button */}
-                                            <label className="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 cursor-pointer transition-all shrink-0">
-                                                <Camera className="w-4.5 h-4.5" />
-                                                <input type="file" className="hidden" accept="image/*" onChange={handleObjectiveFileChange} />
-                                            </label>
+                                            <div>
+                                                <DatePicker
+                                                    label={t.targetDateLabel}
+                                                    value={date}
+                                                    onChange={setDate}
+                                                />
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 text-left">{t.inspirationPhotosLabel}</label>
+                                                    <label className="p-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 cursor-pointer transition-all">
+                                                        <Camera className="w-4 h-4" />
+                                                        <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                                                    </label>
+                                                </div>
+                                                {tempPhotos.length > 0 && (
+                                                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                                        {tempPhotos.map((photo, i) => (
+                                                            <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-black/5 dark:border-white/10 flex-shrink-0">
+                                                                <LocalImage src={photo} alt="" className="w-full h-full object-cover" />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setTempPhotos(tempPhotos.filter((_, idx) => idx !== i))}
+                                                                    className="absolute top-0.5 right-0.5 p-0.5 bg-black/50 rounded-full text-white hover:bg-red-500 transition-colors"
+                                                                >
+                                                                    <X className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
 
                                             <button
-                                                type="button"
-                                                onClick={handleAddObjective}
-                                                className="px-4 py-2 bg-primary/20 text-primary font-bold text-xs rounded-xl hover:bg-primary/30 transition-all active:scale-[0.98]"
+                                                type="submit"
+                                                className="w-full py-4 bg-primary text-white font-bold rounded-2xl hover:opacity-90 transition-all shadow-lg shadow-primary/20 active:scale-[0.98]"
                                             >
-                                                {language === 'es' ? "Añadir" : "Add"}
+                                                {t.saveGoalBtn}
                                             </button>
-                                        </div>
+                                        </form>
                                     </div>
-                                )}
-
-                                <div>
-                                    <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">{t.descriptionLabel}</label>
-                                    <textarea
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                        placeholder={t.descriptionPlaceholder}
-                                        rows={3}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-colors resize-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <DatePicker
-                                        label={t.targetDateLabel}
-                                        value={date}
-                                        onChange={setDate}
-                                    />
-                                </div>
-
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 text-left">{t.inspirationPhotosLabel}</label>
-                                        <label className="p-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 cursor-pointer transition-all">
-                                            <Camera className="w-4 h-4" />
-                                            <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                                        </label>
-                                    </div>
-                                    {tempPhotos.length > 0 && (
-                                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                                            {tempPhotos.map((photo, i) => (
-                                                <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-black/5 dark:border-white/10 flex-shrink-0">
-                                                    <LocalImage src={photo} alt="" className="w-full h-full object-cover" />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setTempPhotos(tempPhotos.filter((_, idx) => idx !== i))}
-                                                        className="absolute top-0.5 right-0.5 p-0.5 bg-black/50 rounded-full text-white hover:bg-red-500 transition-colors"
-                                                    >
-                                                        <X className="w-3 h-3" />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    className="w-full py-4 bg-primary text-white font-bold rounded-2xl hover:opacity-90 transition-all shadow-lg shadow-primary/20 active:scale-[0.98]"
-                                >
-                                    {t.saveGoalBtn}
-                                </button>
-                            </form>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                                </GlassSurface>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
 
             <div className="grid grid-cols-1 gap-6">
                 {goals.map((goal) => (
