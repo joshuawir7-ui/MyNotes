@@ -6,6 +6,7 @@ export interface PerfFlags {
     perfNoBackdrop: boolean;
     perfNoOrbs: boolean;
     perfNoMotion: boolean;
+    perfNoSync: boolean;
 }
 
 export interface StartupTimeline {
@@ -34,7 +35,8 @@ let currentFlags: PerfFlags = {
     perfNoReveal: false,
     perfNoBackdrop: false,
     perfNoOrbs: false,
-    perfNoMotion: false
+    perfNoMotion: false,
+    perfNoSync: false
 };
 
 const startupTimeline: StartupTimeline = {
@@ -211,7 +213,159 @@ export function clearNavHistory() {
     notifyListeners();
 }
 
-// Auto-load saved flags when module is loaded in browser
+export function perfStamp(): string {
+    const rel = typeof performance !== 'undefined' ? performance.now().toFixed(1) : '0.0';
+    const wall = new Date().toISOString().slice(11, 23);
+    return `+${rel}ms (${wall})`;
+}
+
+let telemetryInitialized = false;
+
+export function initPerfTelemetry() {
+    if (typeof window === 'undefined' || telemetryInitialized) return;
+    telemetryInitialized = true;
+
+    // 1. PerformanceObserver for longtask (>50ms) and long-animation-frame
+    if (typeof PerformanceObserver !== 'undefined') {
+        const supported = (PerformanceObserver as any).supportedEntryTypes || [];
+
+        if (supported.includes('longtask')) {
+            try {
+                const ltObserver = new PerformanceObserver((list) => {
+                    for (const entry of list.getEntries() as any[]) {
+                        const startMs = entry.startTime ? entry.startTime.toFixed(1) : '0.0';
+                        const durMs = entry.duration ? entry.duration.toFixed(1) : '0.0';
+                        const wall = new Date().toISOString().slice(11, 23);
+                        const attr = Array.isArray(entry.attribution)
+                            ? entry.attribution
+                                  .map((a: any) => `${a.name || 'unknown'}:${a.containerType || ''}${a.containerSrc ? `(${a.containerSrc})` : ''}`)
+                                  .join(',')
+                            : 'none';
+                        console.log(
+                            `[PERF][lag][longtask] +${startMs}ms (${wall}) duration=${durMs}ms name=${entry.name} attribution=${attr}`
+                        );
+                    }
+                });
+                ltObserver.observe({ type: 'longtask', buffered: true });
+            } catch (e) {}
+        }
+
+        if (supported.includes('long-animation-frame')) {
+            try {
+                const loafObserver = new PerformanceObserver((list) => {
+                    for (const entry of list.getEntries() as any[]) {
+                        const startMs = entry.startTime ? entry.startTime.toFixed(1) : '0.0';
+                        const durMs = entry.duration ? entry.duration.toFixed(1) : '0.0';
+                        const blockMs = entry.blockingDuration ? entry.blockingDuration.toFixed(1) : '0.0';
+                        const wall = new Date().toISOString().slice(11, 23);
+                        const scripts = Array.isArray(entry.scripts)
+                            ? entry.scripts
+                                  .map((s: any) => {
+                                      const src = s.sourceURL ? s.sourceURL.split('/').slice(-2).join('/') : 'inline';
+                                      const fn = s.sourceFunctionName || s.invoker || 'anon';
+                                      const sdur = s.duration ? Math.round(s.duration) : 0;
+                                      return `${fn}@${src}(${sdur}ms)`;
+                                  })
+                                  .join(' | ')
+                            : 'no-scripts';
+                        console.log(
+                            `[PERF][lag][long-animation-frame] +${startMs}ms (${wall}) duration=${durMs}ms blocking=${blockMs}ms scripts=${scripts}`
+                        );
+                    }
+                });
+                loafObserver.observe({ type: 'long-animation-frame', buffered: true });
+            } catch (e) {}
+        }
+    }
+
+    // 2. Temporary window.fetch wrapper for [PERF][net] telemetry
+    if (typeof window.fetch === 'function' && !(window.fetch as any).__perfWrapped) {
+        const origFetch = window.fetch.bind(window);
+
+        const sanitizeUrl = (rawUrl: string): string => {
+            try {
+                const u = new URL(rawUrl, window.location.origin);
+                const safeParams: string[] = [];
+                const allowedKeys = ['uploadType', 'alt', 'fields', 'q', 'pageSize'];
+                u.searchParams.forEach((val, key) => {
+                    if (allowedKeys.includes(key)) {
+                        safeParams.push(`${key}=${val.slice(0, 60)}`);
+                    } else {
+                        safeParams.push(`${key}=[REDACTED]`);
+                    }
+                });
+                const qs = safeParams.length > 0 ? `?${safeParams.join('&')}` : '';
+                return `${u.origin}${u.pathname}${qs}`;
+            } catch {
+                return rawUrl.split('?')[0];
+            }
+        };
+
+        const getShortInitiator = (): string => {
+            try {
+                const stack = new Error().stack || '';
+                const lines = stack
+                    .split('\n')
+                    .slice(2)
+                    .map(l => l.trim())
+                    .filter(l => !l.includes('perf-debug') && !l.includes('fetchWithTimeout'));
+                return lines.slice(0, 2).join(' <- ') || 'unknown';
+            } catch {
+                return 'unknown';
+            }
+        };
+
+        const wrappedFetch: typeof window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+            const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
+            const rawUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+            const method = (init?.method || (typeof input === 'object' && 'method' in input ? input.method : 'GET')).toUpperCase();
+            const cleanUrl = sanitizeUrl(rawUrl);
+            const initiator = getShortInitiator();
+
+            let reqBytes = 0;
+            if (init?.body) {
+                if (typeof init.body === 'string') reqBytes = init.body.length;
+                else if (init.body instanceof Blob) reqBytes = init.body.size;
+                else if (init.body instanceof ArrayBuffer) reqBytes = init.body.byteLength;
+            }
+
+            try {
+                const response = await origFetch(input, init);
+                const dur = ((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0).toFixed(1);
+                const clHeader = response.headers?.get('content-length');
+                let resBytes: string = clHeader ? `${clHeader}B` : 'unknown';
+
+                if (!clHeader && response.clone) {
+                    try {
+                        const cloned = response.clone();
+                        cloned.blob().then(b => {
+                            console.log(
+                                `[PERF][net][size-resolved] ${perfStamp()} ${method} ${cleanUrl} resSize=${b.size}B (${(b.size / 1024).toFixed(1)}KB)`
+                            );
+                        }).catch(() => {});
+                    } catch {}
+                }
+
+                console.log(
+                    `[PERF][net] ${perfStamp()} ${method} ${cleanUrl} status=${response.status} reqSize=${reqBytes}B resSize=${resBytes} duration=${dur}ms initiator=[${initiator}]`
+                );
+                return response;
+            } catch (err: any) {
+                const dur = ((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0).toFixed(1);
+                console.log(
+                    `[PERF][net] ${perfStamp()} ${method} ${cleanUrl} status=ERR(${err?.name || 'Error'}:${err?.message || String(err)}) reqSize=${reqBytes}B duration=${dur}ms initiator=[${initiator}]`
+                );
+                throw err;
+            }
+        };
+
+        (wrappedFetch as any).__perfWrapped = true;
+        window.fetch = wrappedFetch;
+    }
+}
+
+// Auto-load saved flags and telemetry when module is loaded in browser
 if (typeof window !== 'undefined') {
     loadPerfFlags();
+    initPerfTelemetry();
 }

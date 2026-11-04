@@ -13,7 +13,7 @@ import { BackgroundTask } from '@capawesome/capacitor-background-task'
 const isNative = Capacitor.isNativePlatform();
 
 import { isIdle, whenIdle } from './interaction-gate';
-import { recordSyncMetric } from './perf-debug';
+import { recordSyncMetric, getPerfFlags, perfStamp } from './perf-debug';
 
 export const WidgetSync = registerPlugin<{
     updateWidgetData: (data: { goals?: string, appointments?: string, notes?: string, tasks?: string, dailySnapshots?: string, notificationsEnabled?: string, isDarkMode?: string, pinnedNoteId?: string, priorityRemindersEnabled?: boolean, priorityReminderSlots?: string, noteFontFamily?: string }) => Promise<void>;
@@ -1535,6 +1535,9 @@ import { getBlobFromIndexedDB } from './blob-storage';
 
 // Helper to upload attachments that don't have a driveFileId yet
 export const uploadMissingAttachments = async (token: string, notes: Note[]): Promise<Note[]> => {
+    if (getPerfFlags().perfNoSync) { console.log(`[PERF][sync] ${perfStamp()} phase=uploadMissingAttachments:blocked(perf-no-sync)`); return notes; }
+    const tUploadStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    console.log(`[PERF][sync] ${perfStamp()} phase=uploadMissingAttachments:start notes=${notes.length}`);
     let hasChanges = false;
     for (let i = 0; i < notes.length; i++) {
         const note = notes[i];
@@ -1732,6 +1735,7 @@ export const markCloudSyncDirty = () => {
 };
 
 export const triggerBackgroundSync = async () => {
+    if (getPerfFlags().perfNoSync) { console.log(`[PERF][sync] ${perfStamp()} phase=triggerBackgroundSync:blocked(perf-no-sync)`); return; }
     if (!isCloudSyncDirty) return;
     
     // Obtenemos los datos actuales desde Zustand de forma segura (sin hooks)
@@ -3348,6 +3352,8 @@ export const useStore = create<AppState>()(
                 },
 
                 syncWithGoogleDrive: async () => {
+                    if (getPerfFlags().perfNoSync) { console.log(`[PERF][sync] ${perfStamp()} phase=syncWithGoogleDrive:blocked(perf-no-sync)`); return false; }
+                    console.log(`[PERF][sync] ${perfStamp()} phase=syncWithGoogleDrive:start`);
                     if (syncInProgress) {
                         console.log("[Sync] Ya hay una sincronización en curso, se omite esta llamada");
                         return false;
@@ -3424,6 +3430,7 @@ export const useStore = create<AppState>()(
                             const mergedUser = mergeUser(state.user, driveData.user);
                             const newTimestamp = Date.now();
 
+                            console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:saveDiskAndOriginalSet:start newTS=${newTimestamp}`);
                             await saveAllNotesToDisk(mergedNotes);
                             await saveAllTasksToDisk(mergedTasks);
 
@@ -3564,6 +3571,9 @@ export const useStore = create<AppState>()(
                 },
 
                 syncCycle: async (force: boolean = false) => {
+                    if (getPerfFlags().perfNoSync) { console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:blocked(perf-no-sync)`); return false; }
+                    const tSyncCycleStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
+                    console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:start force=${force} dirty=${isCloudSyncDirty}`);
                     if (isSyncing) {
                         console.log("[Sync] Ya hay una sincronización en curso, se encola (queued).");
                         syncQueued = true;
@@ -3693,13 +3703,13 @@ export const useStore = create<AppState>()(
 
                         // EARLY EXIT: If timestamps match, no changes occurred anywhere!
                         if (remoteLastUpdated > 0 && localLastUpdated === remoteLastUpdated) {
-                            console.log("[Sync] Salida temprana: los timestamps locales y remotos coinciden perfectamente.");
+                            console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:earlyExit localTS=${localLastUpdated} remoteTS=${remoteLastUpdated}`);
                             recordSyncMetric('earlyExit', 0);
                             set({ isSyncingCloud: false, lastCloudSync: new Date().toLocaleString() });
                             return true;
                         }
 
-                        console.log("Backup file found in Drive. Downloading to compare timestamps...");
+                        console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:downloadBackup:start fileId=${existingFile.id} localTS=${localLastUpdated} remoteAppPropTS=${remoteLastUpdated}`);
                         const downloadRes = await fetchWithTimeout(
                             `https://www.googleapis.com/drive/v3/files/${existingFile.id}?alt=media`,
                             {
@@ -3716,7 +3726,7 @@ export const useStore = create<AppState>()(
                         recordSyncMetric('fullSync', responseBytes);
                         const driveLastUpdated = (driveData && driveData.lastUpdated) || 0;
 
-                        console.log(`[Sync] Timestamps — Local: ${localLastUpdated}, Drive: ${driveLastUpdated}`);
+                        console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:downloadBackup:end bytes=${responseBytes} localTS=${localLastUpdated} driveTS=${driveLastUpdated}`);
                         // DIAG: Log counts to identify which branch executes on mobile
                         console.log(`[Sync][DIAG] Drive counts — notes:${(driveData.notes||[]).length} tasks:${(driveData.tasks||[]).length} goals:${(driveData.goals||[]).length} appointments:${(driveData.appointments||[]).length} expenseNotes:${(driveData.expenseNotes||[]).length} transactions:${(driveData.transactions||[]).length}`);
 
@@ -3822,7 +3832,7 @@ export const useStore = create<AppState>()(
                         // ── Case 3: Timestamps differ → merge (existing logic) ─────────────────
                         if (localLastUpdated !== driveLastUpdated) {
                             const useLocalForConflicts = localLastUpdated > driveLastUpdated;
-                            console.log(`[Sync] Timestamps differ. Merging. Local is newer: ${useLocalForConflicts}`);
+                            console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:merge11Collections:start useLocal=${useLocalForConflicts}`);
 
                             // Re-use diskNotes/diskTasks already read above (avoids double disk read)
                             const fullNotes = diskNotes;
@@ -3843,6 +3853,7 @@ export const useStore = create<AppState>()(
                             const mergedUser = mergeUser(freshState.user, driveData.user);
                             const newTimestamp = Math.max(localLastUpdated, driveLastUpdated);
 
+                            console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:saveDiskAndOriginalSet:start newTS=${newTimestamp}`);
                             await saveAllNotesToDisk(mergedNotes);
                             await saveAllTasksToDisk(mergedTasks);
 
@@ -4035,6 +4046,8 @@ export const useStore = create<AppState>()(
                     }
                     } finally {
                         isSyncing = false;
+                        const tSyncCycleDur = ((typeof performance !== 'undefined' ? performance.now() : Date.now()) - tSyncCycleStart).toFixed(1);
+                        console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:end totalDuration=${tSyncCycleDur}ms`);
                     }
                 }
             };
@@ -4175,6 +4188,8 @@ if (isNative) {
 }
 
 export const checkAndEnqueueMissingImages = async () => {
+    if (getPerfFlags().perfNoSync) { console.log(`[PERF][sync] ${perfStamp()} phase=checkAndEnqueueMissingImages:blocked(perf-no-sync)`); return; }
+    console.log(`[PERF][sync] ${perfStamp()} phase=checkAndEnqueueMissingImages:start`);
     if (!isNative) return;
     const state = useStore.getState();
     const token = state.googleUser?.accessToken;

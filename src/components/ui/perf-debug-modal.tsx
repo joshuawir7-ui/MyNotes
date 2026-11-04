@@ -191,7 +191,8 @@ export function PerfDebugModal({ isOpen, onClose }: PerfDebugModalProps) {
                                     { key: 'perfNoReveal' as const, label: 'perf-no-reveal', desc: 'Entradas inmediatas en <Reveal> (0 delay / 0 duration)' },
                                     { key: 'perfNoBackdrop' as const, label: 'perf-no-backdrop', desc: 'Desactiva backdrop-filter en todo el sitio' },
                                     { key: 'perfNoOrbs' as const, label: 'perf-no-orbs', desc: 'Oculta orbes de fondo con blur ambiental' },
-                                    { key: 'perfNoMotion' as const, label: 'perf-no-motion', desc: 'Reducción global de animaciones CSS/Framer Motion' }
+                                    { key: 'perfNoMotion' as const, label: 'perf-no-motion', desc: 'Reducción global de animaciones CSS/Framer Motion' },
+                                    { key: 'perfNoSync' as const, label: 'perf-no-sync', desc: 'Desactiva en caliente toda la sincronización automática y manual con la nube' }
                                 ].map((item) => {
                                     const active = flags[item.key];
                                     return (
