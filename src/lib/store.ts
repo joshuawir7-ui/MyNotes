@@ -1067,6 +1067,8 @@ interface AppState {
     lastCloudSync?: string
     /** Epoch ms del último sync terminado. Usar ESTE para cooldown; lastCloudSync es solo para mostrar. */
     lastCloudSyncAt?: number
+    /** md5Checksum del backup de Drive tras nuestra última subida/descarga. Solo para la salida temprana; NO es dato del usuario. */
+    lastSyncedMd5?: string
     lastUpdated?: number
     restoreProgress?: string | null
     cloudRestoreProgress: { done: number; total: number } | null
@@ -1304,6 +1306,16 @@ const repairBackupMetadata = async (token: string, fileId: string, lastUpdated: 
     console.log(`[PERF][sync] ${perfStamp()} phase=repairBackupMetadata lastUpdated=${lastUpdated}`);
 };
 
+/** Guarda el md5Checksum que Drive devuelve tras nuestra subida (solo estado de salida temprana; no marca sucio). */
+const recordUploadedMd5 = async (res: Response) => {
+    try {
+        const md5 = (await res.clone().json())?.md5Checksum;
+        if (typeof md5 === 'string' && md5) useStore.setState({ lastSyncedMd5: md5 });
+    } catch (e) {
+        console.warn('[Sync] No se pudo leer md5Checksum tras la subida; la salida temprana usará solo lastUpdated.', e);
+    }
+};
+
 const patchBackupToDrive = async (token: string, fileId: string, data: any, lastUpdated: number) => {
     const json = JSON.stringify(data);
     if (json.length <= BACKUP_MULTIPART_LIMIT) {
@@ -1314,8 +1326,8 @@ const patchBackupToDrive = async (token: string, fileId: string, data: any, last
             `--${boundary}\r\nContent-Type: application/json\r\n\r\n${json}\r\n`,
             `--${boundary}--`
         ].join('');
-        return fetchWithTimeout(
-            `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`,
+        const multipartRes = await fetchWithTimeout(
+            `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart&fields=id,md5Checksum`,
             {
                 method: 'PATCH',
                 headers: {
@@ -1325,12 +1337,14 @@ const patchBackupToDrive = async (token: string, fileId: string, data: any, last
                 body
             }
         );
+        if (multipartRes.ok) await recordUploadedMd5(multipartRes);
+        return multipartRes;
     }
     // Respaldo para JSON muy grande: dos pasos (NO atómico). Si falla el segundo, el contenido ya quedó
     // subido con data.lastUpdated == local; el siguiente ciclo lo detecta (appProps ≠ local) y repara
     // los metadatos en la rama "idénticos" sin perder datos.
     const res = await fetchWithTimeout(
-        `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+        `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&fields=id,md5Checksum`,
         {
             method: 'PATCH',
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -1338,6 +1352,7 @@ const patchBackupToDrive = async (token: string, fileId: string, data: any, last
         }
     );
     if (!res.ok) return res;
+    await recordUploadedMd5(res);
     try {
         await repairBackupMetadata(token, fileId, lastUpdated);
     } catch (e) {
@@ -1883,7 +1898,7 @@ export const silentRefreshGoogleToken = async (): Promise<string | null> => {
  * nunca coincidiría con `appProperties.lastUpdated` de Drive y la salida temprana jamás ocurriría.
  */
 const NON_DATA_KEYS = new Set<string>([
-    'isSyncingCloud', 'syncError', 'lastCloudSync', 'lastCloudSyncAt',
+    'isSyncingCloud', 'syncError', 'lastCloudSync', 'lastCloudSyncAt', 'lastSyncedMd5',
     'timer', 'googleUser', 'googleSessionExpired', 'toast', 'priorityReminderSettings'
 ]);
 
@@ -3733,7 +3748,7 @@ export const useStore = create<AppState>()(
                         await uploadMissingAttachments(token, get().notes);
 
                         const searchRes = await fetchWithTimeout(
-                            `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false&fields=files(id,appProperties)`,
+                            `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false&fields=files(id,appProperties,md5Checksum)`,
                             {
                                 headers: { Authorization: `Bearer ${token}` }
                             }
@@ -3816,8 +3831,12 @@ export const useStore = create<AppState>()(
                         const remoteLastUpdatedStr = existingFile.appProperties?.lastUpdated;
                         const remoteLastUpdated = remoteLastUpdatedStr ? parseInt(remoteLastUpdatedStr, 10) : 0;
 
-                        // EARLY EXIT: If timestamps match, no changes occurred anywhere!
-                        if (remoteLastUpdated > 0 && localLastUpdated === remoteLastUpdated) {
+                        const remoteMd5: string | undefined = existingFile.md5Checksum;
+
+                        // EARLY EXIT: timestamps iguales Y (si Drive informa md5) contenido igual al que dejamos nosotros.
+                        // Si un cliente antiguo subió solo contenido, el md5 cambia aunque appProperties no: se descarga y mergea.
+                        const md5Matches = !remoteMd5 || remoteMd5 === freshState.lastSyncedMd5;
+                        if (remoteLastUpdated > 0 && localLastUpdated === remoteLastUpdated && md5Matches) {
                             console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:earlyExit localTS=${localLastUpdated} remoteTS=${remoteLastUpdated}`);
                             recordSyncMetric('earlyExit', 0);
                             set({ isSyncingCloud: false, ...syncStamp() });
@@ -4125,7 +4144,7 @@ export const useStore = create<AppState>()(
                                 console.warn('[Sync] Fallo reparando metadatos en estado idéntico', e);
                             }
                         }
-                        set({ isSyncingCloud: false, ...syncStamp() });
+                        set({ isSyncingCloud: false, ...syncStamp(), ...(remoteMd5 ? { lastSyncedMd5: remoteMd5 } : {}) });
                         return true;
 
                     } catch (err: any) {
