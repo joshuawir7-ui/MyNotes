@@ -13,6 +13,7 @@ import { App as CapacitorApp } from "@capacitor/app"
 import { Capacitor } from "@capacitor/core"
 import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation, Film, PictureInPicture, Download, Loader2 } from "lucide-react"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
+import { GlassSurface } from "@/components/ui/glass-surface"
 
 export const isNoteEmpty = (titleStr: any, blocksList: NoteBlock[]) => {
     const t = typeof titleStr === 'string' ? titleStr.trim() : '';
@@ -94,6 +95,8 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
     const [isLandscape, setIsLandscape] = useState(false)
     const [showHeader, setShowHeader] = useState(true)
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => setMounted(true), [])
     const contentContainerRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -463,16 +466,19 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         }
     }
 
-    return (
-        <div className="fixed inset-0 z-50 bg-background/95 md:backdrop-blur-sm flex items-center justify-center p-4">
+    if (!mounted || typeof document === "undefined") return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
             <div className="w-full max-w-4xl h-[90vh] bg-white dark:bg-[#0c0c0e] border border-zinc-200 dark:border-white/10 rounded-2xl flex flex-col relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
 
-                {/* PREMIUM HEADER - Collapse and adapt on landscape/portrait */}
-                <div className={`transition-all duration-300 ease-in-out overflow-hidden shrink-0 ${showHeader
-                        ? (isLandscape ? 'max-h-16 opacity-100 py-2 px-4 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent' : 'max-h-48 opacity-100 p-4 md:p-6 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent')
-                        : 'max-h-0 opacity-0 py-0 border-none pointer-events-none'
-                    }`}>
-                    {isLandscape ? (
+                {/* PREMIUM GLASS HEADER - Floating above content with bar-top progressive blur */}
+                <GlassSurface variant="bar-top" className="absolute top-0 inset-x-0 z-20">
+                    <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showHeader
+                            ? (isLandscape ? 'max-h-16 opacity-100 py-2 px-4' : 'max-h-48 opacity-100 p-3 md:p-5')
+                            : 'max-h-0 opacity-0 py-0 border-none pointer-events-none'
+                        }`}>
+                        {isLandscape ? (
                         /* Landscape Combined Header */
                         <div className="flex items-center justify-between gap-3 h-10">
                             <div className="flex items-center gap-2 overflow-hidden flex-1">
@@ -594,13 +600,15 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                             </div>
                         </div>
                     )}
-                </div>
+                    </div>
+                </GlassSurface>
 
-
-                {/* Content */}
+                {/* Content - Scrolls underneath the floating glass header */}
                 <div
                     ref={contentContainerRef}
-                    className="flex-1 overflow-y-auto p-5 md:p-8 space-y-2 note-font-container overscroll-contain [webkit-overflow-scrolling:touch]"
+                    className={`flex-1 overflow-y-auto px-5 md:px-8 pb-8 space-y-2 note-font-container overscroll-contain [webkit-overflow-scrolling:touch] ${
+                        isLandscape ? 'pt-16' : 'pt-28 md:pt-32'
+                    }`}
                 >
 
                     {blocks.length === 0 && (
@@ -817,7 +825,8 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                     />
                 </div>
             )}
-        </div>
+        </div>,
+        document.body
     )
 }
 
