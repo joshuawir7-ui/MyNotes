@@ -492,7 +492,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
     if (!mounted || typeof document === "undefined") return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="w-full max-w-4xl h-[90vh] bg-white dark:bg-[#0c0c0e] border border-zinc-200 dark:border-white/10 rounded-2xl flex flex-col relative overflow-hidden shadow-2xl">
 
                 {/* PREMIUM GLASS HEADER - Floating above content with bar-top progressive blur & dead zone */}

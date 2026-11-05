@@ -250,6 +250,7 @@ export const saveAllNotesToDisk = async (notes: Note[]) => {
 // Custom storage for Capacitor to avoid SharedPreferences size limits (1-2MB)
 let isSyncing = false;
 let syncQueued = false;
+let activeSyncPromise: Promise<boolean> | null = null;
 let syncWorker: Worker | null = null;
 if (typeof window !== 'undefined') {
     syncWorker = new Worker(new URL('./sync-worker.ts', import.meta.url));
@@ -1110,6 +1111,7 @@ interface AppState {
     setGoogleUser: (user: GoogleUser | null) => void
     syncWithGoogleDrive: (isAuthRetry?: boolean) => Promise<boolean>
     syncCycle: (force?: boolean, isAuthRetry?: boolean) => Promise<boolean>
+    restoreFromGoogleDrive: () => Promise<boolean>
     downloadAttachment: (noteId: string, blockId: string) => Promise<boolean>
     inAppNotificationDates: number[]
     notificationsEnabled: boolean
@@ -3485,10 +3487,128 @@ export const useStore = create<AppState>()(
                     }
                 },
 
-                syncWithGoogleDrive: async (isAuthRetry: boolean = false) => {
-                    // Redirige al ciclo unificado de sincronización forzando ejecución inmediata (bypass de cooldown/idle).
-                    // Unifica los candados (isSyncing) y garantiza que el botón manual use la misma lógica pura protegida.
+                syncWithGoogleDrive: async (isAuthRetry: boolean = false): Promise<boolean> => {
+                    // Si ya hay un ciclo ejecutándose, esperamos a que finalice en vez de fallar con "ya en curso"
+                    if (isSyncing && activeSyncPromise) {
+                        console.log("[Sync] Esperando a que termine el ciclo actual de sincronización...");
+                        try {
+                            await activeSyncPromise;
+                        } catch (_) {}
+                    }
                     return get().syncCycle(true, isAuthRetry);
+                },
+
+                restoreFromGoogleDrive: async (): Promise<boolean> => {
+                    if (getPerfFlags().perfNoSync) {
+                        console.log(`[PERF][sync] ${perfStamp()} phase=restoreFromGoogleDrive:blocked(perf-no-sync)`);
+                        return false;
+                    }
+                    if (isSyncing && activeSyncPromise) {
+                        console.log("[Restore] Esperando a que termine la sincronización activa antes de restaurar...");
+                        try { await activeSyncPromise; } catch (_) {}
+                    }
+
+                    const user = get().googleUser;
+                    if (!user) {
+                        set({ syncError: get().language === 'es' ? "No hay cuenta de Google conectada" : "No Google account connected" });
+                        return false;
+                    }
+
+                    isSyncing = true;
+                    set({ isSyncingCloud: true, syncError: null });
+
+                    try {
+                        const token = user.accessToken;
+                        if (!token) throw new Error("No access token");
+
+                        console.log('[Restore] Buscando respaldo mynotes_backup.json en Google Drive...');
+                        const searchRes = await fetchWithTimeout(
+                            `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false&fields=files(id,appProperties,md5Checksum,parents)`,
+                            { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        if (!searchRes.ok) {
+                            const errBody = await searchRes.text().catch(() => "Unknown error");
+                            throw new Error(`Search failed (${searchRes.status}): ${errBody}`);
+                        }
+                        const searchData = await searchRes.json();
+                        const existingFile = searchData.files?.[0];
+
+                        if (!existingFile) {
+                            const msg = get().language === 'es' 
+                                ? "No se encontró ningún archivo de respaldo en Google Drive" 
+                                : "No backup file found in Google Drive";
+                            set({ isSyncingCloud: false, syncError: msg });
+                            return false;
+                        }
+
+                        console.log(`[Restore] Descargando respaldo ${existingFile.id} desde Google Drive...`);
+                        const downloadRes = await fetchWithTimeout(
+                            `https://www.googleapis.com/drive/v3/files/${existingFile.id}?alt=media`,
+                            { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        if (!downloadRes.ok) {
+                            const errBody = await downloadRes.text().catch(() => "Unknown error");
+                            throw new Error(`Download failed (${downloadRes.status}): ${errBody}`);
+                        }
+
+                        const driveData = await downloadRes.json();
+                        if (!driveData || typeof driveData !== 'object') {
+                            throw new Error("El archivo de respaldo está vacío o corrupto");
+                        }
+
+                        console.log(`[Restore] Restaurando datos: notas=${(driveData.notes||[]).length}, tareas=${(driveData.tasks||[]).length}`);
+
+                        await saveAllNotesToDisk(driveData.notes || []);
+                        await saveAllTasksToDisk(driveData.tasks || []);
+
+                        const restoreTimestamp = driveData.lastUpdated || Date.now();
+                        const remoteMd5 = existingFile.md5Checksum;
+
+                        originalSet({
+                            notes: driveData.notes || [],
+                            tasks: driveData.tasks || [],
+                            goals: driveData.goals || [],
+                            appointments: driveData.appointments || [],
+                            projects: driveData.projects || [],
+                            taskGroups: driveData.taskGroups || [],
+                            completedOnceHabits: driveData.completedOnceHabits || [],
+                            transactions: driveData.transactions || [],
+                            expenseNotes: driveData.expenseNotes || [],
+                            savingsGoal: driveData.savingsGoal ?? 400,
+                            dailySnapshots: driveData.dailySnapshots || {},
+                            user: driveData.user ? mergeUser(get().user, driveData.user) : get().user,
+                            deletedItems: driveData.deletedItems || {},
+                            lastUpdated: restoreTimestamp,
+                            isSyncingCloud: false,
+                            ...syncStamp(),
+                            areNotesLoaded: true,
+                            areTasksLoaded: true,
+                            ...(remoteMd5 ? { lastSyncedMd5: remoteMd5 } : {})
+                        });
+
+                        isCloudSyncDirty = false;
+
+                        setTimeout(() => {
+                            const s = get();
+                            syncWidgetData(s.goals, s.appointments, s.notes, s.tasks).catch(console.error);
+                        }, 0);
+
+                        const folders = await getOrCreateBackupFolderStructure(token).catch(() => null);
+                        if (existingFile && folders) {
+                            const parents = existingFile.parents || [];
+                            if (!parents.includes(folders.backupFolderId)) {
+                                moveDriveFile(token, existingFile.id, folders.backupFolderId, parents).catch(console.warn);
+                            }
+                        }
+
+                        return true;
+                    } catch (err: any) {
+                        console.error("[Restore] Error al restaurar desde Google Drive:", err);
+                        set({ isSyncingCloud: false, syncError: err?.message || String(err) });
+                        return false;
+                    } finally {
+                        isSyncing = false;
+                    }
                 },
 
                 syncCycle: async (force: boolean = false, isAuthRetry: boolean = false) => {
@@ -3498,6 +3618,10 @@ export const useStore = create<AppState>()(
                     if (isSyncing) {
                         console.log("[Sync] Ya hay una sincronización en curso, se encola (queued).");
                         syncQueued = true;
+                        if (force && activeSyncPromise) {
+                            console.log("[Sync] Sincronización manual: esperando a que finalice el ciclo activo...");
+                            try { return await activeSyncPromise; } catch (_) { return false; }
+                        }
                         return false;
                     }
                     
@@ -3527,6 +3651,8 @@ export const useStore = create<AppState>()(
 
                     isSyncing = true;
                     syncQueued = false;
+                    let syncResolve: (val: boolean) => void = () => {};
+                    activeSyncPromise = new Promise<boolean>(r => { syncResolve = r; });
                     try {
                         if (get().isSyncingCloud) {
                             console.log("Cloud sync already in progress (zustand lock).");

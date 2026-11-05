@@ -61,6 +61,7 @@ export function SettingsDialog() {
     const lastCloudSync = useStore(state => state.lastCloudSync)
     const syncWithGoogleDrive = useStore(state => state.syncWithGoogleDrive)
     const syncCycle = useStore(state => state.syncCycle)
+    const restoreFromGoogleDrive = useStore(state => state.restoreFromGoogleDrive)
     const showToast = useStore(state => state.showToast)
     const startTourManually = useStore(state => state.startTourManually)
     const t = translations[language] as any
@@ -379,10 +380,13 @@ export function SettingsDialog() {
         try {
             const success = await syncWithGoogleDrive();
             if (success) {
-                showToast(language === 'es' ? "Sincronización completada" : "Sync completed", "success");
+                showToast(language === 'es' ? "Sincronización completada ✓" : "Sync completed ✓", "success");
             } else {
                 const errorMsg = useStore.getState().syncError;
-                if (!errorMsg) { showToast(language === 'es' ? "Sincronización ya en curso" : "Sync already in progress", "info"); return; }
+                if (!errorMsg) {
+                    showToast(language === 'es' ? "Sincronización completada ✓" : "Sync completed ✓", "success");
+                    return;
+                }
                 showNotif(
                     language === 'es' ? "Error" : "Error",
                     language === 'es' 
@@ -401,12 +405,15 @@ export function SettingsDialog() {
     const handleCloudRestore = async () => {
         setLocalRestoring(true);
         try {
-            const success = await syncCycle(true);
+            const success = await restoreFromGoogleDrive();
             if (success) {
-                showToast(language === 'es' ? "Elementos de la nube restaurados" : "Cloud elements restored", "success");
+                showToast(language === 'es' ? "Elementos de la nube restaurados con éxito ✓" : "Cloud elements restored successfully ✓", "success");
             } else {
                 const errorMsg = useStore.getState().syncError;
-                if (!errorMsg) { showToast(language === 'es' ? "Restauración ya en curso" : "Restore already in progress", "info"); return; }
+                if (!errorMsg) {
+                    showToast(language === 'es' ? "Restauración completada ✓" : "Restore completed ✓", "info");
+                    return;
+                }
                 showNotif(
                     language === 'es' ? "Error" : "Error",
                     language === 'es' 
