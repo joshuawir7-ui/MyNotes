@@ -124,19 +124,19 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         onSubmit={handleCustomSubmit}
-                        className="overflow-hidden mt-2 flex gap-1.5 items-center justify-center"
+                        className="overflow-hidden mt-3 flex items-center justify-center gap-2 w-full max-w-xs sm:max-w-sm px-2"
                     >
                         <input
                             type="number"
-                            placeholder="Min"
+                            placeholder="Minutos"
                             value={customValue}
                             onChange={(e) => setCustomValue(e.target.value)}
-                            className="w-16 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-2 py-0.5 text-xs text-center focus:outline-none focus:border-primary/50 text-foreground"
+                            className="flex-1 min-w-0 bg-zinc-200/80 dark:bg-zinc-800/80 border border-black/10 dark:border-white/10 rounded-full px-4 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 shadow-inner"
                             autoFocus
                         />
                         <button
                             type="submit"
-                            className="px-2.5 py-0.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:opacity-90 transition-opacity"
+                            className="px-4 py-1.5 rounded-full bg-black dark:bg-white text-white dark:text-black text-xs font-black hover:opacity-90 active:scale-95 transition-all shadow-sm shrink-0"
                         >
                             OK
                         </button>

@@ -103,12 +103,11 @@ export function WeeklyProgressChart() {
 
     useEffect(() => {
         setIsMounted(true)
-        if (showTimer && !noteShownInSession) {
+        if (showTimer) {
             setShowNote(true)
-            noteShownInSession = true
             const timeout = setTimeout(() => setShowNote(false), 20000)
             return () => clearTimeout(timeout)
-        } else if (!showTimer) {
+        } else {
             setShowNote(false)
         }
     }, [showTimer])
@@ -347,21 +346,37 @@ export function WeeklyProgressChart() {
             <AnimatePresence>
                 {showNote && (
                     <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 5 }}
-                        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute bottom-0 left-[50%] right-4 z-[100] px-6 py-2 rounded-xl flex items-center justify-between border border-primary/30 shadow-md bg-white dark:bg-slate-900"
+                        initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                        className="absolute top-[calc(100%+12px)] left-2 right-2 sm:left-6 sm:right-6 z-[100] glass glass--sheet-action rounded-2xl p-3 sm:p-4 shadow-2xl flex items-center justify-between border border-black/10 dark:border-white/10"
                     >
-                        <p className="text-sm leading-snug text-foreground font-semibold tracking-tight text-left pr-6">
-                            "Mide tus tareas con un tiempo de ejecución, cumple con tus tareas y no te excedas"
-                        </p>
-                        <button
-                            onClick={() => setShowNote(false)}
-                            className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors flex-shrink-0"
-                        >
-                            <X className="w-4 h-4 text-foreground/60" />
-                        </button>
+                        {/* Pointer Arrow pointing UP to the card */}
+                        <div
+                            className="absolute -top-[7px] left-1/2 -translate-x-1/2 w-3.5 h-3.5 rotate-45 bg-white/80 dark:bg-zinc-900/80 border-t border-l border-black/10 dark:border-white/10 backdrop-blur-md pointer-events-none"
+                            aria-hidden="true"
+                        />
+                        <div className="glass-layers" aria-hidden="true">
+                            <i className="g1" />
+                            <i className="g2" />
+                            <i className="g3" />
+                            <i className="tint" />
+                            <i className="rim" />
+                        </div>
+                        <div className="glass-content flex items-center justify-between w-full gap-2">
+                            <p className="text-xs sm:text-sm font-semibold tracking-tight text-foreground flex-1 text-center select-none leading-snug">
+                                "Mide tus tareas con un tiempo de ejecución, cumple con tus tareas y no te excedas"
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => setShowNote(false)}
+                                className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0 text-muted-foreground hover:text-foreground active:scale-95"
+                                title="Cerrar"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -371,7 +386,7 @@ export function WeeklyProgressChart() {
                     {viewMode === 'weekly' ? t.weeklyCommitment : viewMode === 'monthly' ? t.monthlyCommitment : t.yearlyCommitment}
                 </h2>
                 <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                    <div className={`bg-white/5 p-1 rounded-xl gap-1 text-[11px] font-bold ${showTimer ? 'hidden md:flex' : 'flex'}`}>
+                    <div className={`bg-white/5 p-1 rounded-xl gap-1 text-[11px] font-bold ${showTimer ? 'hidden sm:flex' : 'flex'}`}>
                         <button
                             onClick={() => setViewMode('weekly')}
                             className={`px-3 py-1 rounded-lg transition-all ${viewMode === 'weekly' ? 'bg-white/10 text-foreground shadow-sm font-black' : 'text-muted-foreground hover:text-foreground'}`}
@@ -412,12 +427,8 @@ export function WeeklyProgressChart() {
                 </div>
             </div>
 
-            <div className={`flex flex-col md:flex-row gap-6 items-stretch ${showTimer ? 'h-auto min-h-[190px] md:h-[200px]' : 'h-[120px] md:h-[200px]'}`}>
-                <motion.div
-                    animate={{ width: showTimer ? "50%" : "100%" }}
-                    transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
-                    className={`h-full min-w-0 ${showTimer ? 'hidden md:block md:w-1/2' : 'w-full'}`}
-                >
+            <div className={`flex flex-col items-stretch ${showTimer ? 'h-auto min-h-[190px]' : 'h-[120px] md:h-[200px]'}`}>
+                <div className={`h-full min-w-0 w-full ${showTimer ? 'hidden' : 'block'}`}>
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <ComposedChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                             <defs>
@@ -547,7 +558,7 @@ export function WeeklyProgressChart() {
                             />
                         </ComposedChart>
                     </ResponsiveContainer>
-                </motion.div>
+                </div>
 
                 <AnimatePresence>
                     {showTimer && (
@@ -556,7 +567,7 @@ export function WeeklyProgressChart() {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                            className="w-full md:w-1/2 h-full flex flex-col items-center justify-center overflow-hidden"
+                            className="w-full h-full flex flex-col items-center justify-center overflow-hidden py-1"
                         >
                             <FocusTimer onClose={() => setShowTimer(false)} showCloseButton={false} />
                         </motion.div>
