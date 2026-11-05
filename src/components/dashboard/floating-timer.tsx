@@ -1,54 +1,56 @@
 "use client"
 
-import { useStore } from "@/lib/store"
 import { motion, useDragControls } from "framer-motion"
 import { Play, Pause, Maximize2, X, GripHorizontal } from "lucide-react"
 import { useRef, useEffect, useState } from "react"
+import { timerEngine, useTimerStore } from "@/lib/timer-engine"
+import { useTimerRemaining } from "@/hooks/use-timer-remaining"
 
 export function FloatingTimer() {
     const [mounted, setMounted] = useState(false)
-    const timer = useStore(state => state.timer)
-    const setTimer = useStore(state => state.setTimer)
+    const isFloating = useTimerStore(s => s.isFloating)
+    const position = useTimerStore(s => s.position)
+    const storeSize = useTimerStore(s => s.size)
+    const { formatted, isActive } = useTimerRemaining()
+
     const containerRef = useRef<HTMLDivElement>(null)
     const dragControls = useDragControls()
     const [isResizing, setIsResizing] = useState(false)
+    const [localSize, setLocalSize] = useState(storeSize)
 
     useEffect(() => {
         setMounted(true)
     }, [])
 
-    if (!mounted || !timer || !timer.isFloating) return null
+    useEffect(() => {
+        setLocalSize(storeSize)
+    }, [storeSize])
 
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60)
-        const secs = seconds % 60
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-    }
+    if (!mounted || !isFloating) return null
 
     const handleStartPause = () => {
-        if (timer.isActive) {
-            setTimer({ isActive: false, targetTimestamp: undefined })
+        if (isActive) {
+            timerEngine.pause()
         } else {
-            setTimer({ isActive: true })
+            const state = timerEngine.getState()
+            if (state.status === 'paused') {
+                timerEngine.resume()
+            } else {
+                timerEngine.start()
+            }
         }
     }
 
     const handleRestore = () => {
-        setTimer({ isFloating: false })
+        timerEngine.setUIPreferences({ isFloating: false })
     }
 
-    // Default values if missing from persisted state
-    const size = {
-        width: timer?.size?.width ?? 180,
-        height: timer?.size?.height ?? 180
+    const handleClose = () => {
+        timerEngine.pause()
+        timerEngine.setUIPreferences({ isFloating: false })
     }
-    const position = {
-        x: timer?.position?.x ?? 0,
-        y: timer?.position?.y ?? 0
-    }
-    const timeLeft = timer?.timeLeft ?? (25 * 60)
 
-    // Resize logic
+    // Resize logic: only updates local component state during move, persists ONCE on mouseUp
     const onResizeStart = (e: React.MouseEvent) => {
         e.preventDefault()
         e.stopPropagation()
@@ -56,19 +58,23 @@ export function FloatingTimer() {
 
         const startX = e.clientX
         const startY = e.clientY
-        const startWidth = size.width
-        const startHeight = size.height
+        const startWidth = localSize.width
+        const startHeight = localSize.height
+        let currentWidth = startWidth
+        let currentHeight = startHeight
 
         const onMouseMove = (moveEvent: MouseEvent) => {
-            const newWidth = Math.max(140, startWidth + (moveEvent.clientX - startX))
-            const newHeight = Math.max(140, startHeight + (moveEvent.clientY - startY))
-            setTimer({ size: { width: newWidth, height: newHeight } })
+            currentWidth = Math.max(140, startWidth + (moveEvent.clientX - startX))
+            currentHeight = Math.max(140, startHeight + (moveEvent.clientY - startY))
+            setLocalSize({ width: currentWidth, height: currentHeight })
         }
 
         const onMouseUp = () => {
             setIsResizing(false)
             document.removeEventListener('mousemove', onMouseMove)
             document.removeEventListener('mouseup', onMouseUp)
+            // Persist once on end of resize
+            timerEngine.setUIPreferences({ size: { width: currentWidth, height: currentHeight } })
         }
 
         document.addEventListener('mousemove', onMouseMove)
@@ -84,13 +90,14 @@ export function FloatingTimer() {
             dragListener={false}
             initial={false}
             style={{
-                width: size.width,
-                height: size.height,
+                width: localSize.width,
+                height: localSize.height,
                 x: position.x,
                 y: position.y
             }}
             onDragEnd={(_, info) => {
-                setTimer({ position: { x: info.point.x, y: info.point.y } })
+                // Persist once on drag end, never per frame
+                timerEngine.setUIPreferences({ position: { x: info.point.x, y: info.point.y } })
             }}
             className="fixed z-[9999] glass-panel rounded-2xl shadow-2xl flex flex-col items-center justify-center border-primary/20 overflow-hidden"
         >
@@ -106,14 +113,14 @@ export function FloatingTimer() {
                     <button
                         onClick={handleRestore}
                         className="p-1 rounded-md hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all"
-                        title="Restore"
+                        title="Restaurar"
                     >
                         <Maximize2 className="w-3 h-3" />
                     </button>
                     <button
-                        onClick={() => setTimer({ isFloating: false, isActive: false })}
+                        onClick={handleClose}
                         className="p-1 rounded-md hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-all"
-                        title="Close"
+                        title="Cerrar"
                     >
                         <X className="w-3 h-3" />
                     </button>
@@ -121,16 +128,20 @@ export function FloatingTimer() {
             </div>
 
             {/* Timer Display */}
-            <div className="flex flex-col items-center justify-center flex-1 pt-4">
+            <div className="flex flex-col items-center justify-center flex-1 pt-4 select-none">
                 <div className="text-3xl font-bold font-mono tracking-tighter text-foreground tabular-nums">
-                    {formatTime(timeLeft)}
+                    {formatted}
                 </div>
 
                 <button
                     onClick={handleStartPause}
-                    className={`mt-4 p-3 rounded-full transition-all ${timer.isActive ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30' : 'bg-primary/20 text-primary hover:bg-primary/30'}`}
+                    className={`mt-4 p-3 rounded-full transition-all shadow-sm active:scale-95 ${
+                        isActive
+                            ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
+                            : 'bg-primary/20 text-primary hover:bg-primary/30'
+                    }`}
                 >
-                    {timer.isActive ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
+                    {isActive ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
                 </button>
             </div>
 

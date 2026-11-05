@@ -2187,42 +2187,27 @@ export const useStore = create<AppState>()(
                     return newState;
                 }),
 
-                setTimer: (timerUpdate) => set((state) => {
-                    // Guaranteed default structure
-                    const defaultTimer = {
-                        timeLeft: 25 * 60,
-                        isActive: false,
-                        isFloating: false,
-                        position: { x: 0, y: 0 },
-                        size: { width: 180, height: 180 }
-                    }
+                setTimer: (timerUpdate) => {
+                    try {
+                        const { timerEngine } = require("./timer-engine");
+                        if (timerUpdate.isActive === true) {
+                            timerEngine.start(timerUpdate.timeLeft ? timerUpdate.timeLeft * 1000 : undefined);
+                        } else if (timerUpdate.isActive === false) {
+                            timerEngine.pause();
+                        }
+                        if (timerUpdate.isFloating !== undefined || timerUpdate.position || timerUpdate.size) {
+                            timerEngine.setUIPreferences({
+                                isFloating: timerUpdate.isFloating,
+                                position: timerUpdate.position,
+                                size: timerUpdate.size
+                            });
+                        }
+                    } catch (e) {}
 
-                    // Initial state safety
-                    const currentTimer = { ...defaultTimer, ...(state.timer || {}) }
-
-                    // Merge with update, being careful with nested objects (size, position)
-                    const newTimer = {
-                        ...currentTimer,
-                        ...timerUpdate,
-                        size: timerUpdate.size
-                            ? { ...currentTimer.size, ...timerUpdate.size }
-                            : currentTimer.size,
-                        position: timerUpdate.position
-                            ? { ...currentTimer.position, ...timerUpdate.position }
-                            : currentTimer.position
-                    }
-
-                    // If timer is becoming active and doesn't have a targetTimestamp, calculate it
-                    if (timerUpdate.isActive === true && !newTimer.targetTimestamp) {
-                        newTimer.targetTimestamp = Date.now() + (newTimer.timeLeft * 1000)
-                    }
-                    // If timer is becoming inactive, clear targetTimestamp
-                    else if (timerUpdate.isActive === false) {
-                        newTimer.targetTimestamp = undefined
-                    }
-
-                    return { timer: newTimer as any }
-                }),
+                    (originalSet as any)((state: any) => ({
+                        timer: { ...(state.timer || {}), ...timerUpdate }
+                    }));
+                },
 
                 addTask: (task: Omit<Task, 'id' | 'completed' | 'completedDates' | 'missed' | 'streak'>) => {
                     lastLocalTasksUpdate = Date.now();
@@ -4065,6 +4050,15 @@ export const useStore = create<AppState>()(
                             useStore.setState({ notes: cleanedNotes });
                         }
                     }
+                    if (rehydratedState && (rehydratedState as any).timer) {
+                        try {
+                            const { migrateLegacyTimerState } = require('./timer-engine');
+                            migrateLegacyTimerState((rehydratedState as any).timer);
+                        } catch (e) {
+                            console.error("[Migration] Legacy timer migration failed:", e);
+                        }
+                    }
+
                     // Set isHydrated to true when hydration finishes
                     useStore.setState({ isHydrated: true });
                     
@@ -4081,7 +4075,7 @@ export const useStore = create<AppState>()(
                         serializableState[key] = state[key as keyof AppState];
                     }
                 }
-                const { isSyncingCloud, syncError, tourStep, isTourManuallyStarted, ...rest } = serializableState;
+                const { isSyncingCloud, syncError, tourStep, isTourManuallyStarted, timer, ...rest } = serializableState;
                 const result = {
                     ...rest,
                     areNotesLoaded: true,

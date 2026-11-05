@@ -8,6 +8,7 @@ import { useMemo, useState, useEffect } from "react"
 import { X } from "lucide-react"
 import { FocusTimer } from "./focus-timer"
 import { motion, AnimatePresence } from "framer-motion"
+import { useTimerStore } from "@/lib/timer-engine"
 
 let noteShownInSession = false;
 
@@ -91,7 +92,7 @@ export function WeeklyProgressChart() {
     const language = useStore(state => state.language)
     const appColor = useStore(state => state.appColor ?? 'purple')
     const dailySnapshots = useStore(state => state.dailySnapshots)
-    const timerIsActive = useStore(state => state.timer?.isActive)
+    const timerIsActive = useTimerStore(s => s.status === 'running')
     const tasks = useStore(useShallow(state => state.tasks))
     const t = (translations[language as keyof typeof translations]?.dashboard?.charts || translations['en'].dashboard.charts) as any
     const common = (translations[language as keyof typeof translations]?.common || translations['en'].common) as any

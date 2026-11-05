@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { Play, Pause, RotateCcw, X, SlidersHorizontal, ExternalLink } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { useStore } from "@/lib/store"
+import { timerEngine, useTimerStore } from "@/lib/timer-engine"
+import { useTimerRemaining } from "@/hooks/use-timer-remaining"
 
 interface FocusTimerProps {
     onClose?: () => void
@@ -11,40 +12,39 @@ interface FocusTimerProps {
 }
 
 export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps) {
-    const timer = useStore(state => state.timer)
-    const setTimer = useStore(state => state.setTimer)
+    const { formatted, isActive, preset: currentPreset } = useTimerRemaining()
+    const isFloating = useTimerStore(s => s.isFloating)
     const [customValue, setCustomValue] = useState("")
     const [showCustomInput, setShowCustomInput] = useState(false)
 
     const presets = [5, 15, 30]
 
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60)
-        const secs = seconds % 60
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-    }
-
     const handleStartPause = () => {
-        if (timer.isActive) {
-            setTimer({ isActive: false, targetTimestamp: undefined })
+        if (isActive) {
+            timerEngine.pause()
         } else {
-            setTimer({ isActive: true }) // Store setTimer will calculate targetTimestamp
+            const state = timerEngine.getState()
+            if (state.status === 'paused') {
+                timerEngine.resume()
+            } else {
+                timerEngine.start()
+            }
         }
     }
 
     const handleReset = () => {
-        setTimer({ isActive: false, timeLeft: 25 * 60, targetTimestamp: undefined })
+        timerEngine.reset()
     }
 
     const setPreset = (mins: number) => {
-        setTimer({ isActive: false, timeLeft: mins * 60, targetTimestamp: undefined })
+        timerEngine.start(mins * 60 * 1000, mins)
     }
 
     const handleCustomSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         const mins = parseInt(customValue, 10)
         if (!isNaN(mins) && mins > 0) {
-            setTimer({ isActive: false, timeLeft: mins * 60, targetTimestamp: undefined })
+            timerEngine.start(mins * 60 * 1000, mins)
             setShowCustomInput(false)
             setCustomValue("")
         }
@@ -65,20 +65,20 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
             {/* Circular Pod */}
             <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)] flex flex-col items-center justify-center select-none transition-transform hover:scale-[1.02]">
                 <span className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground select-none">
-                    {formatTime(timer.timeLeft)}
+                    {formatted}
                 </span>
 
                 <div className="flex items-center gap-2.5 mt-2">
                     <button
                         onClick={handleStartPause}
                         className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm active:scale-95 ${
-                            timer.isActive
+                            isActive
                                 ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
                                 : 'bg-black/10 dark:bg-white/15 text-foreground hover:bg-black/20 dark:hover:bg-white/25'
                         }`}
-                        title={timer.isActive ? "Pausar" : "Iniciar"}
+                        title={isActive ? "Pausar" : "Iniciar"}
                     >
-                        {timer.isActive ? (
+                        {isActive ? (
                             <Pause className="w-4 h-4 fill-current" />
                         ) : (
                             <Play className="w-4 h-4 fill-current ml-0.5" />
@@ -101,7 +101,9 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                     <button
                         key={mins}
                         onClick={() => setPreset(mins)}
-                        className="text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer active:scale-95"
+                        className={`text-[11px] font-semibold transition-colors cursor-pointer active:scale-95 ${
+                            currentPreset === mins ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground'
+                        }`}
                     >
                         {mins}m
                     </button>

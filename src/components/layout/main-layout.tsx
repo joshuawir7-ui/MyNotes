@@ -141,9 +141,6 @@ const TourArrow = ({ targetId, startRef }: { targetId: string, startRef: React.R
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-    const timerIsActive = useStore(state => state.timer?.isActive)
-    const timerTargetTimestamp = useStore(state => state.timer?.targetTimestamp)
-    const setTimer = useStore(state => state.setTimer)
     const language = useStore(state => state.language)
     const appColor = useStore(state => state.appColor)
     const { theme, resolvedTheme } = useTheme()
@@ -310,66 +307,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }, [])
 
     useEffect(() => {
-        let interval: NodeJS.Timeout
-
-        const updateTimer = () => {
-            const currentTimer = useStore.getState().timer
-            const isActive = currentTimer?.isActive
-            const targetTimestamp = currentTimer?.targetTimestamp
-            const timeLeft = currentTimer?.timeLeft
-
-            if (isActive && targetTimestamp) {
-                const now = Date.now()
-                const remaining = Math.max(0, Math.ceil((targetTimestamp - now) / 1000))
-
-                if (remaining === 0) {
-                    setTimer({ isActive: false, targetTimestamp: undefined, timeLeft: 0 })
-                    playAlarm()
-                } else if (remaining !== timeLeft) {
-                    if (document.visibilityState === 'visible') {
-                        setTimer({ timeLeft: remaining })
-                    }
-                }
-            }
-        }
-
-        const playAlarm = () => {
-            if ("Notification" in window && Notification.permission === "granted") {
-                new Notification("MyNotes", {
-                    body: language === 'es' ? "¡El tiempo de enfoque ha terminado!" : "Focus time is over!",
-                    icon: "/favicon.ico"
-                })
-            }
-
-            try {
-                const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
-                const oscillator = audioCtx.createOscillator()
-                const gainNode = audioCtx.createGain()
-
-                oscillator.connect(gainNode)
-                gainNode.connect(audioCtx.destination)
-
-                oscillator.type = 'sine'
-                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime)
-                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime)
-
-                oscillator.start()
-                oscillator.stop(audioCtx.currentTime + 0.5)
-            } catch (e) {
-                console.error("Audio fails", e)
-                alert(language === 'es' ? "⏰ ¡Tiempo agotado! Tu sesión de enfoque ha terminado." : "⏰ Time's up! Your focus session has ended.")
-            }
-        }
-
-        if (timerIsActive) {
-            updateTimer() // Initial check
-            interval = setInterval(updateTimer, 1000)
-        }
-
-        // Sync instantly when tab becomes visible
+        // Sync & reconcile instantly when tab becomes visible
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
-                updateTimer()
+                timerEngine.reconcile()
                 useStore.getState().pullOfflineCompletedTasks()
                 useStore.getState().pullOfflineNotes()
                 useStore.getState().pullOfflineAppointments()
@@ -413,7 +354,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         }, 30000);
 
         return () => {
-            clearInterval(interval)
             if (syncCycleInterval) {
                 clearInterval(syncCycleInterval);
             }
@@ -422,7 +362,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 stateListener.remove();
             }
         }
-    }, [timerIsActive, timerTargetTimestamp, language, setTimer])
+    }, [])
 
     // Request notification permission and register SW on mount
     useEffect(() => {
