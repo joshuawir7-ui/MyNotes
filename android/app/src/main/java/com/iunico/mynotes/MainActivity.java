@@ -24,7 +24,14 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
+        TimerBubbleManager.getInstance(this).onAppForeground();
         handleIntent(getIntent());
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        TimerBubbleManager.getInstance(this).onAppBackground();
     }
 
     @Override

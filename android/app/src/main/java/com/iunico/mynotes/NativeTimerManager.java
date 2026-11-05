@@ -239,9 +239,11 @@ public class NativeTimerManager {
     }
 
     private void notifyStateChanged() {
+        JSObject state = getState();
+        TimerBubbleManager.getInstance(context).onTimerStateUpdated(state);
         if (stateChangeListener != null) {
             try {
-                stateChangeListener.onTimerStateChanged(getState());
+                stateChangeListener.onTimerStateChanged(state);
             } catch (Exception e) {
                 Log.e(TAG, "Error notifying state change listener", e);
             }

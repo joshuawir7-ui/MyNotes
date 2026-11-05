@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bubble_root"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/timer_bubble_pill_bg"
+    android:elevation="14dp"
+    android:paddingStart="14dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <!-- Mini Clock / Drag Icon -->
+    <ImageView
+        android:id="@+id/bubble_drag_icon"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_marginEnd="8dp"
+        android:src="@android:drawable/ic_menu_recent_history"
+        android:contentDescription="Focus" />
+
+    <!-- Countdown Text -->
+    <TextView
+        android:id="@+id/bubble_time_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="25:00"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:fontFamily="monospace"
+        android:includeFontPadding="false" />
+
+    <!-- Play/Pause Button -->
+    <ImageButton
+        android:id="@+id/bubble_play_pause_btn"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="10dp"
+        android:background="@drawable/timer_bubble_btn_bg"
+        android:src="@android:drawable/ic_media_pause"
+        android:padding="6dp"
+        android:scaleType="fitCenter"
+        android:contentDescription="Play or Pause" />
+
+    <!-- Close / Dismiss Bubble Button -->
+    <ImageButton
+        android:id="@+id/bubble_close_btn"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:layout_marginStart="6dp"
+        android:background="@drawable/timer_bubble_btn_bg"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        android:padding="5dp"
+        android:scaleType="fitCenter"
+        android:contentDescription="Hide Bubble" />
+
+</LinearLayout>

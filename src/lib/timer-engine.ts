@@ -30,6 +30,12 @@ export interface TimerEngine {
     setUIPreferences(prefs: Partial<{ isFloating: boolean; position: { x: number; y: number }; size: { width: number; height: number } }>): void
     reconcile(): void
     handleTimeExpired(): void
+    checkOverlayPermission(): Promise<boolean>
+    requestOverlayPermission(): Promise<void>
+    getBubbleSettings(): Promise<{ mode: 'always' | 'outside' | 'never'; hasPermission: boolean; isSupported: boolean }>
+    setBubbleMode(mode: 'always' | 'outside' | 'never'): Promise<void>
+    openAppSettings(): Promise<void>
+    openBatteryOptimizationSettings(): Promise<void>
 }
 
 const STORAGE_KEY = 'mynotes_isolated_timer_state_v1'
@@ -303,6 +309,18 @@ class WebTimerEngineImpl implements TimerEngine {
             console.error("[TimerEngine] Incrementing focus time failed:", e)
         }
     }
+
+    async checkOverlayPermission(): Promise<boolean> { return false; }
+    async requestOverlayPermission(): Promise<void> {}
+    async getBubbleSettings(): Promise<{ mode: 'always' | 'outside' | 'never'; hasPermission: boolean; isSupported: boolean }> {
+        const mode = (typeof localStorage !== 'undefined' ? localStorage.getItem('mynotes_bubble_mode') : null) as any || 'outside';
+        return { mode, hasPermission: false, isSupported: false };
+    }
+    async setBubbleMode(mode: 'always' | 'outside' | 'never'): Promise<void> {
+        if (typeof localStorage !== 'undefined') localStorage.setItem('mynotes_bubble_mode', mode);
+    }
+    async openAppSettings(): Promise<void> {}
+    async openBatteryOptimizationSettings(): Promise<void> {}
 }
 
 interface NativeTimerPlugin {
@@ -312,6 +330,12 @@ interface NativeTimerPlugin {
     reset(): Promise<any>
     stop(): Promise<any>
     getState(): Promise<any>
+    checkOverlayPermission(): Promise<{ granted: boolean }>
+    requestOverlayPermission(): Promise<{ requested: boolean }>
+    getBubbleSettings(): Promise<{ mode: string; hasPermission: boolean; isSupported: boolean }>
+    setBubbleMode(options: { mode: string }): Promise<{ mode: string }>
+    openAppSettings(): Promise<void>
+    openBatteryOptimizationSettings(): Promise<void>
     addListener(eventName: 'timerStateChanged', listenerFunc: (state: any) => void): Promise<{ remove: () => Promise<void> }>
 }
 
@@ -443,6 +467,60 @@ class NativeTimerEngineImpl implements TimerEngine {
 
     handleTimeExpired(): void {
         this.reconcile()
+    }
+
+    async checkOverlayPermission(): Promise<boolean> {
+        try {
+            const res = await NativeTimer.checkOverlayPermission()
+            return !!res?.granted
+        } catch {
+            return false
+        }
+    }
+
+    async requestOverlayPermission(): Promise<void> {
+        try {
+            await NativeTimer.requestOverlayPermission()
+        } catch (e) {
+            console.error('[NativeTimerEngine] requestOverlayPermission failed:', e)
+        }
+    }
+
+    async getBubbleSettings(): Promise<{ mode: 'always' | 'outside' | 'never'; hasPermission: boolean; isSupported: boolean }> {
+        try {
+            const res = await NativeTimer.getBubbleSettings()
+            return {
+                mode: (res?.mode as any) || 'outside',
+                hasPermission: !!res?.hasPermission,
+                isSupported: true
+            }
+        } catch {
+            return { mode: 'outside', hasPermission: false, isSupported: false }
+        }
+    }
+
+    async setBubbleMode(mode: 'always' | 'outside' | 'never'): Promise<void> {
+        try {
+            await NativeTimer.setBubbleMode({ mode })
+        } catch (e) {
+            console.error('[NativeTimerEngine] setBubbleMode failed:', e)
+        }
+    }
+
+    async openAppSettings(): Promise<void> {
+        try {
+            await NativeTimer.openAppSettings()
+        } catch (e) {
+            console.error('[NativeTimerEngine] openAppSettings failed:', e)
+        }
+    }
+
+    async openBatteryOptimizationSettings(): Promise<void> {
+        try {
+            await NativeTimer.openBatteryOptimizationSettings()
+        } catch (e) {
+            console.error('[NativeTimerEngine] openBatteryOptimizationSettings failed:', e)
+        }
     }
 
     private triggerJSSideEffectsOnly(durationMs: number): void {

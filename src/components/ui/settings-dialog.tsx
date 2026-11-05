@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence, Variants } from "framer-motion"
-import { Settings, Bell, X, Download, Upload, Zap, Cloud, LogOut, RefreshCw, Loader2, Sparkles, Type, Plus, Trash2, FolderPlus, Gauge, Code } from "lucide-react"
+import { Settings, Bell, X, Download, Upload, Zap, Cloud, LogOut, RefreshCw, Loader2, Sparkles, Type, Plus, Trash2, FolderPlus, Gauge, Code, ExternalLink, Smartphone, ShieldCheck, ShieldAlert, ChevronDown, ChevronUp } from "lucide-react"
 import { useStore, readAllNotesFromDisk, readAllTasksFromDisk, markCloudSyncDirty } from "@/lib/store"
 import { translations } from "@/lib/translations"
 import { ModeToggle } from "@/components/ui/mode-toggle"
@@ -14,12 +14,38 @@ import { PriorityReminderSettings } from "@/components/ui/priority-reminder-sett
 import { PerfDebugModal } from "@/components/ui/perf-debug-modal"
 import { GlassSurface } from "@/components/ui/glass-surface"
 import { useRouter } from "next/navigation"
+import { timerEngine } from '@/lib/timer-engine'
 
 export function SettingsDialog() {
     const [isOpen, setIsOpen] = useState(false)
     const [isPerfDebugOpen, setIsPerfDebugOpen] = useState(false)
     const [versionClickCount, setVersionClickCount] = useState(0)
+    const [bubbleSettings, setBubbleSettings] = useState<{ mode: 'always' | 'outside' | 'never'; hasPermission: boolean; isSupported: boolean }>({
+        mode: 'outside',
+        hasPermission: false,
+        isSupported: false
+    })
+    const [showXiaomiGuide, setShowXiaomiGuide] = useState(false)
 
+    useEffect(() => {
+        if (isOpen) {
+            timerEngine.getBubbleSettings().then(setBubbleSettings).catch(console.error)
+        }
+    }, [isOpen])
+
+    const handleSetBubbleMode = async (mode: 'always' | 'outside' | 'never') => {
+        await timerEngine.setBubbleMode(mode)
+        const updated = await timerEngine.getBubbleSettings()
+        setBubbleSettings(updated)
+    }
+
+    const handleRequestOverlay = async () => {
+        await timerEngine.requestOverlayPermission()
+        setTimeout(async () => {
+            const updated = await timerEngine.getBubbleSettings()
+            setBubbleSettings(updated)
+        }, 1500)
+    }
     const handleVersionClick = () => {
         setVersionClickCount(prev => {
             const next = prev + 1;
@@ -989,6 +1015,149 @@ export function SettingsDialog() {
                                                 } transition-transform duration-300`} />
                                             </button>
                                         </motion.div>
+
+                                        {/* Floating Timer Bubble Overlay (Fase 1C) */}
+                                        <div className="flex flex-col gap-3 p-4 glass-card rounded-2xl border border-black/5 dark:border-white/10">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/20 text-primary">
+                                                        <ExternalLink className="w-5 h-5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-sm">
+                                                            {language === 'es' ? "Temporizador Flotante (Burbuja)" : "Floating Timer Bubble"}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {language === 'es' ? "Muestra la cuenta atrás fuera de la app mientras usas el móvil" : "Show countdown outside app across other applications"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {bubbleSettings.hasPermission ? (
+                                                    <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full shrink-0">
+                                                        <ShieldCheck className="w-3.5 h-3.5" />
+                                                        {language === 'es' ? "Activo" : "Active"}
+                                                    </span>
+                                                ) : (
+                                                    <span className="flex items-center gap-1 text-[11px] font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-full shrink-0">
+                                                        <ShieldAlert className="w-3.5 h-3.5" />
+                                                        {language === 'es' ? "Sin permiso" : "Needs permission"}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Permission request alert banner if not granted */}
+                                            {!bubbleSettings.hasPermission && (
+                                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
+                                                    <span className="text-amber-700 dark:text-amber-300 font-medium leading-relaxed">
+                                                        {language === 'es'
+                                                            ? "Para mostrar la burbuja sobre otras apps, concede el permiso de 'Aparecer encima'."
+                                                            : "Grant 'Display over other apps' to allow floating bubble countdown."}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleRequestOverlay}
+                                                        className="px-3 py-1.5 rounded-lg bg-amber-500 text-white font-bold text-xs hover:bg-amber-600 active:scale-95 transition-all shrink-0 cursor-pointer shadow-sm"
+                                                    >
+                                                        {language === 'es' ? "Conceder permiso" : "Grant permission"}
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Mode Selector */}
+                                            <div className="flex flex-col gap-1.5 mt-1">
+                                                <span className="text-xs font-semibold text-muted-foreground">
+                                                    {language === 'es' ? "Modo de visualización:" : "Display Mode:"}
+                                                </span>
+                                                <div className="grid grid-cols-3 gap-2 bg-black/5 dark:bg-white/5 p-1 rounded-xl">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSetBubbleMode('outside')}
+                                                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
+                                                            bubbleSettings.mode === 'outside'
+                                                                ? 'bg-primary text-primary-foreground shadow-sm'
+                                                                : 'text-muted-foreground hover:text-foreground'
+                                                        }`}
+                                                    >
+                                                        {language === 'es' ? "Solo fuera" : "Outside only"}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSetBubbleMode('always')}
+                                                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
+                                                            bubbleSettings.mode === 'always'
+                                                                ? 'bg-primary text-primary-foreground shadow-sm'
+                                                                : 'text-muted-foreground hover:text-foreground'
+                                                        }`}
+                                                    >
+                                                        {language === 'es' ? "Siempre" : "Always"}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSetBubbleMode('never')}
+                                                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
+                                                            bubbleSettings.mode === 'never'
+                                                                ? 'bg-primary text-primary-foreground shadow-sm'
+                                                                : 'text-muted-foreground hover:text-foreground'
+                                                        }`}
+                                                    >
+                                                        {language === 'es' ? "Nunca" : "Never"}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Xiaomi / HyperOS / MIUI Guide */}
+                                            <div className="border-t border-black/5 dark:border-white/10 pt-2.5 mt-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowXiaomiGuide(!showXiaomiGuide)}
+                                                    className="w-full flex items-center justify-between text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors py-1 cursor-pointer"
+                                                >
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Smartphone className="w-3.5 h-3.5 text-primary" />
+                                                        {language === 'es' ? "¿Tienes Xiaomi, Redmi o POCO (HyperOS / MIUI)?" : "Using Xiaomi, Redmi or POCO (HyperOS)?"}
+                                                    </span>
+                                                    {showXiaomiGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                                </button>
+
+                                                <AnimatePresence>
+                                                    {showXiaomiGuide && (
+                                                        <motion.div
+                                                            initial={{ height: 0, opacity: 0 }}
+                                                            animate={{ height: 'auto', opacity: 1 }}
+                                                            exit={{ height: 0, opacity: 0 }}
+                                                            className="overflow-hidden text-[11px] text-muted-foreground mt-2 flex flex-col gap-2 bg-black/5 dark:bg-white/5 p-3 rounded-xl"
+                                                        >
+                                                            <p className="leading-relaxed">
+                                                                {language === 'es'
+                                                                    ? "En MIUI/HyperOS, debes habilitar además el permiso especial 'Mostrar ventanas emergentes en segundo plano':"
+                                                                    : "In MIUI/HyperOS, please make sure to allow 'Display pop-up windows while running in the background':"}
+                                                            </p>
+                                                            <ol className="list-decimal list-inside space-y-1 font-medium text-foreground">
+                                                                <li>{language === 'es' ? "Ajustes de la App > Otros permisos > Ventanas emergentes en segundo plano." : "App Settings > Other Permissions > Pop-up windows."}</li>
+                                                                <li>{language === 'es' ? "Batería > Ahorro de batería > Sin restricciones." : "Battery > Battery saver > No restrictions."}</li>
+                                                            </ol>
+                                                            <div className="flex gap-2 mt-1">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => timerEngine.openAppSettings()}
+                                                                    className="px-2.5 py-1.5 rounded-lg bg-black/10 dark:bg-white/15 text-foreground font-bold hover:bg-black/20 text-[11px] transition-all cursor-pointer"
+                                                                >
+                                                                    {language === 'es' ? "Abrir Ajustes de MyNotes" : "Open App Settings"}
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => timerEngine.openBatteryOptimizationSettings()}
+                                                                    className="px-2.5 py-1.5 rounded-lg bg-black/10 dark:bg-white/15 text-foreground font-bold hover:bg-black/20 text-[11px] transition-all cursor-pointer"
+                                                                >
+                                                                    {language === 'es' ? "Ajustes de Batería" : "Battery Settings"}
+                                                                </button>
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+                                        </div>
 
                                         {/* Welcome Notes Test Button */}
                                         <motion.div 
