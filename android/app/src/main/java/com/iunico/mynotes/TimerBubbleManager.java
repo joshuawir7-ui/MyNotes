@@ -407,3 +407,4 @@ public class TimerBubbleManager {
         return Math.round(dp * context.getResources().getDisplayMetrics().density);
     }
 }
+

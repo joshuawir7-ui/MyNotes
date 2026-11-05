@@ -443,9 +443,9 @@ export function WeeklyProgressChart() {
                 </div>
             </div>
 
-            <div className={`flex flex-col md:flex-row gap-6 items-stretch ${showTimer ? 'h-auto min-h-[190px] md:h-[200px]' : 'h-[120px] md:h-[200px]'}`}>
-                <div className={`h-full min-w-0 ${showTimer ? 'hidden md:block md:w-1/2' : 'w-full'}`}>
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+            <div className={`flex flex-col md:flex-row gap-6 items-stretch ${showTimer ? 'h-auto md:h-[200px]' : 'h-[120px] md:h-[200px]'}`}>
+                <div className={`min-w-0 h-[120px] md:h-[200px] ${showTimer ? 'hidden md:block md:w-1/2' : 'w-full'}`}>
+                    <ResponsiveContainer key={showTimer ? 'split-chart' : 'full-chart'} width="100%" height="100%" minWidth={0} minHeight={120}>
                         <ComposedChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                             <defs>
                                 {/* Degradado horizontal para la línea en negro (Gris -> Negro -> Gris) */}
@@ -583,9 +583,9 @@ export function WeeklyProgressChart() {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                            className="w-full md:w-1/2 h-full flex flex-col items-center justify-center overflow-hidden py-1"
+                            className="w-full md:w-1/2 h-auto md:h-[200px] flex flex-col items-center justify-center overflow-hidden py-1"
                         >
-                            <FocusTimer onClose={() => setShowTimer(false)} showCloseButton={false} />
+                            <FocusTimer onClose={() => setShowTimer(false)} />
                         </motion.div>
                     )}
                 </AnimatePresence>
