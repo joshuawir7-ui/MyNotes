@@ -493,7 +493,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
     return createPortal(
         <div
-            className="fixed inset-0 z-50 bg-black/60 bl4 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-200"
+            className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-200"
             style={{
                 backdropFilter: 'blur(20px) saturate(1.2)',
                 WebkitBackdropFilter: 'blur(20px) saturate(1.2)'

@@ -360,15 +360,15 @@ export function WeeklyProgressChart() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -6, scale: 0.98 }}
                         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute top-[calc(100%+12px)] left-2 right-2 sm:left-6 sm:right-6 z-[100] rounded-2xl p-3.5 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.65)] flex items-center justify-between border border-white/70 dark:border-white/15 backdrop-blur-2xl bg-white/85 dark:bg-zinc-900/90 relative overflow-hidden"
+                        className="absolute top-[calc(100%+12px)] left-4 right-4 sm:left-auto sm:right-6 md:right-8 sm:max-w-md z-[100] rounded-2xl p-3.5 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.65)] flex items-center justify-between border border-white/70 dark:border-white/15 backdrop-blur-2xl bg-white/85 dark:bg-zinc-900/90 relative overflow-hidden"
                         style={{
                             backdropFilter: 'blur(24px) saturate(1.6)',
                             WebkitBackdropFilter: 'blur(24px) saturate(1.6)'
                         }}
                     >
-                        {/* Pointer Arrow pointing UP to the card */}
+                        {/* Pointer Arrow pointing UP to the timer on the right side */}
                         <div
-                            className="absolute -top-[7px] left-1/2 -translate-x-1/2 w-3.5 h-3.5 rotate-45 bg-white/90 dark:bg-zinc-900/95 border-t border-l border-white/70 dark:border-white/15 pointer-events-none"
+                            className="absolute -top-[7px] right-24 sm:right-28 w-3.5 h-3.5 rotate-45 bg-white/90 dark:bg-zinc-900/95 border-t border-l border-white/70 dark:border-white/15 pointer-events-none"
                             aria-hidden="true"
                         />
                         {/* Layered Glass Gradient Highlights */}

@@ -404,8 +404,14 @@ const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note;
             if (!note.blocks || !Array.isArray(note.blocks) || note.blocks.length === 0) return t.empty;
             const firstBlock = note.blocks[0];
             if (firstBlock && typeof firstBlock === 'object' && firstBlock.type === 'text' && typeof firstBlock.content === 'string') {
-                const snippet = firstBlock.content.slice(0, 300);
-                const cleanText = snippet.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+                const cleanText = firstBlock.content
+                    .replace(/<style[\s\S]*?<\/style>/gi, '')
+                    .replace(/<script[\s\S]*?<\/script>/gi, '')
+                    .replace(/<[^>]*>/g, ' ')
+                    .replace(/&nbsp;/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                    .slice(0, 160);
                 return cleanText || t.empty;
             }
             return `[${note.blocks?.length || 0} Blocks]`;
