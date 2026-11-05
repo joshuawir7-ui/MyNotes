@@ -1,6 +1,8 @@
 "use client"
 
 import { create } from "zustand"
+import { registerPlugin, Capacitor } from "@capacitor/core"
+import { App } from "@capacitor/app"
 
 export type TimerStatus = 'idle' | 'running' | 'paused' | 'finished'
 
@@ -98,13 +100,12 @@ class WebTimerEngineImpl implements TimerEngine {
     private onAlarmCallback?: () => void
 
     constructor() {
-        // Initialize once
         if (typeof window !== 'undefined') {
-            const current = useTimerStore.getState()
-            if (current.status === 'finished' && current.finishedAt && current.finishedAt !== lastHandledFinishedAt) {
-                // If it completed while closed, handle side effects on mount
-                setTimeout(() => this.triggerSideEffects(current.durationMs), 500)
-            }
+            window.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    this.reconcile()
+                }
+            })
         }
     }
 
@@ -118,20 +119,20 @@ class WebTimerEngineImpl implements TimerEngine {
 
     start(durationMs?: number, preset?: number): void {
         const current = this.getState()
-        const resolvedPreset = preset ?? current.preset ?? DEFAULT_PRESET
-        const resolvedDurationMs = durationMs ?? (resolvedPreset * 60 * 1000)
+        const p = preset ?? current.preset ?? DEFAULT_PRESET
+        const d = durationMs ?? (p * 60 * 1000)
         const now = Date.now()
-        const endAt = now + resolvedDurationMs
+        const endAt = now + d
 
         const next: TimerState = {
             ...current,
             status: 'running',
-            durationMs: resolvedDurationMs,
-            preset: resolvedPreset,
+            durationMs: d,
             endAt,
-            remainingMs: resolvedDurationMs,
-            version: current.version + 1,
-            finishedAt: null
+            remainingMs: d,
+            preset: p,
+            finishedAt: null,
+            version: current.version + 1
         }
 
         useTimerStore.setState(next)
@@ -140,10 +141,10 @@ class WebTimerEngineImpl implements TimerEngine {
 
     pause(): void {
         const current = this.getState()
-        if (current.status !== 'running' || !current.endAt) return
+        if (current.status !== 'running') return
 
         const now = Date.now()
-        const remainingMs = Math.max(0, current.endAt - now)
+        const remainingMs = current.endAt ? Math.max(0, current.endAt - now) : current.remainingMs
 
         const next: TimerState = {
             ...current,
@@ -299,7 +300,180 @@ class WebTimerEngineImpl implements TimerEngine {
     }
 }
 
-export const timerEngine: TimerEngine = new WebTimerEngineImpl()
+interface NativeTimerPlugin {
+    start(options: { durationMs: number; preset: number }): Promise<any>
+    pause(): Promise<any>
+    resume(): Promise<any>
+    reset(): Promise<any>
+    stop(): Promise<any>
+    getState(): Promise<any>
+    addListener(eventName: 'timerStateChanged', listenerFunc: (state: any) => void): Promise<{ remove: () => Promise<void> }>
+}
+
+const NativeTimer = registerPlugin<NativeTimerPlugin>('Timer')
+
+class NativeTimerEngineImpl implements TimerEngine {
+    constructor() {
+        this.init()
+    }
+
+    private async init() {
+        if (typeof window === 'undefined') return
+        try {
+            await NativeTimer.addListener('timerStateChanged', (nativeState: any) => {
+                this.syncFromNative(nativeState)
+            })
+
+            const initial = await NativeTimer.getState()
+            if (initial) {
+                this.syncFromNative(initial)
+            }
+
+            if (Capacitor.isNativePlatform()) {
+                App.addListener('appStateChange', ({ isActive }) => {
+                    if (isActive) {
+                        this.reconcile()
+                    }
+                })
+            }
+        } catch (e) {
+            console.error('[NativeTimerEngine] Init failed:', e)
+        }
+    }
+
+    private syncFromNative(nativeState: any) {
+        if (!nativeState) return
+        const current = useTimerStore.getState()
+        const next: TimerState = {
+            ...current,
+            status: nativeState.status || current.status,
+            durationMs: nativeState.durationMs ?? current.durationMs,
+            endAt: nativeState.endAt ?? null,
+            remainingMs: nativeState.remainingMs ?? current.remainingMs,
+            preset: nativeState.preset ?? current.preset,
+            version: nativeState.version ?? (current.version + 1),
+            finishedAt: nativeState.finishedAt ?? null
+        }
+        useTimerStore.setState(next)
+        persistStateOnlyOnEvent(next)
+
+        if (next.status === 'finished') {
+            this.triggerJSSideEffectsOnly(next.durationMs)
+        }
+    }
+
+    getState(): TimerState {
+        return useTimerStore.getState()
+    }
+
+    subscribe(listener: (state: TimerState) => void): () => void {
+        return useTimerStore.subscribe(listener)
+    }
+
+    async start(durationMs?: number, preset?: number): Promise<void> {
+        const p = preset ?? this.getState().preset ?? DEFAULT_PRESET
+        const d = durationMs ?? p * 60 * 1000
+        try {
+            const res = await NativeTimer.start({ durationMs: d, preset: p })
+            this.syncFromNative(res)
+        } catch (e) {
+            console.error('[NativeTimerEngine] start failed:', e)
+        }
+    }
+
+    async pause(): Promise<void> {
+        try {
+            const res = await NativeTimer.pause()
+            this.syncFromNative(res)
+        } catch (e) {
+            console.error('[NativeTimerEngine] pause failed:', e)
+        }
+    }
+
+    async resume(): Promise<void> {
+        try {
+            const res = await NativeTimer.resume()
+            this.syncFromNative(res)
+        } catch (e) {
+            console.error('[NativeTimerEngine] resume failed:', e)
+        }
+    }
+
+    async reset(): Promise<void> {
+        try {
+            const res = await NativeTimer.reset()
+            this.syncFromNative(res)
+        } catch (e) {
+            console.error('[NativeTimerEngine] reset failed:', e)
+        }
+    }
+
+    async stop(): Promise<void> {
+        try {
+            const res = await NativeTimer.stop()
+            this.syncFromNative(res)
+        } catch (e) {
+            console.error('[NativeTimerEngine] stop failed:', e)
+        }
+    }
+
+    setUIPreferences(prefs: Partial<{ isFloating: boolean; position: { x: number; y: number }; size: { width: number; height: number } }>): void {
+        const current = this.getState()
+        const next: TimerState = {
+            ...current,
+            isFloating: prefs.isFloating ?? current.isFloating,
+            position: prefs.position ? { ...current.position, ...prefs.position } : current.position,
+            size: prefs.size ? { ...current.size, ...prefs.size } : current.size,
+            version: current.version + 1
+        }
+        useTimerStore.setState(next)
+        persistStateOnlyOnEvent(next)
+    }
+
+    reconcile(): void {
+        NativeTimer.getState().then((state: any) => {
+            this.syncFromNative(state)
+        }).catch(console.error)
+    }
+
+    handleTimeExpired(): void {
+        this.reconcile()
+    }
+
+    private triggerJSSideEffectsOnly(durationMs: number): void {
+        const current = this.getState()
+        if (current.finishedAt && current.finishedAt === lastHandledFinishedAt) {
+            return
+        }
+        lastHandledFinishedAt = current.finishedAt
+
+        try {
+            const minutes = Math.max(1, Math.round(durationMs / 60000))
+            if (typeof window !== 'undefined') {
+                import('./store').then(({ useStore }) => {
+                    const store = useStore.getState()
+                    if (typeof store.incrementFocusTime === 'function') {
+                        store.incrementFocusTime(minutes)
+                    }
+                    if (typeof store.addXP === 'function') {
+                        store.addXP(minutes >= 25 ? 50 : 25)
+                    }
+                }).catch(console.error)
+            }
+        } catch (e) {
+            console.error('[NativeTimerEngine] Incrementing focus time failed:', e)
+        }
+    }
+}
+
+function createTimerEngine(): TimerEngine {
+    if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
+        return new NativeTimerEngineImpl()
+    }
+    return new WebTimerEngineImpl()
+}
+
+export const timerEngine: TimerEngine = createTimerEngine()
 
 /**
  * Migration helper: loads legacy timer from store data if present
