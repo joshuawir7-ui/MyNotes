@@ -5,6 +5,7 @@ import { Play, Pause, Maximize2, X, GripHorizontal } from "lucide-react"
 import { useRef, useEffect, useState } from "react"
 import { timerEngine, useTimerStore } from "@/lib/timer-engine"
 import { useTimerRemaining } from "@/hooks/use-timer-remaining"
+import { isPipActive, closePictureInPicture } from "@/lib/pip-timer"
 
 export function FloatingTimer() {
     const [mounted, setMounted] = useState(false)
@@ -26,7 +27,7 @@ export function FloatingTimer() {
         setLocalSize(storeSize)
     }, [storeSize])
 
-    if (!mounted || !isFloating) return null
+    if (!mounted || !isFloating || isPipActive()) return null
 
     const handleStartPause = () => {
         if (isActive) {
@@ -42,10 +43,12 @@ export function FloatingTimer() {
     }
 
     const handleRestore = () => {
+        closePictureInPicture()
         timerEngine.setUIPreferences({ isFloating: false })
     }
 
     const handleClose = () => {
+        closePictureInPicture()
         timerEngine.pause()
         timerEngine.setUIPreferences({ isFloating: false })
     }

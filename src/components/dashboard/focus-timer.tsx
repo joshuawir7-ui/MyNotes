@@ -5,6 +5,7 @@ import { Play, Pause, RotateCcw, X, Settings2, SlidersHorizontal, ExternalLink }
 import { motion, AnimatePresence } from "framer-motion"
 import { timerEngine, useTimerStore } from "@/lib/timer-engine"
 import { useTimerRemaining } from "@/hooks/use-timer-remaining"
+import { togglePictureInPicture, isPipActive } from "@/lib/pip-timer"
 
 interface FocusTimerProps {
     onClose?: () => void
@@ -38,6 +39,10 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
 
     const setPreset = (mins: number) => {
         timerEngine.start(mins * 60 * 1000, mins)
+    }
+
+    const handleToggleFloating = async () => {
+        await togglePictureInPicture()
     }
 
     const handleCustomSubmit = (e: React.FormEvent) => {
@@ -97,11 +102,11 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                 )}
 
                 <button
-                    onClick={() => timerEngine.setUIPreferences({ isFloating: !isFloating })}
+                    onClick={handleToggleFloating}
                     className={`absolute top-2 right-10 p-1 hover:bg-white/10 rounded-full transition-colors z-10 ${
                         isFloating ? 'text-primary' : 'text-muted-foreground hover:text-primary'
                     }`}
-                    title="Minimizar a Ventana Flotante"
+                    title="Ventana flotante / Picture-in-Picture en Windows"
                 >
                     <ExternalLink className="w-4 h-4" />
                 </button>
@@ -198,7 +203,7 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                 {/* Floating mode button */}
                 <button
                     type="button"
-                    onClick={() => timerEngine.setUIPreferences({ isFloating: !isFloating })}
+                    onClick={handleToggleFloating}
                     className={`absolute top-0 right-0 p-1.5 rounded-full transition-all active:scale-95 z-10 ${
                         isFloating
                             ? 'bg-primary text-primary-foreground shadow-md'
@@ -266,7 +271,7 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                     </button>
                     <button
                         type="button"
-                        onClick={() => timerEngine.setUIPreferences({ isFloating: !isFloating })}
+                        onClick={handleToggleFloating}
                         className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all active:scale-95 border ${
                             isFloating
                                 ? 'bg-primary text-primary-foreground border-primary shadow-sm'

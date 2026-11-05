@@ -106,9 +106,17 @@ export function WeeklyProgressChart() {
     useEffect(() => {
         setIsMounted(true)
         if (showTimer) {
-            setShowNote(true)
-            const timeout = setTimeout(() => setShowNote(false), 20000)
-            return () => clearTimeout(timeout)
+            const hasSeen = typeof window !== 'undefined' && localStorage.getItem('mynotes_timer_quote_seen') === 'true'
+            if (!hasSeen) {
+                setShowNote(true)
+                try {
+                    localStorage.setItem('mynotes_timer_quote_seen', 'true')
+                } catch (_) {}
+                const timeout = setTimeout(() => setShowNote(false), 12000)
+                return () => clearTimeout(timeout)
+            } else {
+                setShowNote(false)
+            }
         } else {
             setShowNote(false)
         }
@@ -352,28 +360,37 @@ export function WeeklyProgressChart() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -6, scale: 0.98 }}
                         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute top-[calc(100%+12px)] left-2 right-2 sm:left-6 sm:right-6 z-[100] glass glass--sheet-action rounded-2xl p-3 sm:p-4 shadow-2xl flex items-center justify-between border border-black/10 dark:border-white/10"
+                        className="absolute top-[calc(100%+12px)] left-2 right-2 sm:left-6 sm:right-6 z-[100] rounded-2xl p-3.5 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.65)] flex items-center justify-between border border-white/70 dark:border-white/15 backdrop-blur-2xl bg-white/85 dark:bg-zinc-900/90 relative overflow-hidden"
+                        style={{
+                            backdropFilter: 'blur(24px) saturate(1.6)',
+                            WebkitBackdropFilter: 'blur(24px) saturate(1.6)'
+                        }}
                     >
                         {/* Pointer Arrow pointing UP to the card */}
                         <div
-                            className="absolute -top-[7px] left-1/2 -translate-x-1/2 w-3.5 h-3.5 rotate-45 bg-white/80 dark:bg-zinc-900/80 border-t border-l border-black/10 dark:border-white/10 backdrop-blur-md pointer-events-none"
+                            className="absolute -top-[7px] left-1/2 -translate-x-1/2 w-3.5 h-3.5 rotate-45 bg-white/90 dark:bg-zinc-900/95 border-t border-l border-white/70 dark:border-white/15 pointer-events-none"
                             aria-hidden="true"
                         />
-                        <div className="glass-layers" aria-hidden="true">
-                            <i className="g1" />
-                            <i className="g2" />
-                            <i className="g3" />
-                            <i className="tint" />
-                            <i className="rim" />
-                        </div>
-                        <div className="glass-content flex items-center justify-between w-full gap-2">
+                        {/* Layered Glass Gradient Highlights */}
+                        <div
+                            className="absolute inset-0 bg-gradient-to-r from-white/40 via-white/10 to-white/30 dark:from-white/10 dark:via-transparent dark:to-white/5 pointer-events-none"
+                            aria-hidden="true"
+                        />
+                        <div
+                            className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent dark:from-white/5 dark:to-transparent pointer-events-none"
+                            aria-hidden="true"
+                        />
+                        <div className="relative z-10 flex items-center justify-between w-full gap-3">
                             <p className="text-xs sm:text-sm font-semibold tracking-tight text-foreground flex-1 text-center select-none leading-snug">
                                 "Mide tus tareas con un tiempo de ejecución, cumple con tus tareas y no te excedas"
                             </p>
                             <button
                                 type="button"
-                                onClick={() => setShowNote(false)}
-                                className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0 text-muted-foreground hover:text-foreground active:scale-95"
+                                onClick={() => {
+                                    setShowNote(false)
+                                    try { localStorage.setItem('mynotes_timer_quote_seen', 'true') } catch (_) {}
+                                }}
+                                className="p-1.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0 text-muted-foreground hover:text-foreground active:scale-95"
                                 title="Cerrar"
                             >
                                 <X className="w-4 h-4" />
@@ -409,20 +426,6 @@ export function WeeklyProgressChart() {
                         </button>
                     </div>
 
-                    {showTimer && (
-                        <button
-                            type="button"
-                            onClick={() => timerEngine.setUIPreferences({ isFloating: !isFloating })}
-                            className={`p-2 rounded-full transition-all flex items-center justify-center flex-shrink-0 ${
-                                isFloating
-                                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105'
-                                    : 'bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground'
-                            }`}
-                            title={isFloating ? "Ocultar temporizador flotante" : "Temporizador flotante"}
-                        >
-                            <ExternalLink className="w-4 h-4" />
-                        </button>
-                    )}
                     <button
                         onClick={() => setShowTimer(!showTimer)}
                         onMouseEnter={() => setIsHovered(true)}
