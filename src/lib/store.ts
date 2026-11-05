@@ -54,6 +54,7 @@ if (isNative) {
 
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
 import { mergeBackupData, sanitizeDataForDriveUpload, shouldEarlyExit } from './sync-logic'
+import { getOrCreateBackupFolderStructure, getTargetSubfolderId, moveDriveFile, organizeLooseDriveFiles } from './drive-folder-manager'
 
 const writeDebounces: Record<string, any> = {};
 const pendingWrites: Record<string, string> = {};
@@ -1644,6 +1645,12 @@ export const uploadMissingAttachments = async (token: string, notes: Note[]): Pr
     if (getPerfFlags().perfNoSync) { console.log(`[PERF][sync] ${perfStamp()} phase=uploadMissingAttachments:blocked(perf-no-sync)`); return notes; }
     const tUploadStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
     console.log(`[PERF][sync] ${perfStamp()} phase=uploadMissingAttachments:start notes=${notes.length}`);
+
+    const folders = await getOrCreateBackupFolderStructure(token).catch(err => {
+        console.warn('[Sync] No se pudo obtener la estructura de carpetas de Drive:', err);
+        return null;
+    });
+
     let hasChanges = false;
     for (let i = 0; i < notes.length; i++) {
         const note = notes[i];
@@ -1726,7 +1733,11 @@ export const uploadMissingAttachments = async (token: string, notes: Note[]): Pr
                             mimeType = mimeMap[ext] || 'application/octet-stream';
                         }
 
-                        const metadata = { name: fileName, mimeType };
+                        const targetFolderId = folders ? getTargetSubfolderId(folders, block.type, fileName, mimeType) : undefined;
+                        const metadata: { name: string; mimeType: string; parents?: string[] } = { name: fileName, mimeType };
+                        if (targetFolderId) {
+                            metadata.parents = [targetFolderId];
+                        }
                         let driveFileId: string | null = null;
 
                         if (fileSizeMB < 4) {
@@ -3538,7 +3549,7 @@ export const useStore = create<AppState>()(
                         await uploadMissingAttachments(token, get().notes);
 
                         const searchRes = await fetchWithTimeout(
-                            `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false&fields=files(id,appProperties,md5Checksum)`,
+                            `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false&fields=files(id,appProperties,md5Checksum,parents)`,
                             {
                                 headers: { Authorization: `Bearer ${token}` }
                             }
@@ -3549,6 +3560,28 @@ export const useStore = create<AppState>()(
                         }
                         const searchData = await searchRes.json();
                         const existingFile = searchData.files?.[0];
+
+                        // Estructura de carpetas organizadas en Google Drive (MyNotes Backup / Images / Videos / Audio / Documents)
+                        const folders = await getOrCreateBackupFolderStructure(token).catch(err => {
+                            console.warn('[DriveFolders] Error obteniendo carpetas de Drive:', err);
+                            return null;
+                        });
+
+                        // Si mynotes_backup.json ya existía en la raíz (subido antes de esta actualización), moverlo dentro de MyNotes Backup
+                        if (existingFile && folders) {
+                            const parents = existingFile.parents || [];
+                            if (!parents.includes(folders.backupFolderId)) {
+                                console.log('[DriveFolders] Moviendo mynotes_backup.json existente dentro de MyNotes Backup...');
+                                await moveDriveFile(token, existingFile.id, folders.backupFolderId, parents);
+                            }
+                        }
+
+                        // Reorganizar en segundo plano los archivos sueltos que el usuario tenía en su raíz
+                        if (folders) {
+                            organizeLooseDriveFiles(token, folders).catch(err => {
+                                console.warn('[DriveFolders] Reorganización en segundo plano de archivos sueltos:', err);
+                            });
+                        }
 
                         if (!existingFile) {
                             console.log("No backup file found in Drive. Uploading local state as first sync...");
@@ -3574,13 +3607,16 @@ export const useStore = create<AppState>()(
                             const dataToSync = sanitizeDataForDriveUpload(rawData);
                             const jsonStr = JSON.stringify(dataToSync);
 
-                            const metadata = {
+                            const metadata: any = {
                                 name: 'mynotes_backup.json',
                                 mimeType: 'application/json',
                                 appProperties: {
                                     lastUpdated: dataToSync.lastUpdated.toString()
                                 }
                             };
+                            if (folders?.backupFolderId) {
+                                metadata.parents = [folders.backupFolderId];
+                            }
                             const boundary = 'foo_bar_baz';
                             const body = [
                                 `\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}`,

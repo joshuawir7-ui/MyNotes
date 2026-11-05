@@ -14,6 +14,7 @@ import { Capacitor } from "@capacitor/core"
 import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation, Film, PictureInPicture, Download, Loader2 } from "lucide-react"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { GlassSurface } from "@/components/ui/glass-surface"
+import { getOrCreateBackupFolderStructure, getTargetSubfolderId } from "@/lib/drive-folder-manager"
 
 export const isNoteEmpty = (titleStr: any, blocksList: NoteBlock[]) => {
     const t = typeof titleStr === 'string' ? titleStr.trim() : '';
@@ -2141,7 +2142,16 @@ async function uploadAttachmentToDrive(
         mimeType = mimeMap[ext] || 'application/octet-stream';
     }
 
-    const metadata = { name: fileName, mimeType };
+    const folders = await getOrCreateBackupFolderStructure(accessToken).catch(err => {
+        console.warn('[NoteEditor] Error obteniendo carpetas de Drive:', err);
+        return null;
+    });
+
+    const targetFolderId = folders ? getTargetSubfolderId(folders, '', fileName, mimeType) : undefined;
+    const metadata: { name: string; mimeType: string; parents?: string[] } = { name: fileName, mimeType };
+    if (targetFolderId) {
+        metadata.parents = [targetFolderId];
+    }
 
     // ──────────────────────────────────────────────────────
     // SMALL FILES (<4 MB): fast multipart upload
