@@ -78,6 +78,24 @@
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
+        <!-- Focus Timer Foreground Service & Actions (Fase 1B) -->
+        <service
+            android:name=".TimerForegroundService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Used to maintain a persistent countdown timer with notification controls visible to the user." />
+        </service>
+
+        <receiver android:name=".TimerServiceActionReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="com.iunico.mynotes.ACTION_TIMER_PAUSE" />
+                <action android:name="com.iunico.mynotes.ACTION_TIMER_RESUME" />
+                <action android:name="com.iunico.mynotes.ACTION_TIMER_RESET" />
+            </intent-filter>
+        </receiver>
+
 
         <!-- Tasks Widget -->
         <receiver android:name=".TasksWidgetProvider" android:exported="true">
@@ -192,6 +210,8 @@
 
     <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />

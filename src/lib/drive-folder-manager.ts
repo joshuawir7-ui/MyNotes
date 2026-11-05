@@ -24,6 +24,23 @@ export interface DriveFolders {
 
 export type AttachmentCategory = 'images' | 'videos' | 'audio' | 'documents';
 
+
+async function fetchWithTimeout(resource: string, options: any = {}, timeoutMs = 20000): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort('Timeout reached'), timeoutMs);
+    try {
+        const response = await fetch(resource, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(timer);
+        return response;
+    } catch (error) {
+        clearTimeout(timer);
+        throw error;
+    }
+}
+
 // Caché en memoria para evitar llamadas redundantes a la API de Drive
 let cachedFolders: DriveFolders | null = null;
 let folderPromise: Promise<DriveFolders> | null = null;
@@ -90,9 +107,9 @@ async function findFolder(token: string, name: string, parentId?: string): Promi
     }
 
     const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(qParts.join(' and '))}&fields=files(id,name)&spaces=drive`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
         headers: { Authorization: `Bearer ${token}` }
-    });
+    }, 15000);
 
     if (!res.ok) {
         console.warn(`[DriveFolders] Error buscando carpeta '${name}': ${res.status}`);
@@ -115,7 +132,7 @@ async function createFolder(token: string, name: string, parentId?: string): Pro
         metadata.parents = [parentId];
     }
 
-    const res = await fetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+    const res = await fetchWithTimeout('https://www.googleapis.com/drive/v3/files?fields=id', {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${token}`,
@@ -198,7 +215,7 @@ export async function moveDriveFile(
             : 'root';
 
         const url = `https://www.googleapis.com/drive/v3/files/${fileId}?addParents=${targetFolderId}&removeParents=${removeParam}&fields=id,parents`;
-        const res = await fetch(url, {
+        const res = await fetchWithTimeout(url, {
             method: 'PATCH',
             headers: { Authorization: `Bearer ${token}` }
         });
@@ -223,9 +240,9 @@ export async function organizeLooseDriveFiles(token: string, folders: DriveFolde
         // Consultar archivos accesibles en la raíz creados por la aplicación
         const q = `'root' in parents and trashed = false and name != 'MyNotes Backup'`;
         const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,parents)&pageSize=100`;
-        const res = await fetch(url, {
+        const res = await fetchWithTimeout(url, {
             headers: { Authorization: `Bearer ${token}` }
-        });
+        }, 15000);
 
         if (!res.ok) {
             console.warn('[DriveFolders] No se pudieron consultar archivos sueltos en raíz:', res.status);

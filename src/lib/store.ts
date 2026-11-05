@@ -1790,7 +1790,7 @@ export const uploadMissingAttachments = async (token: string, notes: Note[]): Pr
                             if (initiateRes.ok) {
                                 const uploadUrl = initiateRes.headers.get('Location');
                                 if (uploadUrl) {
-                                    const putRes = await fetch(uploadUrl, {
+                                    const putRes = await fetchWithTimeout(uploadUrl, {
                                         method: 'PUT',
                                         headers: {
                                             'Content-Type': mimeType,
@@ -3477,7 +3477,10 @@ export const useStore = create<AppState>()(
                     if (isSyncing && activeSyncPromise) {
                         console.log("[Sync] Esperando a que termine el ciclo actual de sincronización...");
                         try {
-                            await activeSyncPromise;
+                            await Promise.race([
+                                activeSyncPromise,
+                                new Promise<boolean>(res => setTimeout(() => res(false), 12000))
+                            ]);
                         } catch (_) {}
                     }
                     return get().syncCycle(true, isAuthRetry);
@@ -3490,7 +3493,12 @@ export const useStore = create<AppState>()(
                     }
                     if (isSyncing && activeSyncPromise) {
                         console.log("[Restore] Esperando a que termine la sincronización activa antes de restaurar...");
-                        try { await activeSyncPromise; } catch (_) {}
+                        try {
+                            await Promise.race([
+                                activeSyncPromise,
+                                new Promise<boolean>(res => setTimeout(() => res(false), 12000))
+                            ]);
+                        } catch (_) {}
                     }
 
                     const user = get().googleUser;
@@ -3605,7 +3613,12 @@ export const useStore = create<AppState>()(
                         syncQueued = true;
                         if (force && activeSyncPromise) {
                             console.log("[Sync] Sincronización manual: esperando a que finalice el ciclo activo...");
-                            try { return await activeSyncPromise; } catch (_) { return false; }
+                            try {
+                                return await Promise.race([
+                                    activeSyncPromise,
+                                    new Promise<boolean>(res => setTimeout(() => res(false), 12000))
+                                ]);
+                            } catch (_) { return false; }
                         }
                         return false;
                     }
@@ -3636,6 +3649,7 @@ export const useStore = create<AppState>()(
 
                     isSyncing = true;
                     syncQueued = false;
+                    let syncOutcome = false;
                     let syncResolve: (val: boolean) => void = () => {};
                     activeSyncPromise = new Promise<boolean>(r => { syncResolve = r; });
                     try {
@@ -3651,6 +3665,7 @@ export const useStore = create<AppState>()(
                     if (user.isDemo) {
                         await new Promise(resolve => setTimeout(resolve, 1000));
                         set({ isSyncingCloud: false, ...syncStamp() });
+                        syncOutcome = true;
                         return true;
                     }
 
@@ -3971,8 +3986,12 @@ export const useStore = create<AppState>()(
                     }
                     } finally {
                         isSyncing = false;
+                        if (syncResolve) {
+                            try { syncResolve(syncOutcome); } catch (_) {}
+                        }
+                        activeSyncPromise = null;
                         const tSyncCycleDur = ((typeof performance !== 'undefined' ? performance.now() : Date.now()) - tSyncCycleStart).toFixed(1);
-                        console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:end totalDuration=${tSyncCycleDur}ms`);
+                        console.log(`[PERF][sync] ${perfStamp()} phase=syncCycle:end totalDuration=${tSyncCycleDur}ms outcome=${syncOutcome}`);
                     }
                 }
             };

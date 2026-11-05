@@ -92,6 +92,7 @@ public class NativeTimerManager {
             .apply();
 
         scheduleAlarm(endAt);
+        startForegroundService();
         notifyStateChanged();
         Log.d(TAG, "Timer started: duration=" + d + "ms, endAt=" + endAt + ", version=" + newVersion);
     }
@@ -113,6 +114,7 @@ public class NativeTimerManager {
             .apply();
 
         cancelAlarm();
+        updateForegroundService();
         notifyStateChanged();
         Log.d(TAG, "Timer paused: remaining=" + remaining + "ms, version=" + newVersion);
     }
@@ -135,6 +137,7 @@ public class NativeTimerManager {
             .apply();
 
         scheduleAlarm(endAt);
+        startForegroundService();
         notifyStateChanged();
         Log.d(TAG, "Timer resumed: endAt=" + endAt + ", version=" + newVersion);
     }
@@ -154,6 +157,7 @@ public class NativeTimerManager {
             .apply();
 
         cancelAlarm();
+        stopForegroundService();
         notifyStateChanged();
         Log.d(TAG, "Timer reset: version=" + newVersion);
     }
@@ -178,6 +182,7 @@ public class NativeTimerManager {
             .apply();
 
         cancelAlarm();
+        stopForegroundService();
         showFinishedNotification();
         notifyStateChanged();
         Log.d(TAG, "Timer alarm fired and marked finished at " + now);
@@ -194,6 +199,7 @@ public class NativeTimerManager {
             } else {
                 Log.d(TAG, "Device booted while timer still running. Rescheduling exact alarm for " + endAt);
                 scheduleAlarm(endAt);
+                startForegroundService();
             }
         }
     }
@@ -322,5 +328,42 @@ public class NativeTimerManager {
             Log.e(TAG, "Error playing 5s alarm ringtone", e);
         }
     }
-}
 
+    private void startForegroundService() {
+        try {
+            Intent intent = new Intent(context, TimerForegroundService.class);
+            intent.setAction(TimerForegroundService.ACTION_START);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent);
+            } else {
+                context.startService(intent);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting TimerForegroundService", e);
+        }
+    }
+
+    private void updateForegroundService() {
+        try {
+            Intent intent = new Intent(context, TimerForegroundService.class);
+            intent.setAction(TimerForegroundService.ACTION_UPDATE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent);
+            } else {
+                context.startService(intent);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error updating TimerForegroundService", e);
+        }
+    }
+
+    private void stopForegroundService() {
+        try {
+            Intent intent = new Intent(context, TimerForegroundService.class);
+            intent.setAction(TimerForegroundService.ACTION_STOP);
+            context.startService(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "Error stopping TimerForegroundService", e);
+        }
+    }
+}
