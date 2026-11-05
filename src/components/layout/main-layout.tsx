@@ -32,6 +32,7 @@ import {
 import { PerfDebugModal } from "@/components/ui/perf-debug-modal"
 import { useIsMobile } from "@/hooks/use-is-mobile"
 import { isIdle, whenIdle } from "@/lib/interaction-gate"
+import { timerEngine } from "@/lib/timer-engine"
 
 const isNative = Capacitor.isNativePlatform();
 
