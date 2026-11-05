@@ -5,6 +5,7 @@ import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { Trash2, Edit2, Pin } from "lucide-react"
 import { GlassSurface } from "@/components/ui/glass-surface"
+import { useStore } from "@/lib/store"
 
 interface MobileContextMenuProps {
     onEdit?: () => void
@@ -16,6 +17,7 @@ interface MobileContextMenuProps {
 }
 
 export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, children, title }: MobileContextMenuProps) {
+    const appColor = useStore(state => state.appColor ?? 'purple')
     const [isOpen, setIsOpen] = useState(false)
     const longPressTimer = useRef<NodeJS.Timeout | null>(null)
     const [isLongPressing, setIsLongPressing] = useState(false)
@@ -127,7 +129,11 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
                                                 }}
                                                 className="flex items-center gap-4 p-4 rounded-2xl glass-card hover:bg-white/80 dark:hover:bg-white/10 transition-colors text-left w-full"
                                             >
-                                                <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 dark:text-blue-400">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                                    appColor === 'black'
+                                                        ? 'bg-zinc-900/10 dark:bg-white/10 text-zinc-900 dark:text-zinc-100'
+                                                        : 'bg-purple-500/20 text-purple-600 dark:text-purple-400'
+                                                }`}>
                                                     <Edit2 className="w-5 h-5" />
                                                 </div>
                                                 <span className="font-semibold text-lg">Editar</span>

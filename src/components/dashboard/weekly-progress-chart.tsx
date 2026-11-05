@@ -5,10 +5,10 @@ import { useStore, getLocalDateString } from "@/lib/store"
 import { useShallow } from "zustand/react/shallow"
 import { translations } from "@/lib/translations"
 import { useMemo, useState, useEffect } from "react"
-import { X } from "lucide-react"
+import { X, ExternalLink } from "lucide-react"
 import { FocusTimer } from "./focus-timer"
 import { motion, AnimatePresence } from "framer-motion"
-import { useTimerStore } from "@/lib/timer-engine"
+import { useTimerStore, timerEngine } from "@/lib/timer-engine"
 
 let noteShownInSession = false;
 
@@ -93,6 +93,7 @@ export function WeeklyProgressChart() {
     const appColor = useStore(state => state.appColor ?? 'purple')
     const dailySnapshots = useStore(state => state.dailySnapshots)
     const timerIsActive = useTimerStore(s => s.status === 'running')
+    const isFloating = useTimerStore(s => s.isFloating)
     const tasks = useStore(useShallow(state => state.tasks))
     const t = (translations[language as keyof typeof translations]?.dashboard?.charts || translations['en'].dashboard.charts) as any
     const common = (translations[language as keyof typeof translations]?.common || translations['en'].common) as any
@@ -408,6 +409,20 @@ export function WeeklyProgressChart() {
                         </button>
                     </div>
 
+                    {showTimer && (
+                        <button
+                            type="button"
+                            onClick={() => timerEngine.setUIPreferences({ isFloating: !isFloating })}
+                            className={`p-2 rounded-full transition-all flex items-center justify-center flex-shrink-0 ${
+                                isFloating
+                                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105'
+                                    : 'bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground'
+                            }`}
+                            title={isFloating ? "Ocultar temporizador flotante" : "Temporizador flotante"}
+                        >
+                            <ExternalLink className="w-4 h-4" />
+                        </button>
+                    )}
                     <button
                         onClick={() => setShowTimer(!showTimer)}
                         onMouseEnter={() => setIsHovered(true)}
@@ -428,8 +443,8 @@ export function WeeklyProgressChart() {
                 </div>
             </div>
 
-            <div className={`flex flex-col items-stretch ${showTimer ? 'h-auto min-h-[190px]' : 'h-[120px] md:h-[200px]'}`}>
-                <div className={`h-full min-w-0 w-full ${showTimer ? 'hidden' : 'block'}`}>
+            <div className={`flex flex-col md:flex-row gap-6 items-stretch ${showTimer ? 'h-auto min-h-[190px] md:h-[200px]' : 'h-[120px] md:h-[200px]'}`}>
+                <div className={`h-full min-w-0 ${showTimer ? 'hidden md:block md:w-1/2' : 'w-full'}`}>
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <ComposedChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                             <defs>
@@ -568,7 +583,7 @@ export function WeeklyProgressChart() {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                            className="w-full h-full flex flex-col items-center justify-center overflow-hidden py-1"
+                            className="w-full md:w-1/2 h-full flex flex-col items-center justify-center overflow-hidden py-1"
                         >
                             <FocusTimer onClose={() => setShowTimer(false)} showCloseButton={false} />
                         </motion.div>

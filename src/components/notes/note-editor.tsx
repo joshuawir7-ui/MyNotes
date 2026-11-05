@@ -2130,6 +2130,12 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                             <img
                                 src={imageSrc}
                                 alt="Imagen adjunta"
+                                className="cursor-pointer select-none"
+                                onDoubleClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (!isDownloading) onImageClick?.(block.content);
+                                }}
                                 onClick={() => {
                                     if (!isDownloading && !suppressClickRef.current) {
                                         onImageClick?.(block.content);
@@ -4095,6 +4101,16 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                 }}
                 onDragOver={(e) => e.preventDefault()}
                 onClick={handleClick}
+                onDoubleClick={(e) => {
+                    const target = e.target as HTMLElement;
+                    const media = target.closest ? target.closest("img, video") as HTMLElement : null;
+                    if (media && media.tagName !== "VIDEO") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const src = media.getAttribute("data-local-uri") || (media as HTMLImageElement).currentSrc || (media as HTMLImageElement).src;
+                        if (src && onImageClick) onImageClick(src);
+                    }
+                }}
                 onPointerDown={(e) => {
                     const target = e.target as HTMLElement;
                     const media = target.closest('img, video') as HTMLElement | null;
@@ -4162,53 +4178,55 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
 
 function getBlockIconAndLabel(type: BlockType, language: string) {
     const isEs = language === 'es';
+    const isBlackTheme = typeof document !== 'undefined' && document.documentElement.classList.contains('theme-black');
+    const iconClass = (colorClass: string) => `w-3.5 h-3.5 ${isBlackTheme ? 'text-zinc-900 dark:text-zinc-100' : colorClass}`;
     switch (type) {
         case 'text':
             return (
                 <>
-                    <Type className="w-3.5 h-3.5 text-blue-400" />
+                    <Type className={iconClass("text-blue-400")} />
                     <span>{isEs ? "Texto" : "Text"}</span>
                 </>
             );
         case 'task-list':
             return (
                 <>
-                    <CheckSquare className="w-3.5 h-3.5 text-green-400" />
+                    <CheckSquare className={iconClass("text-green-400")} />
                     <span>{isEs ? "Lista de tareas" : "Task List"}</span>
                 </>
             );
         case 'table':
             return (
                 <>
-                    <TableIcon className="w-3.5 h-3.5 text-purple-400" />
+                    <TableIcon className={iconClass("text-purple-400")} />
                     <span>{isEs ? "Tabla" : "Table"}</span>
                 </>
             );
         case 'image':
             return (
                 <>
-                    <ImageIcon className="w-3.5 h-3.5 text-yellow-400" />
+                    <ImageIcon className={iconClass("text-yellow-400")} />
                     <span>{isEs ? "Imagen" : "Image"}</span>
                 </>
             );
         case 'drawing':
             return (
                 <>
-                    <PenTool className="w-3.5 h-3.5 text-orange-400" />
+                    <PenTool className={iconClass("text-orange-400")} />
                     <span>{isEs ? "Dibujo" : "Drawing"}</span>
                 </>
             );
         case 'file':
             return (
                 <>
-                    <Paperclip className="w-3.5 h-3.5 text-sky-400" />
+                    <Paperclip className={iconClass("text-sky-400")} />
                     <span>{isEs ? "Archivo" : "File"}</span>
                 </>
             );
         case 'video':
             return (
                 <>
-                    <Film className="w-3.5 h-3.5 text-purple-400" />
+                    <Film className={iconClass("text-purple-400")} />
                     <span>{isEs ? "Video" : "Video"}</span>
                 </>
             );

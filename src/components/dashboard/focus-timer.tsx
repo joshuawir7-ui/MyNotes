@@ -52,15 +52,19 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
 
     return (
         <div className="flex flex-col items-center justify-center w-full relative py-1">
-            {showCloseButton && onClose && (
-                <button
-                    onClick={onClose}
-                    className="absolute top-0 right-0 p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors text-muted-foreground hover:text-foreground z-10"
-                    title="Cerrar"
-                >
-                    <X className="w-4 h-4" />
-                </button>
-            )}
+            {/* Floating mode button */}
+            <button
+                type="button"
+                onClick={() => timerEngine.setUIPreferences({ isFloating: !isFloating })}
+                className={`absolute top-0 right-0 p-1.5 rounded-full transition-all active:scale-95 z-10 ${
+                    isFloating
+                        ? 'bg-primary text-primary-foreground shadow-md'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10'
+                }`}
+                title={isFloating ? "Ocultar temporizador flotante" : "Activar temporizador flotante"}
+            >
+                <ExternalLink className="w-4 h-4" />
+            </button>
 
             {/* Circular Pod */}
             <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)] flex flex-col items-center justify-center select-none transition-transform hover:scale-[1.02]">
@@ -116,6 +120,19 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                     title="Configurar minutos"
                 >
                     <SlidersHorizontal className="w-3.5 h-3.5" />
+                </button>
+                <button
+                    type="button"
+                    onClick={() => timerEngine.setUIPreferences({ isFloating: !isFloating })}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all active:scale-95 border ${
+                        isFloating
+                            ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                            : 'bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground border-black/5 dark:border-white/10'
+                    }`}
+                    title={isFloating ? "Ocultar temporizador flotante" : "Temporizador flotante"}
+                >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>Flotante</span>
                 </button>
             </div>
 

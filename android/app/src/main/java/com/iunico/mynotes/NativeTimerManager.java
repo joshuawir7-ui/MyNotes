@@ -254,7 +254,7 @@ public class NativeTimerManager {
             );
             channel.setDescription("Notificaciones y alarmas al finalizar el temporizador");
             channel.enableVibration(true);
-            channel.setVibrationPattern(new long[]{0, 500, 250, 500});
+            channel.setVibrationPattern(new long[]{0, 800, 300, 800, 300, 800, 300, 800, 300, 800});
 
             Uri alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
             if (alarmSound == null) {
@@ -282,6 +282,8 @@ public class NativeTimerManager {
         }
         PendingIntent contentIntent = PendingIntent.getActivity(context, 0, openIntent, flags);
 
+        long[] vibratePattern = new long[]{0, 800, 300, 800, 300, 800, 300, 800, 300, 800};
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("MyNotes - Enfoque Finalizado")
@@ -290,9 +292,35 @@ public class NativeTimerManager {
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
             .setContentIntent(contentIntent)
-            .setVibrate(new long[]{0, 500, 250, 500});
+            .setVibrate(vibratePattern);
 
         nm.notify(NOTIFICATION_ID, builder.build());
+
+        // Play alarm ringtone for 5 seconds
+        try {
+            Uri alert = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+            if (alert == null) {
+                alert = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            }
+            if (alert != null) {
+                final android.media.Ringtone ringtone = RingtoneManager.getRingtone(context, alert);
+                if (ringtone != null) {
+                    ringtone.play();
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                if (ringtone.isPlaying()) {
+                                    ringtone.stop();
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                    }, 5000);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error playing 5s alarm ringtone", e);
+        }
     }
 }
 

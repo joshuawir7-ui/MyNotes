@@ -247,21 +247,26 @@ class WebTimerEngineImpl implements TimerEngine {
         }
         lastHandledFinishedAt = current.finishedAt
 
-        // 1. Play Web Audio alarm
+        // 1. Play Web Audio alarm (repeats over 5.2 seconds)
         try {
             if (typeof window !== 'undefined') {
                 const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
                 if (AudioCtx) {
                     const ctx = new AudioCtx()
-                    const osc = ctx.createOscillator()
-                    const gain = ctx.createGain()
-                    osc.connect(gain)
-                    gain.connect(ctx.destination)
-                    osc.type = 'sine'
-                    osc.frequency.setValueAtTime(520, ctx.currentTime)
-                    gain.gain.setValueAtTime(0.15, ctx.currentTime)
-                    osc.start()
-                    osc.stop(ctx.currentTime + 0.6)
+                    const pulseTimes = [0, 0.8, 1.6, 2.4, 3.2, 4.0, 4.8]
+                    pulseTimes.forEach(t => {
+                        const osc = ctx.createOscillator()
+                        const gain = ctx.createGain()
+                        osc.connect(gain)
+                        gain.connect(ctx.destination)
+                        osc.type = 'sine'
+                        osc.frequency.setValueAtTime(640, ctx.currentTime + t)
+                        osc.frequency.exponentialRampToValueAtTime(840, ctx.currentTime + t + 0.3)
+                        gain.gain.setValueAtTime(0.2, ctx.currentTime + t)
+                        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.45)
+                        osc.start(ctx.currentTime + t)
+                        osc.stop(ctx.currentTime + t + 0.5)
+                    })
                 }
             }
         } catch (e) {
