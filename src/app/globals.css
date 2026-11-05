@@ -1195,9 +1195,15 @@ body[data-modal-open] .nav-glass .bl{ display:none; }
   transition: opacity 0.15s;
 }
 
-.note-image-block-resizable:hover .img-resize-handle,
+.note-image-block-resizable.img-resizing .img-resize-handle,
 .note-image-block-resizable .img-resize-handle:active {
   opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .note-image-block-resizable:hover .img-resize-handle {
+    opacity: 1;
+  }
 }
 
 .note-image-block-resizable .img-resize-handle.br {

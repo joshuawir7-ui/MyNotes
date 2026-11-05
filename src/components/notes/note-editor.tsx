@@ -846,19 +846,51 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
             </AnimatePresence>
             {fullscreenImageUrl && (
                 <div
-                    className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-in fade-in duration-200 select-none cursor-pointer"
+                    style={{
+                        backdropFilter: "blur(28px)",
+                        WebkitBackdropFilter: "blur(28px)"
+                    }}
                     onClick={() => setFullscreenImageUrl(null)}
                 >
-                    <button
-                        className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white transition-colors"
-                        onClick={() => setFullscreenImageUrl(null)}
-                    >
-                        <X className="w-6 h-6" />
-                    </button>
+                    {/* Ambient diffuse blurred background from the image itself - eliminates harsh black borders */}
+                    {fullscreenResolvedSrc && (
+                        <img
+                            src={fullscreenResolvedSrc}
+                            alt=""
+                            aria-hidden="true"
+                            className="absolute inset-0 w-full h-full object-cover scale-125 pointer-events-none select-none opacity-50 dark:opacity-40"
+                            style={{
+                                filter: "blur(60px) saturate(180%) brightness(0.65)"
+                            }}
+                        />
+                    )}
+                    {/* Soft frosted glass scrim for contrast */}
+                    <div className="absolute inset-0 bg-black/30 dark:bg-black/55 backdrop-blur-md pointer-events-none" />
+
+                    {/* Floating top bar with Close button */}
+                    <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+                        <button
+                            className="p-2.5 bg-black/40 hover:bg-black/70 backdrop-blur-xl rounded-full text-white/90 hover:text-white transition-all shadow-xl border border-white/15 active:scale-90 cursor-pointer"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setFullscreenImageUrl(null);
+                            }}
+                            title="Cerrar"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    {/* High-res Main Image centered */}
                     <img
                         src={fullscreenResolvedSrc || ''}
-                        alt="Fullscreen attachment"
-                        className="max-w-full max-h-[90vh] object-contain rounded-xl animate-in zoom-in-95 duration-200"
+                        alt="Imagen a pantalla completa"
+                        onClick={(e) => e.stopPropagation()}
+                        className="relative z-10 max-w-full max-h-[92vh] object-contain rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200 cursor-default"
+                        style={{
+                            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 35px rgba(255, 255, 255, 0.08)"
+                        }}
                     />
                 </div>
             )}
@@ -1915,7 +1947,11 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
 // Sub-components for blocks (Inline for simplicity now, could separate)
 
 function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange, onImageClick }: any) {
-    const [showControls, setShowControls] = useState(true);
+    const [showControls, setShowControls] = useState(false);
+    const [isResizingActive, setIsResizingActive] = useState(false);
+    const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const suppressClickRef = useRef(false);
+    const touchStartPosRef = useRef<{ x: number, y: number } | null>(null);
     const hasImage = typeof block.content === 'string' && block.content;
     const isDownloading = block.isDownloading;
     const isSynced = !!(block.driveFileId && hasImage && !isDownloading);
@@ -1935,12 +1971,16 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
     const imageSrc = useLocalUrl(hasImage ? (imageError && block.driveFileId ? `drive://${block.driveFileId}` : (thumbUri || block.content)) : null);
 
     useEffect(() => {
-        if (hasImage && !isDownloading) {
-            setShowControls(true);
-            const timer = setTimeout(() => setShowControls(false), 3000);
-            return () => clearTimeout(timer);
-        }
-    }, [hasImage, block.content, isDownloading]);
+        if (!isResizingActive) return;
+        const handleOutside = (e: MouseEvent | TouchEvent) => {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+                setIsResizingActive(false);
+                setShowControls(false);
+            }
+        };
+        document.addEventListener('pointerdown', handleOutside);
+        return () => document.removeEventListener('pointerdown', handleOutside);
+    }, [isResizingActive]);
 
     // Pointer-based resize (works for both mouse and touch)
     const startResize = (e: React.PointerEvent, handle: string) => {
@@ -2014,8 +2054,51 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                 ) : hasImage ? (
                     <div
                         ref={containerRef}
-                        className="note-image-block-resizable"
+                        className={`note-image-block-resizable ${isResizingActive ? 'img-resizing' : ''}`}
                         style={{ width: imgWidth ? `${imgWidth}px` : '100%' }}
+                        onPointerDown={(e) => {
+                            if (e.pointerType === 'touch' && hasImage && !isDownloading) {
+                                touchStartPosRef.current = { x: e.clientX, y: e.clientY };
+                                suppressClickRef.current = false;
+                                if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                                longPressTimerRef.current = setTimeout(() => {
+                                    suppressClickRef.current = true;
+                                    try { navigator.vibrate?.([40]); } catch (_) {}
+                                    setIsResizingActive(true);
+                                    setShowControls(true);
+                                }, 450);
+                            }
+                        }}
+                        onPointerMoveCapture={(e) => {
+                            if (longPressTimerRef.current && touchStartPosRef.current) {
+                                const dx = Math.abs(e.clientX - touchStartPosRef.current.x);
+                                const dy = Math.abs(e.clientY - touchStartPosRef.current.y);
+                                if (dx > 10 || dy > 10) {
+                                    clearTimeout(longPressTimerRef.current);
+                                    longPressTimerRef.current = null;
+                                }
+                            }
+                        }}
+                        onPointerUpCapture={() => {
+                            if (longPressTimerRef.current) {
+                                clearTimeout(longPressTimerRef.current);
+                                longPressTimerRef.current = null;
+                            }
+                        }}
+                        onPointerCancelCapture={() => {
+                            if (longPressTimerRef.current) {
+                                clearTimeout(longPressTimerRef.current);
+                                longPressTimerRef.current = null;
+                            }
+                        }}
+                        onContextMenu={(e) => {
+                            if (hasImage && !isDownloading) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setIsResizingActive(true);
+                                setShowControls(true);
+                            }
+                        }}
                         onPointerMove={onPointerMove}
                         onPointerUp={onPointerUp}
                         onPointerCancel={onPointerUp}
@@ -2047,7 +2130,12 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                             <img
                                 src={imageSrc}
                                 alt="Imagen adjunta"
-                                onClick={() => { if (!isDownloading) onImageClick?.(block.content); setShowControls(true); setTimeout(() => setShowControls(false), 4000); }}
+                                onClick={() => {
+                                    if (!isDownloading && !suppressClickRef.current) {
+                                        onImageClick?.(block.content);
+                                    }
+                                    suppressClickRef.current = false;
+                                }}
                                 onError={() => { if (usingThumb) setThumbFailed(true); else setImageError(true); }}
                             />
                         )}
@@ -2058,16 +2146,19 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                                 <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                             </div>
                         )}
-                        {/* Width indicator */}
-                        {imgWidth && (
-                            <div className="absolute top-2 right-2 text-[10px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded-full pointer-events-none opacity-70">
-                                {imgWidth}px
-                            </div>
+                        {/* Width indicator and Resize handles ONLY when isResizingActive */}
+                        {isResizingActive && (
+                            <>
+                                {imgWidth && (
+                                    <div className="absolute top-2 right-2 text-[10px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded-full pointer-events-none opacity-80 animate-in fade-in duration-150">
+                                        {imgWidth}px
+                                    </div>
+                                )}
+                                <div className="img-resize-handle bl" onPointerDown={(e) => startResize(e, 'bl')} />
+                                <div className="img-resize-handle bm" onPointerDown={(e) => startResize(e, 'bm')} />
+                                <div className="img-resize-handle br" onPointerDown={(e) => startResize(e, 'br')} />
+                            </>
                         )}
-                        {/* Resize handles */}
-                        <div className="img-resize-handle bl" onPointerDown={(e) => startResize(e, 'bl')} />
-                        <div className="img-resize-handle bm" onPointerDown={(e) => startResize(e, 'bm')} />
-                        <div className="img-resize-handle br" onPointerDown={(e) => startResize(e, 'br')} />
                     </div>
                 ) : (
                     <div className="text-center">
@@ -3014,6 +3105,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                     activeBlockId={block.id}
                     onFocus={onFocus}
                     onBlur={onBlur}
+                    onImageClick={onImageClick}
                 />
             )
         }
@@ -3791,10 +3883,13 @@ const RichTaskItem = React.memo(function RichTaskItem({ content, onChange, onEnt
     return prev.content === next.content && prev.checked === next.checked && prev.placeholder === next.placeholder;
 });
 
-const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, activeBlockId, onFocus, onBlur }: { content: string, onChange: (c: string) => void, activeBlockId: string, onFocus?: () => void, onBlur?: () => void }) {
+const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, activeBlockId, onFocus, onBlur, onImageClick }: { content: string, onChange: (c: string) => void, activeBlockId: string, onFocus?: () => void, onBlur?: () => void, onImageClick?: (url: string) => void }) {
     const editorRef = useRef<HTMLDivElement>(null);
     const isFirstLoad = useRef(true);
     const [selectedMedia, setSelectedMedia] = useState<HTMLElement | null>(null);
+    const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const suppressNextClickRef = useRef(false);
+    const touchStartPosRef = useRef<{ x: number, y: number } | null>(null);
 
     useEffect(() => {
         isFirstLoad.current = true;
@@ -3900,15 +3995,26 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             if (href) { e.preventDefault(); window.open(href, '_system'); }
             return;
         }
-        // Handle inline image or video clicks — hide soft keyboard and show overlay
+        // Handle inline image or video clicks
         const media = target.closest('img, video') as HTMLElement | null;
         if (media) {
             if (media.tagName !== 'VIDEO') {
                 e.preventDefault();
+                hideKeyboard();
+                if (suppressNextClickRef.current) {
+                    suppressNextClickRef.current = false;
+                    return;
+                }
+                const src = media.getAttribute('data-local-uri') || (media as HTMLImageElement).currentSrc || (media as HTMLImageElement).src;
+                if (src && onImageClick) {
+                    onImageClick(src);
+                    return;
+                }
+            } else {
+                hideKeyboard();
+                setSelectedMedia(media);
+                return;
             }
-            hideKeyboard();
-            setSelectedMedia(media);
-            return;
         }
         // Handle inline task checkbox toggling inside text block
         const taskBox = target.closest('[data-inline-task]') as HTMLElement | null;
@@ -3989,6 +4095,53 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                 }}
                 onDragOver={(e) => e.preventDefault()}
                 onClick={handleClick}
+                onPointerDown={(e) => {
+                    const target = e.target as HTMLElement;
+                    const media = target.closest('img, video') as HTMLElement | null;
+                    if (media && e.pointerType === 'touch') {
+                        touchStartPosRef.current = { x: e.clientX, y: e.clientY };
+                        suppressNextClickRef.current = false;
+                        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                        longPressTimerRef.current = setTimeout(() => {
+                            suppressNextClickRef.current = true;
+                            try { navigator.vibrate?.([40]); } catch (_) {}
+                            hideKeyboard();
+                            setSelectedMedia(media);
+                        }, 450);
+                    }
+                }}
+                onPointerMoveCapture={(e) => {
+                    if (longPressTimerRef.current && touchStartPosRef.current) {
+                        const dx = Math.abs(e.clientX - touchStartPosRef.current.x);
+                        const dy = Math.abs(e.clientY - touchStartPosRef.current.y);
+                        if (dx > 10 || dy > 10) {
+                            clearTimeout(longPressTimerRef.current);
+                            longPressTimerRef.current = null;
+                        }
+                    }
+                }}
+                onPointerUpCapture={() => {
+                    if (longPressTimerRef.current) {
+                        clearTimeout(longPressTimerRef.current);
+                        longPressTimerRef.current = null;
+                    }
+                }}
+                onPointerCancelCapture={() => {
+                    if (longPressTimerRef.current) {
+                        clearTimeout(longPressTimerRef.current);
+                        longPressTimerRef.current = null;
+                    }
+                }}
+                onContextMenu={(e) => {
+                    const target = e.target as HTMLElement;
+                    const media = target.closest('img, video') as HTMLElement | null;
+                    if (media) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        hideKeyboard();
+                        setSelectedMedia(media);
+                    }
+                }}
                 {...({ placeholder: "Escribe algo aquí..." } as any)}
                 className="rich-text-editor w-full min-h-[30px] bg-transparent border-none outline-none text-base text-foreground relative empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 before:absolute before:pointer-events-none"
             />
@@ -4002,7 +4155,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
         </>
     );
 }, (prev, next) => {
-    return prev.content === next.content && prev.activeBlockId === next.activeBlockId;
+    return prev.content === next.content && prev.activeBlockId === next.activeBlockId && prev.onImageClick === next.onImageClick;
 });
 
 
