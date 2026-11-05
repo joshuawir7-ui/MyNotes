@@ -1,15 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { Play, Pause, RotateCcw, X, Settings2, ExternalLink } from "lucide-react"
+import { Play, Pause, RotateCcw, X, SlidersHorizontal, ExternalLink } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useStore } from "@/lib/store"
 
 interface FocusTimerProps {
-    onClose: () => void
+    onClose?: () => void
+    showCloseButton?: boolean
 }
 
-export function FocusTimer({ onClose }: FocusTimerProps) {
+export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps) {
     const timer = useStore(state => state.timer)
     const setTimer = useStore(state => state.setTimer)
     const [customValue, setCustomValue] = useState("")
@@ -41,7 +42,7 @@ export function FocusTimer({ onClose }: FocusTimerProps) {
 
     const handleCustomSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        const mins = parseInt(customValue)
+        const mins = parseInt(customValue, 10)
         if (!isNaN(mins) && mins > 0) {
             setTimer({ isActive: false, timeLeft: mins * 60, targetTimestamp: undefined })
             setShowCustomInput(false)
@@ -49,129 +50,99 @@ export function FocusTimer({ onClose }: FocusTimerProps) {
         }
     }
 
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.1,
-                delayChildren: 0.2
-            }
-        }
-    }
-
-    const itemVariants = {
-        hidden: { opacity: 0, y: 20, filter: 'blur(10px)' },
-        visible: {
-            opacity: 1,
-            y: 0,
-            filter: 'blur(0px)',
-            transition: {
-                duration: 0.5,
-                ease: [0.23, 1, 0.32, 1] as any
-            }
-        }
-    }
-
     return (
-        <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            className="flex flex-col h-full items-center justify-start relative bg-white/5 rounded-xl border border-white/10 p-3 pt-1 overflow-y-auto custom-scrollbar"
-        >
-            <button
-                onClick={onClose}
-                className="absolute top-2 right-2 p-1 hover:bg-white/10 rounded-full transition-colors text-muted-foreground hover:text-foreground z-10"
-            >
-                <X className="w-4 h-4" />
-            </button>
-
-            <button
-                onClick={() => setTimer({ isFloating: true })}
-                className="absolute top-2 right-10 p-1 hover:bg-white/10 rounded-full transition-colors text-muted-foreground hover:text-primary z-10"
-                title="Minimize to Floating Window"
-            >
-                <ExternalLink className="w-4 h-4" />
-            </button>
-
-            <div className="w-full text-center mt-0">
-                <motion.div
-                    variants={itemVariants}
-                    className="text-4xl font-bold font-mono tracking-tighter text-foreground mb-3"
+        <div className="flex flex-col items-center justify-center w-full relative py-1">
+            {showCloseButton && onClose && (
+                <button
+                    onClick={onClose}
+                    className="absolute top-0 right-0 p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors text-muted-foreground hover:text-foreground z-10"
+                    title="Cerrar"
                 >
+                    <X className="w-4 h-4" />
+                </button>
+            )}
+
+            {/* Circular Pod */}
+            <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)] flex flex-col items-center justify-center select-none transition-transform hover:scale-[1.02]">
+                <span className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground select-none">
                     {formatTime(timer.timeLeft)}
-                </motion.div>
+                </span>
 
-                <motion.div
-                    variants={itemVariants}
-                    className="flex justify-center gap-3 mb-3"
-                >
+                <div className="flex items-center gap-2.5 mt-2">
                     <button
                         onClick={handleStartPause}
-                        className={`p-2.5 rounded-full transition-all ${timer.isActive ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30' : 'bg-primary/20 text-primary hover:bg-primary/30'}`}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm active:scale-95 ${
+                            timer.isActive
+                                ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
+                                : 'bg-black/10 dark:bg-white/15 text-foreground hover:bg-black/20 dark:hover:bg-white/25'
+                        }`}
+                        title={timer.isActive ? "Pausar" : "Iniciar"}
                     >
-                        {timer.isActive ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
+                        {timer.isActive ? (
+                            <Pause className="w-4 h-4 fill-current" />
+                        ) : (
+                            <Play className="w-4 h-4 fill-current ml-0.5" />
+                        )}
                     </button>
+
                     <button
                         onClick={handleReset}
-                        className="p-2.5 rounded-full bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground transition-all"
+                        className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors active:scale-95"
+                        title="Reiniciar"
                     >
-                        <RotateCcw className="w-5 h-5" />
+                        <RotateCcw className="w-4 h-4" />
                     </button>
-                </motion.div>
-
-                <motion.div
-                    variants={itemVariants}
-                    className="flex justify-center gap-2 mb-2"
-                >
-                    {presets.map((mins) => (
-                        <button
-                            key={mins}
-                            onClick={() => setPreset(mins)}
-                            className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-medium hover:bg-white/10 transition-colors"
-                        >
-                            {mins}m
-                        </button>
-                    ))}
-                    <button
-                        onClick={() => setShowCustomInput(!showCustomInput)}
-                        className={`p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors ${showCustomInput ? 'text-primary' : 'text-muted-foreground'}`}
-                    >
-                        <Settings2 className="w-3.5 h-3.5" />
-                    </button>
-                </motion.div>
-
-                <AnimatePresence>
-                    {showCustomInput && (
-                        <motion.form
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            onSubmit={handleCustomSubmit}
-                            className="overflow-hidden mb-4"
-                        >
-                            <div className="flex gap-2 px-2">
-                                <input
-                                    type="number"
-                                    placeholder="Minutos"
-                                    value={customValue}
-                                    onChange={(e) => setCustomValue(e.target.value)}
-                                    className="flex-1 bg-black/20 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-primary/50 transition-colors"
-                                    autoFocus
-                                />
-                                <button
-                                    type="submit"
-                                    className="px-2 py-1 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold hover:opacity-90 transition-opacity"
-                                >
-                                    OK
-                                </button>
-                            </div>
-                        </motion.form>
-                    )}
-                </AnimatePresence>
+                </div>
             </div>
-        </motion.div>
+
+            {/* Presets and Custom Input Button */}
+            <div className="flex items-center justify-center gap-4 mt-3">
+                {presets.map((mins) => (
+                    <button
+                        key={mins}
+                        onClick={() => setPreset(mins)}
+                        className="text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer active:scale-95"
+                    >
+                        {mins}m
+                    </button>
+                ))}
+                <button
+                    onClick={() => setShowCustomInput(!showCustomInput)}
+                    className={`p-1 rounded-md transition-colors active:scale-95 ${
+                        showCustomInput ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                    title="Configurar minutos"
+                >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                </button>
+            </div>
+
+            <AnimatePresence>
+                {showCustomInput && (
+                    <motion.form
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        onSubmit={handleCustomSubmit}
+                        className="overflow-hidden mt-2 flex gap-1.5 items-center justify-center"
+                    >
+                        <input
+                            type="number"
+                            placeholder="Min"
+                            value={customValue}
+                            onChange={(e) => setCustomValue(e.target.value)}
+                            className="w-16 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-2 py-0.5 text-xs text-center focus:outline-none focus:border-primary/50 text-foreground"
+                            autoFocus
+                        />
+                        <button
+                            type="submit"
+                            className="px-2.5 py-0.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:opacity-90 transition-opacity"
+                        >
+                            OK
+                        </button>
+                    </motion.form>
+                )}
+            </AnimatePresence>
+        </div>
     )
 }

@@ -371,7 +371,7 @@ export function WeeklyProgressChart() {
                     {viewMode === 'weekly' ? t.weeklyCommitment : viewMode === 'monthly' ? t.monthlyCommitment : t.yearlyCommitment}
                 </h2>
                 <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                    <div className="bg-white/5 p-1 rounded-xl flex gap-1 text-[11px] font-bold">
+                    <div className={`bg-white/5 p-1 rounded-xl gap-1 text-[11px] font-bold ${showTimer ? 'hidden md:flex' : 'flex'}`}>
                         <button
                             onClick={() => setViewMode('weekly')}
                             className={`px-3 py-1 rounded-lg transition-all ${viewMode === 'weekly' ? 'bg-white/10 text-foreground shadow-sm font-black' : 'text-muted-foreground hover:text-foreground'}`}
@@ -412,11 +412,11 @@ export function WeeklyProgressChart() {
                 </div>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-6 h-[120px] md:h-[200px] items-stretch">
+            <div className={`flex flex-col md:flex-row gap-6 items-stretch ${showTimer ? 'h-auto min-h-[190px] md:h-[200px]' : 'h-[120px] md:h-[200px]'}`}>
                 <motion.div
                     animate={{ width: showTimer ? "50%" : "100%" }}
                     transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
-                    className="h-full min-w-0 w-full"
+                    className={`h-full min-w-0 ${showTimer ? 'hidden md:block md:w-1/2' : 'w-full'}`}
                 >
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <ComposedChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
@@ -552,13 +552,13 @@ export function WeeklyProgressChart() {
                 <AnimatePresence>
                     {showTimer && (
                         <motion.div
-                            initial={{ width: 0, opacity: 0, filter: 'blur(10px)' }}
-                            animate={{ width: "50%", opacity: 1, filter: 'blur(0px)' }}
-                            exit={{ width: 0, opacity: 0, filter: 'blur(10px)' }}
-                            transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
-                            className="h-full overflow-hidden"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                            className="w-full md:w-1/2 h-full flex flex-col items-center justify-center overflow-hidden"
                         >
-                            <FocusTimer onClose={() => setShowTimer(false)} />
+                            <FocusTimer onClose={() => setShowTimer(false)} showCloseButton={false} />
                         </motion.div>
                     )}
                 </AnimatePresence>
