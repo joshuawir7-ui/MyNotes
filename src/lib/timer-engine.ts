@@ -253,30 +253,64 @@ class WebTimerEngineImpl implements TimerEngine {
         }
         lastHandledFinishedAt = current.finishedAt
 
-        // 1. Play Web Audio alarm (repeats over 5.2 seconds)
+        // 1. Play Modern Minimalist Chime (Warm glass/marimba harmonic chime with smooth exponential decay)
         try {
             if (typeof window !== 'undefined') {
                 const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
                 if (AudioCtx) {
                     const ctx = new AudioCtx()
-                    const pulseTimes = [0, 0.8, 1.6, 2.4, 3.2, 4.0, 4.8]
-                    pulseTimes.forEach(t => {
+                    if (ctx.state === 'suspended') {
+                        ctx.resume()
+                    }
+
+                    // Harmonic chime note (warm acoustic glass bell)
+                    const playChimeNote = (freq: number, startDelay: number, volume: number = 0.15) => {
+                        const noteTime = ctx.currentTime + startDelay
+
+                        // Fundamental pure tone
                         const osc = ctx.createOscillator()
                         const gain = ctx.createGain()
+                        osc.type = 'sine'
+                        osc.frequency.setValueAtTime(freq, noteTime)
+
+                        // Subtle acoustic overtone (octave + detune) for organic warmth
+                        const overtone = ctx.createOscillator()
+                        const overtoneGain = ctx.createGain()
+                        overtone.type = 'sine'
+                        overtone.frequency.setValueAtTime(freq * 2.02, noteTime)
+
+                        // Smooth attack (15ms) to prevent clicks, followed by a warm reverberant decay
+                        gain.gain.setValueAtTime(0.0001, noteTime)
+                        gain.gain.linearRampToValueAtTime(volume, noteTime + 0.015)
+                        gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 1.1)
+
+                        overtoneGain.gain.setValueAtTime(0.0001, noteTime)
+                        overtoneGain.gain.linearRampToValueAtTime(volume * 0.25, noteTime + 0.015)
+                        overtoneGain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 0.8)
+
                         osc.connect(gain)
                         gain.connect(ctx.destination)
-                        osc.type = 'sine'
-                        osc.frequency.setValueAtTime(640, ctx.currentTime + t)
-                        osc.frequency.exponentialRampToValueAtTime(840, ctx.currentTime + t + 0.3)
-                        gain.gain.setValueAtTime(0.2, ctx.currentTime + t)
-                        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.45)
-                        osc.start(ctx.currentTime + t)
-                        osc.stop(ctx.currentTime + t + 0.5)
+                        overtone.connect(overtoneGain)
+                        overtoneGain.connect(ctx.destination)
+
+                        osc.start(noteTime)
+                        osc.stop(noteTime + 1.2)
+                        overtone.start(noteTime)
+                        overtone.stop(noteTime + 0.9)
+                    }
+
+                    // Uplifting, elegant 3-note melodic motif: E5 (659Hz) -> A5 (880Hz) -> C#6 (1108Hz)
+                    // Played gently at t=0s and repeated at t=2.2s for a polished ~4.5s finish
+                    const phrases = [0, 2.2]
+                    phrases.forEach(phraseStart => {
+                        playChimeNote(659.25, phraseStart + 0.00, 0.14) // E5
+                        playChimeNote(880.00, phraseStart + 0.18, 0.16) // A5
+                        playChimeNote(1108.73, phraseStart + 0.38, 0.18) // C#6
                     })
                 }
             }
         } catch (e) {
-            console.error("[TimerEngine] Audio beep failed:", e)
+            console.error("[TimerEngine] Modern chime failed:", e)
         }
 
         // 2. Web Notification
