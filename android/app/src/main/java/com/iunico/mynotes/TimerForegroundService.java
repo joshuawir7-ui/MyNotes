@@ -51,6 +51,9 @@ public class TimerForegroundService extends Service {
         }
 
         updateNotification();
+        try {
+            TimerBubbleManager.getInstance(this).evaluateVisibility();
+        } catch (Exception ignored) {}
         return START_STICKY;
     }
 

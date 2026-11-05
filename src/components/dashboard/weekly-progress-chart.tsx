@@ -360,15 +360,15 @@ export function WeeklyProgressChart() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -6, scale: 0.98 }}
                         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute top-[calc(100%+12px)] left-4 right-4 sm:left-auto sm:right-6 md:right-8 sm:max-w-md z-[100] rounded-2xl p-3.5 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.65)] flex items-center justify-between border border-white/70 dark:border-white/15 backdrop-blur-2xl bg-white/85 dark:bg-zinc-900/90 relative overflow-hidden"
+                        className="absolute top-[calc(100%+8px)] right-3 md:right-4 w-[calc(100%-24px)] md:w-[calc(50%-20px)] z-[100] rounded-2xl p-3 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.14)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.85)] flex items-center justify-between border border-white/60 dark:border-white/15 backdrop-blur-2xl bg-white/90 dark:bg-zinc-900/95 relative overflow-hidden"
                         style={{
-                            backdropFilter: 'blur(24px) saturate(1.6)',
-                            WebkitBackdropFilter: 'blur(24px) saturate(1.6)'
+                            backdropFilter: 'blur(28px) saturate(1.8)',
+                            WebkitBackdropFilter: 'blur(28px) saturate(1.8)'
                         }}
                     >
                         {/* Pointer Arrow pointing UP to the timer on the right side */}
                         <div
-                            className="absolute -top-[7px] right-24 sm:right-28 w-3.5 h-3.5 rotate-45 bg-white/90 dark:bg-zinc-900/95 border-t border-l border-white/70 dark:border-white/15 pointer-events-none"
+                            className="absolute -top-[7px] right-[40%] sm:right-[45%] w-3.5 h-3.5 rotate-45 bg-white/90 dark:bg-zinc-900/95 border-t border-l border-white/60 dark:border-white/15 pointer-events-none"
                             aria-hidden="true"
                         />
                         {/* Layered Glass Gradient Highlights */}
@@ -377,10 +377,10 @@ export function WeeklyProgressChart() {
                             aria-hidden="true"
                         />
                         <div
-                            className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent dark:from-white/5 dark:to-transparent pointer-events-none"
+                            className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent dark:from-white/10 dark:to-transparent pointer-events-none"
                             aria-hidden="true"
                         />
-                        <div className="relative z-10 flex items-center justify-between w-full gap-3">
+                        <div className="relative z-10 flex items-center justify-between w-full gap-2.5">
                             <p className="text-xs sm:text-sm font-semibold tracking-tight text-foreground flex-1 text-center select-none leading-snug">
                                 "Mide tus tareas con un tiempo de ejecución, cumple con tus tareas y no te excedas"
                             </p>
@@ -390,7 +390,7 @@ export function WeeklyProgressChart() {
                                     setShowNote(false)
                                     try { localStorage.setItem('mynotes_timer_quote_seen', 'true') } catch (_) {}
                                 }}
-                                className="p-1.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0 text-muted-foreground hover:text-foreground active:scale-95"
+                                className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex-shrink-0 text-muted-foreground hover:text-foreground active:scale-95"
                                 title="Cerrar"
                             >
                                 <X className="w-4 h-4" />

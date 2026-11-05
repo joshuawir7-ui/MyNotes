@@ -92,6 +92,7 @@ public class NativeTimerManager {
             .apply();
 
         scheduleAlarm(endAt);
+        TimerBubbleManager.getInstance(context).resetUserDismissed();
         startForegroundService();
         notifyStateChanged();
         Log.d(TAG, "Timer started: duration=" + d + "ms, endAt=" + endAt + ", version=" + newVersion);
@@ -137,6 +138,7 @@ public class NativeTimerManager {
             .apply();
 
         scheduleAlarm(endAt);
+        TimerBubbleManager.getInstance(context).resetUserDismissed();
         startForegroundService();
         notifyStateChanged();
         Log.d(TAG, "Timer resumed: endAt=" + endAt + ", version=" + newVersion);

@@ -101,6 +101,10 @@ public class TimerBubbleManager {
         evaluateVisibility();
     }
 
+    public void resetUserDismissed() {
+        this.isUserDismissed = false;
+    }
+
     public void onAppForeground() {
         isAppInForeground = true;
         evaluateVisibility();

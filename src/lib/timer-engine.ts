@@ -34,6 +34,10 @@ export interface TimerEngine {
     requestOverlayPermission(): Promise<void>
     getBubbleSettings(): Promise<{ mode: 'always' | 'outside' | 'never'; hasPermission: boolean; isSupported: boolean }>
     setBubbleMode(mode: 'always' | 'outside' | 'never'): Promise<void>
+    showBubble(): Promise<void>
+    hideBubble(): Promise<void>
+    openMiuiPermissions(): Promise<void>
+    isXiaomiDevice(): Promise<boolean>
     openAppSettings(): Promise<void>
     openBatteryOptimizationSettings(): Promise<void>
 }
@@ -353,6 +357,10 @@ class WebTimerEngineImpl implements TimerEngine {
     async setBubbleMode(mode: 'always' | 'outside' | 'never'): Promise<void> {
         if (typeof localStorage !== 'undefined') localStorage.setItem('mynotes_bubble_mode', mode);
     }
+    async showBubble(): Promise<void> {}
+    async hideBubble(): Promise<void> {}
+    async openMiuiPermissions(): Promise<void> {}
+    async isXiaomiDevice(): Promise<boolean> { return false; }
     async openAppSettings(): Promise<void> {}
     async openBatteryOptimizationSettings(): Promise<void> {}
 }
@@ -366,8 +374,12 @@ interface NativeTimerPlugin {
     getState(): Promise<any>
     checkOverlayPermission(): Promise<{ granted: boolean }>
     requestOverlayPermission(): Promise<{ requested: boolean }>
+    openMiuiPermissions(): Promise<{ opened: boolean }>
+    isXiaomiDevice(): Promise<{ isXiaomi: boolean }>
     getBubbleSettings(): Promise<{ mode: string; hasPermission: boolean; isSupported: boolean }>
     setBubbleMode(options: { mode: string }): Promise<{ mode: string }>
+    showBubble(): Promise<void>
+    hideBubble(): Promise<void>
     openAppSettings(): Promise<void>
     openBatteryOptimizationSettings(): Promise<void>
     addListener(eventName: 'timerStateChanged', listenerFunc: (state: any) => void): Promise<{ remove: () => Promise<void> }>
@@ -538,6 +550,39 @@ class NativeTimerEngineImpl implements TimerEngine {
             await NativeTimer.setBubbleMode({ mode })
         } catch (e) {
             console.error('[NativeTimerEngine] setBubbleMode failed:', e)
+        }
+    }
+
+    async showBubble(): Promise<void> {
+        try {
+            await NativeTimer.showBubble()
+        } catch (e) {
+            console.error('[NativeTimerEngine] showBubble failed:', e)
+        }
+    }
+
+    async hideBubble(): Promise<void> {
+        try {
+            await NativeTimer.hideBubble()
+        } catch (e) {
+            console.error('[NativeTimerEngine] hideBubble failed:', e)
+        }
+    }
+
+    async openMiuiPermissions(): Promise<void> {
+        try {
+            await NativeTimer.openMiuiPermissions()
+        } catch (e) {
+            console.error('[NativeTimerEngine] openMiuiPermissions failed:', e)
+        }
+    }
+
+    async isXiaomiDevice(): Promise<boolean> {
+        try {
+            const res = await NativeTimer.isXiaomiDevice()
+            return !!res?.isXiaomi
+        } catch {
+            return false
         }
     }
 

@@ -1,11 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import { Play, Pause, RotateCcw, X, Settings2, SlidersHorizontal, ExternalLink } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Play, Pause, RotateCcw, X, Settings2, SlidersHorizontal, ExternalLink, ShieldAlert, CheckCircle2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { timerEngine, useTimerStore } from "@/lib/timer-engine"
 import { useTimerRemaining } from "@/hooks/use-timer-remaining"
 import { togglePictureInPicture, isPipActive } from "@/lib/pip-timer"
+import { Capacitor } from "@capacitor/core"
+import { useStore } from "@/lib/store"
 
 interface FocusTimerProps {
     onClose?: () => void
@@ -17,10 +19,20 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
     const isFloating = useTimerStore(s => s.isFloating)
     const [customValue, setCustomValue] = useState("")
     const [showCustomInput, setShowCustomInput] = useState(false)
+    const [showOverlayModal, setShowOverlayModal] = useState(false)
+    const [isXiaomi, setIsXiaomi] = useState(false)
+    const language = useStore(s => s.language)
+    const showToast = useStore(s => s.showToast)
 
     const presets = [5, 15, 30]
 
-    const handleStartPause = () => {
+    useEffect(() => {
+        if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
+            timerEngine.isXiaomiDevice().then(setIsXiaomi).catch(() => {})
+        }
+    }, [])
+
+    const handleStartPause = async () => {
         if (isActive) {
             timerEngine.pause()
         } else {
@@ -29,6 +41,20 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                 timerEngine.resume()
             } else {
                 timerEngine.start()
+            }
+
+            // On Android: verify if overlay permission is granted so floating bubble works when exiting
+            if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
+                const hasPerm = await timerEngine.checkOverlayPermission()
+                if (!hasPerm) {
+                    const hasPrompted = sessionStorage.getItem('mynotes_overlay_prompted') === 'true'
+                    if (!hasPrompted) {
+                        sessionStorage.setItem('mynotes_overlay_prompted', 'true')
+                        const xiaomi = await timerEngine.isXiaomiDevice()
+                        setIsXiaomi(xiaomi)
+                        setShowOverlayModal(true)
+                    }
+                }
             }
         }
     }
@@ -42,7 +68,47 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
     }
 
     const handleToggleFloating = async () => {
-        await togglePictureInPicture()
+        if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
+            const hasPerm = await timerEngine.checkOverlayPermission()
+            if (!hasPerm) {
+                const xiaomi = await timerEngine.isXiaomiDevice()
+                setIsXiaomi(xiaomi)
+                setShowOverlayModal(true)
+                return
+            }
+
+            await timerEngine.setBubbleMode('outside')
+            await timerEngine.showBubble()
+            showToast(
+                language === 'es'
+                    ? "Burbuja flotante activada: aparecerá en tu pantalla cuando salgas de la aplicación."
+                    : "Floating bubble activated: will appear on your screen when you exit the app.",
+                "success"
+            )
+        } else {
+            await togglePictureInPicture()
+        }
+    }
+
+    const handleVerifyOverlayPermission = async () => {
+        const hasPerm = await timerEngine.checkOverlayPermission()
+        if (hasPerm) {
+            await timerEngine.setBubbleMode('outside')
+            setShowOverlayModal(false)
+            showToast(
+                language === 'es'
+                    ? "¡Permiso concedido! La burbuja flotante aparecerá al salir de la app."
+                    : "Permission granted! Floating bubble will appear when you leave the app.",
+                "success"
+            )
+        } else {
+            showToast(
+                language === 'es'
+                    ? "Permiso aún no detectado. Asegúrate de activarlo en los Ajustes."
+                    : "Permission not yet granted. Please make sure to enable it in Settings.",
+                "warning"
+            )
+        }
     }
 
     const handleCustomSubmit = (e: React.FormEvent) => {
@@ -311,6 +377,98 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                     )}
                 </AnimatePresence>
             </div>
+
+            {/* ANDROID OVERLAY / FLOATING BUBBLE PERMISSION MODAL */}
+            <AnimatePresence>
+                {showOverlayModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                        onClick={() => setShowOverlayModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 10 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 10 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white dark:bg-zinc-900 border border-black/10 dark:border-white/15 rounded-3xl p-5 max-w-sm w-full shadow-2xl relative text-left"
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setShowOverlayModal(false)}
+                                className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-muted-foreground"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="p-2.5 rounded-2xl bg-primary/10 text-primary">
+                                    <ExternalLink className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-bold text-foreground">
+                                        {language === 'es' ? "Activar Reloj Flotante" : "Enable Floating Timer"}
+                                    </h3>
+                                    <p className="text-[11px] text-muted-foreground">
+                                        {language === 'es' ? "Burbuja flotante fuera de la app" : "Floating bubble outside app"}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                                {language === 'es'
+                                    ? "Para que el temporizador siga visible como una burbuja flotante al salir a la pantalla de inicio o usar otras apps, Android requiere conceder el permiso de superposición."
+                                    : "To keep the timer visible as a floating bubble when you switch apps or go to your home screen, Android requires the overlay permission."}
+                            </p>
+
+                            {isXiaomi && (
+                                <div className="p-3 mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[11px] leading-snug space-y-1.5">
+                                    <div className="font-bold flex items-center gap-1.5">
+                                        <ShieldAlert className="w-4 h-4 shrink-0" />
+                                        <span>{language === 'es' ? "Dispositivo Xiaomi / HyperOS detectado" : "Xiaomi / HyperOS detected"}</span>
+                                    </div>
+                                    <p>
+                                        {language === 'es'
+                                            ? "Xiaomi requiere 2 permisos: 1) 'Mostrar sobre otras apps' y 2) 'Mostrar ventanas emergentes mientras se ejecuta en segundo plano'."
+                                            : "Xiaomi requires 2 permissions: 1) 'Display over other apps' and 2) 'Display pop-up windows while running in background'."}
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="flex flex-col gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => timerEngine.requestOverlayPermission()}
+                                    className="w-full py-2.5 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:opacity-90 active:scale-98 transition-all shadow-md text-center"
+                                >
+                                    {language === 'es' ? "1. Conceder 'Mostrar sobre otras apps'" : "1. Grant 'Display over other apps'"}
+                                </button>
+
+                                {isXiaomi && (
+                                    <button
+                                        type="button"
+                                        onClick={() => timerEngine.openMiuiPermissions()}
+                                        className="w-full py-2.5 px-4 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/30 text-xs font-bold active:scale-98 transition-all text-center"
+                                    >
+                                        {language === 'es' ? "2. Conceder 'Ventanas emergentes en 2° plano' (Xiaomi)" : "2. Grant 'Pop-ups in background' (Xiaomi)"}
+                                    </button>
+                                )}
+
+                                <button
+                                    type="button"
+                                    onClick={handleVerifyOverlayPermission}
+                                    className="w-full py-2 px-4 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-foreground text-xs font-semibold active:scale-98 transition-all flex items-center justify-center gap-1.5 mt-1"
+                                >
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                    <span>{language === 'es' ? "Ya concedí los permisos" : "I already granted permissions"}</span>
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     )
 }

@@ -4,6 +4,7 @@ import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
@@ -75,22 +76,73 @@ public class TimerPlugin extends Plugin implements NativeTimerManager.StateChang
 
     @PluginMethod
     public void requestOverlayPermission(PluginCall call) {
+        Context ctx = getContext();
+        boolean opened = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             try {
                 Intent intent = new Intent(
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:" + getContext().getPackageName())
+                    Uri.parse("package:" + ctx.getPackageName())
                 );
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                getContext().startActivity(intent);
+                ctx.startActivity(intent);
+                opened = true;
             } catch (Exception e) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                getContext().startActivity(intent);
+                try {
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    ctx.startActivity(intent);
+                    opened = true;
+                } catch (Exception ignored) {}
             }
         }
+
+        if (!opened) {
+            try {
+                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                intent.setData(Uri.parse("package:" + ctx.getPackageName()));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(intent);
+            } catch (Exception ignored) {}
+        }
+
         JSObject ret = new JSObject();
         ret.put("requested", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void openMiuiPermissions(PluginCall call) {
+        Context ctx = getContext();
+        boolean opened = false;
+        try {
+            Intent intent = new Intent("miui.intent.action.APP_PERM_EDITOR");
+            intent.setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity");
+            intent.putExtra("extra_pkgname", ctx.getPackageName());
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(intent);
+            opened = true;
+        } catch (Exception e) {
+            try {
+                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                intent.setData(Uri.parse("package:" + ctx.getPackageName()));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(intent);
+                opened = true;
+            } catch (Exception ignored) {}
+        }
+
+        JSObject ret = new JSObject();
+        ret.put("opened", opened);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void isXiaomiDevice(PluginCall call) {
+        String manufacturer = Build.MANUFACTURER != null ? Build.MANUFACTURER.toLowerCase() : "";
+        boolean isXiaomi = manufacturer.contains("xiaomi") || manufacturer.contains("redmi") || manufacturer.contains("poco");
+        JSObject ret = new JSObject();
+        ret.put("isXiaomi", isXiaomi);
         call.resolve(ret);
     }
 
