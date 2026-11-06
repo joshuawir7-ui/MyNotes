@@ -127,14 +127,14 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
                                                     onEdit()
                                                     setIsOpen(false)
                                                 }}
-                                                className="flex items-center gap-4 p-4 rounded-2xl glass-card hover:bg-white/80 dark:hover:bg-white/10 transition-colors text-left w-full"
+                                                className="flex items-center gap-4 p-4 rounded-2xl glass-card hover:bg-white/80 dark:hover:bg-white/10 transition-colors text-left w-full pl-5"
                                             >
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                                    appColor === 'black'
-                                                        ? 'bg-zinc-900/10 dark:bg-white/10 text-zinc-900 dark:text-zinc-100'
-                                                        : 'bg-purple-500/20 text-purple-600 dark:text-purple-400'
-                                                }`}>
-                                                    <Edit2 className="w-5 h-5" />
+                                                <div className="w-6 flex items-center justify-center shrink-0">
+                                                    <Edit2 className={`w-5 h-5 ${
+                                                        appColor === 'black'
+                                                            ? 'text-zinc-900 dark:text-zinc-100'
+                                                            : 'text-purple-600 dark:text-purple-400'
+                                                    }`} />
                                                 </div>
                                                 <span className="font-semibold text-lg">Editar</span>
                                             </button>
@@ -147,10 +147,14 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
                                                     onTogglePin()
                                                     setIsOpen(false)
                                                 }}
-                                                className="flex items-center gap-4 p-4 rounded-2xl glass-card hover:bg-white/80 dark:hover:bg-white/10 transition-colors text-left w-full"
+                                                className="flex items-center gap-4 p-4 rounded-2xl glass-card hover:bg-white/80 dark:hover:bg-white/10 transition-colors text-left w-full pl-5"
                                             >
-                                                <div className="w-10 h-10 rounded-full bg-zinc-500/20 flex items-center justify-center text-zinc-600 dark:text-zinc-400">
-                                                    <Pin className={`w-5 h-5 ${isPinned ? 'fill-current' : ''}`} />
+                                                <div className="w-6 flex items-center justify-center shrink-0">
+                                                    <Pin className={`w-5 h-5 ${isPinned ? 'fill-current' : ''} ${
+                                                        appColor === 'black'
+                                                            ? 'text-zinc-900 dark:text-zinc-100'
+                                                            : 'text-zinc-700 dark:text-zinc-300'
+                                                    }`} />
                                                 </div>
                                                 <span className="font-semibold text-lg">{isPinned ? 'Desfijar' : 'Fijar'}</span>
                                             </button>
@@ -162,10 +166,10 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
                                                 onDelete()
                                                 setIsOpen(false)
                                             }}
-                                            className="flex items-center gap-4 p-4 rounded-2xl bg-red-500/12 border border-red-500/20 hover:bg-red-500/20 transition-colors text-left w-full"
+                                            className="flex items-center gap-4 p-4 rounded-2xl bg-red-500/12 border border-red-500/20 hover:bg-red-500/20 transition-colors text-left w-full pl-5"
                                         >
-                                            <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 dark:text-red-400">
-                                                <Trash2 className="w-5 h-5" />
+                                            <div className="w-6 flex items-center justify-center shrink-0">
+                                                <Trash2 className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />
                                             </div>
                                             <span className="font-semibold text-lg text-red-500 dark:text-red-400">Eliminar</span>
                                         </button>
