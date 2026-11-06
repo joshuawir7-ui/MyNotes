@@ -21,14 +21,32 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
     const [showCustomInput, setShowCustomInput] = useState(false)
     const [showOverlayModal, setShowOverlayModal] = useState(false)
     const [isXiaomi, setIsXiaomi] = useState(false)
+    const [isAndroidOrMobile, setIsAndroidOrMobile] = useState(false)
+    const [isLandscape, setIsLandscape] = useState(false)
     const language = useStore(s => s.language)
     const showToast = useStore(s => s.showToast)
 
     const presets = [5, 15, 30]
 
     useEffect(() => {
+        const updateDeviceState = () => {
+            if (typeof window === 'undefined') return
+            const isCap = Capacitor.isNativePlatform()
+            const isMobileUA = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+            setIsAndroidOrMobile(isCap || isMobileUA)
+            setIsLandscape(window.innerWidth > window.innerHeight)
+        }
+        updateDeviceState()
+        window.addEventListener('resize', updateDeviceState)
+        window.addEventListener('orientationchange', updateDeviceState)
+
         if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
             timerEngine.isXiaomiDevice().then(setIsXiaomi).catch(() => {})
+        }
+
+        return () => {
+            window.removeEventListener('resize', updateDeviceState)
+            window.removeEventListener('orientationchange', updateDeviceState)
         }
     }, [])
 
@@ -148,14 +166,18 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
     return (
         <div className="w-full h-full flex flex-col justify-center">
             {/* ============================================================== */}
-            {/* DESKTOP VIEW: EXACT ORIGINAL DESIGN PRESERVED FOR PC           */}
+            {/* DESKTOP / HORIZONTAL (LANDSCAPE) VIEW                          */}
             {/* ============================================================== */}
             <motion.div
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
                 exit="hidden"
-                className="hidden md:flex flex-col h-full w-full items-center justify-start relative bg-white/5 rounded-xl border border-white/10 p-3 pt-1 overflow-y-auto custom-scrollbar"
+                className={`${
+                    isAndroidOrMobile
+                        ? (isLandscape ? 'flex' : 'hidden')
+                        : 'hidden md:flex'
+                } flex-col h-full w-full items-center justify-start relative bg-white/5 rounded-xl border border-white/10 p-3 pt-1 overflow-y-auto custom-scrollbar`}
             >
                 {onClose && (
                     <button
@@ -263,9 +285,13 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
             </motion.div>
 
             {/* ============================================================== */}
-            {/* MOBILE VIEW: CIRCULAR POD REPLACING CHART ON MOBILE            */}
+            {/* MOBILE PORTRAIT VIEW: CIRCULAR POD                             */}
             {/* ============================================================== */}
-            <div className="flex md:hidden flex-col items-center justify-center w-full relative py-1">
+            <div className={`${
+                isAndroidOrMobile
+                    ? (isLandscape ? 'hidden' : 'flex')
+                    : 'flex md:hidden'
+            } flex-col items-center justify-center w-full relative py-1`}>
                 {/* Floating mode button */}
                 <button
                     type="button"
@@ -334,19 +360,6 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                         title="Configurar minutos"
                     >
                         <SlidersHorizontal className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleToggleFloating}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all active:scale-95 border ${
-                            isFloating
-                                ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                                : 'bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground border-black/5 dark:border-white/10'
-                        }`}
-                        title={isFloating ? "Ocultar temporizador flotante" : "Temporizador flotante"}
-                    >
-                        <ExternalLink className="w-3 h-3" />
-                        <span>Flotante</span>
                     </button>
                 </div>
 

@@ -166,7 +166,7 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
                                                 onDelete()
                                                 setIsOpen(false)
                                             }}
-                                            className="flex items-center gap-4 p-4 rounded-2xl bg-red-500/12 border border-red-500/20 hover:bg-red-500/20 transition-colors text-left w-full pl-5"
+                                            className="flex items-center gap-4 p-4 rounded-2xl glass-card hover:bg-white/80 dark:hover:bg-white/10 transition-colors text-left w-full pl-5"
                                         >
                                             <div className="w-6 flex items-center justify-center shrink-0">
                                                 <Trash2 className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />

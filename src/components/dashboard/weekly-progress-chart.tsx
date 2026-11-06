@@ -9,6 +9,7 @@ import { X, ExternalLink } from "lucide-react"
 import { FocusTimer } from "./focus-timer"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTimerStore, timerEngine } from "@/lib/timer-engine"
+import { Capacitor } from "@capacitor/core"
 
 let noteShownInSession = false;
 
@@ -102,6 +103,19 @@ export function WeeklyProgressChart() {
     const [isHovered, setIsHovered] = useState(false)
     const [isMounted, setIsMounted] = useState(false)
     const [viewMode, setViewMode] = useState<'weekly' | 'monthly' | 'yearly'>('weekly')
+    const [isAndroidOrMobile, setIsAndroidOrMobile] = useState(false)
+
+    useEffect(() => {
+        const updateDeviceState = () => {
+            if (typeof window === 'undefined') return
+            const isCap = Capacitor.isNativePlatform()
+            const isMobileUA = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+            setIsAndroidOrMobile(isCap || isMobileUA)
+        }
+        updateDeviceState()
+        window.addEventListener('resize', updateDeviceState)
+        return () => window.removeEventListener('resize', updateDeviceState)
+    }, [])
 
     useEffect(() => {
         setIsMounted(true)
@@ -360,7 +374,9 @@ export function WeeklyProgressChart() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -6, scale: 0.98 }}
                         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute top-[calc(100%+8px)] right-3 md:right-4 w-[calc(100%-24px)] md:w-[calc(50%-20px)] z-[100] rounded-2xl p-3 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.14)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.85)] flex items-center justify-between border border-white/60 dark:border-white/15 backdrop-blur-2xl bg-white/90 dark:bg-zinc-900/95 relative overflow-hidden"
+                        className={`absolute top-[calc(100%+8px)] right-3 md:right-4 ${
+                            isAndroidOrMobile ? 'w-[calc(100%-24px)]' : 'w-[calc(100%-24px)] md:w-[calc(50%-20px)]'
+                        } z-[100] rounded-2xl p-3 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.14)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.85)] flex items-center justify-between border border-white/60 dark:border-white/15 backdrop-blur-2xl bg-white/90 dark:bg-zinc-900/95 relative overflow-hidden`}
                         style={{
                             backdropFilter: 'blur(28px) saturate(1.8)',
                             WebkitBackdropFilter: 'blur(28px) saturate(1.8)'
@@ -447,8 +463,12 @@ export function WeeklyProgressChart() {
             </div>
 
             <div className={`flex flex-col md:flex-row gap-6 items-stretch ${showTimer ? 'h-auto md:h-[200px]' : 'h-[120px] md:h-[200px]'}`}>
-                <div className={`min-w-0 h-[120px] md:h-[200px] ${showTimer ? 'hidden md:block md:w-1/2' : 'w-full'}`}>
-                    <ResponsiveContainer key={showTimer ? 'split-chart' : 'full-chart'} width="100%" height="100%" minWidth={0} minHeight={120}>
+                <div className={`min-w-0 h-[120px] md:h-[200px] ${
+                    showTimer
+                        ? (isAndroidOrMobile ? 'hidden' : 'hidden md:block md:w-1/2')
+                        : 'w-full'
+                }`}>
+                    <ResponsiveContainer key={showTimer ? (isAndroidOrMobile ? 'android-chart' : 'split-chart') : 'full-chart'} width="100%" height="100%" minWidth={0} minHeight={120}>
                         <ComposedChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                             <defs>
                                 {/* Degradado horizontal para la línea en negro (Gris -> Negro -> Gris) */}
@@ -586,7 +606,9 @@ export function WeeklyProgressChart() {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                            className="w-full md:w-1/2 h-auto md:h-[200px] flex flex-col items-center justify-center overflow-hidden py-1"
+                            className={`${
+                                isAndroidOrMobile ? 'w-full' : 'w-full md:w-1/2'
+                            } h-auto md:h-[200px] flex flex-col items-center justify-center overflow-hidden py-1`}
                         >
                             <FocusTimer onClose={() => setShowTimer(false)} />
                         </motion.div>
