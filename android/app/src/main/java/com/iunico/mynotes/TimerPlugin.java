@@ -192,6 +192,13 @@ public class TimerPlugin extends Plugin implements NativeTimerManager.StateChang
     }
 
     @PluginMethod
+    public void setAppTheme(PluginCall call) {
+        String theme = call.getString("theme", "auto");
+        TimerBubbleManager.getInstance(getContext()).setTheme(theme);
+        call.resolve();
+    }
+
+    @PluginMethod
     public void openBatteryOptimizationSettings(PluginCall call) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

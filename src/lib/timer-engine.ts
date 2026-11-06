@@ -40,6 +40,7 @@ export interface TimerEngine {
     isXiaomiDevice(): Promise<boolean>
     openAppSettings(): Promise<void>
     openBatteryOptimizationSettings(): Promise<void>
+    setAppTheme(theme: 'light' | 'dark' | 'auto'): Promise<void>
 }
 
 const STORAGE_KEY = 'mynotes_isolated_timer_state_v1'
@@ -363,6 +364,7 @@ class WebTimerEngineImpl implements TimerEngine {
     async isXiaomiDevice(): Promise<boolean> { return false; }
     async openAppSettings(): Promise<void> {}
     async openBatteryOptimizationSettings(): Promise<void> {}
+    async setAppTheme(_theme: 'light' | 'dark' | 'auto'): Promise<void> {}
 }
 
 interface NativeTimerPlugin {
@@ -382,6 +384,7 @@ interface NativeTimerPlugin {
     hideBubble(): Promise<void>
     openAppSettings(): Promise<void>
     openBatteryOptimizationSettings(): Promise<void>
+    setAppTheme(options: { theme: string }): Promise<void>
     addListener(eventName: 'timerStateChanged', listenerFunc: (state: any) => void): Promise<{ remove: () => Promise<void> }>
 }
 
@@ -410,6 +413,18 @@ class NativeTimerEngineImpl implements TimerEngine {
                         this.reconcile()
                     }
                 })
+            }
+
+            // Synchronize theme with floating bubble
+            const syncTheme = () => {
+                const isDark = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
+                this.setAppTheme(isDark ? 'dark' : 'light')
+            }
+            syncTheme()
+
+            if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+                const obs = new MutationObserver(() => syncTheme())
+                obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
             }
         } catch (e) {
             console.error('[NativeTimerEngine] Init failed:', e)
@@ -599,6 +614,14 @@ class NativeTimerEngineImpl implements TimerEngine {
             await NativeTimer.openBatteryOptimizationSettings()
         } catch (e) {
             console.error('[NativeTimerEngine] openBatteryOptimizationSettings failed:', e)
+        }
+    }
+
+    async setAppTheme(theme: 'light' | 'dark' | 'auto'): Promise<void> {
+        try {
+            await NativeTimer.setAppTheme({ theme })
+        } catch (e) {
+            console.error('[NativeTimerEngine] setAppTheme failed:', e)
         }
     }
 

@@ -5,6 +5,8 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.os.Build;
@@ -20,6 +22,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.getcapacitor.JSObject;
@@ -40,6 +43,7 @@ public class TimerBubbleManager {
     private static final String KEY_MODE = "bubble_mode"; // "outside" | "always" | "never"
     private static final String KEY_POS_X = "bubble_x";
     private static final String KEY_POS_Y = "bubble_y";
+    private static final String KEY_THEME = "bubble_theme";
 
     public static final String MODE_ALWAYS = "always";
     public static final String MODE_OUTSIDE = "outside";
@@ -57,6 +61,7 @@ public class TimerBubbleManager {
     private boolean isUserDismissed = false;
     private boolean isAppInForeground = false;
 
+    private ImageView dragIconView;
     private TextView timeTextView;
     private ImageButton playPauseButton;
     private ImageButton closeButton;
@@ -204,10 +209,12 @@ public class TimerBubbleManager {
             LayoutInflater inflater = LayoutInflater.from(context);
             bubbleView = inflater.inflate(R.layout.timer_bubble_pill, null);
 
+            dragIconView = bubbleView.findViewById(R.id.bubble_drag_icon);
             timeTextView = bubbleView.findViewById(R.id.bubble_time_text);
             playPauseButton = bubbleView.findViewById(R.id.bubble_play_pause_btn);
             closeButton = bubbleView.findViewById(R.id.bubble_close_btn);
 
+            applyTheme();
             setupTouchAndDrag();
 
             windowManager.addView(bubbleView, layoutParams);
@@ -233,6 +240,10 @@ public class TimerBubbleManager {
             }
             isBubbleAttached = false;
             bubbleView = null;
+            dragIconView = null;
+            timeTextView = null;
+            playPauseButton = null;
+            closeButton = null;
             Log.d(TAG, "Floating timer bubble removed from window");
         }
     }
@@ -354,8 +365,48 @@ public class TimerBubbleManager {
                 .apply();
     }
 
+    public void setTheme(String theme) {
+        prefs.edit().putString(KEY_THEME, theme).apply();
+        mainHandler.post(this::applyTheme);
+    }
+
+    public boolean isDarkMode() {
+        String theme = prefs.getString(KEY_THEME, "auto");
+        if ("dark".equalsIgnoreCase(theme)) return true;
+        if ("light".equalsIgnoreCase(theme)) return false;
+        int nightMode = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        return nightMode == Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    private void applyTheme() {
+        if (bubbleView == null || !isBubbleAttached) return;
+
+        boolean isDark = isDarkMode();
+        bubbleView.setBackgroundResource(isDark ? R.drawable.timer_bubble_pill_bg : R.drawable.timer_bubble_pill_bg_light);
+
+        if (dragIconView != null) {
+            dragIconView.setColorFilter(isDark ? Color.WHITE : Color.parseColor("#18181B"));
+        }
+
+        if (timeTextView != null) {
+            timeTextView.setTextColor(isDark ? Color.WHITE : Color.parseColor("#18181B"));
+        }
+
+        if (playPauseButton != null) {
+            playPauseButton.setBackgroundResource(isDark ? R.drawable.timer_bubble_btn_bg : R.drawable.timer_bubble_btn_bg_light);
+            playPauseButton.setColorFilter(isDark ? Color.WHITE : Color.parseColor("#18181B"));
+        }
+
+        if (closeButton != null) {
+            closeButton.setBackgroundResource(isDark ? R.drawable.timer_bubble_btn_bg : R.drawable.timer_bubble_btn_bg_light);
+            closeButton.setColorFilter(isDark ? Color.parseColor("#B3FFFFFF") : Color.parseColor("#71717A"));
+        }
+    }
+
     private void updateUI(JSObject state) {
         if (!isBubbleAttached || timeTextView == null) return;
+
+        applyTheme();
 
         String status = state.getString("status", "idle");
         boolean isRunning = "running".equals(status);

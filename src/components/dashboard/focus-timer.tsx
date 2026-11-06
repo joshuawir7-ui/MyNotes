@@ -213,10 +213,14 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                     >
                         <button
                             onClick={handleStartPause}
-                            className={`p-2.5 rounded-full transition-all ${isActive ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30' : 'bg-primary/20 text-primary hover:bg-primary/30'}`}
+                            className={`p-2.5 rounded-full transition-all ${
+                                isActive
+                                    ? 'text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/10'
+                                    : 'bg-primary/20 text-primary hover:bg-primary/30'
+                            }`}
                             title={isActive ? "Pausar" : "Iniciar"}
                         >
-                            {isActive ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
+                            {isActive ? <Pause className="w-5 h-5 fill-current text-black dark:text-white" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
                         </button>
                         <button
                             onClick={handleReset}
@@ -315,15 +319,15 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                     <div className="flex items-center gap-2.5 mt-2">
                         <button
                             onClick={handleStartPause}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm active:scale-95 ${
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95 ${
                                 isActive
-                                    ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
+                                    ? 'text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/10'
                                     : 'bg-black/10 dark:bg-white/15 text-foreground hover:bg-black/20 dark:hover:bg-white/25'
                             }`}
                             title={isActive ? "Pausar" : "Iniciar"}
                         >
                             {isActive ? (
-                                <Pause className="w-4 h-4 fill-current" />
+                                <Pause className="w-4 h-4 fill-current text-black dark:text-white" />
                             ) : (
                                 <Play className="w-4 h-4 fill-current ml-0.5" />
                             )}

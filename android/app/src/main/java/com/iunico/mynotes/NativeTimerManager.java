@@ -4,10 +4,12 @@ import android.app.AlarmManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.AudioAttributes;
+import android.media.MediaPlayer;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
@@ -29,7 +31,7 @@ public class NativeTimerManager {
     private static final String KEY_FINISHED_AT = "finishedAt";
 
     public static final String ACTION_TIMER_ALARM = "com.iunico.mynotes.ACTION_TIMER_ALARM";
-    public static final String CHANNEL_ID = "mynotes_timer_channel";
+    public static final String CHANNEL_ID = "mynotes_timer_channel_v2";
     private static final int TIMER_REQUEST_CODE = 9921;
     private static final int NOTIFICATION_ID = 9922;
 
@@ -266,15 +268,12 @@ public class NativeTimerManager {
             channel.enableVibration(true);
             channel.setVibrationPattern(new long[]{0, 800, 300, 800, 300, 800, 300, 800, 300, 800});
 
-            Uri alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-            if (alarmSound == null) {
-                alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-            }
+            Uri customSoundUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + context.getPackageName() + "/" + R.raw.timer_chime);
             AudioAttributes audioAttributes = new AudioAttributes.Builder()
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                 .build();
-            channel.setSound(alarmSound, audioAttributes);
+            channel.setSound(customSoundUri, audioAttributes);
 
             nm.createNotificationChannel(channel);
         }
@@ -306,30 +305,26 @@ public class NativeTimerManager {
 
         nm.notify(NOTIFICATION_ID, builder.build());
 
-        // Play alarm ringtone for 5 seconds
+        // Play custom modern chime sound
         try {
-            Uri alert = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-            if (alert == null) {
-                alert = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-            }
-            if (alert != null) {
-                final android.media.Ringtone ringtone = RingtoneManager.getRingtone(context, alert);
-                if (ringtone != null) {
-                    ringtone.play();
-                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            try {
-                                if (ringtone.isPlaying()) {
-                                    ringtone.stop();
-                                }
-                            } catch (Exception ignored) {}
-                        }
-                    }, 5000);
-                }
+            MediaPlayer mediaPlayer = MediaPlayer.create(context, R.raw.timer_chime);
+            if (mediaPlayer != null) {
+                mediaPlayer.setOnCompletionListener(mp -> {
+                    try {
+                        mp.release();
+                    } catch (Exception ignored) {}
+                });
+                mediaPlayer.start();
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error playing 5s alarm ringtone", e);
+            Log.e(TAG, "Error playing custom modern chime", e);
+            try {
+                Uri alert = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                if (alert != null) {
+                    android.media.Ringtone r = RingtoneManager.getRingtone(context, alert);
+                    if (r != null) r.play();
+                }
+            } catch (Exception ignored) {}
         }
     }
 
