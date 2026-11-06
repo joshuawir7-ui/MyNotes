@@ -171,7 +171,7 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
                                             <div className="w-6 flex items-center justify-center shrink-0">
                                                 <Trash2 className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />
                                             </div>
-                                            <span className="font-semibold text-lg text-red-500 dark:text-red-400">Eliminar</span>
+                                            <span className="font-semibold text-lg text-black dark:text-white">Eliminar</span>
                                         </button>
 
                                         <button
