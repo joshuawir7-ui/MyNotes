@@ -443,6 +443,56 @@ export default function CalendarPage() {
                                         >
                                             <Plus className="w-6 h-6" />
                                         </button>
+                                        {(() => {
+                                            const [y, m, d] = selectedDate.split('-').map(Number)
+                                            const target = new Date(y, m - 1, d)
+                                            const now = new Date()
+                                            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+                                            const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                                            const isEs = language === 'es'
+
+                                            if (diffDays === 0) {
+                                                return (
+                                                    <span className="ml-1 text-sm sm:text-base font-medium text-zinc-500 dark:text-white select-none">
+                                                        {isEs ? 'Hoy' : 'Today'}
+                                                    </span>
+                                                )
+                                            }
+
+                                            const isFuture = diffDays > 0
+                                            const absDays = Math.abs(diffDays)
+
+                                            if (isEs) {
+                                                const prefix = isFuture ? 'En' : 'Hace'
+                                                const suffix = absDays === 1 ? 'día' : 'días'
+                                                return (
+                                                    <span className="ml-1 text-sm sm:text-base font-medium select-none flex items-baseline gap-1">
+                                                        <span className="text-zinc-500 dark:text-white">{prefix}</span>
+                                                        <span className="font-bold text-zinc-900 dark:text-white">{absDays}</span>
+                                                        <span className="text-zinc-500 dark:text-white">{suffix}</span>
+                                                    </span>
+                                                )
+                                            } else {
+                                                if (isFuture) {
+                                                    const suffix = absDays === 1 ? 'day' : 'days'
+                                                    return (
+                                                        <span className="ml-1 text-sm sm:text-base font-medium select-none flex items-baseline gap-1">
+                                                            <span className="text-zinc-500 dark:text-white">In</span>
+                                                            <span className="font-bold text-zinc-900 dark:text-white">{absDays}</span>
+                                                            <span className="text-zinc-500 dark:text-white">{suffix}</span>
+                                                        </span>
+                                                    )
+                                                } else {
+                                                    const suffix = absDays === 1 ? 'day ago' : 'days ago'
+                                                    return (
+                                                        <span className="ml-1 text-sm sm:text-base font-medium select-none flex items-baseline gap-1">
+                                                            <span className="font-bold text-zinc-900 dark:text-white">{absDays}</span>
+                                                            <span className="text-zinc-500 dark:text-white">{suffix}</span>
+                                                        </span>
+                                                    )
+                                                }
+                                            }
+                                        })()}
                                     </div>
                                     <h2 className="text-xl font-bold tracking-tight flex items-center gap-3">
                                         {t.events}
