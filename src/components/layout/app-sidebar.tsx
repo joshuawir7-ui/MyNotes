@@ -319,8 +319,8 @@ export function AppSidebar() {
                                         isBlinking ? 'animate-pulse-green border border-green-500 bg-green-500/20' : ''
                                     } ${
                                         isActive
-                                            ? (appColor === 'black' ? 'bg-black/10 dark:bg-white/15 text-black dark:text-white shadow-sm font-bold' : 'bg-primary/15 text-primary shadow-sm')
-                                            : 'text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10'
+                                            ? (appColor === 'black' ? 'text-black dark:text-white font-bold' : 'text-primary')
+                                            : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                     title={item.label}
                                 >
