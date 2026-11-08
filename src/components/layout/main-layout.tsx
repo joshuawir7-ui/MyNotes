@@ -802,7 +802,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         router.push('/');
                         startTourManually();
                     }}
-                    className="fixed top-4 right-4 z-[40] flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-zinc-200 dark:border-white/10 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md shadow-sm text-xs font-black text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                    className="fixed z-[40] flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-zinc-200 dark:border-white/10 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md shadow-sm text-xs font-black text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                    style={{
+                        top: 'calc(var(--sat, 0px) + 12px)',
+                        right: 'calc(var(--sar, 0px) + 12px)',
+                    }}
                 >
                     <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse" />
                     <span>{language === 'es' ? 'Guía' : 'Guide'}</span>
@@ -903,10 +907,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <main
                 className={`flex-1 max-w-full bg-background text-foreground ${
                     isMobileLandscape
-                        ? 'ml-[150px] md:ml-[150px] pt-4 pb-10'
+                        ? 'pt-0 pb-10'
                         : 'md:ml-64 pt-4 md:pt-10 pb-32 md:pb-10'
                 } overflow-x-hidden`}
-                style={isMobileLandscape ? { marginLeft: 'max(150px, calc(env(safe-area-inset-left, 0px) + 90px))' } : undefined}
+                style={isMobileLandscape ? {
+                    marginLeft: 'calc(var(--sal, 0px) + 64px + 24px)',
+                    paddingRight: 'calc(var(--sar, 0px) + var(--edge-gap, 16px))',
+                    paddingTop: 'calc(var(--sat, 0px) + 12px)',
+                } : undefined}
                 suppressHydrationWarning
             >
                 <div className={`px-4 ${isMobileLandscape ? 'max-w-none' : 'md:px-12 max-w-7xl'} mx-auto w-full`} suppressHydrationWarning>

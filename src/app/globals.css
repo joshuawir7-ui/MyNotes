@@ -56,6 +56,11 @@ button, a, [role="button"] {
 }
 
 :root {
+  --sat: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --sar: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+  --sab: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --sal: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+  --edge-gap: 16px;
   --background: #ffffff;
   --foreground: #171717;
   --card: #ffffff;
@@ -305,8 +310,8 @@ html.perf-no-motion *::after {
 
 /* ── Mobile Bottom Nav — Progressive Multi-Layer Frosted Glass ───────────── */
 .nav-shell{
-  position:fixed; left:12px; right:12px; z-index:50;
-  bottom:calc(16px + env(safe-area-inset-bottom, 0px));
+  position:fixed; left:calc(12px + var(--sal, 0px)); right:calc(12px + var(--sar, 0px)); z-index:50;
+  bottom:calc(16px + var(--sab, 0px));
   height:64px; border-radius:32px; box-sizing:border-box;
   box-shadow:0 14px 34px rgba(20,24,40,.14), 0 3px 10px rgba(20,24,40,.07);
   /* PROHIBIDO en este elemento: overflow, opacity, transform, filter, will-change, mask, clip-path */
