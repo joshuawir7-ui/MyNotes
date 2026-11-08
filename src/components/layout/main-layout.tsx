@@ -31,6 +31,7 @@ import {
 } from "@/lib/perf-debug"
 import { PerfDebugModal } from "@/components/ui/perf-debug-modal"
 import { useIsMobile } from "@/hooks/use-is-mobile"
+import { useIsMobileLandscape } from "@/lib/use-mobile-landscape"
 import { isIdle, whenIdle } from "@/lib/interaction-gate"
 import { timerEngine } from "@/lib/timer-engine"
 
@@ -150,6 +151,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
     const performanceMode = useStore(state => state.performanceMode ?? false)
     const developerMode = useStore(state => state.developerMode ?? false)
+    const isMobileLandscape = useIsMobileLandscape()
 
     useEffect(() => {
         if (typeof document !== 'undefined') {
@@ -899,10 +901,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <FloatingTimer />
 
             <main
-                className="flex-1 max-w-full bg-background text-foreground md:ml-64 pt-4 md:pt-10 pb-32 md:pb-10 overflow-x-hidden"
+                className={`flex-1 max-w-full bg-background text-foreground ${
+                    isMobileLandscape
+                        ? 'ml-[84px] md:ml-[84px] pt-4 pb-10'
+                        : 'md:ml-64 pt-4 md:pt-10 pb-32 md:pb-10'
+                } overflow-x-hidden`}
                 suppressHydrationWarning
             >
-                <div className="px-4 md:px-12 max-w-7xl mx-auto w-full" suppressHydrationWarning>
+                <div className={`px-4 ${isMobileLandscape ? 'max-w-none' : 'md:px-12 max-w-7xl'} mx-auto w-full`} suppressHydrationWarning>
                     {children}
                 </div>
             </main>

@@ -11,6 +11,7 @@ import { translations } from "@/lib/translations"
 import { LanguageToggle } from "@/components/ui/language-toggle"
 import { ModeToggle } from "@/components/ui/mode-toggle"
 import { SettingsDialog } from "@/components/ui/settings-dialog"
+import { useIsMobileLandscape } from "@/lib/use-mobile-landscape"
 import { motion, AnimatePresence } from "framer-motion"
 import {
     Target,
@@ -172,15 +173,31 @@ const AnimatedNotes = ({ isActive, appColor }: { isActive: boolean; appColor?: s
     </div>
 )
 
-const AnimatedWallet = ({ isActive, appColor }: { isActive: boolean; appColor?: string }) => (
-    <div className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}>
-        <Wallet className={`w-5 h-5 ${
-            isActive 
-                ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-emerald-500')
-                : (appColor === 'black' ? 'text-muted-foreground group-hover:text-black dark:group-hover:text-white' : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-emerald-400')
-        }`} />
-    </div>
-)
+const AnimatedWallet = ({ isActive, appColor }: { isActive: boolean; appColor?: string }) => {
+    const [isClicked, setIsClicked] = useState(false)
+
+    return (
+        <div 
+            onClick={() => {
+                setIsClicked(true)
+                setTimeout(() => setIsClicked(false), 450)
+            }}
+            className={`transition-all duration-200 transform-gpu active:scale-90 active:-rotate-12 ${
+                isClicked 
+                    ? 'animate-wallet-click' 
+                    : isActive 
+                        ? 'scale-110 -rotate-12 -translate-y-0.5' 
+                        : 'group-hover:scale-105 group-hover:-rotate-6'
+            }`}
+        >
+            <Wallet className={`w-5 h-5 transition-colors duration-200 ${
+                isActive 
+                    ? (appColor === 'black' ? 'text-black dark:text-white' : 'text-primary dark:text-emerald-500')
+                    : (appColor === 'black' ? 'text-muted-foreground group-hover:text-black dark:group-hover:text-white' : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-emerald-400')
+            }`} />
+        </div>
+    )
+}
 
 export function AppSidebar() {
     const pathname = usePathname()
@@ -195,6 +212,7 @@ export function AppSidebar() {
     const [newProjectTitle, setNewProjectTitle] = useState("")
     const [logoType, setLogoType] = useState<'text' | 'image'>('text')
     const [isMounted, setIsMounted] = useState(false)
+    const isMobileLandscape = useIsMobileLandscape()
 
     const [isMobileDevice, setIsMobileDevice] = useState(false)
     const [isAPK, setIsAPK] = useState(false)
@@ -282,10 +300,48 @@ export function AppSidebar() {
 
     return (
         <>
-            {/* Desktop Sidebar (Hidden on Mobile) */}
-            <aside
-                className="hidden md:flex fixed top-4 bottom-4 left-4 right-auto mx-0 w-60 h-auto border flex-col pt-8 pb-8 px-4 overflow-y-auto bg-white/95 dark:bg-zinc-900/95 shadow-2xl rounded-[2.5rem] border-black/5 dark:border-white/10 z-50 no-scrollbar"
-            >
+            {isMobileLandscape ? (
+                /* Mobile Landscape Contracted Icon-Only Rail */
+                <aside
+                    className="fixed top-3 bottom-3 left-3 w-16 z-50 flex flex-col items-center justify-between py-3 px-2 rounded-[2rem] glass-panel backdrop-blur-2xl bg-white/70 dark:bg-zinc-950/75 border border-black/10 dark:border-white/15 shadow-[0_14px_34px_rgba(20,24,40,.15),0_3px_10px_rgba(20,24,40,.08)] dark:shadow-[0_14px_34px_rgba(0,0,0,.6),0_3px_10px_rgba(0,0,0,.3)] no-scrollbar"
+                >
+                    <nav className="flex flex-col items-center justify-around flex-1 w-full gap-1 py-1">
+                        {navItems.map((item) => {
+                            const isActive = pathname === item.href
+                            const isBlinking = item.href === '/tasks' && tourStep === 0
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    onClick={() => markNavStart(item.href)}
+                                    id={item.href === '/tasks' ? "nav-item-tasks-contracted" : undefined}
+                                    className={`relative w-11 h-11 flex items-center justify-center rounded-2xl transition-all duration-200 active:scale-90 group ${
+                                        isBlinking ? 'animate-pulse-green border border-green-500 bg-green-500/20' : ''
+                                    } ${
+                                        isActive
+                                            ? (appColor === 'black' ? 'bg-black/10 dark:bg-white/15 text-black dark:text-white shadow-sm font-bold' : 'bg-primary/15 text-primary shadow-sm')
+                                            : 'text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10'
+                                    }`}
+                                    title={item.label}
+                                >
+                                    <item.icon isActive={isActive} appColor={appColor} />
+                                </Link>
+                            )
+                        })}
+                    </nav>
+
+                    {/* Settings integrated at bottom of contracted rail */}
+                    <div className="pt-2 border-t border-black/5 dark:border-white/10 w-full flex justify-center shrink-0">
+                        <div className="[&_button]:!border-none [&_button]:!bg-transparent [&_button]:!p-1.5 [&_button]:scale-90 opacity-80 hover:opacity-100 transition-opacity">
+                            <SettingsDialog />
+                        </div>
+                    </div>
+                </aside>
+            ) : (
+                /* Desktop Sidebar (Hidden on Mobile) */
+                <aside
+                    className="hidden md:flex fixed top-4 bottom-4 left-4 right-auto mx-0 w-60 h-auto border flex-col pt-8 pb-8 px-4 overflow-y-auto bg-white/95 dark:bg-zinc-900/95 shadow-2xl rounded-[2.5rem] border-black/5 dark:border-white/10 z-50 no-scrollbar"
+                >
                 {/* Logo/Brand Area (Desktop only) */}
                 <div className="flex flex-col items-center mb-8 shrink-0">
                     <div className="w-24 h-24 flex items-center justify-center mb-2 animate-float relative">
@@ -443,9 +499,10 @@ export function AppSidebar() {
                     <SettingsDialog />
                 </div>
             </aside>
+            )}
 
-            {/* Mobile Bottom Navigation Portal */}
-            {createPortal(
+            {/* Mobile Bottom Navigation Portal (Only in Portrait) */}
+            {!isMobileLandscape && createPortal(
                 <nav className="nav-shell md:hidden" aria-label="Navegación">
                     <div className="nav-glass" data-lite={lite ? "true" : "false"} aria-hidden="true">
                         <i className="bl bl1" /><i className="bl bl2" /><i className="bl bl3" /><i className="bl bl4" />
