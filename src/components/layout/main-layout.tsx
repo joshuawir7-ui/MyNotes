@@ -903,9 +903,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <main
                 className={`flex-1 max-w-full bg-background text-foreground ${
                     isMobileLandscape
-                        ? 'ml-[84px] md:ml-[84px] pt-4 pb-10'
+                        ? 'ml-[150px] md:ml-[150px] pt-4 pb-10'
                         : 'md:ml-64 pt-4 md:pt-10 pb-32 md:pb-10'
                 } overflow-x-hidden`}
+                style={isMobileLandscape ? { marginLeft: 'max(150px, calc(env(safe-area-inset-left, 0px) + 90px))' } : undefined}
                 suppressHydrationWarning
             >
                 <div className={`px-4 ${isMobileLandscape ? 'max-w-none' : 'md:px-12 max-w-7xl'} mx-auto w-full`} suppressHydrationWarning>

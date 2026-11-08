@@ -303,7 +303,8 @@ export function AppSidebar() {
             {isMobileLandscape ? (
                 /* Mobile Landscape Contracted Icon-Only Rail */
                 <aside
-                    className="fixed top-3 bottom-3 left-3 w-16 z-50 flex flex-col items-center justify-between py-3 px-2 rounded-[2rem] glass-panel backdrop-blur-2xl bg-white/70 dark:bg-zinc-950/75 border border-black/10 dark:border-white/15 shadow-[0_14px_34px_rgba(20,24,40,.15),0_3px_10px_rgba(20,24,40,.08)] dark:shadow-[0_14px_34px_rgba(0,0,0,.6),0_3px_10px_rgba(0,0,0,.3)] no-scrollbar"
+                    className="fixed top-3 bottom-3 left-[74px] w-16 z-50 flex flex-col items-center justify-between py-3 px-2 rounded-[2rem] glass-panel backdrop-blur-2xl bg-white/70 dark:bg-zinc-950/75 border border-black/10 dark:border-white/15 shadow-[0_14px_34px_rgba(20,24,40,.15),0_3px_10px_rgba(20,24,40,.08)] dark:shadow-[0_14px_34px_rgba(0,0,0,.6),0_3px_10px_rgba(0,0,0,.3)] no-scrollbar"
+                    style={{ left: 'max(74px, calc(env(safe-area-inset-left, 0px) + 16px))' }}
                 >
                     <nav className="flex flex-col items-center justify-around flex-1 w-full gap-1 py-1">
                         {navItems.map((item) => {
