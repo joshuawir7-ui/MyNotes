@@ -1080,10 +1080,7 @@ body[data-modal-open] .nav-glass .bl{ display:none; }
 }
 
 
-@media (orientation: landscape) and (max-height: 650px) {
-  .nav-shell {
-    display: none !important;
-  }
+@media (orientation: landscape) and (max-height: 500px) {
   .wallet-history-date {
     display: none;
   }
