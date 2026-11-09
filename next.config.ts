@@ -6,11 +6,20 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
+  },
   experimental: {
     workerThreads: false,
     cpus: 1,
     webpackMemoryOptimizations: true,
     serverComponentsHmrCache: true,
+    optimizePackageImports: [
+      "lucide-react",
+      "recharts",
+      "framer-motion",
+      "react-virtuoso",
+    ],
   },
 
   typescript: {

@@ -10,6 +10,17 @@ import { isPipActive, closePictureInPicture } from "@/lib/pip-timer"
 export function FloatingTimer() {
     const [mounted, setMounted] = useState(false)
     const isFloating = useTimerStore(s => s.isFloating)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    if (!mounted || !isFloating || isPipActive()) return null
+
+    return <FloatingTimerContent />
+}
+
+function FloatingTimerContent() {
     const position = useTimerStore(s => s.position)
     const storeSize = useTimerStore(s => s.size)
     const { formatted, isActive } = useTimerRemaining()
@@ -20,14 +31,8 @@ export function FloatingTimer() {
     const [localSize, setLocalSize] = useState(storeSize)
 
     useEffect(() => {
-        setMounted(true)
-    }, [])
-
-    useEffect(() => {
         setLocalSize(storeSize)
     }, [storeSize])
-
-    if (!mounted || !isFloating || isPipActive()) return null
 
     const handleStartPause = () => {
         if (isActive) {

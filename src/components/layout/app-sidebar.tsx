@@ -10,8 +10,23 @@ import { createPortal } from "react-dom"
 import { translations } from "@/lib/translations"
 import { LanguageToggle } from "@/components/ui/language-toggle"
 import { ModeToggle } from "@/components/ui/mode-toggle"
-import { SettingsDialog } from "@/components/ui/settings-dialog"
 import { useIsMobileLandscape } from "@/lib/use-mobile-landscape"
+import dynamic from "next/dynamic"
+
+const SettingsDialog = dynamic(
+    () => import("@/components/ui/settings-dialog").then(m => m.SettingsDialog),
+    {
+        ssr: false,
+        loading: () => (
+            <button
+                type="button"
+                className="flex items-center justify-center p-2 rounded-full text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 hover:text-foreground transition-all duration-300"
+            >
+                <Settings className="w-5 h-5" />
+            </button>
+        )
+    }
+)
 import { motion, AnimatePresence } from "framer-motion"
 import {
     Target,
@@ -30,7 +45,8 @@ import {
     PanelLeftOpen,
     ChevronDown,
     Check,
-    Wallet
+    Wallet,
+    Settings
 } from "lucide-react"
 
 function ShortcutPicker({ value, onChange }: { value?: number, onChange: (val?: number) => void }) {

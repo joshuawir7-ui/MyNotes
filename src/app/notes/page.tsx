@@ -7,7 +7,10 @@ import React, { useState, useEffect, useMemo, memo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Plus, StickyNote, Trash2, Calendar, ArrowUpAZ, ArrowDownAZ, Pin } from "lucide-react"
 import { WelcomeNotesModal } from "@/components/ui/welcome-notes-modal"
-import { NoteEditor, isNoteEmpty } from "@/components/notes/note-editor"
+import { isNoteEmpty } from "@/lib/note-utils"
+import dynamic from "next/dynamic"
+
+const NoteEditor = dynamic(() => import("@/components/notes/note-editor").then(m => m.NoteEditor), { ssr: false })
 import { Reveal } from "@/components/ui/reveal"
 import { translations } from "@/lib/translations"
 import { PageDescription } from "@/components/ui/page-description"

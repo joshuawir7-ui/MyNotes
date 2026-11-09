@@ -11,7 +11,8 @@ import { LanguageToggle } from "@/components/ui/language-toggle"
 import { Capacitor } from "@capacitor/core"
 import { NotificationDialog } from "@/components/ui/notification-dialog"
 import { PriorityReminderSettings } from "@/components/ui/priority-reminder-settings"
-import { PerfDebugModal } from "@/components/ui/perf-debug-modal"
+import dynamic from "next/dynamic"
+const PerfDebugModal = dynamic(() => import("@/components/ui/perf-debug-modal").then(m => m.PerfDebugModal), { ssr: false })
 import { GlassSurface } from "@/components/ui/glass-surface"
 import { useRouter } from "next/navigation"
 import { timerEngine } from '@/lib/timer-engine'

@@ -8,10 +8,7 @@ import { useEffect } from "react"
 import { useTheme } from "next-themes"
 import { FloatingTimer } from "@/components/dashboard/floating-timer"
 import { HabitNotificationToast } from "@/components/ui/habit-notification-toast"
-import { CelebrationModal } from "@/components/ui/celebration-modal"
 import { GlassToast } from "@/components/ui/glass-toast"
-import { CloudPrompt } from "@/components/ui/cloud-prompt"
-import { SyncConflictDialog } from "@/components/ui/sync-conflict-dialog"
 import { motion, AnimatePresence, LayoutGroup, MotionConfig } from "framer-motion"
 import { useState, useRef } from "react"
 import { X, Sparkles, Gauge, CircleHelp } from "lucide-react"
@@ -29,7 +26,12 @@ import {
     getNavMedian,
     PerfFlags
 } from "@/lib/perf-debug"
-import { PerfDebugModal } from "@/components/ui/perf-debug-modal"
+import dynamic from "next/dynamic"
+
+const CelebrationModal = dynamic(() => import("@/components/ui/celebration-modal").then(m => m.CelebrationModal), { ssr: false })
+const CloudPrompt = dynamic(() => import("@/components/ui/cloud-prompt").then(m => m.CloudPrompt), { ssr: false })
+const SyncConflictDialog = dynamic(() => import("@/components/ui/sync-conflict-dialog").then(m => m.SyncConflictDialog), { ssr: false })
+const PerfDebugModal = dynamic(() => import("@/components/ui/perf-debug-modal").then(m => m.PerfDebugModal), { ssr: false })
 import { useIsMobile } from "@/hooks/use-is-mobile"
 import { useIsMobileLandscape } from "@/lib/use-mobile-landscape"
 import { isIdle, whenIdle } from "@/lib/interaction-gate"

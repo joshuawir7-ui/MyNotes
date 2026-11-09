@@ -5,10 +5,6 @@ import { useStore } from "@/lib/store"
 import { usePathname } from "next/navigation"
 
 export function KeyboardShortcuts() {
-    const tasks = useStore(state => state.tasks)
-    const toggleTask = useStore(state => state.toggleTask)
-    const pathname = usePathname()
-
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             // Only trigger if not in an input/textarea
@@ -23,10 +19,8 @@ export function KeyboardShortcuts() {
             const key = parseInt(e.key)
             if (isNaN(key) || key < 1 || key > 9) return
 
-            // Logic to find task:
-            // 1. Check for tasks with manual shortcutKey that matches
-            // 2. If none, check if this key corresponds to the auto-position of a task without manual shortcut
-
+            // Logic to find task using latest store state without subscribing to changes
+            const { tasks, toggleTask } = useStore.getState()
             const today = new Date().toISOString().split('T')[0]
             const todaysTasks = tasks.filter(t => {
                 const isRecurring = t.recurrence !== 'None'
@@ -54,7 +48,7 @@ export function KeyboardShortcuts() {
 
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [tasks, toggleTask])
+    }, [])
 
     return null // Pure logic component
 }
