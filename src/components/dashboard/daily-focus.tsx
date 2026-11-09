@@ -28,21 +28,21 @@ export function DailyFocusWidget() {
         const currentDay = todayDate.getDay()
 
         const todays = tasks.filter(t => {
+            if (t.dueDate && t.dueDate > today) return false
             if (t.recurrence === 'None') return !t.completed || (t.completed && (t.completedDates?.includes(today) ?? false))
-            return true
+            const isActive = t.recurrence === 'Once' || !t.activeDays || t.activeDays.includes(currentDay)
+            return isActive
         })
 
         const completed = todays.filter(t => {
             if (t.recurrence !== 'None') {
-                const isCompleted = t.completedDates?.includes(today) ?? false
-                const isActive = t.recurrence === 'Once' || !t.activeDays || t.activeDays.includes(currentDay)
-                return isCompleted || !isActive
+                return t.completedDates?.includes(today) ?? false
             }
             return t.completed
         }).length
 
-        const total = todays.length || 1
-        const pct = Math.round((completed / total) * 100)
+        const total = todays.length
+        const pct = total > 0 ? Math.round((completed / total) * 100) : 0
         const offset = circumference - (pct / 100) * circumference
 
         return {

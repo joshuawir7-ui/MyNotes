@@ -70,8 +70,7 @@ export function EnhancedTaskList() {
     const isTaskCompleted = (task: any) => {
         if (task.recurrence !== 'None') {
             const isCompleted = task.completedDates?.includes(today) ?? false
-            const isActive = task.recurrence === 'Once' || !task.activeDays || task.activeDays.includes(currentDay)
-            return isCompleted || !isActive
+            return isCompleted
         }
         return task.completed
     }

@@ -14,7 +14,7 @@ import { CloudPrompt } from "@/components/ui/cloud-prompt"
 import { SyncConflictDialog } from "@/components/ui/sync-conflict-dialog"
 import { motion, AnimatePresence, LayoutGroup, MotionConfig } from "framer-motion"
 import { useState, useRef } from "react"
-import { X, Sparkles, Gauge } from "lucide-react"
+import { X, Sparkles, Gauge, CircleHelp } from "lucide-react"
 import { App as CapacitorApp } from "@capacitor/app"
 import { useRouter, usePathname } from "next/navigation"
 import { NotificationManager } from "@/lib/notifications"
@@ -808,7 +808,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         right: 'calc(var(--sar, 0px) + 12px)',
                     }}
                 >
-                    <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse" />
+                    <CircleHelp className="w-3.5 h-3.5 text-primary animate-pulse" />
                     <span>{language === 'es' ? 'Guía' : 'Guide'}</span>
                 </button>
             )}

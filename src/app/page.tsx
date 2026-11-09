@@ -127,23 +127,23 @@ export default function Home() {
     const currentDay = todayDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
 
     const todays = tasks.filter(task => {
+      if (task.dueDate && task.dueDate > today) return false;
       if (task.recurrence === 'None') return !task.completed || (task.completed && (task.completedDates?.includes(today) ?? false));
-      return true;
+      const isActive = task.recurrence === 'Once' || !task.activeDays || task.activeDays.includes(currentDay);
+      return isActive;
     });
 
     const completed = todays.filter(task => {
       if (task.recurrence !== 'None') {
-        const isCompleted = task.completedDates?.includes(today) ?? false;
-        const isActive = task.recurrence === 'Once' || !task.activeDays || task.activeDays.includes(currentDay);
-        return isCompleted || !isActive;
+        return task.completedDates?.includes(today) ?? false;
       }
       return task.completed;
     }).length;
 
-    const total = todays.length || 1;
+    const total = todays.length;
     return {
       todaysTasks: todays,
-      percentage: Math.round((completed / total) * 100)
+      percentage: total > 0 ? Math.round((completed / total) * 100) : 0
     };
   }, [tasks, today]);
   useEffect(() => {

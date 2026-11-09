@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence, Variants } from "framer-motion"
-import { Settings, Bell, X, Download, Upload, Zap, Cloud, LogOut, RefreshCw, Loader2, Sparkles, Type, Plus, Trash2, FolderPlus, Gauge, Code, ExternalLink, Smartphone, ShieldCheck, ShieldAlert, ChevronDown, ChevronUp } from "lucide-react"
+import { Settings, Bell, X, Download, Upload, Zap, Cloud, LogOut, RefreshCw, Loader2, Sparkles, Type, Plus, Trash2, FolderPlus, Gauge, Code, ExternalLink, Smartphone, ShieldCheck, ShieldAlert, ChevronDown, ChevronUp, CircleHelp } from "lucide-react"
 import { useStore, readAllNotesFromDisk, readAllTasksFromDisk, markCloudSyncDirty } from "@/lib/store"
 import { translations } from "@/lib/translations"
 import { ModeToggle } from "@/components/ui/mode-toggle"
@@ -1386,7 +1386,7 @@ export function SettingsDialog() {
                                                 }}
                                                 className="w-full flex items-center justify-center gap-2 p-3 bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black rounded-xl font-bold transition-all text-sm hover:scale-105 active:scale-95 shadow-lg shadow-black/20 dark:shadow-white/10 cursor-pointer"
                                             >
-                                                <Sparkles className="w-4 h-4 text-white dark:text-black animate-pulse" />
+                                                <CircleHelp className="w-4 h-4 text-white dark:text-black animate-pulse" />
                                                 {language === 'es' ? "Iniciar guía interactiva" : "Start interactive guide"}
                                             </button>
                                         </div>

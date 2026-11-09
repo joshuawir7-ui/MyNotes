@@ -2335,15 +2335,17 @@ export const useStore = create<AppState>()(
 
                         const completedCount = newTasks.filter(t => {
                             if (t.recurrence !== 'None') {
-                                const isCompleted = (t.completedDates || []).includes(today);
                                 const isInactive = t.recurrence !== 'Once' && t.activeDays && !t.activeDays.includes(dayOfWeek);
-                                return isCompleted || isInactive;
+                                if (isInactive) return false;
+                                return (t.completedDates || []).includes(today);
                             }
                             return t.completed;
                         }).length;
 
                         const totalCount = newTasks.filter(t => {
                             if (t.recurrence !== 'None') {
+                                const isInactive = t.recurrence !== 'Once' && t.activeDays && !t.activeDays.includes(dayOfWeek);
+                                if (isInactive) return false;
                                 return true;
                             }
                             return t.dueDate === today || (t.completed && (t.completedDates || []).includes(today));
@@ -2401,15 +2403,17 @@ export const useStore = create<AppState>()(
 
                         const completedCount = newTasks.filter(t => {
                             if (t.recurrence !== 'None') {
-                                const isCompleted = (t.completedDates || []).includes(today);
                                 const isInactive = t.recurrence !== 'Once' && t.activeDays && !t.activeDays.includes(dayOfWeek);
-                                return isCompleted || isInactive;
+                                if (isInactive) return false;
+                                return (t.completedDates || []).includes(today);
                             }
                             return t.completed;
                         }).length;
 
                         const totalCount = newTasks.filter(t => {
                             if (t.recurrence !== 'None') {
+                                const isInactive = t.recurrence !== 'Once' && t.activeDays && !t.activeDays.includes(dayOfWeek);
+                                if (isInactive) return false;
                                 return true;
                             }
                             return t.dueDate === today || (t.completed && (t.completedDates || []).includes(today));

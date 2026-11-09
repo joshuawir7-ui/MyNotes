@@ -9,7 +9,7 @@ import { useStore, RecurrenceType, Task, getLocalDateString } from "@/lib/store"
 import { useState, useRef, useEffect, useMemo, memo } from "react"
 import { createPortal } from "react-dom"
 import { GlassSurface } from "@/components/ui/glass-surface"
-import { Plus, Check, Trash2, Camera, X as XIcon, Edit2, Layers, ChevronRight, ChevronDown, History, Pin, Sparkles, RotateCcw, Activity } from "lucide-react"
+import { Plus, Check, Trash2, Camera, X as XIcon, Edit2, Layers, ChevronRight, ChevronDown, History, Pin, Sparkles, RotateCcw, Activity, CircleHelp } from "lucide-react"
 import { WeeklyProgressChart } from "@/components/dashboard/weekly-progress-chart"
 import { Reveal } from "@/components/ui/reveal"
 import { Virtuoso } from "react-virtuoso"
@@ -918,7 +918,7 @@ export default function TasksPage() {
                                         }}
                                         className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 rounded-xl text-xs font-bold flex items-center gap-1.5 text-primary hover:text-primary transition-all active:scale-95 shadow-sm cursor-pointer"
                                     >
-                                        <Sparkles className="w-3.5 h-3.5" />
+                                        <CircleHelp className="w-3.5 h-3.5" />
                                         {language === 'es' ? 'Guía' : 'Guide'}
                                     </button>
                                 )}
@@ -2075,7 +2075,7 @@ const HabitCard = memo(({
     const todayObj = new Date()
     const currentDay = todayObj.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
     const isTodayActive = habit.recurrence === 'None' || habit.recurrence === 'Once' || !habit.activeDays || habit.activeDays.includes(currentDay)
-    const displayCompleted = isCompleted || !isTodayActive
+    const displayCompleted = isCompleted && isTodayActive
 
     const handleCardClick = (e: React.MouseEvent) => {
         if (!isTodayActive) return;
@@ -2148,8 +2148,8 @@ const HabitCard = memo(({
                                     whileTap={isTodayActive ? { scale: 0.9 } : {}}
                                     animate={{
                                         scale: displayCompleted ? [1, 1.05, 1] : 1,
-                                        backgroundColor: !isTodayActive ? "rgb(115, 115, 115)" : displayCompleted ? "rgb(34, 197, 94)" : "transparent",
-                                        borderColor: !isTodayActive ? "rgb(115, 115, 115)" : displayCompleted ? "rgb(34, 197, 94)" : habit.habitType === 'bad' ? "rgb(255, 255, 255)" : "rgb(115, 115, 115)"
+                                        backgroundColor: !isTodayActive ? "rgba(115, 115, 115, 0.08)" : displayCompleted ? "rgb(34, 197, 94)" : "transparent",
+                                        borderColor: !isTodayActive ? "rgba(115, 115, 115, 0.35)" : displayCompleted ? "rgb(34, 197, 94)" : habit.habitType === 'bad' ? "rgb(255, 255, 255)" : "rgb(115, 115, 115)"
                                     }}
                                     transition={{
                                         duration: 0.3,
@@ -2157,7 +2157,7 @@ const HabitCard = memo(({
                                     }}
                                     className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 relative z-10
                                  ${!isTodayActive
-                                            ? 'text-black opacity-50 cursor-not-allowed'
+                                            ? 'text-zinc-400 opacity-60 cursor-not-allowed'
                                             : displayCompleted
                                                 ? 'text-black shadow-[0_0_20px_rgba(34,197,94,0.4)]'
                                                 : habit.habitType === 'bad'
@@ -2166,7 +2166,17 @@ const HabitCard = memo(({
                                         }`}
                                 >
                                     <AnimatePresence mode="wait">
-                                        {displayCompleted ? (
+                                        {!isTodayActive ? (
+                                            <motion.div
+                                                key="inactive"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                className="flex items-center justify-center"
+                                            >
+                                                <div className="w-3 h-0.5 bg-zinc-400 dark:bg-zinc-500 rounded-full" />
+                                            </motion.div>
+                                        ) : displayCompleted ? (
                                             <motion.div
                                                 key="checked"
                                                 initial={{ scale: 0, rotate: -45 }}

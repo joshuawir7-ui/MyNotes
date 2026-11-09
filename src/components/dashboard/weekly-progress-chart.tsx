@@ -188,12 +188,15 @@ export function WeeklyProgressChart() {
             let completed = 0;
             let total = 0;
 
-            // 1. Process recurring tasks (habits) - always evaluated for every day
+            // 1. Process recurring tasks (habits) - only evaluated if active on this dayOfWeek
             recurringTasks.forEach((t) => {
+                const isInactive = t.recurrence !== 'Once' && t.activeDaysSet && !t.activeDaysSet.has(dayOfWeek);
+                if (isInactive) {
+                    return; // Inactive on this day: does not add or subtract (as if it didn't exist)
+                }
                 total++;
                 const isCompleted = t.completedDatesSet.has(dateStr);
-                const isInactive = t.recurrence !== 'Once' && t.activeDaysSet && !t.activeDaysSet.has(dayOfWeek);
-                if (isCompleted || isInactive) {
+                if (isCompleted) {
                     completed++;
                 }
             });
