@@ -1128,6 +1128,28 @@ html.mobile-landscape .nav-shell {
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
   transition: box-shadow 0.15s, outline 0.1s;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  touch-action: none !important;
+}
+
+.rich-text-editor img::selection,
+.rich-text-editor video::selection,
+.rich-text-editor [data-inline-img]::selection,
+.note-image-block-resizable img::selection {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+.rich-text-editor video {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  touch-action: none !important;
 }
 
 .rich-text-editor img.note-img-selected {

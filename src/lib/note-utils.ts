@@ -48,3 +48,4 @@ export const isNoteEmpty = (titleStr: any, blocksList: NoteBlock[]): boolean => 
     }
     return true;
 };
+

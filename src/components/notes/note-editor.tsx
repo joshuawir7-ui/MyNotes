@@ -11,7 +11,7 @@ import { translations } from "@/lib/translations"
 import { motion, AnimatePresence } from "framer-motion"
 import { App as CapacitorApp } from "@capacitor/app"
 import { Capacitor } from "@capacitor/core"
-import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation, Film, PictureInPicture, Download, Loader2 } from "lucide-react"
+import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation, Film, PictureInPicture, Download, Loader2, Move, Maximize2 } from "lucide-react"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { GlassSurface } from "@/components/ui/glass-surface"
 import { getOrCreateBackupFolderStructure, getTargetSubfolderId } from "@/lib/drive-folder-manager"
@@ -911,9 +911,9 @@ export async function persistAndBuildMediaHtml(file: File, isVideo: boolean): Pr
     }
 
     if (isVideo) {
-        return `<video src="${displaySrc}" data-local-uri="${persistentUri}" data-inline-video="1" controls playsinline preload="metadata" style="max-width:100%;border-radius:12px;margin:4px 0;"></video>`;
+        return `<video src="${displaySrc}" data-local-uri="${persistentUri}" data-inline-video="1" controls playsinline preload="metadata" contenteditable="false" draggable="false" style="max-width:100%;border-radius:12px;margin:4px 0;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none;"></video>`;
     }
-    return `<img src="${displaySrc}" data-local-uri="${persistentUri}" data-inline-img="1" style="display:inline-block;vertical-align:top;width:48%;max-width:100%;margin:4px;border-radius:12px;cursor:pointer;" alt="imagen" />`;
+    return `<img src="${displaySrc}" data-local-uri="${persistentUri}" data-inline-img="1" contenteditable="false" draggable="false" style="display:inline-block;vertical-align:top;width:48%;max-width:100%;margin:4px;border-radius:12px;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-user-drag:none;touch-action:none;" alt="imagen" />`;
 }
 
 /**
@@ -988,6 +988,8 @@ export async function resolveInlineImages(container: HTMLElement | null) {
 
     for (let i = 0; i < imgElements.length; i++) {
         const img = imgElements[i];
+        if (!img.hasAttribute('contenteditable')) img.setAttribute('contenteditable', 'false');
+        if (!img.hasAttribute('draggable')) img.setAttribute('draggable', 'false');
         const localUri = img.getAttribute('data-local-uri');
         const currentSrc = img.getAttribute('src') || '';
 
@@ -1372,10 +1374,11 @@ function InlineSeparatorButton({ language }: { language: string }) {
  * - Prominent Delete button 🗑️
  * - 2D free relative offset drag positioning & corner/side resizing for both images and videos!
  */
-function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
+function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
     mediaEl: HTMLElement;
     onClose: () => void;
     editorRef: React.RefObject<HTMLDivElement>;
+    onImageClick?: (url: string) => void;
 }) {
     const [rect, setRect] = useState(() => mediaEl.getBoundingClientRect());
     const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
@@ -1384,8 +1387,8 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
     const borderCol = isDark ? '#a1a1aa' : '#71717a';
     const handleBg = isDark ? '#e4e4e7' : '#71717a';
     const handleBorder = isDark ? '#27272a' : '#ffffff';
-    const moveBg = isDark ? 'rgba(228,228,231,0.92)' : 'rgba(113,113,122,0.92)';
-    const moveColor = isDark ? '#18181b' : '#ffffff';
+    const moveBg = isDark ? 'rgba(24,24,27,0.85)' : 'rgba(255,255,255,0.92)';
+    const moveColor = isDark ? '#f4f4f5' : '#18181b';
 
     const dragRef = useRef<{
         mode: 'resize' | 'move';
@@ -1424,7 +1427,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
     useEffect(() => {
         const handler = (e: PointerEvent) => {
             const target = e.target as HTMLElement;
-            if (!mediaEl.contains(target) && target !== mediaEl && !target.closest('.img-overlay-toolbar')) {
+            if (!mediaEl.contains(target) && target !== mediaEl && !target.closest('.img-overlay-toolbar') && !target.closest('.note-image-overlay-box')) {
                 onClose();
             }
         };
@@ -1499,9 +1502,15 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
         };
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
 
-        // Ghost preview
+        // Ghost preview with cloned image thumbnail following finger
         const ghost = document.createElement('div');
-        ghost.style.cssText = `position:fixed;pointer-events:none;z-index:99999;background:${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(113,113,122,0.2)'};border:2px dashed ${borderCol};border-radius:14px;width:${elRect.width}px;height:${elRect.height}px;top:${elRect.top}px;left:${elRect.left}px;box-shadow:0 8px 24px rgba(0,0,0,0.25);`;
+        ghost.style.cssText = `position:fixed;pointer-events:none;z-index:99999;border:2px dashed ${borderCol};border-radius:14px;width:${elRect.width}px;height:${elRect.height}px;top:${elRect.top}px;left:${elRect.left}px;box-shadow:0 12px 32px rgba(0,0,0,0.35);overflow:hidden;opacity:0.85;`;
+        if (mediaEl.tagName === 'IMG') {
+            const cloneImg = document.createElement('img');
+            cloneImg.src = (mediaEl as HTMLImageElement).src;
+            cloneImg.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;';
+            ghost.appendChild(cloneImg);
+        }
         document.body.appendChild(ghost);
         ghostRef.current = ghost;
         mediaEl.style.opacity = '0.35';
@@ -1511,8 +1520,16 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
         if (!dragRef.current) return;
         const { mode, handle, startX, startY, startW } = dragRef.current;
         if (mode === 'resize') {
-            let delta = e.clientX - startX;
-            if (handle === 'bl' || handle === 'tl') delta = -delta;
+            let delta = 0;
+            if (handle === 'r' || handle === 'br' || handle === 'tr') {
+                delta = e.clientX - startX;
+            } else if (handle === 'l' || handle === 'bl' || handle === 'tl') {
+                delta = -(e.clientX - startX);
+            } else if (handle === 'b' || handle === 'bm') {
+                delta = e.clientY - startY;
+            } else if (handle === 't' || handle === 'tm') {
+                delta = -(e.clientY - startY);
+            }
             const parentW = mediaEl.parentElement?.getBoundingClientRect().width || startW;
             const newW = Math.max(60, Math.min(parentW * 1.5, startW + delta));
             mediaEl.style.width = `${Math.round(newW)}px`;
@@ -1555,17 +1572,16 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
     };
 
     const PAD = 6;
-    // Smaller 14px handles in sleek medium gray (NO pure black)
     const handleStyle = (extra: React.CSSProperties = {}): React.CSSProperties => ({
         position: 'absolute',
-        width: 14, height: 14,
+        width: 18, height: 18,
         background: handleBg,
         border: `2px solid ${handleBorder}`,
         borderRadius: '50%',
         pointerEvents: 'all',
         touchAction: 'none',
         boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-        zIndex: 10,
+        zIndex: 30,
         ...extra,
     });
 
@@ -1576,14 +1592,20 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
         >
-            <div style={{
-                position: 'absolute',
-                left: rect.left - PAD,
-                top: rect.top - PAD,
-                width: rect.width + PAD * 2,
-                height: rect.height + PAD * 2,
-                pointerEvents: 'none',
-            }}>
+            <div
+                className="note-image-overlay-box"
+                style={{
+                    position: 'absolute',
+                    left: rect.left - PAD,
+                    top: rect.top - PAD,
+                    width: rect.width + PAD * 2,
+                    height: rect.height + PAD * 2,
+                    pointerEvents: 'all',
+                    touchAction: 'none',
+                    cursor: 'grab',
+                }}
+                onPointerDown={handleMoveStart}
+            >
                 {/* Selection border — sleek medium gray */}
                 <div style={{
                     position: 'absolute', inset: 0,
@@ -1596,9 +1618,10 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
                 {/* Floating alignment & action bar above image */}
                 <div
                     className="img-overlay-toolbar"
+                    onPointerDown={e => e.stopPropagation()}
                     style={{
                         position: 'absolute',
-                        top: -44,
+                        top: -46,
                         left: '50%',
                         transform: 'translateX(-50%)',
                         background: isDark ? '#18181b' : '#ffffff',
@@ -1610,7 +1633,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
                         gap: 4,
                         boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
                         pointerEvents: 'all',
-                        zIndex: 30,
+                        zIndex: 40,
                     }}
                 >
                     <button
@@ -1642,6 +1665,19 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
                         ⇄
                     </button>
 
+                    {onImageClick && (
+                        <button
+                            onClick={() => {
+                                const src = mediaEl.getAttribute('data-local-uri') || (mediaEl as HTMLImageElement).currentSrc || (mediaEl as HTMLImageElement).src;
+                                if (src) onImageClick(src);
+                            }}
+                            style={{ padding: 4, borderRadius: 6, color: isDark ? '#e4e4e7' : '#27272a' }}
+                            title="Pantalla completa"
+                        >
+                            <Maximize2 className="w-4 h-4" />
+                        </button>
+                    )}
+
                     <div style={{ width: 1, height: 16, background: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)', margin: '0 2px' }} />
 
                     {/* Delete button */}
@@ -1665,29 +1701,29 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
                     </button>
                 </div>
 
-                {/* Move handle — center */}
+                {/* Move badge — center indicator */}
                 <div
                     style={{
                         position: 'absolute',
                         top: '50%', left: '50%',
                         transform: 'translate(-50%,-50%)',
-                        width: 36, height: 36,
+                        padding: '6px 12px',
                         background: moveBg,
-                        border: `2px solid ${handleBorder}`,
-                        borderRadius: '50%',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        cursor: 'grab',
-                        pointerEvents: 'all',
-                        touchAction: 'none',
-                        boxShadow: '0 3px 10px rgba(0,0,0,0.3)',
+                        border: `1.5px solid ${handleBorder}`,
+                        borderRadius: 20,
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
                         color: moveColor,
-                        fontSize: 18,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        pointerEvents: 'none',
                         userSelect: 'none',
                         zIndex: 20,
                     }}
-                    onPointerDown={handleMoveStart}
-                    title="Mover"
-                >✥</div>
+                >
+                    <Move className="w-4 h-4" />
+                    <span>Mover</span>
+                </div>
 
                 {/* Width label */}
                 <div style={{
@@ -1697,14 +1733,39 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef }: {
                     padding: '2px 6px', borderRadius: 8, pointerEvents: 'none',
                 }}>{Math.round(rect.width)}px</div>
 
-                {/* Corner resize handles (14px diameter) */}
-                <div style={handleStyle({ top: -3, left: -3, cursor: 'nw-resize' })} onPointerDown={e => handleResizeStart(e, 'tl')} />
-                <div style={handleStyle({ top: -3, right: -3, cursor: 'ne-resize' })} onPointerDown={e => handleResizeStart(e, 'tr')} />
-                <div style={handleStyle({ bottom: -3, left: -3, cursor: 'sw-resize' })} onPointerDown={e => handleResizeStart(e, 'bl')} />
-                <div style={handleStyle({ bottom: -3, right: -3, cursor: 'se-resize' })} onPointerDown={e => handleResizeStart(e, 'br')} />
-                {/* Edge mid handles */}
-                <div style={handleStyle({ top: -3, left: 'calc(50% - 7px)', cursor: 'n-resize' })} onPointerDown={e => handleResizeStart(e, 'tm')} />
-                <div style={handleStyle({ bottom: -3, left: 'calc(50% - 7px)', cursor: 's-resize' })} onPointerDown={e => handleResizeStart(e, 'bm')} />
+                {/* Edge resize strips (generous touch targets) */}
+                {/* Right border strip */}
+                <div
+                    style={{ position: 'absolute', top: 12, bottom: 12, right: -8, width: 22, cursor: 'ew-resize', touchAction: 'none', zIndex: 25 }}
+                    onPointerDown={e => handleResizeStart(e, 'r')}
+                />
+                {/* Left border strip */}
+                <div
+                    style={{ position: 'absolute', top: 12, bottom: 12, left: -8, width: 22, cursor: 'ew-resize', touchAction: 'none', zIndex: 25 }}
+                    onPointerDown={e => handleResizeStart(e, 'l')}
+                />
+                {/* Bottom border strip */}
+                <div
+                    style={{ position: 'absolute', left: 12, right: 12, bottom: -8, height: 22, cursor: 'ns-resize', touchAction: 'none', zIndex: 25 }}
+                    onPointerDown={e => handleResizeStart(e, 'b')}
+                />
+                {/* Top border strip */}
+                <div
+                    style={{ position: 'absolute', left: 12, right: 12, top: -8, height: 22, cursor: 'ns-resize', touchAction: 'none', zIndex: 25 }}
+                    onPointerDown={e => handleResizeStart(e, 't')}
+                />
+
+                {/* Corner resize handle dots (18px diameter) */}
+                <div style={handleStyle({ top: -5, left: -5, cursor: 'nwse-resize' })} onPointerDown={e => handleResizeStart(e, 'tl')} />
+                <div style={handleStyle({ top: -5, right: -5, cursor: 'nesw-resize' })} onPointerDown={e => handleResizeStart(e, 'tr')} />
+                <div style={handleStyle({ bottom: -5, left: -5, cursor: 'nesw-resize' })} onPointerDown={e => handleResizeStart(e, 'bl')} />
+                <div style={handleStyle({ bottom: -5, right: -5, cursor: 'nwse-resize' })} onPointerDown={e => handleResizeStart(e, 'br')} />
+
+                {/* Edge mid handle dots */}
+                <div style={handleStyle({ top: -5, left: 'calc(50% - 9px)', cursor: 'ns-resize' })} onPointerDown={e => handleResizeStart(e, 't')} />
+                <div style={handleStyle({ bottom: -5, left: 'calc(50% - 9px)', cursor: 'ns-resize' })} onPointerDown={e => handleResizeStart(e, 'b')} />
+                <div style={handleStyle({ top: 'calc(50% - 9px)', left: -5, cursor: 'ew-resize' })} onPointerDown={e => handleResizeStart(e, 'l')} />
+                <div style={handleStyle({ top: 'calc(50% - 9px)', right: -5, cursor: 'ew-resize' })} onPointerDown={e => handleResizeStart(e, 'r')} />
             </div>
         </div>,
         document.body
@@ -2010,38 +2071,9 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                         className={`note-image-block-resizable ${isResizingActive ? 'img-resizing' : ''}`}
                         style={{ width: imgWidth ? `${imgWidth}px` : '100%' }}
                         onPointerDown={(e) => {
-                            if (e.pointerType === 'touch' && hasImage && !isDownloading) {
-                                touchStartPosRef.current = { x: e.clientX, y: e.clientY };
-                                suppressClickRef.current = false;
-                                if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                                longPressTimerRef.current = setTimeout(() => {
-                                    suppressClickRef.current = true;
-                                    try { navigator.vibrate?.([40]); } catch (_) {}
-                                    setIsResizingActive(true);
-                                    setShowControls(true);
-                                }, 450);
-                            }
-                        }}
-                        onPointerMoveCapture={(e) => {
-                            if (longPressTimerRef.current && touchStartPosRef.current) {
-                                const dx = Math.abs(e.clientX - touchStartPosRef.current.x);
-                                const dy = Math.abs(e.clientY - touchStartPosRef.current.y);
-                                if (dx > 10 || dy > 10) {
-                                    clearTimeout(longPressTimerRef.current);
-                                    longPressTimerRef.current = null;
-                                }
-                            }
-                        }}
-                        onPointerUpCapture={() => {
-                            if (longPressTimerRef.current) {
-                                clearTimeout(longPressTimerRef.current);
-                                longPressTimerRef.current = null;
-                            }
-                        }}
-                        onPointerCancelCapture={() => {
-                            if (longPressTimerRef.current) {
-                                clearTimeout(longPressTimerRef.current);
-                                longPressTimerRef.current = null;
+                            if (hasImage && !isDownloading) {
+                                setIsResizingActive(true);
+                                setShowControls(true);
                             }
                         }}
                         onContextMenu={(e) => {
@@ -2084,16 +2116,16 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                                 src={imageSrc}
                                 alt="Imagen adjunta"
                                 className="cursor-pointer select-none"
+                                draggable={false}
                                 onDoubleClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
                                     if (!isDownloading) onImageClick?.(block.content);
                                 }}
-                                onClick={() => {
-                                    if (!isDownloading && !suppressClickRef.current) {
-                                        onImageClick?.(block.content);
-                                    }
-                                    suppressClickRef.current = false;
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsResizingActive(prev => !prev);
+                                    setShowControls(prev => !prev);
                                 }}
                                 onError={() => { if (usingThumb) setThumbFailed(true); else setImageError(true); }}
                             />
@@ -3957,23 +3989,10 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
         // Handle inline image or video clicks
         const media = target.closest('img, video') as HTMLElement | null;
         if (media) {
-            if (media.tagName !== 'VIDEO') {
-                e.preventDefault();
-                hideKeyboard();
-                if (suppressNextClickRef.current) {
-                    suppressNextClickRef.current = false;
-                    return;
-                }
-                const src = media.getAttribute('data-local-uri') || (media as HTMLImageElement).currentSrc || (media as HTMLImageElement).src;
-                if (src && onImageClick) {
-                    onImageClick(src);
-                    return;
-                }
-            } else {
-                hideKeyboard();
-                setSelectedMedia(media);
-                return;
-            }
+            e.preventDefault();
+            hideKeyboard();
+            setSelectedMedia(media);
+            return;
         }
         // Handle inline task checkbox toggling inside text block
         const taskBox = target.closest('[data-inline-task]') as HTMLElement | null;
@@ -4067,38 +4086,11 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                 onPointerDown={(e) => {
                     const target = e.target as HTMLElement;
                     const media = target.closest('img, video') as HTMLElement | null;
-                    if (media && e.pointerType === 'touch') {
-                        touchStartPosRef.current = { x: e.clientX, y: e.clientY };
-                        suppressNextClickRef.current = false;
-                        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                        longPressTimerRef.current = setTimeout(() => {
-                            suppressNextClickRef.current = true;
-                            try { navigator.vibrate?.([40]); } catch (_) {}
-                            hideKeyboard();
-                            setSelectedMedia(media);
-                        }, 450);
-                    }
-                }}
-                onPointerMoveCapture={(e) => {
-                    if (longPressTimerRef.current && touchStartPosRef.current) {
-                        const dx = Math.abs(e.clientX - touchStartPosRef.current.x);
-                        const dy = Math.abs(e.clientY - touchStartPosRef.current.y);
-                        if (dx > 10 || dy > 10) {
-                            clearTimeout(longPressTimerRef.current);
-                            longPressTimerRef.current = null;
-                        }
-                    }
-                }}
-                onPointerUpCapture={() => {
-                    if (longPressTimerRef.current) {
-                        clearTimeout(longPressTimerRef.current);
-                        longPressTimerRef.current = null;
-                    }
-                }}
-                onPointerCancelCapture={() => {
-                    if (longPressTimerRef.current) {
-                        clearTimeout(longPressTimerRef.current);
-                        longPressTimerRef.current = null;
+                    if (media) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        hideKeyboard();
+                        setSelectedMedia(media);
                     }
                 }}
                 onContextMenu={(e) => {
@@ -4119,6 +4111,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                     mediaEl={selectedMedia}
                     onClose={() => setSelectedMedia(null)}
                     editorRef={editorRef as React.RefObject<HTMLDivElement>}
+                    onImageClick={onImageClick}
                 />
             )}
         </>
