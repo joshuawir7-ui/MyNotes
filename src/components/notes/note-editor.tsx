@@ -948,7 +948,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
             </AnimatePresence>
             {fullscreenImageUrl && (
                 <div
-                    className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-in fade-in duration-200 select-none cursor-pointer"
+                    className="fixed inset-0 z-[100100] flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-in fade-in duration-200 select-none cursor-pointer"
                     style={{
                         backdropFilter: "blur(28px)",
                         WebkitBackdropFilter: "blur(28px)"
@@ -1540,11 +1540,13 @@ function InlineSeparatorButton({ language }: { language: string }) {
  * - Prominent Delete button 🗑️
  * - 2D free relative offset drag positioning & corner/side resizing for both images and videos!
  */
-function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
+function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTriggerSave, initialPointer }: {
     mediaEl: HTMLElement;
     onClose: () => void;
     editorRef: React.RefObject<HTMLDivElement>;
     onImageClick?: (url: string) => void;
+    onTriggerSave?: () => void;
+    initialPointer?: { clientX: number; clientY: number; time: number } | null;
 }) {
     const [rect, setRect] = useState(() => mediaEl.getBoundingClientRect());
     const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
@@ -1553,7 +1555,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
     const borderCol = isDark ? '#a1a1aa' : '#71717a';
     const handleBg = isDark ? '#e4e4e7' : '#71717a';
     const handleBorder = isDark ? '#27272a' : '#ffffff';
-    const moveBg = isDark ? 'rgba(24,24,27,0.85)' : 'rgba(255,255,255,0.92)';
+    const moveBg = isDark ? 'rgba(24,24,27,0.88)' : 'rgba(255,255,255,0.94)';
     const moveColor = isDark ? '#f4f4f5' : '#18181b';
 
     const dragRef = useRef<{
@@ -1562,10 +1564,21 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
         startX: number;
         startY: number;
         startW: number;
-        startLeft?: number;
-        startTop?: number;
+        startLeft: number;
+        startTop: number;
+        hasMoved: boolean;
     } | null>(null);
-    const ghostRef = useRef<HTMLDivElement | null>(null);
+
+    const triggerSave = useCallback(() => {
+        if (onTriggerSave) {
+            onTriggerSave();
+        } else {
+            editorRef.current?.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (mediaEl.isConnected) {
+            setRect(mediaEl.getBoundingClientRect());
+        }
+    }, [editorRef, mediaEl, onTriggerSave]);
 
     // Keep rect synced with scroll/resize
     useEffect(() => {
@@ -1576,6 +1589,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
             }
             setRect(mediaEl.getBoundingClientRect());
         };
+        update();
         window.addEventListener('scroll', update, true);
         window.addEventListener('resize', update);
         return () => {
@@ -1584,22 +1598,144 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
         };
     }, [mediaEl, onClose]);
 
+    // If user initiated selection via pointerDown/touchStart on the image itself, allow immediate drag/resize without lifting finger
+    useEffect(() => {
+        if (!initialPointer || Date.now() - initialPointer.time > 500) return;
+        const elRect = mediaEl.getBoundingClientRect();
+        if (elRect.width <= 0 || elRect.height <= 0) return;
+
+        const { clientX, clientY } = initialPointer;
+        const EDGE = 24;
+        const nearLeft = Math.abs(clientX - elRect.left) <= EDGE;
+        const nearRight = Math.abs(clientX - elRect.right) <= EDGE;
+        const nearTop = Math.abs(clientY - elRect.top) <= EDGE;
+        const nearBottom = Math.abs(clientY - elRect.bottom) <= EDGE;
+
+        let handle = '';
+        if (nearTop && nearLeft) handle = 'tl';
+        else if (nearTop && nearRight) handle = 'tr';
+        else if (nearBottom && nearLeft) handle = 'bl';
+        else if (nearBottom && nearRight) handle = 'br';
+        else if (nearLeft) handle = 'l';
+        else if (nearRight) handle = 'r';
+        else if (nearTop) handle = 't';
+        else if (nearBottom) handle = 'b';
+
+        const currentLeft = parseFloat(mediaEl.style.left || '0') || 0;
+        const currentTop = parseFloat(mediaEl.style.top || '0') || 0;
+
+        dragRef.current = {
+            mode: handle ? 'resize' : 'move',
+            handle: handle || 'center',
+            startX: clientX,
+            startY: clientY,
+            startW: elRect.width,
+            startLeft: currentLeft,
+            startTop: currentTop,
+            hasMoved: false,
+        };
+    }, [initialPointer, mediaEl]);
+
+    // Global window pointer/touch tracking so dragging works seamlessly on Android WebView
+    useEffect(() => {
+        const applyMoveOrResize = (clientX: number, clientY: number) => {
+            const activeDrag = dragRef.current;
+            if (!activeDrag || !mediaEl.isConnected) return;
+
+            const dx = clientX - activeDrag.startX;
+            const dy = clientY - activeDrag.startY;
+            if (!activeDrag.hasMoved && Math.hypot(dx, dy) < 5) return;
+            activeDrag.hasMoved = true;
+
+            if (activeDrag.mode === 'resize') {
+                const { handle, startW } = activeDrag;
+                let delta = 0;
+                if (handle === 'r' || handle === 'br' || handle === 'tr') {
+                    delta = dx;
+                } else if (handle === 'l' || handle === 'bl' || handle === 'tl') {
+                    delta = -dx;
+                } else if (handle === 'b' || handle === 'bm') {
+                    delta = dy;
+                } else if (handle === 't' || handle === 'tm') {
+                    delta = -dy;
+                }
+                const editorW = editorRef.current?.getBoundingClientRect().width || (window.innerWidth - 40);
+                const newW = Math.max(55, Math.min(editorW, startW + delta));
+                mediaEl.style.width = `${Math.round(newW)}px`;
+                mediaEl.style.maxWidth = '100%';
+                mediaEl.style.height = 'auto';
+                setRect(mediaEl.getBoundingClientRect());
+            } else if (activeDrag.mode === 'move') {
+                const newLeft = activeDrag.startLeft + dx;
+                const newTop = activeDrag.startTop + dy;
+                mediaEl.style.position = 'relative';
+                mediaEl.style.left = `${Math.round(newLeft)}px`;
+                mediaEl.style.top = `${Math.round(newTop)}px`;
+                mediaEl.style.zIndex = '20';
+                mediaEl.style.display = 'inline-block';
+                setRect(mediaEl.getBoundingClientRect());
+            }
+        };
+
+        const finishDrag = () => {
+            const activeDrag = dragRef.current;
+            if (!activeDrag) return;
+            const didMove = activeDrag.hasMoved;
+            dragRef.current = null;
+            mediaEl.style.opacity = '1';
+            if (didMove) {
+                triggerSave();
+            } else if (mediaEl.isConnected) {
+                setRect(mediaEl.getBoundingClientRect());
+            }
+        };
+
+        const onWinPointerMove = (e: PointerEvent) => {
+            if (!dragRef.current) return;
+            e.preventDefault();
+            applyMoveOrResize(e.clientX, e.clientY);
+        };
+
+        const onWinTouchMove = (e: TouchEvent) => {
+            if (!dragRef.current || e.touches.length === 0) return;
+            if (e.cancelable) e.preventDefault();
+            const touch = e.touches[0];
+            applyMoveOrResize(touch.clientX, touch.clientY);
+        };
+
+        const onWinPointerUp = () => finishDrag();
+        const onWinTouchEnd = () => finishDrag();
+
+        window.addEventListener('pointermove', onWinPointerMove, { passive: false });
+        window.addEventListener('pointerup', onWinPointerUp);
+        window.addEventListener('pointercancel', onWinPointerUp);
+        window.addEventListener('touchmove', onWinTouchMove, { passive: false });
+        window.addEventListener('touchend', onWinTouchEnd);
+        window.addEventListener('touchcancel', onWinTouchEnd);
+
+        return () => {
+            window.removeEventListener('pointermove', onWinPointerMove);
+            window.removeEventListener('pointerup', onWinPointerUp);
+            window.removeEventListener('pointercancel', onWinPointerUp);
+            window.removeEventListener('touchmove', onWinTouchMove);
+            window.removeEventListener('touchend', onWinTouchEnd);
+            window.removeEventListener('touchcancel', onWinTouchEnd);
+        };
+    }, [editorRef, mediaEl, triggerSave]);
+
     // Dismiss on tap outside
     useEffect(() => {
         const handler = (e: PointerEvent) => {
+            if (dragRef.current?.hasMoved) return;
             const target = e.target as HTMLElement;
+            if (!target) return;
             if (!mediaEl.contains(target) && target !== mediaEl && !target.closest('.img-overlay-toolbar') && !target.closest('.note-image-overlay-box')) {
                 onClose();
             }
         };
-        const t = setTimeout(() => document.addEventListener('pointerdown', handler), 120);
+        const t = setTimeout(() => document.addEventListener('pointerdown', handler), 180);
         return () => { clearTimeout(t); document.removeEventListener('pointerdown', handler); };
     }, [mediaEl, onClose]);
-
-    const triggerSave = () => {
-        editorRef.current?.dispatchEvent(new Event('input', { bubbles: true }));
-        setRect(mediaEl.getBoundingClientRect());
-    };
 
     const handleDelete = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -1638,120 +1774,66 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
     };
 
     const handleResizeStart = (e: React.PointerEvent, handle: string) => {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
+        const currentLeft = parseFloat(mediaEl.style.left || '0') || 0;
+        const currentTop = parseFloat(mediaEl.style.top || '0') || 0;
         dragRef.current = {
-            mode: 'resize', handle,
-            startX: e.clientX, startY: e.clientY,
+            mode: 'resize',
+            handle,
+            startX: e.clientX,
+            startY: e.clientY,
             startW: mediaEl.getBoundingClientRect().width,
+            startLeft: currentLeft,
+            startTop: currentTop,
+            hasMoved: false,
         };
-        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        try {
+            (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        } catch {}
     };
 
     const handleMoveStart = (e: React.PointerEvent) => {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
         const elRect = mediaEl.getBoundingClientRect();
-
         const currentLeft = parseFloat(mediaEl.style.left || '0') || 0;
         const currentTop = parseFloat(mediaEl.style.top || '0') || 0;
 
         dragRef.current = {
-            mode: 'move', handle: 'center',
-            startX: e.clientX, startY: e.clientY,
+            mode: 'move',
+            handle: 'center',
+            startX: e.clientX,
+            startY: e.clientY,
             startW: elRect.width,
             startLeft: currentLeft,
             startTop: currentTop,
+            hasMoved: false,
         };
-        (e.target as HTMLElement).setPointerCapture(e.pointerId);
-
-        // Ghost preview with cloned image thumbnail following finger
-        const ghost = document.createElement('div');
-        ghost.style.cssText = `position:fixed;pointer-events:none;z-index:99999;border:2px dashed ${borderCol};border-radius:14px;width:${elRect.width}px;height:${elRect.height}px;top:${elRect.top}px;left:${elRect.left}px;box-shadow:0 12px 32px rgba(0,0,0,0.35);overflow:hidden;opacity:0.85;`;
-        if (mediaEl.tagName === 'IMG') {
-            const cloneImg = document.createElement('img');
-            cloneImg.src = (mediaEl as HTMLImageElement).src;
-            cloneImg.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;';
-            ghost.appendChild(cloneImg);
-        }
-        document.body.appendChild(ghost);
-        ghostRef.current = ghost;
-        mediaEl.style.opacity = '0.35';
-    };
-
-    const handlePointerMove = (e: React.PointerEvent) => {
-        if (!dragRef.current) return;
-        const { mode, handle, startX, startY, startW } = dragRef.current;
-        if (mode === 'resize') {
-            let delta = 0;
-            if (handle === 'r' || handle === 'br' || handle === 'tr') {
-                delta = e.clientX - startX;
-            } else if (handle === 'l' || handle === 'bl' || handle === 'tl') {
-                delta = -(e.clientX - startX);
-            } else if (handle === 'b' || handle === 'bm') {
-                delta = e.clientY - startY;
-            } else if (handle === 't' || handle === 'tm') {
-                delta = -(e.clientY - startY);
-            }
-            const parentW = mediaEl.parentElement?.getBoundingClientRect().width || startW;
-            const newW = Math.max(60, Math.min(parentW * 1.5, startW + delta));
-            mediaEl.style.width = `${Math.round(newW)}px`;
-            setRect(mediaEl.getBoundingClientRect());
-        } else if (mode === 'move' && ghostRef.current) {
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-            ghostRef.current.style.transform = `translate(${dx}px,${dy}px)`;
-        }
-    };
-
-    const handlePointerUp = (e: React.PointerEvent) => {
-        if (!dragRef.current) return;
-        const { mode, startX, startY, startLeft, startTop } = dragRef.current;
-        dragRef.current = null;
-
-        if (mode === 'resize') {
-            triggerSave();
-        } else if (mode === 'move') {
-            if (ghostRef.current) { ghostRef.current.remove(); ghostRef.current = null; }
-            mediaEl.style.opacity = '1';
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-            if (Math.sqrt(dx * dx + dy * dy) > 3) {
-                const newLeft = (startLeft || 0) + dx;
-                const newTop = (startTop || 0) + dy;
-
-                mediaEl.style.position = 'relative';
-                mediaEl.style.left = `${Math.round(newLeft)}px`;
-                mediaEl.style.top = `${Math.round(newTop)}px`;
-                mediaEl.style.zIndex = '30';
-                mediaEl.style.display = 'inline-block';
-                mediaEl.style.margin = '4px';
-
-                triggerSave();
-            }
-            triggerSave();
-        }
-        setRect(mediaEl.getBoundingClientRect());
+        try {
+            (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        } catch {}
     };
 
     const PAD = 6;
     const handleStyle = (extra: React.CSSProperties = {}): React.CSSProperties => ({
         position: 'absolute',
-        width: 18, height: 18,
+        width: 20, height: 20,
         background: handleBg,
-        border: `2px solid ${handleBorder}`,
+        border: `2.5px solid ${handleBorder}`,
         borderRadius: '50%',
         pointerEvents: 'all',
         touchAction: 'none',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-        zIndex: 30,
+        boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
+        zIndex: 35,
         ...extra,
     });
 
+    const toolbarNearTop = rect.top < 75;
+
     return createPortal(
         <div
-            style={{ position: 'fixed', inset: 0, zIndex: 99990, pointerEvents: 'none' }}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
+            style={{ position: 'fixed', inset: 0, zIndex: 100050, pointerEvents: 'none' }}
         >
             <div
                 className="note-image-overlay-box"
@@ -1759,8 +1841,8 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
                     position: 'absolute',
                     left: rect.left - PAD,
                     top: rect.top - PAD,
-                    width: rect.width + PAD * 2,
-                    height: rect.height + PAD * 2,
+                    width: Math.max(40, rect.width + PAD * 2),
+                    height: Math.max(40, rect.height + PAD * 2),
                     pointerEvents: 'all',
                     touchAction: 'none',
                     cursor: 'grab',
@@ -1785,49 +1867,51 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
 
                 {/* Corner bracket indicators (matching user's sketch: ┌ ┐ └ ┘) */}
                 <div style={{
-                    position: 'absolute', top: -2, left: -2, width: 20, height: 20,
+                    position: 'absolute', top: -2, left: -2, width: 22, height: 22,
                     borderTop: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
                     borderLeft: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
                     borderTopLeftRadius: 8, pointerEvents: 'none', zIndex: 32,
                 }} />
                 <div style={{
-                    position: 'absolute', top: -2, right: -2, width: 20, height: 20,
+                    position: 'absolute', top: -2, right: -2, width: 22, height: 22,
                     borderTop: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
                     borderRight: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
                     borderTopRightRadius: 8, pointerEvents: 'none', zIndex: 32,
                 }} />
                 <div style={{
-                    position: 'absolute', bottom: -2, left: -2, width: 20, height: 20,
+                    position: 'absolute', bottom: -2, left: -2, width: 22, height: 22,
                     borderBottom: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
                     borderLeft: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
                     borderBottomLeftRadius: 8, pointerEvents: 'none', zIndex: 32,
                 }} />
                 <div style={{
-                    position: 'absolute', bottom: -2, right: -2, width: 20, height: 20,
+                    position: 'absolute', bottom: -2, right: -2, width: 22, height: 22,
                     borderBottom: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
                     borderRight: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
                     borderBottomRightRadius: 8, pointerEvents: 'none', zIndex: 32,
                 }} />
 
-                {/* Floating alignment & action bar above image */}
+                {/* Floating alignment & action bar above (or below if near top) image */}
                 <div
                     className="img-overlay-toolbar"
                     onPointerDown={e => e.stopPropagation()}
                     style={{
                         position: 'absolute',
-                        top: -46,
+                        top: toolbarNearTop ? 'auto' : -48,
+                        bottom: toolbarNearTop ? -48 : 'auto',
                         left: '50%',
                         transform: 'translateX(-50%)',
                         background: isDark ? '#18181b' : '#ffffff',
                         border: `1.5px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}`,
                         borderRadius: 24,
-                        padding: '3px 8px',
+                        padding: '4px 10px',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 4,
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.28)',
                         pointerEvents: 'all',
-                        zIndex: 40,
+                        zIndex: 45,
+                        whiteSpace: 'nowrap',
                     }}
                 >
                     <button
@@ -1897,6 +1981,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
 
                 {/* Move badge — center indicator */}
                 <div
+                    onPointerDown={handleMoveStart}
                     style={{
                         position: 'absolute',
                         top: '50%', left: '50%',
@@ -1910,9 +1995,11 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
                         color: moveColor,
                         fontSize: 12,
                         fontWeight: 700,
-                        pointerEvents: 'none',
+                        pointerEvents: 'all',
+                        touchAction: 'none',
                         userSelect: 'none',
-                        zIndex: 20,
+                        cursor: 'grab',
+                        zIndex: 22,
                     }}
                 >
                     <Move className="w-4 h-4" />
@@ -1927,39 +2014,39 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
                     padding: '2px 6px', borderRadius: 8, pointerEvents: 'none',
                 }}>{Math.round(rect.width)}px</div>
 
-                {/* Edge resize strips (generous touch targets) */}
+                {/* Edge resize strips (generous 28px touch targets on all 4 borders) */}
                 {/* Right border strip */}
                 <div
-                    style={{ position: 'absolute', top: 12, bottom: 12, right: -8, width: 22, cursor: 'ew-resize', touchAction: 'none', zIndex: 25 }}
+                    style={{ position: 'absolute', top: 14, bottom: 14, right: -12, width: 28, cursor: 'ew-resize', touchAction: 'none', zIndex: 28 }}
                     onPointerDown={e => handleResizeStart(e, 'r')}
                 />
                 {/* Left border strip */}
                 <div
-                    style={{ position: 'absolute', top: 12, bottom: 12, left: -8, width: 22, cursor: 'ew-resize', touchAction: 'none', zIndex: 25 }}
+                    style={{ position: 'absolute', top: 14, bottom: 14, left: -12, width: 28, cursor: 'ew-resize', touchAction: 'none', zIndex: 28 }}
                     onPointerDown={e => handleResizeStart(e, 'l')}
                 />
                 {/* Bottom border strip */}
                 <div
-                    style={{ position: 'absolute', left: 12, right: 12, bottom: -8, height: 22, cursor: 'ns-resize', touchAction: 'none', zIndex: 25 }}
+                    style={{ position: 'absolute', left: 14, right: 14, bottom: -12, height: 28, cursor: 'ns-resize', touchAction: 'none', zIndex: 28 }}
                     onPointerDown={e => handleResizeStart(e, 'b')}
                 />
                 {/* Top border strip */}
                 <div
-                    style={{ position: 'absolute', left: 12, right: 12, top: -8, height: 22, cursor: 'ns-resize', touchAction: 'none', zIndex: 25 }}
+                    style={{ position: 'absolute', left: 14, right: 14, top: -12, height: 28, cursor: 'ns-resize', touchAction: 'none', zIndex: 28 }}
                     onPointerDown={e => handleResizeStart(e, 't')}
                 />
 
-                {/* Corner resize handle dots (18px diameter) */}
-                <div style={handleStyle({ top: -5, left: -5, cursor: 'nwse-resize' })} onPointerDown={e => handleResizeStart(e, 'tl')} />
-                <div style={handleStyle({ top: -5, right: -5, cursor: 'nesw-resize' })} onPointerDown={e => handleResizeStart(e, 'tr')} />
-                <div style={handleStyle({ bottom: -5, left: -5, cursor: 'nesw-resize' })} onPointerDown={e => handleResizeStart(e, 'bl')} />
-                <div style={handleStyle({ bottom: -5, right: -5, cursor: 'nwse-resize' })} onPointerDown={e => handleResizeStart(e, 'br')} />
+                {/* Corner resize handle dots (20px diameter + generous touch area) */}
+                <div style={handleStyle({ top: -7, left: -7, cursor: 'nwse-resize' })} onPointerDown={e => handleResizeStart(e, 'tl')} />
+                <div style={handleStyle({ top: -7, right: -7, cursor: 'nesw-resize' })} onPointerDown={e => handleResizeStart(e, 'tr')} />
+                <div style={handleStyle({ bottom: -7, left: -7, cursor: 'nesw-resize' })} onPointerDown={e => handleResizeStart(e, 'bl')} />
+                <div style={handleStyle({ bottom: -7, right: -7, cursor: 'nwse-resize' })} onPointerDown={e => handleResizeStart(e, 'br')} />
 
                 {/* Edge mid handle dots */}
-                <div style={handleStyle({ top: -5, left: 'calc(50% - 9px)', cursor: 'ns-resize' })} onPointerDown={e => handleResizeStart(e, 't')} />
-                <div style={handleStyle({ bottom: -5, left: 'calc(50% - 9px)', cursor: 'ns-resize' })} onPointerDown={e => handleResizeStart(e, 'b')} />
-                <div style={handleStyle({ top: 'calc(50% - 9px)', left: -5, cursor: 'ew-resize' })} onPointerDown={e => handleResizeStart(e, 'l')} />
-                <div style={handleStyle({ top: 'calc(50% - 9px)', right: -5, cursor: 'ew-resize' })} onPointerDown={e => handleResizeStart(e, 'r')} />
+                <div style={handleStyle({ top: -7, left: 'calc(50% - 10px)', cursor: 'ns-resize' })} onPointerDown={e => handleResizeStart(e, 't')} />
+                <div style={handleStyle({ bottom: -7, left: 'calc(50% - 10px)', cursor: 'ns-resize' })} onPointerDown={e => handleResizeStart(e, 'b')} />
+                <div style={handleStyle({ top: 'calc(50% - 10px)', left: -7, cursor: 'ew-resize' })} onPointerDown={e => handleResizeStart(e, 'l')} />
+                <div style={handleStyle({ top: 'calc(50% - 10px)', right: -7, cursor: 'ew-resize' })} onPointerDown={e => handleResizeStart(e, 'r')} />
             </div>
         </div>,
         document.body
@@ -2279,6 +2366,24 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                             if (hasImage && !isDownloading) {
                                 setIsResizingActive(true);
                                 setShowControls(true);
+                                const elRect = containerRef.current?.getBoundingClientRect();
+                                if (elRect) {
+                                    const EDGE = 24;
+                                    const nearLeft = Math.abs(e.clientX - elRect.left) <= EDGE;
+                                    const nearRight = Math.abs(e.clientX - elRect.right) <= EDGE;
+                                    const nearTop = Math.abs(e.clientY - elRect.top) <= EDGE;
+                                    const nearBottom = Math.abs(e.clientY - elRect.bottom) <= EDGE;
+                                    let handle = 'move';
+                                    if (nearTop && nearLeft) handle = 'tl';
+                                    else if (nearTop && nearRight) handle = 'tr';
+                                    else if (nearBottom && nearLeft) handle = 'bl';
+                                    else if (nearBottom && nearRight) handle = 'br';
+                                    else if (nearLeft) handle = 'l';
+                                    else if (nearRight) handle = 'r';
+                                    else if (nearTop) handle = 'tm';
+                                    else if (nearBottom) handle = 'bm';
+                                    startResize(e, handle);
+                                }
                             }
                         }}
                         onContextMenu={(e) => {
@@ -4110,7 +4215,22 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
     const isFirstLoad = useRef(true);
     const lastEmittedContentRef = useRef<string | null>(null);
     const [selectedMedia, setSelectedMedia] = useState<HTMLElement | null>(null);
+    const [initialMediaPointer, setInitialMediaPointer] = useState<{ clientX: number; clientY: number; time: number } | null>(null);
+    const lastMediaSelectTimeRef = useRef<number>(0);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const findMediaTarget = useCallback((target: HTMLElement | null): HTMLElement | null => {
+        if (!target || !editorRef.current) return null;
+        const direct = target.closest?.('img, video') as HTMLElement | null;
+        if (direct && editorRef.current.contains(direct) && !direct.closest('[data-inline-file]')) {
+            return direct;
+        }
+        const wrapper = target.closest?.('.note-inline-img-wrapper') as HTMLElement | null;
+        if (wrapper && editorRef.current.contains(wrapper)) {
+            return wrapper.querySelector('img, video') as HTMLElement | null;
+        }
+        return null;
+    }, []);
 
     useEffect(() => {
         isFirstLoad.current = true;
@@ -4120,7 +4240,9 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
     useEffect(() => {
         if (editorRef.current) {
             const isExternalChange = lastEmittedContentRef.current !== null && content !== lastEmittedContentRef.current;
-            if (document.activeElement === editorRef.current && !isFirstLoad.current && !isExternalChange) {
+            // Do NOT overwrite innerHTML if this update came from our own onChange (!isExternalChange),
+            // even when editorRef is blurred (e.g. while an inline image is selected and being resized/moved).
+            if (!isFirstLoad.current && !isExternalChange) {
                 resolveInlineVideos(editorRef.current);
                 resolveInlineImages(editorRef.current);
                 return;
@@ -4131,6 +4253,9 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                 editorRef.current.innerHTML = cleaned;
                 lastEmittedContentRef.current = content || '';
                 isFirstLoad.current = false;
+                if (isExternalChange) {
+                    setSelectedMedia(null);
+                }
             }
             resolveInlineVideos(editorRef.current);
             resolveInlineImages(editorRef.current);
@@ -4155,7 +4280,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
         return () => window.removeEventListener('mynotes:flush-active-editor', handleFlush);
     }, [onChange]);
 
-    const handleInput = () => {
+    const handleInput = useCallback(() => {
         if (editorRef.current) {
             const t0 = performance.now();
             resolveInlineVideos(editorRef.current);
@@ -4177,7 +4302,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                 console.log(`[PERF][handleInput] Debounce 350ms disparado -> onChange: ${(performance.now() - tChange0).toFixed(2)} ms`);
             }, 350);
         }
-    };
+    }, [onChange]);
 
     const handlePaste = async (e: React.ClipboardEvent) => {
         const items = e.clipboardData?.items;
@@ -4232,12 +4357,13 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             return;
         }
         // Handle inline image or video clicks
-        const media = target.closest('img, video') as HTMLElement | null;
+        const media = findMediaTarget(target);
         if (media) {
             e.preventDefault();
             e.stopPropagation();
             window.getSelection()?.removeAllRanges();
             hideKeyboard();
+            lastMediaSelectTimeRef.current = Date.now();
             setSelectedMedia(media);
             return;
         }
@@ -4284,8 +4410,12 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             return;
         }
 
-        // Click elsewhere — deselect overlay only if click wasn't on the overlay itself
-        if (!target.closest('.note-image-overlay-box') && !target.closest('.img-overlay-toolbar')) {
+        // Click elsewhere — deselect overlay only if click wasn't on the overlay itself and wasn't part of the same tap that selected the media
+        if (
+            Date.now() - lastMediaSelectTimeRef.current > 350 &&
+            !target.closest('.note-image-overlay-box') &&
+            !target.closest('.img-overlay-toolbar')
+        ) {
             setSelectedMedia(null);
         }
     };
@@ -4304,12 +4434,11 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                     }
                     if (editorRef.current) {
                         cleanContainerStyle(editorRef.current);
-                        const linkified = stripInlineColors(linkifyHTML(editorRef.current.innerHTML));
-                        if (editorRef.current.innerHTML !== linkified) {
-                            editorRef.current.innerHTML = linkified;
+                        const currentHtml = editorRef.current.innerHTML;
+                        if (currentHtml !== lastEmittedContentRef.current) {
+                            lastEmittedContentRef.current = currentHtml;
+                            onChange(currentHtml); // Flush immediately on blur without destroying live DOM nodes
                         }
-                        lastEmittedContentRef.current = editorRef.current.innerHTML;
-                        onChange(editorRef.current.innerHTML); // Flush immediately on blur
                     }
                     if (onBlur) onBlur();
                 }}
@@ -4328,7 +4457,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                 onClick={handleClick}
                 onDoubleClick={(e) => {
                     const target = e.target as HTMLElement;
-                    const media = target.closest ? target.closest("img, video") as HTMLElement : null;
+                    const media = findMediaTarget(target);
                     if (media && media.tagName !== "VIDEO") {
                         e.preventDefault();
                         e.stopPropagation();
@@ -4338,37 +4467,52 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                 }}
                 onTouchStart={(e) => {
                     const target = e.target as HTMLElement;
-                    const media = target.closest('img, video') as HTMLElement | null;
+                    const media = findMediaTarget(target);
                     if (media) {
                         window.getSelection()?.removeAllRanges();
+                        lastMediaSelectTimeRef.current = Date.now();
+                        if (e.touches && e.touches.length > 0) {
+                            setInitialMediaPointer({
+                                clientX: e.touches[0].clientX,
+                                clientY: e.touches[0].clientY,
+                                time: Date.now(),
+                            });
+                        }
                         setSelectedMedia(media);
                     }
                 }}
                 onSelect={(e) => {
                     const target = e.target as HTMLElement;
-                    if (target.closest?.('img, video')) {
+                    if (findMediaTarget(target)) {
                         window.getSelection()?.removeAllRanges();
                     }
                 }}
                 onPointerDown={(e) => {
                     const target = e.target as HTMLElement;
-                    const media = target.closest('img, video') as HTMLElement | null;
+                    const media = findMediaTarget(target);
                     if (media) {
                         e.preventDefault();
                         e.stopPropagation();
                         window.getSelection()?.removeAllRanges();
                         hideKeyboard();
+                        lastMediaSelectTimeRef.current = Date.now();
+                        setInitialMediaPointer({
+                            clientX: e.clientX,
+                            clientY: e.clientY,
+                            time: Date.now(),
+                        });
                         setSelectedMedia(media);
                     }
                 }}
                 onContextMenu={(e) => {
                     const target = e.target as HTMLElement;
-                    const media = target.closest('img, video') as HTMLElement | null;
+                    const media = findMediaTarget(target);
                     if (media) {
                         e.preventDefault();
                         e.stopPropagation();
                         window.getSelection()?.removeAllRanges();
                         hideKeyboard();
+                        lastMediaSelectTimeRef.current = Date.now();
                         setSelectedMedia(media);
                     }
                 }}
@@ -4381,6 +4525,8 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                     onClose={() => setSelectedMedia(null)}
                     editorRef={editorRef as React.RefObject<HTMLDivElement>}
                     onImageClick={onImageClick}
+                    onTriggerSave={handleInput}
+                    initialPointer={initialMediaPointer}
                 />
             )}
         </>

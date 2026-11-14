@@ -1174,7 +1174,7 @@ html.mobile-landscape .nav-shell {
   display: block;
   width: 100%;
   height: auto;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .note-inline-img-wrapper .img-resize-handle {
