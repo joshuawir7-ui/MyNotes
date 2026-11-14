@@ -4465,3 +4465,229 @@ export const migrateLegacyBase64Attachments = async () => {
         await saveAllNotesToDisk(newNotes);
     }
 };
+
+export const AUTO_BACKUP_2DAYS_FILENAME = 'MyNotesBackup2days.json';
+export const AUTO_BACKUP_2DAYS_KEY = 'MyNotesBackup2days';
+export const AUTO_BACKUP_2DAYS_TS_KEY = 'mynotes_last_auto_backup_2days_ts';
+export const AUTO_BACKUP_INTERVAL_MS = 2 * 24 * 60 * 60 * 1000; // 2 days in ms
+
+let isRunningAutoBackup = false;
+
+/**
+ * Automatically creates/replaces the single local backup file `MyNotesBackup2days.json`
+ * every 2 days (48 hours). Never creates more than one file, and only runs automatically.
+ */
+export const checkAndRunAutoBackup2Days = async (): Promise<boolean> => {
+    if (typeof window === 'undefined' || isRunningAutoBackup) return false;
+    const state = useStore.getState();
+    if (!state.isHydrated) return false;
+
+    // Do not overwrite an existing backup with an empty state
+    const hasUserData =
+        (state.notes && state.notes.length > 0) ||
+        (state.tasks && state.tasks.length > 0) ||
+        (state.goals && state.goals.length > 0) ||
+        (state.appointments && state.appointments.length > 0) ||
+        (state.projects && state.projects.length > 0) ||
+        (state.transactions && state.transactions.length > 0) ||
+        (state.expenseNotes && state.expenseNotes.length > 0);
+
+    if (!hasUserData) return false;
+
+    isRunningAutoBackup = true;
+    try {
+        const now = Date.now();
+        let lastBackupTs = Number(localStorage.getItem(AUTO_BACKUP_2DAYS_TS_KEY) || '0');
+
+        // On native, if localStorage timestamp was cleared (e.g. reinstall), check existing file mtime first
+        if (isNative && lastBackupTs === 0) {
+            try {
+                const stat = await Filesystem.stat({
+                    path: `MyNotesData/${AUTO_BACKUP_2DAYS_FILENAME}`,
+                    directory: Directory.Documents
+                });
+                if (stat && stat.mtime && now - stat.mtime < AUTO_BACKUP_INTERVAL_MS) {
+                    localStorage.setItem(AUTO_BACKUP_2DAYS_TS_KEY, String(stat.mtime));
+                    return false;
+                }
+            } catch {
+                // File doesn't exist yet in Documents/MyNotesData
+            }
+        }
+
+        if (lastBackupTs > 0 && now - lastBackupTs < AUTO_BACKUP_INTERVAL_MS) {
+            return false;
+        }
+
+        const fullNotes = await readAllNotesFromDisk(state.notes);
+        const fullTasks = await readAllTasksFromDisk(state.tasks);
+        const dataToExport = {
+            notes: fullNotes,
+            tasks: fullTasks,
+            goals: state.goals,
+            appointments: state.appointments,
+            projects: state.projects,
+            taskGroups: state.taskGroups,
+            dailySnapshots: state.dailySnapshots,
+            completedOnceHabits: state.completedOnceHabits || [],
+            transactions: state.transactions || [],
+            expenseNotes: state.expenseNotes || [],
+            savingsGoal: state.savingsGoal || 0,
+            user: state.user,
+            backupType: 'auto_2days',
+            createdAt: now
+        };
+        const jsonStr = JSON.stringify(dataToExport, null, 2);
+
+        if (isNative) {
+            // 1. Always save/replace in internal app data directory
+            try {
+                await Filesystem.writeFile({
+                    path: AUTO_BACKUP_2DAYS_FILENAME,
+                    data: jsonStr,
+                    directory: Directory.Data,
+                    encoding: Encoding.UTF8
+                });
+            } catch (e) {
+                console.warn('[AutoBackup2Days] Could not write to Directory.Data', e);
+            }
+
+            // 2. Save/replace single file in Documents/MyNotesData/MyNotesBackup2days.json
+            try {
+                try {
+                    await Filesystem.mkdir({
+                        path: 'MyNotesData',
+                        directory: Directory.Documents,
+                        recursive: true
+                    });
+                } catch {
+                    // Directory already exists
+                }
+
+                // Remove any legacy root copy so there is strictly only 1 file
+                try {
+                    await Filesystem.deleteFile({
+                        path: AUTO_BACKUP_2DAYS_FILENAME,
+                        directory: Directory.Documents
+                    });
+                } catch {
+                    // Ignore if not present
+                }
+
+                await Filesystem.writeFile({
+                    path: `MyNotesData/${AUTO_BACKUP_2DAYS_FILENAME}`,
+                    data: jsonStr,
+                    directory: Directory.Documents,
+                    encoding: Encoding.UTF8
+                });
+            } catch (e) {
+                console.warn('[AutoBackup2Days] Could not write to Directory.Documents', e);
+            }
+        } else {
+            // Web: store/replace single entry in IndexedDB and localStorage fallback
+            const savedIdb = await indexedDBStore.set(AUTO_BACKUP_2DAYS_KEY, jsonStr);
+            if (!savedIdb) {
+                try {
+                    localStorage.setItem(AUTO_BACKUP_2DAYS_KEY, jsonStr);
+                } catch (e) {
+                    console.warn('[AutoBackup2Days] Could not write to localStorage', e);
+                }
+            }
+        }
+
+        localStorage.setItem(AUTO_BACKUP_2DAYS_TS_KEY, String(now));
+        return true;
+    } catch (err) {
+        console.error('[AutoBackup2Days] Error creating automatic 2-day backup:', err);
+        return false;
+    } finally {
+        isRunningAutoBackup = false;
+    }
+};
+
+/**
+ * Reads the automatic 2-day local backup (`MyNotesBackup2days.json`) from disk or IndexedDB/localStorage.
+ */
+export const readAutoBackup2DaysFromDisk = async (): Promise<any | null> => {
+    if (typeof window === 'undefined') return null;
+
+    if (isNative) {
+        // 1. Check Documents/MyNotesData/MyNotesBackup2days.json
+        try {
+            const res = await Filesystem.readFile({
+                path: `MyNotesData/${AUTO_BACKUP_2DAYS_FILENAME}`,
+                directory: Directory.Documents,
+                encoding: Encoding.UTF8
+            });
+            if (res.data) return JSON.parse(res.data as string);
+        } catch {}
+
+        // 2. Check root Documents/MyNotesBackup2days.json
+        try {
+            const res = await Filesystem.readFile({
+                path: AUTO_BACKUP_2DAYS_FILENAME,
+                directory: Directory.Documents,
+                encoding: Encoding.UTF8
+            });
+            if (res.data) return JSON.parse(res.data as string);
+        } catch {}
+
+        // 3. Check internal Directory.Data/MyNotesBackup2days.json
+        try {
+            const res = await Filesystem.readFile({
+                path: AUTO_BACKUP_2DAYS_FILENAME,
+                directory: Directory.Data,
+                encoding: Encoding.UTF8
+            });
+            if (res.data) return JSON.parse(res.data as string);
+        } catch {}
+
+        return null;
+    } else {
+        try {
+            const idbStr = await indexedDBStore.get(AUTO_BACKUP_2DAYS_KEY);
+            if (idbStr) return JSON.parse(idbStr);
+        } catch {}
+        try {
+            const lsStr = localStorage.getItem(AUTO_BACKUP_2DAYS_KEY);
+            if (lsStr) return JSON.parse(lsStr);
+        } catch {}
+        return null;
+    }
+};
+
+/**
+ * Restores a parsed backup JSON object into the Zustand store and persists full notes/tasks to disk.
+ */
+export const applyBackupDataToStore = async (data: any): Promise<boolean> => {
+    if (!data || typeof data !== 'object') return false;
+    const state = useStore.getState();
+    const restoredNotes = Array.isArray(data.notes) ? data.notes : state.notes;
+    const restoredTasks = Array.isArray(data.tasks) ? data.tasks : state.tasks;
+
+    await saveAllNotesToDisk(restoredNotes);
+    await saveAllTasksToDisk(restoredTasks);
+
+    useStore.setState((prev) => ({
+        ...prev,
+        notes: restoredNotes,
+        tasks: restoredTasks,
+        goals: Array.isArray(data.goals) ? data.goals : prev.goals,
+        appointments: Array.isArray(data.appointments) ? data.appointments : prev.appointments,
+        projects: Array.isArray(data.projects) ? data.projects : prev.projects,
+        taskGroups: Array.isArray(data.taskGroups) ? data.taskGroups : prev.taskGroups,
+        dailySnapshots: data.dailySnapshots || prev.dailySnapshots,
+        completedOnceHabits: Array.isArray(data.completedOnceHabits) ? data.completedOnceHabits : prev.completedOnceHabits,
+        transactions: Array.isArray(data.transactions) ? data.transactions : prev.transactions,
+        expenseNotes: Array.isArray(data.expenseNotes) ? data.expenseNotes : prev.expenseNotes,
+        savingsGoal: typeof data.savingsGoal === 'number' ? data.savingsGoal : prev.savingsGoal,
+        user: data.user || prev.user,
+        areNotesLoaded: true,
+        areTasksLoaded: true,
+        lastUpdated: Date.now()
+    }));
+    markCloudSyncDirty();
+    return true;
+};
+
+

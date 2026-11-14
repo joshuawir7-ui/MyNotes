@@ -11,7 +11,7 @@ import { translations } from "@/lib/translations"
 import { motion, AnimatePresence } from "framer-motion"
 import { App as CapacitorApp } from "@capacitor/app"
 import { Capacitor } from "@capacitor/core"
-import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation, Film, PictureInPicture, Download, Loader2, Move, Maximize2 } from "lucide-react"
+import { X, Type, CheckSquare, Table as TableIcon, Image as ImageIcon, PenTool, Share2, Trash2, StickyNote, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Eraser, ChevronUp, ChevronDown, Check, Plus, Minus, SeparatorHorizontal, Cloud, CheckCircle2, AlertCircle, Paperclip, FileIcon, FileText, FileSpreadsheet, FileAudio, Presentation, Film, PictureInPicture, Download, Loader2, Move, Maximize2, Undo2, Redo2 } from "lucide-react"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { GlassSurface } from "@/components/ui/glass-surface"
 import { getOrCreateBackupFolderStructure, getTargetSubfolderId } from "@/lib/drive-folder-manager"
@@ -31,6 +31,80 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
     const storeNote = useStore(state => state.notes.find(n => n.id === note.id))
     const [title, setTitle] = useState(note.title)
     const [blocks, setBlocks] = useState<NoteBlock[]>(note.blocks || [])
+
+    // ─── Undo / Redo History Stack ───────────────────────────────────────────
+    const historyRef = useRef<{ title: string; blocks: NoteBlock[] }[]>([
+        { title: note.title || '', blocks: JSON.parse(JSON.stringify(note.blocks || [])) }
+    ])
+    const historyIndexRef = useRef<number>(0)
+    const isApplyingHistoryRef = useRef<boolean>(false)
+    const [canUndo, setCanUndo] = useState(false)
+    const [canRedo, setCanRedo] = useState(false)
+
+    const recordHistorySnapshot = useCallback((nextTitle: string, nextBlocks: NoteBlock[]) => {
+        if (isApplyingHistoryRef.current) return;
+        const currentSnap = historyRef.current[historyIndexRef.current];
+        if (
+            currentSnap &&
+            currentSnap.title === nextTitle &&
+            JSON.stringify(currentSnap.blocks) === JSON.stringify(nextBlocks)
+        ) {
+            return;
+        }
+        const nextStack = historyRef.current.slice(0, historyIndexRef.current + 1);
+        nextStack.push({
+            title: nextTitle,
+            blocks: JSON.parse(JSON.stringify(nextBlocks))
+        });
+        if (nextStack.length > 60) {
+            nextStack.shift();
+        }
+        historyRef.current = nextStack;
+        historyIndexRef.current = nextStack.length - 1;
+        setCanUndo(historyIndexRef.current > 0);
+        setCanRedo(false);
+    }, []);
+
+    useEffect(() => {
+        if (isApplyingHistoryRef.current) {
+            isApplyingHistoryRef.current = false;
+            return;
+        }
+        recordHistorySnapshot(title, blocks);
+    }, [title, blocks, recordHistorySnapshot]);
+
+    const handleUndo = useCallback(() => {
+        // Flush any uncommitted RichTextEditor DOM input first
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('mynotes:flush-active-editor'));
+        }
+        if (historyIndexRef.current <= 0) return;
+        isApplyingHistoryRef.current = true;
+        historyIndexRef.current -= 1;
+        const snap = historyRef.current[historyIndexRef.current];
+        if (snap) {
+            setTitle(snap.title);
+            setBlocks(JSON.parse(JSON.stringify(snap.blocks)));
+        }
+        setCanUndo(historyIndexRef.current > 0);
+        setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+    }, []);
+
+    const handleRedo = useCallback(() => {
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('mynotes:flush-active-editor'));
+        }
+        if (historyIndexRef.current >= historyRef.current.length - 1) return;
+        isApplyingHistoryRef.current = true;
+        historyIndexRef.current += 1;
+        const snap = historyRef.current[historyIndexRef.current];
+        if (snap) {
+            setTitle(snap.title);
+            setBlocks(JSON.parse(JSON.stringify(snap.blocks)));
+        }
+        setCanUndo(historyIndexRef.current > 0);
+        setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+    }, []);
 
     useEffect(() => {
         if (storeNote) {
@@ -100,6 +174,17 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape') handleCloseRef.current?.();
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    handleRedo();
+                } else {
+                    handleUndo();
+                }
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                handleRedo();
+            }
         }
         window.addEventListener('keydown', handleEscape)
 
@@ -403,8 +488,11 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
     }
 
     const updateBlock = useCallback((id: string, content: any, extraProps?: any) => {
-        setBlocks(prev => prev.map(b => b.id === id ? { ...b, content, ...extraProps } : b))
-    }, [])
+        const next = blocksRef.current.map(b => b.id === id ? { ...b, content, ...extraProps } : b);
+        blocksRef.current = next;
+        recordHistorySnapshot(titleRef.current, next);
+        setBlocks(next);
+    }, [recordHistorySnapshot])
 
     const removeBlock = useCallback((id: string) => {
         setBlocks(prev => prev.filter(b => b.id !== id))
@@ -484,6 +572,23 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
                             {/* Toolbar Buttons Embedded in Landscape Header */}
                             <div className="flex items-center gap-1 px-2 bg-white/5 rounded-full border border-white/5 py-0.5">
+                                <button
+                                    onMouseDown={(e) => { e.preventDefault(); handleUndo(); }}
+                                    disabled={!canUndo}
+                                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 disabled:opacity-30 disabled:pointer-events-none rounded-full transition-all"
+                                    title={language === 'es' ? "Deshacer" : "Undo"}
+                                >
+                                    <Undo2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    onMouseDown={(e) => { e.preventDefault(); handleRedo(); }}
+                                    disabled={!canRedo}
+                                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 disabled:opacity-30 disabled:pointer-events-none rounded-full transition-all"
+                                    title={language === 'es' ? "Rehacer" : "Redo"}
+                                >
+                                    <Redo2 className="w-3.5 h-3.5" />
+                                </button>
+                                <div className="w-[1px] h-3.5 bg-zinc-300 dark:bg-white/10 mx-0.5" />
                                 <button onClick={() => addBlock('text')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Texto" : "Text"}>
                                     <Type className="w-3.5 h-3.5" />
                                 </button>
@@ -549,7 +654,23 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                         placeholder={noteTranslations.untitled || "Untitled Note"}
                                     />
                                 </div>
-                                <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
+                                <div className="flex items-center gap-1 md:gap-2.5 shrink-0">
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); handleUndo(); }}
+                                        disabled={!canUndo}
+                                        className="p-1.5 md:p-2 rounded-full bg-white/5 text-muted-foreground hover:text-foreground hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all border border-white/10 active:scale-95"
+                                        title={language === 'es' ? "Deshacer" : "Undo"}
+                                    >
+                                        <Undo2 className="w-4 h-4 md:w-4.5 md:h-4.5" />
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => { e.preventDefault(); handleRedo(); }}
+                                        disabled={!canRedo}
+                                        className="p-1.5 md:p-2 rounded-full bg-white/5 text-muted-foreground hover:text-foreground hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all border border-white/10 active:scale-95"
+                                        title={language === 'es' ? "Rehacer" : "Redo"}
+                                    >
+                                        <Redo2 className="w-4 h-4 md:w-4.5 md:h-4.5" />
+                                    </button>
                                     <button
                                         onClick={() => handleSave()}
                                         disabled={isSaving}
@@ -578,6 +699,9 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
                             {/* Mobile Toolbar (Options) moved to the top of standard portrait header */}
                             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-1.5 border-t border-white/5 mt-1">
+                                <ToolbarButton icon={Undo2} label={language === 'es' ? "Deshacer" : "Undo"} onClick={handleUndo} disabled={!canUndo} />
+                                <ToolbarButton icon={Redo2} label={language === 'es' ? "Rehacer" : "Redo"} onClick={handleRedo} disabled={!canRedo} />
+                                <div className="w-[1px] h-4 bg-zinc-200 dark:bg-white/10 mx-0.5 shrink-0" />
                                 <ToolbarButton icon={Type} label={language === 'es' ? "Texto" : "Text"} onClick={() => addBlock('text')} />
                                 <ToolbarButton icon={CheckSquare} label={language === 'es' ? "Lista" : "Task List"} onClick={() => addBlock('task-list')} />
                                 <ToolbarButton icon={TableIcon} label={language === 'es' ? "Tabla" : "Table"} onClick={() => addBlock('table')} />
@@ -653,6 +777,31 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                         className="fixed left-0 right-0 z-50 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-t border-zinc-200 dark:border-white/10 p-2 flex items-center justify-between shadow-2xl"
                     >
                         <div className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-0.5 pr-2">
+                            {/* Undo / Redo Group */}
+                            <button
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleUndo();
+                                }}
+                                disabled={!canUndo}
+                                className="p-1.5 rounded-md text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shrink-0"
+                                title={language === 'es' ? "Deshacer" : "Undo"}
+                            >
+                                <Undo2 className="w-4 h-4" />
+                            </button>
+                            <button
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleRedo();
+                                }}
+                                disabled={!canRedo}
+                                className="p-1.5 rounded-md text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shrink-0"
+                                title={language === 'es' ? "Rehacer" : "Redo"}
+                            >
+                                <Redo2 className="w-4 h-4" />
+                            </button>
+                            <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+
                             {/* Block Management Group */}
                             {activeBlockId && (
                                 <>
@@ -852,11 +1001,16 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
     )
 }
 
-function ToolbarButton({ icon: Icon, label, onClick }: { icon: any, label: string, onClick: () => void }) {
+function ToolbarButton({ icon: Icon, label, onClick, disabled }: { icon: any, label: string, onClick: () => void, disabled?: boolean }) {
     return (
         <button
-            onClick={onClick}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-white/10 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+            type="button"
+            disabled={disabled}
+            onMouseDown={(e) => {
+                e.preventDefault();
+                if (!disabled) onClick();
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none text-sm font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
         >
             <Icon className="w-4 h-4" />
             {label}
@@ -980,6 +1134,18 @@ function InlineImageButton({ language }: { language: string }) {
 export async function resolveInlineImages(container: HTMLElement | null) {
     if (!container || typeof window === 'undefined') return;
     const t0 = performance.now();
+    // Ensure ALL images inside the container have contenteditable="false", draggable="false", and user-select: none
+    const allImages = container.querySelectorAll<HTMLImageElement>('img');
+    for (let i = 0; i < allImages.length; i++) {
+        const img = allImages[i];
+        if (!img.hasAttribute('contenteditable')) img.setAttribute('contenteditable', 'false');
+        if (!img.hasAttribute('draggable')) img.setAttribute('draggable', 'false');
+        img.style.webkitUserSelect = 'none';
+        img.style.userSelect = 'none';
+        (img.style as any).webkitTouchCallout = 'none';
+        img.style.touchAction = 'none';
+    }
+
     const imgElements = container.querySelectorAll<HTMLImageElement>('img[data-inline-img="1"], img[data-local-uri]');
     if (imgElements.length === 0) return;
 
@@ -1401,19 +1567,14 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
     } | null>(null);
     const ghostRef = useRef<HTMLDivElement | null>(null);
 
-    // Keep rect synced with scroll/resize and close if scrolled into header dead zone
+    // Keep rect synced with scroll/resize
     useEffect(() => {
         const update = () => {
-            const nextRect = mediaEl.getBoundingClientRect();
-            const headerEl = document.querySelector('.glass--bar-top');
-            if (headerEl) {
-                const headerBottom = headerEl.getBoundingClientRect().bottom - 6;
-                if (nextRect.top < headerBottom) {
-                    onClose();
-                    return;
-                }
+            if (!mediaEl.isConnected) {
+                onClose();
+                return;
             }
-            setRect(nextRect);
+            setRect(mediaEl.getBoundingClientRect());
         };
         window.addEventListener('scroll', update, true);
         window.addEventListener('resize', update);
@@ -1421,7 +1582,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
             window.removeEventListener('scroll', update, true);
             window.removeEventListener('resize', update);
         };
-    }, [mediaEl]);
+    }, [mediaEl, onClose]);
 
     // Dismiss on tap outside
     useEffect(() => {
@@ -1605,14 +1766,47 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick }: {
                     cursor: 'grab',
                 }}
                 onPointerDown={handleMoveStart}
+                onClick={e => e.stopPropagation()}
+                onDoubleClick={e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const src = mediaEl.getAttribute('data-local-uri') || (mediaEl as HTMLImageElement).currentSrc || (mediaEl as HTMLImageElement).src;
+                    if (src && onImageClick) onImageClick(src);
+                }}
             >
                 {/* Selection border — sleek medium gray */}
                 <div style={{
                     position: 'absolute', inset: 0,
-                    border: `2px solid ${borderCol}`,
+                    border: `1.5px solid ${borderCol}`,
                     borderRadius: 14,
                     pointerEvents: 'none',
-                    boxShadow: '0 0 0 1.5px rgba(113,113,122,0.2)',
+                    boxShadow: '0 0 0 1px rgba(113,113,122,0.2)',
+                }} />
+
+                {/* Corner bracket indicators (matching user's sketch: ┌ ┐ └ ┘) */}
+                <div style={{
+                    position: 'absolute', top: -2, left: -2, width: 20, height: 20,
+                    borderTop: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
+                    borderLeft: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
+                    borderTopLeftRadius: 8, pointerEvents: 'none', zIndex: 32,
+                }} />
+                <div style={{
+                    position: 'absolute', top: -2, right: -2, width: 20, height: 20,
+                    borderTop: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
+                    borderRight: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
+                    borderTopRightRadius: 8, pointerEvents: 'none', zIndex: 32,
+                }} />
+                <div style={{
+                    position: 'absolute', bottom: -2, left: -2, width: 20, height: 20,
+                    borderBottom: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
+                    borderLeft: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
+                    borderBottomLeftRadius: 8, pointerEvents: 'none', zIndex: 32,
+                }} />
+                <div style={{
+                    position: 'absolute', bottom: -2, right: -2, width: 20, height: 20,
+                    borderBottom: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
+                    borderRight: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
+                    borderBottomRightRadius: 8, pointerEvents: 'none', zIndex: 32,
                 }} />
 
                 {/* Floating alignment & action bar above image */}
@@ -1996,7 +2190,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
         return () => document.removeEventListener('pointerdown', handleOutside);
     }, [isResizingActive]);
 
-    // Pointer-based resize (works for both mouse and touch)
+    // Pointer-based resize & vertical block move (works for both mouse and touch)
     const startResize = (e: React.PointerEvent, handle: string) => {
         e.preventDefault();
         e.stopPropagation();
@@ -2009,12 +2203,23 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
 
     const onPointerMove = (e: React.PointerEvent) => {
         if (!dragRef.current || !containerRef.current) return;
-        const { startX, startW, handle } = dragRef.current;
+        const { startX, startY, startW, handle } = dragRef.current;
+        if (handle === 'move') {
+            const dy = e.clientY - startY;
+            if (dy < -65 && !isFirst) {
+                dragRef.current.startY = e.clientY;
+                moveBlock(idx, 'up');
+            } else if (dy > 65 && !isLast) {
+                dragRef.current.startY = e.clientY;
+                moveBlock(idx, 'down');
+            }
+            return;
+        }
         const parentW = containerRef.current.parentElement?.getBoundingClientRect().width || startW;
         let delta = e.clientX - startX;
-        if (handle === 'bl') delta = -delta;
-        if (handle === 'bm') delta = (e.clientX - startX) * 0.5; // slower for center
-        const newW = Math.min(parentW, Math.max(80, startW + delta * (handle === 'bm' ? 2 : 1)));
+        if (handle === 'bl' || handle === 'tl' || handle === 'l') delta = -delta;
+        if (handle === 'bm' || handle === 'tm') delta = (e.clientY - startY) * (handle === 'tm' ? -1 : 1);
+        const newW = Math.min(parentW, Math.max(80, startW + delta));
         setImgWidth(Math.round(newW));
     };
 
@@ -2124,8 +2329,8 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                                 }}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    setIsResizingActive(prev => !prev);
-                                    setShowControls(prev => !prev);
+                                    setIsResizingActive(true);
+                                    setShowControls(true);
                                 }}
                                 onError={() => { if (usingThumb) setThumbFailed(true); else setImageError(true); }}
                             />
@@ -2137,14 +2342,40 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                                 <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                             </div>
                         )}
-                        {/* Width indicator and Resize handles ONLY when isResizingActive */}
+                        {/* Width indicator, Corner Brackets, Move cross, and Resize handles when isResizingActive */}
                         {isResizingActive && (
                             <>
+                                {/* Sleek selection outline */}
+                                <div className="absolute inset-0 rounded-2xl border-2 border-zinc-400 dark:border-zinc-300 pointer-events-none z-10" />
+
+                                {/* Corner brackets (┌ ┐ └ ┘) */}
+                                <div className="absolute -top-0.5 -left-0.5 w-5 h-5 border-t-[3.5px] border-l-[3.5px] border-zinc-900 dark:border-white rounded-tl-lg pointer-events-none z-20" />
+                                <div className="absolute -top-0.5 -right-0.5 w-5 h-5 border-t-[3.5px] border-r-[3.5px] border-zinc-900 dark:border-white rounded-tr-lg pointer-events-none z-20" />
+                                <div className="absolute -bottom-0.5 -left-0.5 w-5 h-5 border-b-[3.5px] border-l-[3.5px] border-zinc-900 dark:border-white rounded-bl-lg pointer-events-none z-20" />
+                                <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 border-b-[3.5px] border-r-[3.5px] border-zinc-900 dark:border-white rounded-br-lg pointer-events-none z-20" />
+
+                                {/* Center 4-way Move handle */}
+                                <div
+                                    onPointerDown={(e) => startResize(e, 'move')}
+                                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-3 py-1.5 rounded-full bg-white/90 dark:bg-zinc-900/90 border border-zinc-300 dark:border-white/20 shadow-lg flex items-center gap-1.5 text-xs font-bold text-zinc-900 dark:text-white cursor-grab active:cursor-grabbing z-20 select-none touch-none"
+                                >
+                                    <Move className="w-4 h-4" />
+                                    <span>Mover</span>
+                                </div>
+
                                 {imgWidth && (
-                                    <div className="absolute top-2 right-2 text-[10px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded-full pointer-events-none opacity-80 animate-in fade-in duration-150">
+                                    <div className="absolute bottom-2 right-2 text-[10px] font-bold bg-black/65 text-white px-2 py-0.5 rounded-md pointer-events-none z-20">
                                         {imgWidth}px
                                     </div>
                                 )}
+
+                                {/* Edge & corner resize touch targets */}
+                                <div className="absolute -top-2 -left-2 w-7 h-7 z-30 cursor-nwse-resize touch-none" onPointerDown={(e) => startResize(e, 'tl')} />
+                                <div className="absolute -top-2 -right-2 w-7 h-7 z-30 cursor-nesw-resize touch-none" onPointerDown={(e) => startResize(e, 'tr')} />
+                                <div className="absolute -bottom-2 -left-2 w-7 h-7 z-30 cursor-nesw-resize touch-none" onPointerDown={(e) => startResize(e, 'bl')} />
+                                <div className="absolute -bottom-2 -right-2 w-7 h-7 z-30 cursor-nwse-resize touch-none" onPointerDown={(e) => startResize(e, 'br')} />
+                                <div className="absolute top-4 bottom-4 -left-2 w-5 z-25 cursor-ew-resize touch-none" onPointerDown={(e) => startResize(e, 'l')} />
+                                <div className="absolute top-4 bottom-4 -right-2 w-5 z-25 cursor-ew-resize touch-none" onPointerDown={(e) => startResize(e, 'r')} />
                                 <div className="img-resize-handle bl" onPointerDown={(e) => startResize(e, 'bl')} />
                                 <div className="img-resize-handle bm" onPointerDown={(e) => startResize(e, 'bm')} />
                                 <div className="img-resize-handle br" onPointerDown={(e) => startResize(e, 'br')} />
@@ -3877,19 +4108,19 @@ const RichTaskItem = React.memo(function RichTaskItem({ content, onChange, onEnt
 const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, activeBlockId, onFocus, onBlur, onImageClick }: { content: string, onChange: (c: string) => void, activeBlockId: string, onFocus?: () => void, onBlur?: () => void, onImageClick?: (url: string) => void }) {
     const editorRef = useRef<HTMLDivElement>(null);
     const isFirstLoad = useRef(true);
+    const lastEmittedContentRef = useRef<string | null>(null);
     const [selectedMedia, setSelectedMedia] = useState<HTMLElement | null>(null);
-    const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const suppressNextClickRef = useRef(false);
-    const touchStartPosRef = useRef<{ x: number, y: number } | null>(null);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         isFirstLoad.current = true;
-        setSelectedMedia(null);
+        setSelectedMedia(prev => (prev && editorRef.current?.contains(prev) ? prev : null));
     }, [activeBlockId]);
 
     useEffect(() => {
         if (editorRef.current) {
-            if (document.activeElement === editorRef.current && !isFirstLoad.current) {
+            const isExternalChange = lastEmittedContentRef.current !== null && content !== lastEmittedContentRef.current;
+            if (document.activeElement === editorRef.current && !isFirstLoad.current && !isExternalChange) {
                 resolveInlineVideos(editorRef.current);
                 resolveInlineImages(editorRef.current);
                 return;
@@ -3898,6 +4129,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             const cleaned = stripInlineColors(linkifyHTML(content || ''));
             if (isFirstLoad.current || editorRef.current.innerHTML !== cleaned) {
                 editorRef.current.innerHTML = cleaned;
+                lastEmittedContentRef.current = content || '';
                 isFirstLoad.current = false;
             }
             resolveInlineVideos(editorRef.current);
@@ -3905,15 +4137,26 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
         }
     }, [content]);
 
-    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    // Flush uncommitted edits synchronously when Undo/Redo is triggered
+    useEffect(() => {
+        const handleFlush = () => {
+            if (!editorRef.current) return;
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+                const currentHtml = editorRef.current.innerHTML;
+                if (currentHtml !== lastEmittedContentRef.current) {
+                    lastEmittedContentRef.current = currentHtml;
+                    onChange(currentHtml);
+                }
+            }
+        };
+        window.addEventListener('mynotes:flush-active-editor', handleFlush);
+        return () => window.removeEventListener('mynotes:flush-active-editor', handleFlush);
+    }, [onChange]);
 
     const handleInput = () => {
         if (editorRef.current) {
-            // NO usar await aquí: resolveInlineImages/resolveInlineVideos solo actualizan
-            // el src visible a una URL blob: temporal para renderizado. Si se esperara su
-            // resolución antes de capturar innerHTML, se persistiría una URL blob: efímera
-            // (inválida tras recargar) en vez del data-local-uri permanente que ya viene
-            // grabado desde la inserción original (InlineImageButton/persistAndBuildMediaHtml). Es intencional.
             const t0 = performance.now();
             resolveInlineVideos(editorRef.current);
             resolveInlineImages(editorRef.current);
@@ -3927,10 +4170,12 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
 
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             timeoutRef.current = setTimeout(() => {
+                timeoutRef.current = null;
                 const tChange0 = performance.now();
+                lastEmittedContentRef.current = newContent;
                 onChange(newContent);
-                console.log(`[PERF][handleInput] Debounce 500ms disparado -> onChange: ${(performance.now() - tChange0).toFixed(2)} ms`);
-            }, 500); // 500ms debounce
+                console.log(`[PERF][handleInput] Debounce 350ms disparado -> onChange: ${(performance.now() - tChange0).toFixed(2)} ms`);
+            }, 350);
         }
     };
 
@@ -3990,6 +4235,8 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
         const media = target.closest('img, video') as HTMLElement | null;
         if (media) {
             e.preventDefault();
+            e.stopPropagation();
+            window.getSelection()?.removeAllRanges();
             hideKeyboard();
             setSelectedMedia(media);
             return;
@@ -4037,8 +4284,10 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             return;
         }
 
-        // Click elsewhere — deselect overlay
-        setSelectedMedia(null);
+        // Click elsewhere — deselect overlay only if click wasn't on the overlay itself
+        if (!target.closest('.note-image-overlay-box') && !target.closest('.img-overlay-toolbar')) {
+            setSelectedMedia(null);
+        }
     };
 
     return (
@@ -4049,13 +4298,17 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                 onInput={handleInput}
                 onFocus={onFocus}
                 onBlur={() => {
-                    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                    if (timeoutRef.current) {
+                        clearTimeout(timeoutRef.current);
+                        timeoutRef.current = null;
+                    }
                     if (editorRef.current) {
                         cleanContainerStyle(editorRef.current);
                         const linkified = stripInlineColors(linkifyHTML(editorRef.current.innerHTML));
                         if (editorRef.current.innerHTML !== linkified) {
                             editorRef.current.innerHTML = linkified;
                         }
+                        lastEmittedContentRef.current = editorRef.current.innerHTML;
                         onChange(editorRef.current.innerHTML); // Flush immediately on blur
                     }
                     if (onBlur) onBlur();
@@ -4083,12 +4336,27 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                         if (src && onImageClick) onImageClick(src);
                     }
                 }}
+                onTouchStart={(e) => {
+                    const target = e.target as HTMLElement;
+                    const media = target.closest('img, video') as HTMLElement | null;
+                    if (media) {
+                        window.getSelection()?.removeAllRanges();
+                        setSelectedMedia(media);
+                    }
+                }}
+                onSelect={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target.closest?.('img, video')) {
+                        window.getSelection()?.removeAllRanges();
+                    }
+                }}
                 onPointerDown={(e) => {
                     const target = e.target as HTMLElement;
                     const media = target.closest('img, video') as HTMLElement | null;
                     if (media) {
                         e.preventDefault();
                         e.stopPropagation();
+                        window.getSelection()?.removeAllRanges();
                         hideKeyboard();
                         setSelectedMedia(media);
                     }
@@ -4099,6 +4367,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                     if (media) {
                         e.preventDefault();
                         e.stopPropagation();
+                        window.getSelection()?.removeAllRanges();
                         hideKeyboard();
                         setSelectedMedia(media);
                     }

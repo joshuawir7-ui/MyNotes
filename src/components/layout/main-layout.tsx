@@ -3,7 +3,7 @@
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { KeyboardShortcuts } from "@/components/layout/keyboard-shortcuts"
 import { translations } from "@/lib/translations"
-import { useStore, WidgetSync, syncWidgetData } from "@/lib/store"
+import { useStore, WidgetSync, syncWidgetData, checkAndRunAutoBackup2Days } from "@/lib/store"
 import { useEffect } from "react"
 import { useTheme } from "next-themes"
 import { FloatingTimer } from "@/components/dashboard/floating-timer"
@@ -248,6 +248,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (isHydrated) {
             recordStartupMark('hydrated')
+            const t = setTimeout(() => {
+                checkAndRunAutoBackup2Days().catch(console.error)
+            }, 3000)
+            return () => clearTimeout(t)
         }
     }, [isHydrated])
 
@@ -320,6 +324,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 useStore.getState().pullOfflineAppointments()
                 useStore.getState().checkHabitStreaks()
                 useStore.getState().syncHabitsNotification()
+                checkAndRunAutoBackup2Days().catch(console.error)
 
                 // Auto-sync with Google Drive
                 const state = useStore.getState();

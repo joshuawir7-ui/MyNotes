@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence, Variants } from "framer-motion"
 import { Settings, Bell, X, Download, Upload, Zap, Cloud, LogOut, RefreshCw, Loader2, Sparkles, Type, Plus, Trash2, FolderPlus, Gauge, Code, ExternalLink, Smartphone, ShieldCheck, ShieldAlert, ChevronDown, ChevronUp, CircleHelp } from "lucide-react"
-import { useStore, readAllNotesFromDisk, readAllTasksFromDisk, markCloudSyncDirty } from "@/lib/store"
+import { useStore, readAllNotesFromDisk, readAllTasksFromDisk, markCloudSyncDirty, readAutoBackup2DaysFromDisk, applyBackupDataToStore, AUTO_BACKUP_2DAYS_FILENAME } from "@/lib/store"
 import { translations } from "@/lib/translations"
 import { ModeToggle } from "@/components/ui/mode-toggle"
 import { LanguageToggle } from "@/components/ui/language-toggle"
@@ -109,6 +109,7 @@ export function SettingsDialog() {
     const [localRestoring, setLocalRestoring] = useState(false)
     const [isRecovering, setIsRecovering] = useState(false)
     const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null)
+    const [isSmartImportModalOpen, setIsSmartImportModalOpen] = useState(false)
 
     // Micro-animation triggers
     const [bellAnimate, setBellAnimate] = useState(false)
@@ -537,6 +538,10 @@ export function SettingsDialog() {
             projects: state.projects,
             taskGroups: state.taskGroups,
             dailySnapshots: state.dailySnapshots,
+            completedOnceHabits: state.completedOnceHabits || [],
+            transactions: state.transactions || [],
+            expenseNotes: state.expenseNotes || [],
+            savingsGoal: state.savingsGoal || 0,
             user: state.user
         };
         const jsonStr = JSON.stringify(dataToExport, null, 2);
@@ -594,6 +599,10 @@ export function SettingsDialog() {
             projects: state.projects,
             taskGroups: state.taskGroups,
             dailySnapshots: state.dailySnapshots,
+            completedOnceHabits: state.completedOnceHabits || [],
+            transactions: state.transactions || [],
+            expenseNotes: state.expenseNotes || [],
+            savingsGoal: state.savingsGoal || 0,
             user: state.user
         };
         const jsonStr = JSON.stringify(dataToExport, null, 2);
@@ -623,8 +632,8 @@ export function SettingsDialog() {
                 showNotif(
                     language === 'es' ? "Respaldo Guardado" : "Backup Saved",
                     language === 'es'
-                        ? `Copia de seguridad guardada directamente en Documentos/MyNotesData/${fileName}`
-                        : `Backup saved directly to Documents/MyNotesData/${fileName}`,
+                        ? `Copia de seguridad manual guardada directamente en Documentos/MyNotesData/${fileName}`
+                        : `Manual backup saved directly to Documents/MyNotesData/${fileName}`,
                     "success"
                 );
                 return;
@@ -650,7 +659,7 @@ export function SettingsDialog() {
 
             showNotif(
                 language === 'es' ? "Descarga Iniciada" : "Download Started",
-                language === 'es' ? "Copia de seguridad descargada correctamente." : "Backup downloaded successfully.",
+                language === 'es' ? "Copia de seguridad manual descargada correctamente." : "Manual backup downloaded successfully.",
                 "success"
             );
         }
@@ -660,23 +669,12 @@ export function SettingsDialog() {
         const file = e.target.files?.[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             try {
                 const data = JSON.parse(event.target?.result as string);
                 if (data && typeof data === 'object') {
-                    useStore.setState((state) => ({
-                        ...state,
-                        notes: data.notes || state.notes,
-                        tasks: data.tasks || state.tasks,
-                        goals: data.goals || state.goals,
-                        appointments: data.appointments || state.appointments,
-                        projects: data.projects || state.projects,
-                        taskGroups: data.taskGroups || state.taskGroups,
-                        dailySnapshots: data.dailySnapshots || state.dailySnapshots,
-                        user: data.user || state.user,
-                        lastUpdated: Date.now()
-                    }));
-                    markCloudSyncDirty(); // importar backup cambia datos sincronizables: setState directo no marca sucio
+                    await applyBackupDataToStore(data);
+                    setIsSmartImportModalOpen(false);
                     showToast(
                         language === 'es' ? "Datos locales cargados" : "Local data loaded",
                         "success"
@@ -702,15 +700,52 @@ export function SettingsDialog() {
         e.target.value = "";
     };
 
-    const handleSmartImport = async () => {
-        if (!Capacitor.isNativePlatform()) {
-            showNotif(
-                language === 'es' ? "No Disponible" : "Unavailable",
-                language === 'es'
-                    ? "El Importe Inteligente solo está disponible en la versión móvil (APK) por motivos de seguridad del navegador."
-                    : "Smart Import is only available on the mobile version (APK) due to browser security restrictions.",
-                "info"
+    const handleSmartImport = () => {
+        setIsSmartImportModalOpen(true);
+    };
+
+    const handleAutoBackupRestore = async () => {
+        setIsSmartImportModalOpen(false);
+        try {
+            const data = await readAutoBackup2DaysFromDisk();
+            if (!data || typeof data !== 'object') {
+                showNotif(
+                    language === 'es' ? "Sin Copia Automática" : "No Automatic Backup",
+                    language === 'es'
+                        ? `No se encontró el archivo ${AUTO_BACKUP_2DAYS_FILENAME.replace('.json', '')}. La aplicación lo creará automáticamente cada 2 días.`
+                        : `Automatic backup (${AUTO_BACKUP_2DAYS_FILENAME.replace('.json', '')}) not found yet. The app creates it automatically every 2 days.`,
+                    "warning"
+                );
+                return;
+            }
+
+            await applyBackupDataToStore(data);
+            showToast(
+                language === 'es' ? "Copia local automática restaurada ✓" : "Automatic local backup restored ✓",
+                "success"
             );
+
+            const updatedStore = useStore.getState();
+            if (updatedStore.googleUser && !updatedStore.googleSessionExpired) {
+                updatedStore.syncWithGoogleDrive().catch(console.error);
+            }
+        } catch (err) {
+            console.error("Auto backup restore failed", err);
+            showNotif(
+                language === 'es' ? "Error" : "Error",
+                language === 'es'
+                    ? "Error al restaurar la copia automática."
+                    : "Error restoring automatic backup.",
+                "error"
+            );
+        }
+    };
+
+    const handleManualBackupRestore = async () => {
+        setIsSmartImportModalOpen(false);
+        if (!Capacitor.isNativePlatform()) {
+            // On Web/PC, open file selector for manual backup file
+            fileInputRef.current?.click();
             return;
         }
 
@@ -748,18 +783,20 @@ export function SettingsDialog() {
             }
 
             const combinedFiles = [...rootFiles, ...subfolderFiles];
+            // Exclude MyNotesBackup2days so manual restore only picks manual backups
             const jsonFiles = combinedFiles.filter(file =>
                 file.name &&
                 file.name.endsWith('.json') &&
+                !file.name.toLowerCase().includes('mynotesbackup2days') &&
                 (file.name.startsWith('mynotes_') || file.name.includes('backup'))
             );
 
             if (jsonFiles.length === 0) {
                 showNotif(
-                    language === 'es' ? "Sin Copias de Seguridad" : "No Backups Found",
+                    language === 'es' ? "Sin Copias Manuales" : "No Manual Backups Found",
                     language === 'es'
-                        ? "No se encontraron archivos de copia de seguridad (.json) en la carpeta Documentos o MyNotesData."
-                        : "No backup files (.json) found in the Documents or MyNotesData folder.",
+                        ? "No se encontraron copias de seguridad manuales (.json) en Documentos o MyNotesData. Usa 'Descargar datos de respaldo' para crear una."
+                        : "No manual backup files (.json) found in Documents or MyNotesData.",
                     "warning"
                 );
                 return;
@@ -778,25 +815,12 @@ export function SettingsDialog() {
 
             const data = JSON.parse(fileResult.data as string);
             if (data && typeof data === 'object') {
-                useStore.setState((state) => ({
-                    ...state,
-                    notes: data.notes || state.notes,
-                    tasks: data.tasks || state.tasks,
-                    goals: data.goals || state.goals,
-                    appointments: data.appointments || state.appointments,
-                    projects: data.projects || state.projects,
-                    taskGroups: data.taskGroups || state.taskGroups,
-                    dailySnapshots: data.dailySnapshots || state.dailySnapshots,
-                    user: data.user || state.user,
-                    lastUpdated: Date.now()
-                }));
-                markCloudSyncDirty(); // importar backup cambia datos sincronizables: setState directo no marca sucio
+                await applyBackupDataToStore(data);
                 showToast(
-                    language === 'es' ? "Datos locales cargados" : "Local data loaded",
+                    language === 'es' ? "Copia manual restaurada ✓" : "Manual backup restored ✓",
                     "success"
                 );
 
-                // Auto-sync after smart import if Google account is connected
                 const updatedStore = useStore.getState();
                 if (updatedStore.googleUser && !updatedStore.googleSessionExpired) {
                     updatedStore.syncWithGoogleDrive().catch(console.error);
@@ -805,12 +829,12 @@ export function SettingsDialog() {
                 throw new Error("Invalid format");
             }
         } catch (err) {
-            console.error("Smart import failed", err);
+            console.error("Manual smart import failed", err);
             showNotif(
                 language === 'es' ? "Error" : "Error",
                 language === 'es'
-                    ? "Error en el importe inteligente. Asegúrate de tener copias de seguridad en la carpeta Documentos o MyNotesData."
-                    : "Smart import failed. Make sure you have backup files in the Documents or MyNotesData folder.",
+                    ? "Error al restaurar copia manual. Asegúrate de tener copias descargadas en Documentos/MyNotesData."
+                    : "Manual restore failed. Make sure you have backup files in Documents/MyNotesData.",
                 "error"
             );
         }
@@ -1674,6 +1698,74 @@ export function SettingsDialog() {
                                 </div>
                                 </div>
                             </GlassSurface>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
+
+            {mounted && createPortal(
+                <AnimatePresence>
+                    {isSmartImportModalOpen && (
+                        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setIsSmartImportModalOpen(false)}
+                                className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                            />
+                            <motion.div
+                                initial={{ scale: 0.92, opacity: 0, y: 12 }}
+                                animate={{ scale: 1, opacity: 1, y: 0 }}
+                                exit={{ scale: 0.92, opacity: 0, y: 12 }}
+                                transition={{ type: "spring", stiffness: 320, damping: 26 }}
+                                className="relative z-10 w-full max-w-sm bg-white dark:bg-zinc-900 border border-black/10 dark:border-white/10 rounded-[2.2rem] p-7 shadow-2xl flex flex-col items-center text-center"
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => setIsSmartImportModalOpen(false)}
+                                    className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                                    title={language === 'es' ? "Cerrar" : "Close"}
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+
+                                <h3
+                                    className="text-2xl md:text-[26px] font-serif italic text-zinc-900 dark:text-white mb-6 select-none"
+                                    style={{ fontFamily: 'var(--font-dancing-script), Georgia, serif' }}
+                                >
+                                    {language === 'es' ? "Importe inteligente" : "Smart Import"}
+                                </h3>
+
+                                <div className="w-full flex flex-col gap-3.5">
+                                    <button
+                                        type="button"
+                                        onClick={handleAutoBackupRestore}
+                                        className="w-full py-3.5 px-4 rounded-xl bg-[#009e49] hover:bg-[#00873e] active:scale-[0.98] text-white font-extrabold text-sm shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+                                    >
+                                        {language === 'es'
+                                            ? "Restauración de copia automática"
+                                            : "Restore automatic backup"}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleManualBackupRestore}
+                                        className="w-full py-3.5 px-4 rounded-xl bg-[#a8a8a8] hover:bg-[#969696] dark:bg-zinc-700 dark:hover:bg-zinc-600 active:scale-[0.98] text-black dark:text-white font-extrabold text-sm shadow-sm transition-all cursor-pointer"
+                                    >
+                                        {language === 'es'
+                                            ? "Restauración de copia manual"
+                                            : "Restore manual backup"}
+                                    </button>
+                                </div>
+
+                                <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-6 font-medium">
+                                    {language === 'es'
+                                        ? "La copia automática se hace cada 2 días en local"
+                                        : "Automatic backup is created every 2 days locally"}
+                                </p>
+                            </motion.div>
                         </div>
                     )}
                 </AnimatePresence>,
