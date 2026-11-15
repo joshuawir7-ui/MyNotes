@@ -573,17 +573,19 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                             {/* Toolbar Buttons Embedded in Landscape Header */}
                             <div className="flex items-center gap-1 px-2 bg-white/5 rounded-full border border-white/5 py-0.5">
                                 <button
-                                    onMouseDown={(e) => { e.preventDefault(); handleUndo(); }}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={handleUndo}
                                     disabled={!canUndo}
-                                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 disabled:opacity-30 disabled:pointer-events-none rounded-full transition-all"
+                                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 active:scale-75 active:-rotate-45 active:bg-primary/20 disabled:opacity-30 disabled:pointer-events-none rounded-full transition-all duration-200"
                                     title={language === 'es' ? "Deshacer" : "Undo"}
                                 >
                                     <Undo2 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
-                                    onMouseDown={(e) => { e.preventDefault(); handleRedo(); }}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={handleRedo}
                                     disabled={!canRedo}
-                                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 disabled:opacity-30 disabled:pointer-events-none rounded-full transition-all"
+                                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 active:scale-75 active:rotate-45 active:bg-primary/20 disabled:opacity-30 disabled:pointer-events-none rounded-full transition-all duration-200"
                                     title={language === 'es' ? "Rehacer" : "Redo"}
                                 >
                                     <Redo2 className="w-3.5 h-3.5" />
@@ -656,22 +658,6 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                 </div>
                                 <div className="flex items-center gap-1 md:gap-2.5 shrink-0">
                                     <button
-                                        onMouseDown={(e) => { e.preventDefault(); handleUndo(); }}
-                                        disabled={!canUndo}
-                                        className="p-1.5 md:p-2 rounded-full bg-white/5 text-muted-foreground hover:text-foreground hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all border border-white/10 active:scale-95"
-                                        title={language === 'es' ? "Deshacer" : "Undo"}
-                                    >
-                                        <Undo2 className="w-4 h-4 md:w-4.5 md:h-4.5" />
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => { e.preventDefault(); handleRedo(); }}
-                                        disabled={!canRedo}
-                                        className="p-1.5 md:p-2 rounded-full bg-white/5 text-muted-foreground hover:text-foreground hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all border border-white/10 active:scale-95"
-                                        title={language === 'es' ? "Rehacer" : "Redo"}
-                                    >
-                                        <Redo2 className="w-4 h-4 md:w-4.5 md:h-4.5" />
-                                    </button>
-                                    <button
                                         onClick={() => handleSave()}
                                         disabled={isSaving}
                                         className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-6 py-1.5 md:py-2 rounded-full transition-all text-xs md:text-sm font-bold shadow-lg ${lastSaved
@@ -699,8 +685,8 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
                             {/* Mobile Toolbar (Options) moved to the top of standard portrait header */}
                             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-1.5 border-t border-white/5 mt-1">
-                                <ToolbarButton icon={Undo2} label={language === 'es' ? "Deshacer" : "Undo"} onClick={handleUndo} disabled={!canUndo} />
-                                <ToolbarButton icon={Redo2} label={language === 'es' ? "Rehacer" : "Redo"} onClick={handleRedo} disabled={!canRedo} />
+                                <ToolbarButton icon={Undo2} label={language === 'es' ? "Deshacer" : "Undo"} onClick={handleUndo} disabled={!canUndo} animDirection="ccw" />
+                                <ToolbarButton icon={Redo2} label={language === 'es' ? "Rehacer" : "Redo"} onClick={handleRedo} disabled={!canRedo} animDirection="cw" />
                                 <div className="w-[1px] h-4 bg-zinc-200 dark:bg-white/10 mx-0.5 shrink-0" />
                                 <ToolbarButton icon={Type} label={language === 'es' ? "Texto" : "Text"} onClick={() => addBlock('text')} />
                                 <ToolbarButton icon={CheckSquare} label={language === 'es' ? "Lista" : "Task List"} onClick={() => addBlock('task-list')} />
@@ -779,23 +765,19 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                         <div className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-0.5 pr-2">
                             {/* Undo / Redo Group */}
                             <button
-                                onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    handleUndo();
-                                }}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={handleUndo}
                                 disabled={!canUndo}
-                                className="p-1.5 rounded-md text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shrink-0"
+                                className="p-1.5 rounded-md text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10 active:scale-75 active:-rotate-45 active:bg-primary/20 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 shrink-0"
                                 title={language === 'es' ? "Deshacer" : "Undo"}
                             >
                                 <Undo2 className="w-4 h-4" />
                             </button>
                             <button
-                                onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    handleRedo();
-                                }}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={handleRedo}
                                 disabled={!canRedo}
-                                className="p-1.5 rounded-md text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shrink-0"
+                                className="p-1.5 rounded-md text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10 active:scale-75 active:rotate-45 active:bg-primary/20 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 shrink-0"
                                 title={language === 'es' ? "Rehacer" : "Redo"}
                             >
                                 <Redo2 className="w-4 h-4" />
@@ -1001,20 +983,58 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
     )
 }
 
-function ToolbarButton({ icon: Icon, label, onClick, disabled }: { icon: any, label: string, onClick: () => void, disabled?: boolean }) {
+function ToolbarButton({ icon: Icon, label, onClick, disabled, animDirection }: { icon: any, label: string, onClick: () => void, disabled?: boolean, animDirection?: 'ccw' | 'cw' }) {
+    const [pulseKey, setPulseKey] = useState(0);
+
+    const handleTrigger = () => {
+        if (disabled) return;
+        setPulseKey(k => k + 1);
+        onClick();
+    };
+
     return (
-        <button
+        <motion.button
             type="button"
             disabled={disabled}
+            whileTap={disabled ? undefined : { scale: 0.88 }}
+            animate={
+                pulseKey > 0
+                    ? {
+                        scale: [1, 0.9, 1.06, 1],
+                        backgroundColor: [
+                            "rgba(255,255,255,0)",
+                            "rgba(168,85,247,0.22)",
+                            "rgba(255,255,255,0)"
+                        ]
+                    }
+                    : undefined
+            }
+            transition={{ duration: 0.32, ease: "easeOut" }}
             onMouseDown={(e) => {
+                // Keep editor selection/focus intact without double-firing on touch
                 e.preventDefault();
-                if (!disabled) onClick();
             }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none text-sm font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+            onClick={handleTrigger}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-zinc-200/60 dark:hover:bg-white/10 active:bg-primary/20 disabled:opacity-30 disabled:pointer-events-none text-sm font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap select-none cursor-pointer"
         >
-            <Icon className="w-4 h-4" />
+            <motion.span
+                key={pulseKey}
+                initial={false}
+                animate={
+                    pulseKey > 0
+                        ? {
+                            rotate: animDirection === 'ccw' ? [0, -45, 0] : animDirection === 'cw' ? [0, 45, 0] : [0, -12, 12, 0],
+                            scale: [1, 1.25, 1]
+                        }
+                        : { rotate: 0, scale: 1 }
+                }
+                transition={{ duration: 0.34, ease: "easeOut" }}
+                className="inline-flex items-center justify-center"
+            >
+                <Icon className="w-4 h-4" />
+            </motion.span>
             {label}
-        </button>
+        </motion.button>
     )
 }
 
