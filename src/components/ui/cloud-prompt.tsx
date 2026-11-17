@@ -236,9 +236,26 @@ function ReconnectModal({ onClose, onLogin, language }: {
                 <X className="w-4 h-4" />
             </button>
 
-            {/* unplug icon */}
-            <div className="w-16 h-16 rounded-2xl bg-violet-500/10 dark:bg-violet-500/20 border border-violet-500/20 flex items-center justify-center mb-4 text-violet-600 dark:text-violet-400 shadow-sm select-none">
-                <Unplug className="w-8 h-8 stroke-[2.2]" />
+            {/* plug in circle icon — no background box, matching user reference */}
+            <div className="mb-4 text-zinc-900 dark:text-white select-none flex items-center justify-center">
+                <svg className="w-16 h-16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Left & Right Prongs */}
+                    <path d="M42.2 39.5V29.8C42.2 28.7 43.1 27.8 44.2 27.8C45.3 27.8 46.2 28.7 46.2 29.8V39.5H42.2Z" fill="currentColor" />
+                    <path d="M53.8 39.5V29.8C53.8 28.7 54.7 27.8 55.8 27.8C56.9 27.8 57.8 28.7 57.8 29.8V39.5H53.8Z" fill="currentColor" />
+                    {/* Plug Body + Collar */}
+                    <path
+                        d="M32.5 41.2H67.5V44.8C67.5 45.9 66.6 46.8 65.5 46.8H63.8V52.2C63.8 58.9 59.1 64.5 53.8 65.9V68.6C53.8 69.7 52.9 70.6 51.8 70.6H48.2C47.1 70.6 46.2 69.7 46.2 68.6V65.9C40.9 64.5 36.2 58.9 36.2 52.2V46.8H34.5C33.4 46.8 32.5 45.9 32.5 44.8V41.2Z"
+                        fill="currentColor"
+                    />
+                    {/* Circular Cord Loop */}
+                    <path
+                        d="M 50 69.5 L 50 73.5 A 8.8 8.8 0 0 1 34.5 79.2 A 34.6 34.6 0 1 1 62.5 81.0"
+                        stroke="currentColor"
+                        strokeWidth="4.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
+                </svg>
             </div>
 
             {/* title */}

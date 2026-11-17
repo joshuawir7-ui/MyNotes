@@ -116,11 +116,9 @@ export function BalanceMiniChart() {
         return (
             <div
                 onClick={() => router.push("/balance")}
-                className="w-full h-[180px] glass-panel rounded-3xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/10 transition-all border border-white/5 group"
+                className="w-full h-[180px] glass-panel rounded-3xl flex flex-col items-center justify-center gap-2.5 cursor-pointer hover:bg-white/10 transition-all border border-white/5 group"
             >
-                <div className="w-12 h-12 rounded-2xl bg-primary/10 dark:bg-primary/15 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-105 transition-transform shadow-sm">
-                    <BarChart3 className="w-6 h-6 stroke-[2.2]" />
-                </div>
+                <BarChart3 className="w-8 h-8 stroke-[2] text-zinc-700 dark:text-zinc-300 group-hover:text-primary group-hover:scale-105 transition-all" />
                 <span className="text-xs text-muted-foreground font-medium group-hover:text-foreground transition-colors">
                     {language === "es" ? "Sin movimientos aún — Toca para ir a Balance" : "No transactions yet — Tap to open Balance"}
                 </span>
