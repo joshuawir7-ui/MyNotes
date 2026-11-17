@@ -151,7 +151,7 @@ public class WidgetSyncPlugin extends Plugin {
         
         editor.apply();
 
-        if (appointmentsJson != null) {
+        if (!"false".equals(prefs.getString("notificationsEnabled", "true"))) {
             EventsReminderReceiver.checkAndShowEventNotifications(context);
         }
 
@@ -615,12 +615,12 @@ public class WidgetSyncPlugin extends Plugin {
             android.util.Log.d("WidgetSyncPlugin", "[stagger] t=0   → HabitActionReceiver (inmediato, sin delay)");
 
             final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
-            final long STAGGER_MS = 2L * 60L * 1000L; // 2 minutos
+            final long STAGGER_MS = 2500L; // 2.5 segundos
 
-            // t = +2 min: Eventos
+            // t = +2.5s: Eventos
             handler.postDelayed(() -> {
                 try {
-                    android.util.Log.d("WidgetSyncPlugin", "[stagger] t=+2min → EventsReminderReceiver");
+                    android.util.Log.d("WidgetSyncPlugin", "[stagger] t=+2.5s → EventsReminderReceiver");
                     EventsReminderReceiver.checkAndShowEventNotifications(getContext());
                 } catch (Exception e) {
                     android.util.Log.e("WidgetSyncPlugin", "Error in staggered events notification", e);

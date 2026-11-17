@@ -158,57 +158,77 @@ function checkHabitReminders(tasks: Task[], language: string) {
 }
 
 // ─────────────────────────────────────────────────
-// Check Appointments: remind 30 min and 10 min before
+// Check Appointments: notify for today's and tomorrow's pending events
 // ─────────────────────────────────────────────────
 
-function checkAppointmentReminders(appointments: Appointment[], language: string) {
+const WEB_EVENT_NOTIF_STORAGE_KEY = 'mynotes_web_event_notifs_v1';
+
+function hasWebEventBeenNotified(key: string): boolean {
+    if (notifiedIds.has(key)) return true;
+    if (typeof window === 'undefined') return false;
+    try {
+        const raw = localStorage.getItem(WEB_EVENT_NOTIF_STORAGE_KEY);
+        if (!raw) return false;
+        const map = JSON.parse(raw);
+        return Boolean(map && map[key]);
+    } catch {
+        return false;
+    }
+}
+
+function markWebEventNotified(key: string, todayStr: string) {
+    notifiedIds.add(key);
+    if (typeof window === 'undefined') return;
+    try {
+        const raw = localStorage.getItem(WEB_EVENT_NOTIF_STORAGE_KEY);
+        const map: Record<string, string> = raw ? JSON.parse(raw) : {};
+        // Prune keys from older days
+        for (const k of Object.keys(map)) {
+            if (map[k] !== todayStr) {
+                delete map[k];
+            }
+        }
+        map[key] = todayStr;
+        localStorage.setItem(WEB_EVENT_NOTIF_STORAGE_KEY, JSON.stringify(map));
+    } catch {
+        // ignore storage errors
+    }
+}
+
+export function checkAppointmentReminders(appointments: Appointment[], language: string) {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
 
     for (const apt of appointments) {
-        if (apt.date !== todayStr) continue;
-        if (!apt.time) continue;
-        if (apt.status === 'completed' || apt.status === 'failed') continue;
+        if (!apt || !apt.id || !apt.date) continue;
+        // Only notify for pending events
+        if (apt.status && apt.status !== 'pending') continue;
 
-        const [aptHour, aptMin] = apt.time.split(':').map(Number);
-        const aptMinutes = aptHour * 60 + aptMin;
-        const minutesBefore = aptMinutes - nowMinutes;
-
-        // 30 minutes before
-        if (minutesBefore >= 28 && minutesBefore <= 32) {
-            const key = `apt-30min-${apt.id}-${todayStr}`;
-            if (!notifiedIds.has(key)) {
-                const title = language === 'es' ? '📅 En 30 minutos' : '📅 In 30 minutes';
+        if (apt.date === todayStr) {
+            const key = `apt-today-${apt.id}-${todayStr}`;
+            if (!hasWebEventBeenNotified(key)) {
+                const title = language === 'es' ? '📅 Recordatorio de Evento' : '📅 Event Reminder';
                 const body = language === 'es'
-                    ? `${apt.title} a las ${apt.time}`
-                    : `${apt.title} at ${apt.time}`;
+                    ? `Hoy tienes "${apt.title}" ¿ya lo has completado?`
+                    : `Today you have "${apt.title}". Have you completed it?`;
                 sendNotification(title, body, key);
-                notifiedIds.add(key);
+                markWebEventNotified(key, todayStr);
             }
-        }
-
-        // 10 minutes before
-        if (minutesBefore >= 8 && minutesBefore <= 12) {
-            const key = `apt-10min-${apt.id}-${todayStr}`;
-            if (!notifiedIds.has(key)) {
-                const title = language === 'es' ? '⏰ En 10 minutos' : '⏰ In 10 minutes';
+        } else if (apt.date === tomorrowStr) {
+            const key = `apt-tomorrow-${apt.id}-${todayStr}`;
+            if (!hasWebEventBeenNotified(key)) {
+                const title = language === 'es' ? '🗓️ Recordatorio de Evento' : '🗓️ Event Reminder';
                 const body = language === 'es'
-                    ? `${apt.title} a las ${apt.time}`
-                    : `${apt.title} at ${apt.time}`;
+                    ? `Mañana tienes "${apt.title}", no te olvides`
+                    : `Tomorrow you have "${apt.title}", don't forget`;
                 sendNotification(title, body, key);
-                notifiedIds.add(key);
-            }
-        }
-
-        // At the time of the appointment
-        if (minutesBefore >= -2 && minutesBefore <= 2) {
-            const key = `apt-now-${apt.id}-${todayStr}`;
-            if (!notifiedIds.has(key)) {
-                const title = language === 'es' ? '🚨 ¡Es ahora!' : '🚨 Starting now!';
-                const body = apt.title;
-                sendNotification(title, body, key);
-                notifiedIds.add(key);
+                markWebEventNotified(key, todayStr);
             }
         }
     }

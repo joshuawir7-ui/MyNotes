@@ -2536,20 +2536,30 @@ export const useStore = create<AppState>()(
                         status: apt.status || 'pending',
                         lastUpdated: Date.now()
                     }]
-                    syncWidgetData(state.goals, newAppointments)
+                    syncWidgetData(state.goals, newAppointments, state.notes, state.tasks, true)
+                    if (!isNative && state.notificationsEnabled) {
+                        import('./web-notifications').then(({ checkAppointmentReminders }) => {
+                            checkAppointmentReminders(newAppointments, state.language);
+                        }).catch(console.error);
+                    }
                     return { appointments: newAppointments }
                 }),
 
                 updateAppointment: (id: string, updates: Partial<Appointment>) => set((state) => {
                     const newAppointments = state.appointments.map(a => a.id === id ? { ...a, ...updates, lastUpdated: Date.now() } : a)
-                    syncWidgetData(state.goals, newAppointments)
+                    syncWidgetData(state.goals, newAppointments, state.notes, state.tasks, true)
+                    if (!isNative && state.notificationsEnabled) {
+                        import('./web-notifications').then(({ checkAppointmentReminders }) => {
+                            checkAppointmentReminders(newAppointments, state.language);
+                        }).catch(console.error);
+                    }
                     return { appointments: newAppointments }
                 }),
 
                 deleteAppointment: (id: string) => set((state) => {
                     const newAppointments = state.appointments.filter(a => a.id !== id)
                     const deletedItems = { ...(state.deletedItems || {}), [id]: Date.now() };
-                    syncWidgetData(state.goals, newAppointments)
+                    syncWidgetData(state.goals, newAppointments, state.notes, state.tasks, true)
                     return { appointments: newAppointments, deletedItems }
                 }),
 
@@ -2890,6 +2900,10 @@ export const useStore = create<AppState>()(
                             });
                         }
 
+                        if (newAppointments.length !== state.appointments.length) {
+                            syncWidgetData(state.goals, newAppointments, state.notes, state.tasks, true);
+                        }
+
                         return {
                             transactions: newTransactions,
                             appointments: newAppointments
@@ -2949,7 +2963,14 @@ export const useStore = create<AppState>()(
                 },
 
                 syncHabitsNotification: () => {
-                    showNativeHabitNotification(get().tasks)
+                    const state = get();
+                    showNativeHabitNotification(state.tasks);
+                    syncWidgetData(state.goals, state.appointments, state.notes, state.tasks, true);
+                    if (!isNative && state.notificationsEnabled) {
+                        import('./web-notifications').then(({ checkAppointmentReminders }) => {
+                            checkAppointmentReminders(state.appointments, state.language);
+                        }).catch(console.error);
+                    }
                 },
 
                 syncWidget: () => {

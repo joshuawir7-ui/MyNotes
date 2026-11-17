@@ -34,37 +34,44 @@ public class EventsReminderReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
-        if (action == null || ACTION_SHOW_EVENT_REMINDERS.equals(action) || Intent.ACTION_BOOT_COMPLETED.equals(action)) {
-            // Full scan: cancel stale notifications and reschedule all per-event alarms
+        if (action == null || ACTION_SHOW_EVENT_REMINDERS.equals(action) || Intent.ACTION_BOOT_COMPLETED.equals(action) || "android.intent.action.QUICKBOOT_POWERON".equals(action)) {
+            // Full scan: show due notifications for today/tomorrow and schedule all upcoming alarms
             checkAndShowEventNotifications(context);
-            scheduleAllEventAlarms(context);
         } else if (ACTION_SHOW_SINGLE_EVENT.equals(action)) {
             // Per-event alarm: show the notification for one specific event
             String appointmentId = intent.getStringExtra("appointment_id");
             String title         = intent.getStringExtra("appointment_title");
             String date          = intent.getStringExtra("appointment_date");
             String color         = intent.getStringExtra("appointment_color");
-            boolean isTomorrow   = intent.getBooleanExtra("is_tomorrow", false);
             int notificationId   = intent.getIntExtra("notification_id", -1);
             if (appointmentId != null && notificationId != -1) {
-                // Only show if the event is still pending
                 SharedPreferences prefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
                 String notificationsEnabled = prefs.getString("notificationsEnabled", "true");
                 if (!"true".equals(notificationsEnabled)) return;
                 if (!isEventStillPending(context, appointmentId)) return;
 
-                // Dedup: only one notification per event per day
-                SharedPreferences notifPrefs = context.getSharedPreferences("EventNotificationsSent", Context.MODE_PRIVATE);
                 String todayStr = getTodayString();
+                String tomorrowStr = getTomorrowString();
+                boolean isToday = todayStr.equals(date);
+                boolean isTomorrow = tomorrowStr.equals(date);
+                if (!isToday && !isTomorrow) {
+                    // Fallback to full scan if date shifted
+                    checkAndShowEventNotifications(context);
+                    return;
+                }
+
+                // Dedup: only one notification per event per state (today vs tomorrow) per day
+                SharedPreferences notifPrefs = context.getSharedPreferences("EventNotificationsSent", Context.MODE_PRIVATE);
+                String sentValue = todayStr + "_" + (isTomorrow ? "tomorrow" : "today");
                 String alreadySent = notifPrefs.getString(appointmentId, "");
-                if (todayStr.equals(alreadySent)) return;
+                if (sentValue.equals(alreadySent)) return;
 
                 if (isTomorrow) {
                     showTomorrowNotification(context, title != null ? title : "Evento", color != null ? color : "#7f0df2", notificationId);
                 } else {
                     showTodayNotification(context, appointmentId, title != null ? title : "Evento", color != null ? color : "#7f0df2", notificationId);
                 }
-                notifPrefs.edit().putString(appointmentId, todayStr).apply();
+                notifPrefs.edit().putString(appointmentId, sentValue).apply();
             }
         } else if (ACTION_COMPLETE_EVENT.equals(action)) {
             String appointmentId = intent.getStringExtra("appointment_id");
@@ -79,7 +86,7 @@ public class EventsReminderReceiver extends BroadcastReceiver {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Full scan — cancel stale, used as fallback and on boot
+    // Full scan — cancel stale, show today/tomorrow pending events, and schedule alarms
     // ─────────────────────────────────────────────────────────────────────────
 
     public static void checkAndShowEventNotifications(Context context) {
@@ -90,6 +97,9 @@ public class EventsReminderReceiver extends BroadcastReceiver {
         }
 
         String appointmentsJson = prefs.getString("appointments", "[]");
+        String todayStr = getTodayString();
+        String tomorrowStr = getTomorrowString();
+
         try {
             JSONArray arr = new JSONArray(appointmentsJson);
 
@@ -118,11 +128,47 @@ public class EventsReminderReceiver extends BroadcastReceiver {
                     keysToRemove.add(keyId);
                 }
             }
+            SharedPreferences.Editor notifEditor = notificationPrefs.edit();
             for (String keyId : keysToRemove) {
                 sentJson.remove(keyId);
+                notifEditor.remove(keyId);
             }
 
-            notificationPrefs.edit().putString("sent", sentJson.toString()).apply();
+            // 2. Show notifications for any pending events for TODAY or TOMORROW not yet shown today
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject apt = arr.getJSONObject(i);
+                String id = apt.optString("id", "");
+                String title = apt.optString("title", "Evento");
+                String date = apt.optString("date", "");
+                String status = apt.optString("status", "pending");
+                String color = apt.optString("color", "#7f0df2");
+
+                if (id.isEmpty() || date.isEmpty()) continue;
+                if (!"pending".equals(status)) continue;
+
+                boolean isToday = todayStr.equals(date);
+                boolean isTomorrow = tomorrowStr.equals(date);
+                if (!isToday && !isTomorrow) continue;
+
+                String sentValue = todayStr + "_" + (isTomorrow ? "tomorrow" : "today");
+                String alreadySent = notificationPrefs.getString(id, sentJson.optString(id, ""));
+                if (sentValue.equals(alreadySent)) continue;
+
+                int notificationId = id.hashCode();
+                if (isTomorrow) {
+                    showTomorrowNotification(context, title, color, notificationId);
+                } else {
+                    showTodayNotification(context, id, title, color, notificationId);
+                }
+
+                notifEditor.putString(id, sentValue);
+                sentJson.put(id, sentValue);
+            }
+
+            notifEditor.putString("sent", sentJson.toString()).apply();
+
+            // 3. Schedule upcoming alarms for future slots / days
+            scheduleAllEventAlarms(context);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -130,14 +176,9 @@ public class EventsReminderReceiver extends BroadcastReceiver {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Schedule individual per-event alarms using NotificationSlots
+    // Schedule individual per-event alarms and daily morning scan
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Replaces the old single 08:00 scan alarm with N individual alarms, one per
-     * pending event. Each event fires at its own deterministic slot (from NotificationSlots)
-     * so notifications are distributed throughout the day instead of bursting at once.
-     */
     public static void scheduleAllEventAlarms(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
         String notificationsEnabled = prefs.getString("notificationsEnabled", "true");
@@ -150,10 +191,25 @@ public class EventsReminderReceiver extends BroadcastReceiver {
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
         sdf.setTimeZone(TimeZone.getDefault());
-        String todayStr    = sdf.format(new Date());
-        Calendar cal       = Calendar.getInstance();
-        cal.add(Calendar.DAY_OF_YEAR, 1);
-        String tomorrowStr = sdf.format(cal.getTime());
+        String todayStr = getTodayString();
+
+        // Schedule daily morning scan at 08:30 AM tomorrow so today/tomorrow events always fire
+        Calendar morningCal = Calendar.getInstance();
+        morningCal.set(Calendar.HOUR_OF_DAY, 8);
+        morningCal.set(Calendar.MINUTE, 30);
+        morningCal.set(Calendar.SECOND, 0);
+        morningCal.set(Calendar.MILLISECOND, 0);
+        if (morningCal.getTimeInMillis() <= System.currentTimeMillis()) {
+            morningCal.add(Calendar.DAY_OF_YEAR, 1);
+        }
+        Intent scanIntent = new Intent(context, EventsReminderReceiver.class);
+        scanIntent.setAction(ACTION_SHOW_EVENT_REMINDERS);
+        int scanFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            scanFlags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent scanPendingIntent = PendingIntent.getBroadcast(context, 2026, scanIntent, scanFlags);
+        scheduleExactAlarm(alarmManager, morningCal.getTimeInMillis(), scanPendingIntent);
 
         try {
             JSONArray arr = new JSONArray(appointmentsJson);
@@ -167,35 +223,57 @@ public class EventsReminderReceiver extends BroadcastReceiver {
 
                 if (id.isEmpty() || date.isEmpty()) continue;
                 if (!"pending".equals(status)) continue;
+                if (date.compareTo(todayStr) < 0) continue; // Past event
 
-                boolean isToday    = date.equals(todayStr);
-                boolean isTomorrow = date.equals(tomorrowStr);
-                if (!isToday && !isTomorrow) continue;
+                Date parsedDate = sdf.parse(date);
+                if (parsedDate == null) continue;
 
-                // Deterministic slot based on the event's ID (same event → same slot always)
-                long triggerMillis = NotificationSlots.buildTriggerMillis(id, 5);
+                int slotHour = NotificationSlots.assignSlotHour(id);
+                int slotMinute = NotificationSlots.assignSlotMinute(id);
 
-                int notificationId = id.hashCode();
+                // Alarm 1: Day of event at assigned slot hour ("Hoy tienes...")
+                Calendar dayOfCal = Calendar.getInstance();
+                dayOfCal.setTime(parsedDate);
+                dayOfCal.set(Calendar.HOUR_OF_DAY, slotHour);
+                dayOfCal.set(Calendar.MINUTE, slotMinute);
+                dayOfCal.set(Calendar.SECOND, 0);
+                dayOfCal.set(Calendar.MILLISECOND, 0);
 
-                Intent alarmIntent = new Intent(context, EventsReminderReceiver.class);
-                alarmIntent.setAction(ACTION_SHOW_SINGLE_EVENT);
-                alarmIntent.putExtra("appointment_id",    id);
-                alarmIntent.putExtra("appointment_title", title);
-                alarmIntent.putExtra("appointment_date",  date);
-                alarmIntent.putExtra("appointment_color", color);
-                alarmIntent.putExtra("is_tomorrow",       isTomorrow);
-                alarmIntent.putExtra("notification_id",   notificationId);
+                if (dayOfCal.getTimeInMillis() > System.currentTimeMillis()) {
+                    int notificationId = id.hashCode();
+                    Intent alarmIntent = new Intent(context, EventsReminderReceiver.class);
+                    alarmIntent.setAction(ACTION_SHOW_SINGLE_EVENT);
+                    alarmIntent.putExtra("appointment_id",    id);
+                    alarmIntent.putExtra("appointment_title", title);
+                    alarmIntent.putExtra("appointment_date",  date);
+                    alarmIntent.putExtra("appointment_color", color);
+                    alarmIntent.putExtra("is_tomorrow",       false);
+                    alarmIntent.putExtra("notification_id",   notificationId);
 
-                int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    flags |= PendingIntent.FLAG_IMMUTABLE;
+                    PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                            context, notificationId, alarmIntent, scanFlags);
+                    scheduleExactAlarm(alarmManager, dayOfCal.getTimeInMillis(), pendingIntent);
                 }
 
-                // Use the event's hashCode as the unique PendingIntent requestCode
-                PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                        context, notificationId, alarmIntent, flags);
+                // Alarm 2: Day before event at assigned slot hour ("Mañana tienes...")
+                Calendar dayBeforeCal = (Calendar) dayOfCal.clone();
+                dayBeforeCal.add(Calendar.DAY_OF_YEAR, -1);
+                if (dayBeforeCal.getTimeInMillis() > System.currentTimeMillis()) {
+                    int notificationId = id.hashCode();
+                    int reqCode = notificationId ^ 0x5A5A5A5A;
+                    Intent alarmIntent = new Intent(context, EventsReminderReceiver.class);
+                    alarmIntent.setAction(ACTION_SHOW_SINGLE_EVENT);
+                    alarmIntent.putExtra("appointment_id",    id);
+                    alarmIntent.putExtra("appointment_title", title);
+                    alarmIntent.putExtra("appointment_date",  date);
+                    alarmIntent.putExtra("appointment_color", color);
+                    alarmIntent.putExtra("is_tomorrow",       true);
+                    alarmIntent.putExtra("notification_id",   notificationId);
 
-                scheduleExactAlarm(alarmManager, triggerMillis, pendingIntent);
+                    PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                            context, reqCode, alarmIntent, scanFlags);
+                    scheduleExactAlarm(alarmManager, dayBeforeCal.getTimeInMillis(), pendingIntent);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -400,6 +478,14 @@ public class EventsReminderReceiver extends BroadcastReceiver {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
         sdf.setTimeZone(TimeZone.getDefault());
         return sdf.format(new Date());
+    }
+
+    private static String getTomorrowString() {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+        sdf.setTimeZone(TimeZone.getDefault());
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DAY_OF_YEAR, 1);
+        return sdf.format(cal.getTime());
     }
 
     /**
