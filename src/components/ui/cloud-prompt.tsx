@@ -185,10 +185,10 @@ function ConnectToCloudModal({ onClose, onLogin, language }: {
             </button>
 
             {/* icons row */}
-            <div className="flex items-center justify-center gap-4 mb-5">
-                <img src="/images/n-logo-new.png" alt="MyNotes Logo" className="w-[68px] h-[68px] object-contain" />
-                <img src="/images/curved-arrow.png" alt="Sync" className="w-[55px] object-contain mx-2" />
-                <img src="/images/drive-logo-new.png" alt="Google Drive Logo" className="w-[72px] h-[72px] object-contain" />
+            <div className="flex items-center justify-center gap-3 mb-5">
+                <img src="/images/n-logo-new.png" alt="MyNotes Logo" className="w-[68px] h-[68px] object-contain flex-shrink-0" />
+                <img src="/images/curved-arrow.png" alt="Sync" className="w-[90px] object-contain flex-shrink-0 dark:invert" />
+                <img src="/images/drive-logo-new.png" alt="Google Drive Logo" className="w-[72px] h-[72px] object-contain flex-shrink-0" />
             </div>
 
             {/* title */}
