@@ -25,10 +25,12 @@ function NotePreviewRenderer({ note, isPinned = false }: { note: Note; isPinned?
         }
     };
 
+    const previewBlocks = note.blocks.slice(0, 4);
+
     return (
         <div className={`flex flex-col note-font-container ${isPinned ? 'gap-1.5 md:gap-2' : 'gap-4'}`} onClick={handleLinkClick}>
 
-            {note.blocks.map(block => {
+            {previewBlocks.map(block => {
                 if (block.type === 'text') {
                     return (
                         <div key={block.id} className={`${isPinned ? 'text-[11px] md:text-xs' : 'text-sm'} rich-text-editor opacity-80`} dangerouslySetInnerHTML={{ __html: typeof block.content === 'string' ? block.content : '' }} />

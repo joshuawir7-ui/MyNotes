@@ -573,7 +573,7 @@ export function WeeklyProgressChart() {
                                 dataKey="progress"
                                 stroke="none"
                                 fill={appColor === 'black' ? "url(#darkFillGradient)" : "url(#areaColor)"}
-                                animationDuration={2000}
+                                isAnimationActive={false}
                             />
 
                             <Line
@@ -585,6 +585,7 @@ export function WeeklyProgressChart() {
                                 dot={false}
                                 activeDot={false}
                                 strokeDasharray="6 6"
+                                isAnimationActive={false}
                             />
 
                             <Line
@@ -595,8 +596,7 @@ export function WeeklyProgressChart() {
                                 strokeLinecap="round"
                                 dot={false}
                                 activeDot={appColor === 'black' ? { r: 6, fill: '#fff', stroke: '#0A0A0A', strokeWidth: 2 } : { r: 6, fill: '#fff', stroke: '#ec4899', strokeWidth: 2 }}
-                                animationDuration={1800}
-                                filter={appColor === 'black' ? "url(#darkGlowWeekly)" : "url(#glowWeekly)"}
+                                isAnimationActive={false}
                             />
                         </ComposedChart>
                     </ResponsiveContainer>

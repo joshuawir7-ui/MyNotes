@@ -117,14 +117,20 @@ export function PulseChart() {
     const finalData = hasData ? chartData : chartData.map(d => ({ ...d, value: 0 }))
 
     return (
-        <div className="w-full h-[170px] glass-panel rounded-2xl p-4 relative overflow-hidden group">
-            {/* Dynamic background glow */}
-            <div className={`absolute -top-10 -right-10 w-40 h-40 ${appColor === 'black' ? 'bg-black/10 dark:bg-white/10' : 'bg-purple-500/20 group-hover:bg-purple-500/30'} rounded-full blur-3xl transition-colors duration-500`} />
-            <div className={`absolute -bottom-10 -left-10 w-40 h-40 ${appColor === 'black' ? 'bg-black/10 dark:bg-white/10' : 'bg-blue-500/20 group-hover:bg-blue-500/30'} rounded-full blur-3xl transition-colors duration-500`} />
-
+        <div
+            className="w-full h-[170px] glass-panel rounded-2xl p-4 relative overflow-hidden group"
+            style={
+                appColor !== 'black'
+                    ? {
+                        backgroundImage:
+                            'radial-gradient(circle 120px at 92% 8%, rgba(168,85,247,0.12), transparent 70%), radial-gradient(circle 120px at 8% 92%, rgba(59,130,246,0.12), transparent 70%)',
+                    }
+                    : undefined
+            }
+        >
             <div className="flex justify-between items-center mb-2 relative z-10 gap-2">
                 <h3 className="text-sm sm:text-base font-semibold text-foreground/90 flex items-center gap-2 whitespace-nowrap shrink-0">
-                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_10px_rgba(74,222,128,0.5)] shrink-0" />
+                    <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.45)] shrink-0" />
                     <span className="whitespace-nowrap">{t.productivityPulse}</span>
                 </h3>
                 
@@ -191,7 +197,7 @@ export function PulseChart() {
                             strokeLinecap="round"
                             dot={false}
                             activeDot={appColor === 'black' ? { r: 6, stroke: '#fff', strokeWidth: 3, fill: '#0A0A0A' } : { r: 6, stroke: '#fff', strokeWidth: 3, fill: '#8b5cf6' }}
-                            animationDuration={1500}
+                            isAnimationActive={false}
                         />
                     </LineChart>
                 </ResponsiveContainer>

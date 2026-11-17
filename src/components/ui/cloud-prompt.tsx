@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, RefreshCw, WifiOff } from "lucide-react"
+import { X, RefreshCw, WifiOff, Unplug } from "lucide-react"
 import { useStore } from "@/lib/store"
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -236,8 +236,10 @@ function ReconnectModal({ onClose, onLogin, language }: {
                 <X className="w-4 h-4" />
             </button>
 
-            {/* plug emoji / icon */}
-            <div className="text-6xl mb-4 select-none" style={{ lineHeight: 1 }}>🔌</div>
+            {/* unplug icon */}
+            <div className="w-16 h-16 rounded-2xl bg-violet-500/10 dark:bg-violet-500/20 border border-violet-500/20 flex items-center justify-center mb-4 text-violet-600 dark:text-violet-400 shadow-sm select-none">
+                <Unplug className="w-8 h-8 stroke-[2.2]" />
+            </div>
 
             {/* title */}
             <h2 className="text-xl font-black text-zinc-900 dark:text-white mb-2">

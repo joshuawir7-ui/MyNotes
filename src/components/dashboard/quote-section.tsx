@@ -63,11 +63,10 @@ export function QuoteSection() {
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={`${language}-${quoteIndex}`}
-                        initial={{ opacity: 0, y: 15, filter: "blur(8px)" }}
-                        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                        exit={{ opacity: 0, y: -15, filter: "blur(8px)" }}
-                        transition={{ duration: 1.8, ease: [0.16, 1, 0.3, 1] }}
-                        style={{ willChange: "transform, opacity, filter" }}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
                         className="flex flex-col items-center w-full transform-gpu"
                     >
                         <p className="text-xl sm:text-2xl font-semibold leading-relaxed text-foreground/90 tracking-wide font-dancing">

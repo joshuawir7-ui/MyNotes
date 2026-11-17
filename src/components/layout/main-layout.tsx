@@ -222,7 +222,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const isHydrated = useStore(state => state.isHydrated)
     
     const welcomeModalRef = useRef<HTMLDivElement>(null)
-    const [logoType, setLogoType] = useState<'text' | 'image'>('text')
     const router = useRouter()
     const pathname = usePathname()
     const isMobile = useIsMobile()
@@ -306,15 +305,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     };
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            if (document.visibilityState === 'visible') {
-                setLogoType(prev => prev === 'text' ? 'image' : 'text')
-            }
-        }, 8000)
-        return () => clearInterval(interval)
-    }, [])
-
-    useEffect(() => {
         // Sync & reconcile instantly when tab becomes visible
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
@@ -351,10 +341,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             }).then((l: any) => stateListener = l).catch(console.error);
         }
 
-        // Periodic sync (every 30 seconds) for both Web and Native
+        // Periodic sync (every 30 seconds) for both Web and Native — gated on user idle to avoid scroll lag
         let syncCycleInterval: NodeJS.Timeout | undefined;
         syncCycleInterval = setInterval(async () => {
             if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+            if (!isIdle(1500)) return;
             const state = useStore.getState();
             if (state.googleUser && !state.googleSessionExpired) {
                 console.log("[Sync] Triggering periodic syncCycle...");
@@ -713,69 +704,71 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             if (state.lastUpdated !== lastTimestamp) {
                 lastTimestamp = state.lastUpdated;
                 clearTimeout(debounceTimeout);
-                debounceTimeout = setTimeout(async () => {
-                try {
-                    const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+                debounceTimeout = setTimeout(() => {
+                    whenIdle(async () => {
+                        try {
+                            const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
 
-                    const dataToExport = {
-                        notes: state.notes,
-                        tasks: state.tasks,
-                        goals: state.goals,
-                        appointments: state.appointments,
-                        projects: state.projects,
-                        taskGroups: state.taskGroups,
-                        dailySnapshots: state.dailySnapshots,
-                        user: state.user
-                    };
-                    const jsonStr = JSON.stringify(dataToExport);
+                            const dataToExport = {
+                                notes: state.notes,
+                                tasks: state.tasks,
+                                goals: state.goals,
+                                appointments: state.appointments,
+                                projects: state.projects,
+                                taskGroups: state.taskGroups,
+                                dailySnapshots: state.dailySnapshots,
+                                user: state.user
+                            };
+                            const jsonStr = JSON.stringify(dataToExport);
 
-                    const now = new Date();
-                    const year = now.getFullYear();
-                    const month = String(now.getMonth() + 1).padStart(2, '0');
-                    const day = String(now.getDate()).padStart(2, '0');
-                    const hours = String(now.getHours()).padStart(2, '0');
-                    const minutes = String(now.getMinutes()).padStart(2, '0');
-                    const seconds = String(now.getSeconds()).padStart(2, '0');
-                    const timestamp = `${year}${month}${day}_${hours}${minutes}${seconds}`;
-                    const fileName = `mynotes_auto_backup_${timestamp}.json`;
+                            const now = new Date();
+                            const year = now.getFullYear();
+                            const month = String(now.getMonth() + 1).padStart(2, '0');
+                            const day = String(now.getDate()).padStart(2, '0');
+                            const hours = String(now.getHours()).padStart(2, '0');
+                            const minutes = String(now.getMinutes()).padStart(2, '0');
+                            const seconds = String(now.getSeconds()).padStart(2, '0');
+                            const timestamp = `${year}${month}${day}_${hours}${minutes}${seconds}`;
+                            const fileName = `mynotes_auto_backup_${timestamp}.json`;
 
-                    await Filesystem.writeFile({
-                        path: fileName,
-                        data: jsonStr,
-                        directory: Directory.Documents,
-                        encoding: Encoding.UTF8
-                    });
-                    console.log(`Local auto-backup saved to Documents/${fileName}`);
+                            await Filesystem.writeFile({
+                                path: fileName,
+                                data: jsonStr,
+                                directory: Directory.Documents,
+                                encoding: Encoding.UTF8
+                            });
+                            console.log(`Local auto-backup saved to Documents/${fileName}`);
 
-                    // Manage rotation of auto-backups to keep only the 4 most recent
-                    const dirResult = await Filesystem.readdir({
-                        path: '',
-                        directory: Directory.Documents
-                    });
+                            // Manage rotation of auto-backups to keep only the 4 most recent
+                            const dirResult = await Filesystem.readdir({
+                                path: '',
+                                directory: Directory.Documents
+                            });
 
-                    const autoBackupFiles = dirResult.files
-                        .map(f => typeof f === 'string' ? f : f.name)
-                        .filter(name => name.startsWith('mynotes_auto_backup_') && name.endsWith('.json'))
-                        .sort(); // Alphabetical sort aligns with chronological order (YYYYMMDD_HHmmss)
+                            const autoBackupFiles = dirResult.files
+                                .map(f => typeof f === 'string' ? f : f.name)
+                                .filter(name => name.startsWith('mynotes_auto_backup_') && name.endsWith('.json'))
+                                .sort();
 
-                    if (autoBackupFiles.length > 4) {
-                        const filesToDelete = autoBackupFiles.slice(0, autoBackupFiles.length - 4);
-                        for (const file of filesToDelete) {
-                            try {
-                                await Filesystem.deleteFile({
-                                    path: file,
-                                    directory: Directory.Documents
-                                });
-                                console.log(`Deleted old auto-backup: ${file}`);
-                            } catch (delErr) {
-                                console.error(`Error deleting old auto-backup ${file}`, delErr);
+                            if (autoBackupFiles.length > 4) {
+                                const filesToDelete = autoBackupFiles.slice(0, autoBackupFiles.length - 4);
+                                for (const file of filesToDelete) {
+                                    try {
+                                        await Filesystem.deleteFile({
+                                            path: file,
+                                            directory: Directory.Documents
+                                        });
+                                        console.log(`Deleted old auto-backup: ${file}`);
+                                    } catch (delErr) {
+                                        console.error(`Error deleting old auto-backup ${file}`, delErr);
+                                    }
+                                }
                             }
+                        } catch (err) {
+                            console.error("Local auto-backup failed", err);
                         }
-                    }
-                } catch (err) {
-                    console.error("Local auto-backup failed", err);
-                }
-            }, 5000);
+                    }, 1200);
+                }, 5000);
             }
         });
 

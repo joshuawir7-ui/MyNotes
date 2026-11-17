@@ -5,6 +5,7 @@ import { useStore } from "@/lib/store"
 import { useShallow } from "zustand/react/shallow"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
+import { BarChart3 } from "lucide-react"
 
 export function BalanceMiniChart() {
     const rawTransactions = useStore(useShallow((s) => s.transactions ?? []))
@@ -93,6 +94,17 @@ export function BalanceMiniChart() {
             })
         })
 
+        // Cap mini-chart points to max 24 for smooth 60fps scroll rendering
+        if (history.length > 24) {
+            const sampled = [history[0]]
+            const stride = (history.length - 1) / 23
+            for (let i = 1; i < 23; i++) {
+                sampled.push(history[Math.round(i * stride)])
+            }
+            sampled.push(history[history.length - 1])
+            return sampled
+        }
+
         return history
     }, [transactions, lineTimeRange, language])
 
@@ -104,9 +116,11 @@ export function BalanceMiniChart() {
         return (
             <div
                 onClick={() => router.push("/balance")}
-                className="w-full h-[180px] glass-panel rounded-3xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-white/10 transition-all border border-white/5 group"
+                className="w-full h-[180px] glass-panel rounded-3xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/10 transition-all border border-white/5 group"
             >
-                <span className="text-3xl">💰</span>
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 dark:bg-primary/15 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-105 transition-transform shadow-sm">
+                    <BarChart3 className="w-6 h-6 stroke-[2.2]" />
+                </div>
                 <span className="text-xs text-muted-foreground font-medium group-hover:text-foreground transition-colors">
                     {language === "es" ? "Sin movimientos aún — Toca para ir a Balance" : "No transactions yet — Tap to open Balance"}
                 </span>
@@ -216,14 +230,6 @@ export function BalanceMiniChart() {
                     style={{ shapeRendering: "geometricPrecision", textRendering: "geometricPrecision" }}
                 >
                     <defs>
-                        {/* Green glow filter */}
-                        <filter id="miniGlowGreen" x="-20%" y="-20%" width="140%" height="140%">
-                            <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#10b981" floodOpacity="0.5" />
-                        </filter>
-                        {/* Red glow filter */}
-                        <filter id="miniGlowRed" x="-20%" y="-20%" width="140%" height="140%">
-                            <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#ef4444" floodOpacity="0.5" />
-                        </filter>
                         {/* Green area gradient */}
                         <linearGradient id="miniAreaGreen" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor="#10b981" stopOpacity="0.22" />
@@ -256,7 +262,6 @@ export function BalanceMiniChart() {
                         const prevPt = points[i]
                         const isUp = pt.isUp
                         const strokeColor = isUp ? "#10b981" : "#ef4444"
-                        const filterId = isUp ? "url(#miniGlowGreen)" : "url(#miniGlowRed)"
 
                         const p0 = points[Math.max(0, i - 1)]
                         const p1 = prevPt
@@ -282,7 +287,6 @@ export function BalanceMiniChart() {
                                     strokeWidth="3.5"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
-                                    filter={filterId}
                                 />
                             </g>
                         )
@@ -319,10 +323,9 @@ export function BalanceMiniChart() {
                                     <circle
                                         cx={pt.x}
                                         cy={pt.y}
-                                        r="9"
+                                        r="8.5"
                                         fill={mainColor}
-                                        opacity="0.35"
-                                        className="animate-ping"
+                                        opacity="0.28"
                                     />
                                 )}
 

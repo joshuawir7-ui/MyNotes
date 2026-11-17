@@ -304,7 +304,7 @@ html.perf-no-motion *::after {
 
 /* Custom Glassmorphism Utilities */
 @utility glass-panel {
-  @apply bg-white/90 dark:bg-zinc-950/85 border border-black/5 dark:border-white/10 shadow-lg md:bg-white/70 md:dark:bg-zinc-900/35 md:backdrop-blur-xl;
+  @apply bg-white/92 dark:bg-zinc-950/88 border border-black/5 dark:border-white/10 shadow-md md:bg-white/88 md:dark:bg-zinc-900/82;
   contain: layout style;
 }
 
