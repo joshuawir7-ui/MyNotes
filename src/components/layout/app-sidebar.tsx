@@ -363,9 +363,14 @@ export function AppSidebar() {
                 <aside
                     className="hidden md:flex fixed top-4 bottom-4 left-4 right-auto mx-0 w-60 h-auto border flex-col pt-8 pb-8 px-4 overflow-y-auto bg-white/95 dark:bg-zinc-900/95 shadow-2xl rounded-[2.5rem] border-black/5 dark:border-white/10 z-50 no-scrollbar"
                 >
-                {/* Logo/Brand Area (Desktop only) */}
-                <div className="flex flex-col items-center mb-8 shrink-0">
-                    <div className="w-24 h-24 flex items-center justify-center mb-2 animate-float relative">
+                {/* Logo/Brand Area (Desktop only) — Clickable to go to Today ("/") */}
+                <Link
+                    href="/"
+                    onClick={() => markNavStart("/")}
+                    className="flex flex-col items-center mb-8 shrink-0 cursor-pointer group select-none"
+                    title={t.today}
+                >
+                    <div className="w-24 h-24 flex items-center justify-center mb-2 animate-float relative group-hover:scale-105 active:scale-95 transition-transform">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={logoType}
@@ -376,7 +381,13 @@ export function AppSidebar() {
                                 className="flex items-center justify-center w-36 h-36"
                             >
                                 {logoType === 'text' ? (
-                                    <img src="/images/custom-n-v2.png" className="w-32 h-32 object-contain dark:invert" alt="Logo N" />
+                                    <span
+                                        translate="no"
+                                        className="font-dancing font-bold text-[88px] leading-none text-black dark:text-white select-none antialiased"
+                                        style={{ WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale' }}
+                                    >
+                                        n
+                                    </span>
                                 ) : (
                                     <img src="/images/notes-logo-v4.png" className="w-32 h-32 object-contain dark:brightness-0 dark:invert" alt="Notes Logo" />
                                 )}
@@ -384,7 +395,7 @@ export function AppSidebar() {
                         </AnimatePresence>
                     </div>
                     <h1 className="text-2xl font-bold tracking-tight font-dancing">MyNotes</h1>
-                </div>
+                </Link>
 
                 {/* Desktop-only Navigation */}
                 <nav className="flex flex-col items-stretch space-y-1 shrink-0 w-full relative">
