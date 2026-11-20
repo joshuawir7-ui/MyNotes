@@ -369,3 +369,74 @@ if (typeof window !== 'undefined') {
     loadPerfFlags();
     initPerfTelemetry();
 }
+
+// ── HUD counters (Perf HUD, solo se leen con developerMode) ────────────────
+// Incrementos O(1) sin listeners: coste prácticamente cero cuando el HUD está apagado.
+
+export interface PersistHudStats {
+    setCalls: number[];        // timestamps de set() del store
+    persistSends: number[];    // timestamps de envíos al worker de persistencia
+    lastCloneMs: number | null;   // duración del último postMessage (clon estructurado)
+    lastSerializeMs: number | null; // ida y vuelta al worker hasta tener el string
+    stateKB: number | null;    // tamaño del último estado serializado
+    hydrationMs: number | null; // lectura + parseo + rehidratación del persist
+    storageJsonKB: number | null; // tamaño del JSON leído de mynotes-storage-v1 al arrancar
+}
+
+const hudStats: PersistHudStats = {
+    setCalls: [],
+    persistSends: [],
+    lastCloneMs: null,
+    lastSerializeMs: null,
+    stateKB: null,
+    hydrationMs: null,
+    storageJsonKB: null,
+};
+
+let totalPersistSends = 0;
+const HUD_WINDOW_MS = 60_000;
+const pruneOld = (arr: number[], now: number) => {
+    // Mantener el array acotado (solo último minuto)
+    while (arr.length && now - arr[0] > HUD_WINDOW_MS) arr.shift();
+    if (arr.length > 5000) arr.splice(0, arr.length - 5000);
+};
+
+export function hudRecordSet() {
+    const now = Date.now();
+    hudStats.setCalls.push(now);
+    if (hudStats.setCalls.length > 256) pruneOld(hudStats.setCalls, now);
+}
+
+export function hudRecordPersistSend(cloneMs: number) {
+    const now = Date.now();
+    hudStats.persistSends.push(now);
+    totalPersistSends++;
+    hudStats.lastCloneMs = cloneMs;
+    pruneOld(hudStats.persistSends, now);
+}
+
+export function hudRecordSerialized(serializeMs: number, kb: number) {
+    hudStats.lastSerializeMs = serializeMs;
+    hudStats.stateKB = kb;
+}
+
+export function hudRecordHydration(ms: number, jsonKB: number | null) {
+    hudStats.hydrationMs = ms;
+    if (jsonKB !== null) hudStats.storageJsonKB = jsonKB;
+}
+
+export function getHudStats() {
+    const now = Date.now();
+    pruneOld(hudStats.setCalls, now);
+    pruneOld(hudStats.persistSends, now);
+    return {
+        setCallsPerMin: hudStats.setCalls.length,
+        persistSendsPerMin: hudStats.persistSends.length,
+        totalPersistSends: totalPersistSends,
+        lastCloneMs: hudStats.lastCloneMs,
+        lastSerializeMs: hudStats.lastSerializeMs,
+        stateKB: hudStats.stateKB,
+        hydrationMs: hudStats.hydrationMs,
+        storageJsonKB: hudStats.storageJsonKB,
+    };
+}

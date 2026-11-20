@@ -32,6 +32,7 @@ const CelebrationModal = dynamic(() => import("@/components/ui/celebration-modal
 const CloudPrompt = dynamic(() => import("@/components/ui/cloud-prompt").then(m => m.CloudPrompt), { ssr: false })
 const SyncConflictDialog = dynamic(() => import("@/components/ui/sync-conflict-dialog").then(m => m.SyncConflictDialog), { ssr: false })
 const PerfDebugModal = dynamic(() => import("@/components/ui/perf-debug-modal").then(m => m.PerfDebugModal), { ssr: false })
+const PerfHud = dynamic(() => import("@/components/ui/perf-hud").then(m => m.PerfHud), { ssr: false })
 import { useIsMobile } from "@/hooks/use-is-mobile"
 import { useIsMobileLandscape } from "@/lib/use-mobile-landscape"
 import { isIdle, whenIdle } from "@/lib/interaction-gate"
@@ -939,6 +940,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 isOpen={isPerfModalOpen}
                 onClose={() => setIsPerfModalOpen(false)}
             />
+
+            {/* Perf HUD: solo con Modo Desarrollador (coste cero si está apagado: ni se descarga el chunk) */}
+            {developerMode && <PerfHud />}
         </div>
     )
 }

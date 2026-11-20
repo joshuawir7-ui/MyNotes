@@ -13,7 +13,7 @@ import { BackgroundTask } from '@capawesome/capacitor-background-task'
 const isNative = Capacitor.isNativePlatform();
 
 import { isIdle, whenIdle } from './interaction-gate';
-import { recordSyncMetric, getPerfFlags, perfStamp } from './perf-debug';
+import { recordSyncMetric, getPerfFlags, perfStamp, hudRecordSet, hudRecordPersistSend, hudRecordSerialized, hudRecordHydration } from './perf-debug';
 
 export const WidgetSync = registerPlugin<{
     updateWidgetData: (data: { goals?: string, appointments?: string, notes?: string, tasks?: string, dailySnapshots?: string, notificationsEnabled?: string, isDarkMode?: string, pinnedNoteId?: string, priorityRemindersEnabled?: boolean, priorityReminderSlots?: string, noteFontFamily?: string }) => Promise<void>;
@@ -1923,6 +1923,7 @@ export const useStore = create<AppState>()(
     persist(
         (originalSet, get) => {
             const set: typeof originalSet = (nextStateOrUpdater, replace) => {
+                hudRecordSet();
                 if (typeof nextStateOrUpdater === 'function') {
                     (originalSet as any)((state: any) => {
                         const partialState = (nextStateOrUpdater as any)(state);
