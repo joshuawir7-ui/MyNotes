@@ -144,7 +144,12 @@ export const readAllTasksFromDisk = async (currentInMemory: Task[]): Promise<Tas
         }
         if (dataStr) {
             const parsed = JSON.parse(dataStr);
-            if (Array.isArray(parsed)) return parsed;
+            if (Array.isArray(parsed)) {
+                if (Array.isArray(currentInMemory) && currentInMemory.length > 0) {
+                    return mergeLists(currentInMemory, parsed, true, useStore.getState().deletedItems);
+                }
+                return parsed;
+            }
         }
     } catch (err) {
         console.warn('Failed to read all tasks from disk', err);
@@ -989,6 +994,9 @@ export interface Task {
     streak?: number
     enabled?: boolean // New: enable/disable habit
     countLostDays?: boolean // Whether lost days should be tracked and counted
+    createdAt?: string // YYYY-MM-DD when habit was created
+    lastMissedCheckDate?: string // YYYY-MM-DD last date evaluated for missed days
+    lostDaysResetDate?: string // YYYY-MM-DD last date when user reset lost days count
     shortcutKey?: number // 1-9
     photos: string[] // Base64 or local paths
     completionTimes: string[] // ISO timestamps for all completions
@@ -2283,9 +2291,13 @@ export const useStore = create<AppState>()(
                 },
 
                 loadAllTasks: async (force?: boolean) => {
-                    if (!force && get().areTasksLoaded && get().tasks.length > 0) return;
+                    if (!force && get().areTasksLoaded && get().tasks.length > 0) {
+                        get().checkHabitStreaks();
+                        return;
+                    }
                     const fullTasks = await readAllTasksFromDisk(get().tasks);
                     originalSet({ tasks: fullTasks, areTasksLoaded: true });
+                    get().checkHabitStreaks();
                 },
 
                 unloadTasks: async () => {
@@ -2349,6 +2361,7 @@ export const useStore = create<AppState>()(
 
                 addTask: (task: Omit<Task, 'id' | 'completed' | 'completedDates' | 'missed' | 'streak'>) => {
                     lastLocalTasksUpdate = Date.now();
+                    const todayStr = getLocalDateString();
                     const newTask: Task = {
                         id: generateId(),
                         completed: false,
@@ -2361,6 +2374,8 @@ export const useStore = create<AppState>()(
                         projectId: task.projectId || 'p1',
                         isHabit: true, // Default to true if called from habits page
                         enabled: true,
+                        createdAt: todayStr,
+                        lastMissedCheckDate: todayStr,
                         lastUpdated: Date.now(),
                         ...task as any
                     };
@@ -2852,126 +2867,229 @@ export const useStore = create<AppState>()(
                     }));
                 },
 
-                checkHabitStreaks: () => set((state) => {
-                    const today = getLocalDateString()
-                    const yesterdayDate = new Date()
-                    yesterdayDate.setDate(yesterdayDate.getDate() - 1)
-                    const yesterday = getLocalDateString(yesterdayDate)
+                checkHabitStreaks: () => {
+                    const today = getLocalDateString();
+                    const parseYmd = (ymd: string): Date => {
+                        const parts = ymd.slice(0, 10).split('-');
+                        return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                    };
+                    const todayDate = parseYmd(today);
+                    const yesterdayDate = new Date(todayDate);
+                    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+                    const yesterday = getLocalDateString(yesterdayDate);
 
-                    // Avoid running multiple times per day
-                    if (state.lastProcessedDate === today) return {}
-
-                    // If lastProcessedDate is missing, default to yesterday to avoid counting all historical days
-                    const lastProcessedDate = state.lastProcessedDate
-                        ? (() => {
-                            const parts = state.lastProcessedDate.split('-');
-                            return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-                        })()
-                        : yesterdayDate
-
-                    // Calculate days passed since last process (up to yesterday)
-                    const daysToCheck: Date[] = []
-                    const currentCheckDate = new Date(lastProcessedDate)
-                    currentCheckDate.setDate(currentCheckDate.getDate() + 1)
-
-                    while (currentCheckDate <= yesterdayDate) {
-                        daysToCheck.push(new Date(currentCheckDate))
-                        currentCheckDate.setDate(currentCheckDate.getDate() + 1)
+                    const currentState = get();
+                    const needsAnyTaskCheck = (currentState.tasks || []).some(
+                        t => t.recurrence !== 'None' && t.enabled !== false && t.lastMissedCheckDate !== today
+                    );
+                    if (currentState.lastProcessedDate === today && !needsAnyTaskCheck) {
+                        return;
                     }
 
+                    let didMutateTasks = false;
                     let totalXpLoss = 0;
 
-                    const newTasks = state.tasks.map(task => {
-                        if (task.recurrence === 'None' || task.enabled === false) return task
+                    set((state) => {
+                        const nowTs = Date.now();
+                        const newTasks = state.tasks.map(task => {
+                            if (task.recurrence === 'None' || task.enabled === false) return task;
+                            if (task.lastMissedCheckDate === today) return task;
 
-                        const completedDates = task.completedDates || []
-                        let newMissed = task.missed || 0
-                        let newStreak = task.streak || 0
+                            const completedDates = Array.isArray(task.completedDates) ? task.completedDates : [];
+                            let newMissed = task.countLostDays ? (task.missed || 0) : 0;
+                            let newStreak = task.streak || 0;
 
-                        if (task.recurrence === 'Daily') {
-                            daysToCheck.forEach(checkDate => {
-                                const checkDateString = getLocalDateString(checkDate)
-                                const checkDayOfWeek = checkDate.getDay() // 0 is Sunday
-                                const isActiveDay = !task.activeDays || task.activeDays.includes(checkDayOfWeek)
-                                const completedThisDate = completedDates.includes(checkDateString)
-
-                                if (!completedThisDate && isActiveDay) {
-                                    newMissed += 1
-                                    newStreak = 0
-                                    if (task.habitType === 'bad') {
-                                        const xpLoss = task.energyLevel === 'High' ? 50 : task.energyLevel === 'Medium' ? 30 : 10;
-                                        totalXpLoss += xpLoss;
+                            // Determinar desde qué fecha evaluar días perdidos para este hábito (hasta ayer inclusive)
+                            let anchorDate: Date | null = null;
+                            if (task.lastMissedCheckDate) {
+                                anchorDate = parseYmd(task.lastMissedCheckDate);
+                                anchorDate.setDate(anchorDate.getDate() + 1);
+                            } else if (task.lostDaysResetDate) {
+                                anchorDate = parseYmd(task.lostDaysResetDate);
+                                anchorDate.setDate(anchorDate.getDate() + 1);
+                            } else if (state.lastProcessedDate && state.lastProcessedDate < today) {
+                                anchorDate = parseYmd(state.lastProcessedDate);
+                                anchorDate.setDate(anchorDate.getDate() + 1);
+                            } else {
+                                // Hábito sin lastMissedCheckDate previo (ej. recién restaurado o afectado por el bug anterior)
+                                const pastCompleted = completedDates.filter(d => typeof d === 'string' && d <= yesterday).sort();
+                                if (pastCompleted.length > 0) {
+                                    const lastDone = pastCompleted[pastCompleted.length - 1];
+                                    if (newMissed === 0) {
+                                        anchorDate = parseYmd(lastDone);
+                                        anchorDate.setDate(anchorDate.getDate() + 1);
+                                    } else {
+                                        anchorDate = new Date(yesterdayDate);
                                     }
+                                } else if (task.createdAt && task.createdAt.slice(0, 10) <= yesterday) {
+                                    anchorDate = parseYmd(task.createdAt);
+                                } else if (task.lastUpdated) {
+                                    const luStr = getLocalDateString(new Date(task.lastUpdated));
+                                    if (luStr <= yesterday) {
+                                        anchorDate = parseYmd(luStr);
+                                    } else if (task.countLostDays && newMissed === 0 && !task.createdAt) {
+                                        anchorDate = new Date(yesterdayDate);
+                                    }
+                                } else if (task.countLostDays && newMissed === 0) {
+                                    anchorDate = new Date(yesterdayDate);
                                 }
-                            })
-                        }
+                            }
 
-                        return { ...task, completedDates, missed: newMissed, streak: newStreak }
-                    })
+                            // Limitar ventana máxima a 60 días hacia atrás por seguridad
+                            const minAllowedDate = new Date(yesterdayDate);
+                            minAllowedDate.setDate(minAllowedDate.getDate() - 60);
+                            if (anchorDate && anchorDate < minAllowedDate) {
+                                anchorDate = minAllowedDate;
+                            }
 
-                    syncWidgetData(state.goals, state.appointments, state.notes, newTasks);
+                            if (anchorDate && anchorDate <= yesterdayDate && (task.recurrence === 'Daily' || task.recurrence === 'Weekly' || task.recurrence === 'Monthly')) {
+                                const cursor = new Date(anchorDate);
+                                while (cursor <= yesterdayDate) {
+                                    const checkDateString = getLocalDateString(cursor);
+                                    const isActiveDay = task.recurrence === 'Monthly'
+                                        ? (!task.activeDays || task.activeDays.includes(cursor.getDate()))
+                                        : (!task.activeDays || task.activeDays.includes(cursor.getDay()));
+                                    const completedThisDate = completedDates.includes(checkDateString);
 
-                    return {
-                        tasks: newTasks,
-                        user: {
-                            ...state.user,
-                            xp: Math.max(0, state.user.xp - totalXpLoss)
-                        },
-                        lastProcessedDate: today
+                                    if (!completedThisDate && isActiveDay) {
+                                        if (task.countLostDays) {
+                                            newMissed += 1;
+                                        }
+                                        newStreak = 0;
+                                        if (task.habitType === 'bad') {
+                                            const xpLoss = task.energyLevel === 'High' ? 50 : task.energyLevel === 'Medium' ? 30 : 10;
+                                            totalXpLoss += xpLoss;
+                                        }
+                                    }
+                                    cursor.setDate(cursor.getDate() + 1);
+                                }
+                            }
+
+                            const changed =
+                                newMissed !== (task.missed || 0) ||
+                                newStreak !== (task.streak || 0) ||
+                                task.lastMissedCheckDate !== today;
+
+                            if (!changed) return task;
+                            didMutateTasks = true;
+                            return {
+                                ...task,
+                                completedDates,
+                                missed: newMissed,
+                                streak: newStreak,
+                                lastMissedCheckDate: today,
+                                lastUpdated: nowTs
+                            };
+                        });
+
+                        syncWidgetData(state.goals, state.appointments, state.notes, newTasks);
+
+                        return {
+                            tasks: newTasks,
+                            user: {
+                                ...state.user,
+                                xp: Math.max(0, state.user.xp - totalXpLoss)
+                            },
+                            lastProcessedDate: today
+                        };
+                    });
+
+                    if (didMutateTasks) {
+                        lastLocalTasksUpdate = Date.now();
+                        queueTasksSave(get().tasks);
                     }
-                }),
+                },
 
                 resetHabitStats: (taskId) => {
                     lastLocalTasksUpdate = Date.now();
-                    readAllTasksFromDisk(get().tasks).then(allTasks => {
-                        const finalTasks = allTasks.map(t => t.id === taskId ? { ...t, missed: 0, streak: 0, lastUpdated: Date.now() } : t);
-                        saveAllTasksToDisk(finalTasks);
-                    });
+                    const today = getLocalDateString();
                     set((state) => {
-                        const newTasks = state.tasks.map(t => t.id === taskId ? { ...t, missed: 0, streak: 0, lastUpdated: Date.now() } : t)
+                        const newTasks = state.tasks.map(t => t.id === taskId ? { ...t, missed: 0, streak: 0, lostDaysResetDate: today, lastMissedCheckDate: today, lastUpdated: Date.now() } : t);
                         syncWidgetData(state.goals, state.appointments, state.notes, newTasks);
-                        return { tasks: newTasks }
+                        return { tasks: newTasks };
                     });
+                    queueTasksSave(get().tasks);
                 },
 
                 decrementLostDays: (taskId) => {
                     lastLocalTasksUpdate = Date.now();
-                    readAllTasksFromDisk(get().tasks).then(allTasks => {
-                        const finalTasks = allTasks.map(t => t.id === taskId ? { ...t, missed: Math.max(0, (t.missed || 0) - 1), lastUpdated: Date.now() } : t);
-                        saveAllTasksToDisk(finalTasks);
-                    });
+                    const today = getLocalDateString();
+                    const parts = today.split('-');
+                    const todayDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+
                     set((state) => {
-                        const newTasks = state.tasks.map(t => t.id === taskId ? { ...t, missed: Math.max(0, (t.missed || 0) - 1), lastUpdated: Date.now() } : t);
+                        let xpGain = 0;
+                        const newTasks = state.tasks.map(t => {
+                            if (t.id !== taskId) return t;
+                            const currentMissed = t.missed || 0;
+                            if (currentMissed <= 0) return t;
+
+                            const completedDates = Array.isArray(t.completedDates) ? [...t.completedDates] : [];
+                            const completionTimes = Array.isArray(t.completionTimes) ? [...t.completionTimes] : [];
+
+                            // Encontrar el día activo más reciente (<= ayer) que no esté en completedDates para registrarlo como cumplido
+                            const cursor = new Date(todayDate);
+                            cursor.setDate(cursor.getDate() - 1);
+                            for (let i = 0; i < 60; i++) {
+                                const dStr = getLocalDateString(cursor);
+                                const isActiveDay = t.recurrence === 'Monthly'
+                                    ? (!t.activeDays || t.activeDays.includes(cursor.getDate()))
+                                    : (!t.activeDays || t.activeDays.includes(cursor.getDay()));
+                                if (isActiveDay && !completedDates.includes(dStr)) {
+                                    completedDates.push(dStr);
+                                    completionTimes.push(new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 12, 0, 0).toISOString());
+                                    break;
+                                }
+                                cursor.setDate(cursor.getDate() - 1);
+                            }
+
+                            xpGain = t.energyLevel === 'High' ? 50 : t.energyLevel === 'Medium' ? 30 : 10;
+
+                            return {
+                                ...t,
+                                missed: Math.max(0, currentMissed - 1),
+                                completedDates,
+                                completionTimes,
+                                streak: (t.streak || 0) + 1,
+                                lastMissedCheckDate: today,
+                                lastUpdated: Date.now()
+                            };
+                        });
                         syncWidgetData(state.goals, state.appointments, state.notes, newTasks);
-                        return { tasks: newTasks };
+                        return {
+                            tasks: newTasks,
+                            user: xpGain > 0 ? { ...state.user, xp: Math.max(0, state.user.xp + xpGain) } : state.user
+                        };
                     });
+                    queueTasksSave(get().tasks);
                 },
 
                 resetLostDays: (taskId) => {
                     lastLocalTasksUpdate = Date.now();
-                    readAllTasksFromDisk(get().tasks).then(allTasks => {
-                        const finalTasks = allTasks.map(t => t.id === taskId ? { ...t, missed: 0, lastUpdated: Date.now() } : t);
-                        saveAllTasksToDisk(finalTasks);
-                    });
+                    const today = getLocalDateString();
                     set((state) => {
-                        const newTasks = state.tasks.map(t => t.id === taskId ? { ...t, missed: 0, lastUpdated: Date.now() } : t);
+                        const newTasks = state.tasks.map(t => t.id === taskId ? {
+                            ...t,
+                            missed: 0,
+                            lostDaysResetDate: today,
+                            lastMissedCheckDate: today,
+                            lastUpdated: Date.now()
+                        } : t);
                         syncWidgetData(state.goals, state.appointments, state.notes, newTasks);
                         return { tasks: newTasks };
                     });
+                    queueTasksSave(get().tasks);
                 },
 
                 setHabitEnabled: (taskId, enabled) => {
                     lastLocalTasksUpdate = Date.now();
-                    readAllTasksFromDisk(get().tasks).then(allTasks => {
-                        const finalTasks = allTasks.map(t => t.id === taskId ? { ...t, enabled, lastUpdated: Date.now() } : t);
-                        saveAllTasksToDisk(finalTasks);
-                    });
                     set((state) => {
-                        const newTasks = state.tasks.map(t => t.id === taskId ? { ...t, enabled, lastUpdated: Date.now() } : t)
-                        showNativeHabitNotification(newTasks)
+                        const newTasks = state.tasks.map(t => t.id === taskId ? { ...t, enabled, lastUpdated: Date.now() } : t);
+                        showNativeHabitNotification(newTasks);
                         syncWidgetData(state.goals, state.appointments, state.notes, newTasks);
-                        return { tasks: newTasks }
+                        return { tasks: newTasks };
                     });
+                    queueTasksSave(get().tasks);
                 },
 
                 addExpenseNote: (note) => {
@@ -3296,11 +3414,23 @@ export const useStore = create<AppState>()(
 
                 updateTask: (taskId, updates) => {
                     lastLocalTasksUpdate = Date.now();
+                    const today = getLocalDateString();
                     // 1. UI inmediata
                     set((state) => {
-                        const newTasks = state.tasks.map(t => t.id === taskId ? { ...t, ...updates, lastUpdated: Date.now() } : t)
+                        const newTasks = state.tasks.map(t => {
+                            if (t.id !== taskId) return t;
+                            const extra: Partial<Task> = {};
+                            if (updates.countLostDays === true && !t.countLostDays) {
+                                extra.missed = 0;
+                                extra.lostDaysResetDate = today;
+                                extra.lastMissedCheckDate = today;
+                            } else if (updates.countLostDays === false && t.countLostDays) {
+                                extra.missed = 0;
+                            }
+                            return { ...t, ...updates, ...extra, lastUpdated: Date.now() };
+                        });
                         syncWidgetData(state.goals, state.appointments, state.notes, newTasks);
-                        return { tasks: newTasks }
+                        return { tasks: newTasks };
                     });
                     // 2. Persiste con snapshot ya actualizado
                     queueTasksSave(get().tasks);
