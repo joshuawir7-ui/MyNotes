@@ -13,8 +13,8 @@ export type AttachmentFailReason =
     | 'too-large';
 
 export type EnsureAttachmentResult =
-    | { ok: true; uri: string }
-    | { ok: false; reason: AttachmentFailReason };
+    | { ok: true; uri: string; reason?: undefined }
+    | { ok: false; reason: AttachmentFailReason; uri?: undefined };
 
 export type AttachmentStatus =
     | { state: 'idle' }
@@ -27,6 +27,8 @@ export interface EnsureAttachmentParams {
     blockId?: string;
     type: 'image' | 'video' | 'file' | 'drawing';
     name?: string;
+    fileName?: string;
+    mimeType?: string;
     driveSize?: number;
     confirmLarge?: boolean;
 }
@@ -250,7 +252,8 @@ export async function getCachedUri(driveFileId: string): Promise<string | null> 
 }
 
 export async function ensureAttachment(params: EnsureAttachmentParams): Promise<EnsureAttachmentResult> {
-    const { driveFileId, noteId, blockId, type, name, driveSize, confirmLarge } = params;
+    const { driveFileId, noteId, blockId, type, name, fileName: paramFileName, driveSize, confirmLarge } = params;
+    const effectiveName = name || paramFileName;
     if (!driveFileId) {
         return { ok: false, reason: 'invalid' };
     }
@@ -295,7 +298,7 @@ export async function ensureAttachment(params: EnsureAttachmentParams): Promise<
         setStatus(driveFileId, { state: 'downloading' });
 
         try {
-            const fileName = name || (type === 'image' || type === 'drawing' ? 'image.png' : 'attachment.bin');
+            const fileName = effectiveName || (type === 'image' || type === 'drawing' ? 'image.png' : 'attachment.bin');
             const ext = (fileName.split('.').pop() || (type === 'image' || type === 'drawing' ? 'png' : 'bin')).toLowerCase();
             let didRefresh401 = false;
             const backoffs = activeDeps.backoffMs;

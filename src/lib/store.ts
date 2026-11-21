@@ -3628,14 +3628,32 @@ export const useStore = create<AppState>()(
 
                         console.log(`[Restore] Restaurando datos: notas=${(driveData.notes||[]).length}, tareas=${(driveData.tasks||[]).length}`);
 
-                        await saveAllNotesToDisk(driveData.notes || []);
+                        const normalizedRestoredNotes = (driveData.notes || []).map((n: Note) => ({
+                            ...n,
+                            blocks: (n.blocks || []).map((b: NoteBlock) => {
+                                if (!b || !b.driveFileId) return b;
+                                if ((b.type === 'image' || b.type === 'drawing') && typeof b.content === 'string') {
+                                    if (!b.content || b.content.startsWith('file://') || b.content.startsWith('/data/') || b.content.startsWith('indexeddb://') || b.content.startsWith('content://')) {
+                                        return { ...b, content: `drive://${b.driveFileId}` };
+                                    }
+                                } else if ((b.type === 'video' || b.type === 'file') && b.content && typeof b.content === 'object') {
+                                    const u = b.content.url || '';
+                                    if (!u || u.startsWith('file://') || u.startsWith('/data/') || u.startsWith('indexeddb://') || u.startsWith('content://')) {
+                                        return { ...b, content: { ...b.content, url: `drive://${b.driveFileId}` } };
+                                    }
+                                }
+                                return b;
+                            }),
+                        }));
+
+                        await saveAllNotesToDisk(normalizedRestoredNotes);
                         await saveAllTasksToDisk(driveData.tasks || []);
 
                         const restoreTimestamp = driveData.lastUpdated || Date.now();
                         const remoteMd5 = existingFile.md5Checksum;
 
                         originalSet({
-                            notes: driveData.notes || [],
+                            notes: normalizedRestoredNotes,
                             tasks: driveData.tasks || [],
                             goals: driveData.goals || [],
                             appointments: driveData.appointments || [],
@@ -3661,6 +3679,7 @@ export const useStore = create<AppState>()(
                         setTimeout(() => {
                             const s = get();
                             syncWidgetData(s.goals, s.appointments, s.notes, s.tasks).catch(console.error);
+                            checkAndEnqueueMissingImages().catch(console.error);
                         }, 0);
 
                         const folders = await getOrCreateBackupFolderStructure(token).catch(() => null);
@@ -3955,6 +3974,9 @@ export const useStore = create<AppState>()(
 
                             setTimeout(() => {
                                 syncWidgetData(merged.goals, merged.appointments, merged.notes, merged.tasks).catch(console.error);
+                                if (changedLocal) {
+                                    checkAndEnqueueMissingImages().catch(console.error);
+                                }
                             }, 0);
 
                             const sanitizedUpload = sanitizeDataForDriveUpload({
@@ -4005,6 +4027,7 @@ export const useStore = create<AppState>()(
 
                             setTimeout(() => {
                                 syncWidgetData(merged.goals, merged.appointments, merged.notes, merged.tasks).catch(console.error);
+                                checkAndEnqueueMissingImages().catch(console.error);
                             }, 0);
 
                             if (!remoteLastUpdated || remoteLastUpdated !== finalTs) {
@@ -4274,57 +4297,75 @@ export const checkAndEnqueueMissingImages = async () => {
     const token = state.googleUser?.accessToken;
     if (!token || state.googleSessionExpired) return;
 
+    // PASO 4: Solo precargar 'image' y 'drawing'. 'video' y 'file' quedan estrictamente bajo demanda.
+    const pendingItems: Array<{ noteId: string; blockId: string; driveFileId: string; type: 'image' | 'drawing'; driveSize?: number }> = [];
+
     for (const note of state.notes) {
         if (!note.blocks) continue;
         for (const block of note.blocks) {
-            if ((block.type === 'image' || block.type === 'drawing' || block.type === 'file') && block.driveFileId && !block.isDownloading) {
+            if ((block.type === 'image' || block.type === 'drawing') && block.driveFileId && !block.isDownloading) {
                 let needsDownload = false;
-                let fileUri = '';
+                const fileUri = typeof block.content === 'string' ? block.content : '';
 
-                if (block.type === 'file') {
-                    if (!block.content || !block.content.url) needsDownload = true;
-                    else fileUri = block.content.url;
-                } else {
-                    if (!block.content) needsDownload = true;
-                    else if (typeof block.content === 'string') fileUri = block.content;
-                }
-
-                if (isNative) {
-                    if (fileUri && fileUri.startsWith('file://')) {
+                if (!fileUri || fileUri.startsWith('drive://')) {
+                    needsDownload = true;
+                } else if (isNative) {
+                    if (fileUri.startsWith('indexeddb://')) {
+                        needsDownload = true;
+                    } else if (fileUri.startsWith('file://')) {
                         try {
                             const localSrc = Capacitor.convertFileSrc(fileUri);
                             const res = await fetch(localSrc, { method: 'HEAD' });
                             if (!res.ok) needsDownload = true;
-                        } catch (e) {
+                        } catch {
                             needsDownload = true;
                         }
                     }
-                    if (needsDownload) {
-                        state.setBlockDownloading(note.id, block.id, true);
-                        let fileNameStr = '';
-                        if (block.type === 'file' && block.content && block.content.name) {
-                            fileNameStr = block.content.name;
-                        }
-                        WidgetSync.enqueueImageDownload({
-                            token,
-                            driveFileId: block.driveFileId,
-                            noteId: note.id,
-                            blockId: block.id,
-                            fileName: fileNameStr
-                        } as any).catch(console.error);
-                    }
                 } else {
-                    // En Web, rutas file:// o /data/ provienen de Android y no son accesibles; descargar a IndexedDB
-                    if (!fileUri || fileUri.startsWith('file://') || fileUri.startsWith('/data/')) {
+                    if (fileUri.startsWith('file://') || fileUri.startsWith('/data/') || fileUri.startsWith('content://')) {
                         needsDownload = true;
                     }
-                    if (needsDownload) {
-                        await state.downloadAttachment(note.id, block.id).catch(console.error);
-                    }
+                }
+
+                if (needsDownload) {
+                    pendingItems.push({
+                        noteId: note.id,
+                        blockId: block.id,
+                        driveFileId: block.driveFileId,
+                        type: block.type,
+                        driveSize: block.driveSize,
+                    });
                 }
             }
         }
     }
+
+    if (pendingItems.length === 0) return;
+
+    const total = pendingItems.length;
+    let done = 0;
+    useStore.setState({ cloudRestoreProgress: { done: 0, total } });
+
+    const { ensureAttachment } = await import('./attachment-store');
+    await Promise.all(
+        pendingItems.map(async (item) => {
+            try {
+                await ensureAttachment({
+                    driveFileId: item.driveFileId,
+                    noteId: item.noteId,
+                    blockId: item.blockId,
+                    type: item.type,
+                    driveSize: item.driveSize,
+                });
+            } catch (e) {
+                console.error('[checkAndEnqueueMissingImages] Error:', e);
+            } finally {
+                done++;
+                useStore.setState({ cloudRestoreProgress: done < total ? { done, total } : null });
+            }
+        })
+    );
+    useStore.setState({ cloudRestoreProgress: null });
 };
 
 let lastKnownAttachmentCount = -1;
