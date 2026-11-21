@@ -6,7 +6,7 @@ import { LocalImage } from "@/components/ui/local-image"
 import { motion, AnimatePresence } from "framer-motion"
 import { useShallow } from "zustand/react/shallow"
 import { useStore, RecurrenceType, Task, getLocalDateString } from "@/lib/store"
-import { useState, useRef, useEffect, useMemo, memo } from "react"
+import { useState, useRef, useEffect, useMemo, useCallback, memo } from "react"
 import { createPortal } from "react-dom"
 import { GlassSurface } from "@/components/ui/glass-surface"
 import { Plus, Check, Trash2, Camera, X as XIcon, Edit2, Layers, ChevronRight, ChevronDown, History, Pin, Sparkles, RotateCcw, Activity, CircleHelp } from "lucide-react"
@@ -35,11 +35,11 @@ const TourTooltip = ({
 }) => {
     return (
         <motion.div
-            initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)", y: arrowDirection === 'up' ? 10 : -10 }}
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)", y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
+            initial={{ opacity: 0, scale: 0.95, y: arrowDirection === 'up' ? 10 : -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
-            className={`absolute z-[110] glass-panel p-5 rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-950 shadow-2xl flex flex-col gap-3 text-left w-full max-w-sm will-change-[transform,opacity,filter] ${className}`}
+            className={`absolute z-[110] glass-panel p-5 rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-950 shadow-2xl flex flex-col gap-3 text-left w-full max-w-sm will-change-[transform,opacity] ${className}`}
         >
             {children}
         </motion.div>
@@ -69,7 +69,21 @@ export default function TasksPage() {
     const unloadTasks = useStore(state => state.unloadTasks)
     const celebration = useStore(state => state.celebration)
     const clearCelebration = useStore(state => state.clearCelebration)
-    const notes = useStore(useShallow(state => state.notes))
+    const noteTaskKey = useStore(state => {
+        const parts: string[] = [];
+        for (const note of state.notes) {
+            if (!note.blocks) continue;
+            for (const block of note.blocks) {
+                if (block.type === 'task-list') {
+                    const items = Array.isArray(block.content?.items) ? block.content.items : (Array.isArray(block.content) ? block.content : []);
+                    for (const item of items) {
+                        parts.push(`${note.id}\x00${note.title || ''}\x00${block.id}\x00${item.id}\x00${item.checked ? 1 : 0}\x00${item.text || ''}`);
+                    }
+                }
+            }
+        }
+        return parts.join('\x01');
+    })
     const updateNote = useStore(state => state.updateNote)
     const focusEffectEnabled = useStore(state => state.focusEffectEnabled)
     const completedOnceHabits = useStore(useShallow(state => state.completedOnceHabits))
@@ -431,7 +445,7 @@ export default function TasksPage() {
         return history
     }, [tasks, language, completedOnceHabits])
 
-    const handleToggleTask = (habit: Task) => {
+    const handleToggleTask = useCallback((habit: Task) => {
         const today = getLocalDateString()
         const isCompleted = habit.completedDates && Array.isArray(habit.completedDates) ? habit.completedDates.includes(today) : habit.completed
 
@@ -489,37 +503,30 @@ export default function TasksPage() {
                 nextTourStep()
             }
         }
-    }
+    }, [focusEffectEnabled, habitsByPriority, toggleTask, showToast, language, tourStep, nextTourStep])
 
     const noteTasksGroup = useMemo(() => {
+        if (!noteTaskKey) return [];
         const allTasks: { noteId: string, blockId: string, taskId: string, title: string, completed: boolean, noteTitle: string }[] = [];
-        notes.forEach(note => {
-            note.blocks.forEach(block => {
-                if (block.type === 'task-list') {
-                    const items = Array.isArray(block.content?.items) ? block.content.items : (Array.isArray(block.content) ? block.content : []);
-                    items.forEach((item: any) => {
-                        let text = item.text || '';
-                        // Basic strip HTML tags for simple task titles from rich text
-                        if (typeof text === 'string') {
-                            text = text.replace(/<[^>]*>?/gm, '');
-                            text = text.replace(/&nbsp;/g, ' ').replace(/&nbsp/g, ' ').replace(/\u00A0/g, ' ');
-                        }
-                        if (text.trim() === '') text = 'Tarea sin nombre';
-
-                        allTasks.push({
-                            noteId: note.id,
-                            blockId: block.id,
-                            taskId: item.id,
-                            title: text,
-                            completed: item.checked,
-                            noteTitle: note.title || t.untitled || 'Nota sin título'
-                        });
-                    });
-                }
+        for (const row of noteTaskKey.split('\x01')) {
+            const [noteId, rawNoteTitle, blockId, taskId, checkedStr, rawText] = row.split('\x00');
+            let text = rawText || '';
+            if (typeof text === 'string') {
+                text = text.replace(/<[^>]*>?/gm, '');
+                text = text.replace(/&nbsp;/g, ' ').replace(/&nbsp/g, ' ').replace(/\u00A0/g, ' ');
+            }
+            if (text.trim() === '') text = 'Tarea sin nombre';
+            allTasks.push({
+                noteId,
+                blockId,
+                taskId,
+                title: text,
+                completed: checkedStr === '1',
+                noteTitle: rawNoteTitle || t.untitled || 'Nota sin título'
             });
-        });
+        }
         return allTasks;
-    }, [notes, t.untitled]);
+    }, [noteTaskKey, t.untitled]);
 
     const handleCreateHabit = (e: React.FormEvent) => {
         e.preventDefault()
@@ -706,9 +713,9 @@ export default function TasksPage() {
 
                             {isMounted && tourStep === 1 && (
                                 <motion.div
-                                    initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)", y: 10 }}
-                                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)", y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.95, filter: "blur(10px)", y: 10 }}
+                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
                                     transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
                                     className="absolute top-full right-0 mt-3 z-[100] w-full max-w-sm glass-panel p-5 rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-950 shadow-2xl flex flex-col gap-3 text-center will-change-[transform,opacity,filter]"
                                 >
@@ -1001,6 +1008,7 @@ export default function TasksPage() {
                                                                         isHighPriorityHighlighted={isHighPriorityHighlighted}
                                                                         isFocusEffectActive={isFocusEffectActive}
                                                                         priority={priority}
+                                                                        language={language}
                                                                         t={t}
                                                                         common={common}
                                                                     />
@@ -1066,7 +1074,7 @@ export default function TasksPage() {
                                     <div className="space-y-2 pt-2">
                                             {noteTasksGroup.map(task => (
                                                 <div key={`${task.noteId}-${task.taskId}`} className="flex items-center justify-between group/task cursor-pointer p-1 rounded-lg hover:bg-white/5 transition-all" onClick={() => {
-                                                    const note = notes.find(n => n.id === task.noteId);
+                                                    const note = useStore.getState().notes.find(n => n.id === task.noteId);
                                                     if (note) {
                                                         const newBlocks = note.blocks.map(block => {
                                                             if (block.id === task.blockId) {
@@ -1103,8 +1111,8 @@ export default function TasksPage() {
                 {/* Stats Chart (Bottom, Full Width, Line Chart) */}
                 <Reveal delay={0.3} margin="0px" duration={0.8}>
                     <motion.div
-                        initial={{ opacity: 0, y: 40, filter: "blur(15px)" }}
-                        whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                        initial={{ opacity: 0, y: 40 }}
+                        whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
                     >
@@ -1137,9 +1145,9 @@ export default function TasksPage() {
                                 className="absolute inset-0 bg-transparent"
                             />
                             <motion.div
-                                initial={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}
-                                animate={{ opacity: 1, filter: "blur(0px)", y: 0, scale: 1 }}
-                                exit={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}
+                                initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 20, scale: 0.9 }}
                                 className="relative w-full max-w-md glass-panel p-6 rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121215] shadow-2xl text-center flex flex-col items-center gap-4 text-foreground dark:text-white"
                             >
                                 <button
@@ -1257,9 +1265,9 @@ export default function TasksPage() {
                             className="absolute inset-0 bg-black/60 backdrop-blur-md"
                         />
                         <motion.div
-                            initial={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}
-                            animate={{ opacity: 1, filter: "blur(0px)", y: 0, scale: 1 }}
-                            exit={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}
+                            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 20, scale: 0.9 }}
                             className="relative w-full max-w-md glass-panel p-8 rounded-3xl border border-zinc-200 dark:border-white/10 bg-card shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
                         >
                             <h3 className="text-2xl font-black mb-6">{t.newTaskGroup}</h3>
@@ -1877,9 +1885,9 @@ export default function TasksPage() {
                                                 {isMounted && tourStep === 7 && (
                                                     <div className="absolute bottom-full right-0 mb-4 z-[120] w-48" onClick={(e) => e.stopPropagation()}>
                                                         <motion.div
-                                                            initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)", y: 10 }}
-                                                            animate={{ opacity: 1, scale: 1, filter: "blur(0px)", y: 0 }}
-                                                            exit={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
+                                                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                            exit={{ opacity: 0, scale: 0.95 }}
                                                             transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
                                                             className="p-4 rounded-3xl bg-white border border-zinc-200 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col gap-2 text-center items-center justify-center relative w-full will-change-[transform,opacity,filter]"
                                                         >
@@ -1920,9 +1928,9 @@ export default function TasksPage() {
                             className="absolute inset-0 bg-black/60 backdrop-blur-md"
                         />
                         <motion.div
-                            initial={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}
-                            animate={{ opacity: 1, filter: "blur(0px)", y: 0, scale: 1 }}
-                            exit={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}
+                            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 20, scale: 0.9 }}
                             className="relative w-full max-w-lg glass-panel p-6 sm:p-8 rounded-3xl border border-zinc-200 dark:border-white/10 bg-card shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[80vh]"
                         >
                             <button
@@ -1991,9 +1999,9 @@ export default function TasksPage() {
                 {isMounted && tourStep !== null && tourStep >= 8 && tourStep <= 10 && (
                     <motion.div
                         key={tourStep}
-                        initial={{ opacity: 0, y: 30, scale: 0.95, filter: "blur(10px)" }}
-                        animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-                        exit={{ opacity: 0, y: 20, scale: 0.95, filter: "blur(10px)" }}
+                        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                         onClick={() => {
                             if (tourStep === 10) {
@@ -2054,6 +2062,7 @@ const HabitCard = memo(({
     isHighPriorityHighlighted,
     isFocusEffectActive,
     priority,
+    language,
     t,
     common
 }: {
@@ -2068,10 +2077,10 @@ const HabitCard = memo(({
     isHighPriorityHighlighted: boolean;
     isFocusEffectActive: boolean;
     priority: "High" | "Medium" | "Low";
+    language: string;
     t: any;
     common: any;
 }) => {
-    const language = useStore(state => state.language)
     const todayObj = new Date()
     const currentDay = todayObj.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
     const isTodayActive = habit.recurrence === 'None' || habit.recurrence === 'Once' || !habit.activeDays || habit.activeDays.includes(currentDay)
@@ -2314,5 +2323,16 @@ const HabitCard = memo(({
             </div>
         </MobileContextMenu>
     )
-})
+}, (prev, next) => (
+    prev.habit === next.habit &&
+    prev.isCompleted === next.isCompleted &&
+    prev.missed === next.missed &&
+    prev.language === next.language &&
+    prev.isHighPriorityHighlighted === next.isHighPriorityHighlighted &&
+    prev.isFocusEffectActive === next.isFocusEffectActive &&
+    prev.priority === next.priority &&
+    prev.handleToggleTask === next.handleToggleTask &&
+    prev.t === next.t &&
+    prev.common === next.common
+))
 HabitCard.displayName = "HabitCard"
