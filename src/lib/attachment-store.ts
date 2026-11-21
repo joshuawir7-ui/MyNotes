@@ -97,7 +97,7 @@ export function subscribeAttachmentStatus(
 // ─── Dependency injection hooks for unit testing against real code ────────────
 export interface AttachmentStoreDeps {
     isNative: () => boolean;
-    getAccessToken: () => string | null;
+    getAccessToken: () => Promise<string | null> | string | null;
     refreshAccessToken: () => Promise<string | null>;
     markSessionExpired: () => void;
     applyBlockUri: (noteId: string, blockId: string, driveFileId: string, uri: string) => Promise<void>;
@@ -110,21 +110,86 @@ export interface AttachmentStoreDeps {
     backoffMs: number[];
 }
 
+export interface AttachmentStoreBridge {
+    getAccessToken: () => string | null;
+    refreshAccessToken: () => Promise<string | null>;
+    markSessionExpired: () => void;
+    applyBlockUri: (noteId: string, blockId: string, driveFileId: string, uri: string) => Promise<void>;
+    getAttachmentManifest: () => Promise<Record<string, { localPath: string; sizeBytes?: number }>>;
+    upsertManifestEntry: (entry: {
+        driveFileId: string;
+        noteId: string;
+        blockId: string;
+        type: 'video' | 'image' | 'file';
+        localPath: string;
+        sizeBytes: number;
+        lastSyncedAt: number;
+    }) => Promise<void>;
+}
+
+let registeredBridge: AttachmentStoreBridge | null = null;
+
+export function registerAttachmentStoreBridge(bridge: AttachmentStoreBridge): void {
+    registeredBridge = bridge;
+}
+
+export async function cacheUploadedAttachmentUri(
+    driveFileId: string,
+    localUri: string,
+    meta?: { noteId?: string; blockId?: string; type?: 'image' | 'video' | 'file' | 'drawing'; sizeBytes?: number }
+): Promise<void> {
+    if (!driveFileId || !localUri || localUri.startsWith('drive://')) return;
+    if (Capacitor.isNativePlatform()) {
+        if (localUri.startsWith('file://') || localUri.startsWith('/')) {
+            const normalizedPath = localUri.startsWith('/') ? `file://${localUri}` : localUri;
+            try {
+                if (registeredBridge) {
+                    await registeredBridge.upsertManifestEntry({
+                        driveFileId,
+                        noteId: meta?.noteId || '',
+                        blockId: meta?.blockId || '',
+                        type: (meta?.type === 'video' || meta?.type === 'file' ? meta.type : 'image'),
+                        localPath: normalizedPath,
+                        sizeBytes: meta?.sizeBytes || 1,
+                        lastSyncedAt: Date.now()
+                    });
+                } else {
+                    const { upsertManifestEntry } = await import('./store');
+                    await upsertManifestEntry({
+                        driveFileId,
+                        noteId: meta?.noteId || '',
+                        blockId: meta?.blockId || '',
+                        type: (meta?.type === 'video' || meta?.type === 'file' ? meta.type : 'image'),
+                        localPath: normalizedPath,
+                        sizeBytes: meta?.sizeBytes || 1,
+                        lastSyncedAt: Date.now()
+                    });
+                }
+            } catch {}
+        }
+    } else if (localUri.startsWith('indexeddb://')) {
+        try {
+            await idbSet(`${WEB_MANIFEST_PREFIX}${driveFileId}`, localUri);
+        } catch {}
+    }
+}
+
 const defaultDeps: AttachmentStoreDeps = {
     isNative: () => Capacitor.isNativePlatform(),
-    getAccessToken: () => {
+    getAccessToken: async () => {
         try {
-            const { useStore } = require('./store');
+            if (registeredBridge) return registeredBridge.getAccessToken();
+            const { useStore } = await import('./store');
             const st = useStore.getState();
             if (st.googleSessionExpired) return null;
             return st.googleUser?.accessToken || null;
-        } catch {
-            return null;
-        }
+        } catch {}
+        return null;
     },
     refreshAccessToken: async () => {
         try {
-            const { silentRefreshGoogleToken } = require('./store');
+            if (registeredBridge) return await registeredBridge.refreshAccessToken();
+            const { silentRefreshGoogleToken } = await import('./store');
             return await silentRefreshGoogleToken();
         } catch {
             return null;
@@ -132,13 +197,22 @@ const defaultDeps: AttachmentStoreDeps = {
     },
     markSessionExpired: () => {
         try {
-            const { useStore } = require('./store');
-            useStore.setState({ googleSessionExpired: true });
+            if (registeredBridge) {
+                registeredBridge.markSessionExpired();
+                return;
+            }
+            import('./store').then(({ useStore }) => {
+                useStore.setState({ googleSessionExpired: true });
+            }).catch(() => {});
         } catch {}
     },
     applyBlockUri: async (noteId: string, blockId: string, driveFileId: string, uri: string) => {
         try {
-            const { applyDownloadedAttachmentToStore } = require('./store');
+            if (registeredBridge) {
+                await registeredBridge.applyBlockUri(noteId, blockId, driveFileId, uri);
+                return;
+            }
+            const { applyDownloadedAttachmentToStore } = await import('./store');
             if (typeof applyDownloadedAttachmentToStore === 'function') {
                 await applyDownloadedAttachmentToStore(noteId, blockId, driveFileId, uri);
             }
@@ -165,8 +239,9 @@ const defaultDeps: AttachmentStoreDeps = {
     },
     getNativeCachedUri: async (driveFileId: string) => {
         try {
-            const { getAttachmentManifest } = require('./store');
-            const manifest = await getAttachmentManifest();
+            const manifest = registeredBridge
+                ? await registeredBridge.getAttachmentManifest()
+                : await (await import('./store')).getAttachmentManifest();
             const entry = manifest?.[driveFileId];
             if (!entry || !entry.localPath) return null;
             const stat = await Filesystem.stat({ path: entry.localPath.replace('file://', '') });
@@ -204,8 +279,7 @@ const defaultDeps: AttachmentStoreDeps = {
             if (sizeBytes === 0) return { status: 200, sizeBytes: 0 };
 
             try {
-                const { upsertManifestEntry } = require('./store');
-                await upsertManifestEntry({
+                const entry = {
                     driveFileId,
                     noteId: noteId || '',
                     blockId: blockId || '',
@@ -213,7 +287,13 @@ const defaultDeps: AttachmentStoreDeps = {
                     localPath: fileUri,
                     sizeBytes,
                     lastSyncedAt: Date.now()
-                });
+                };
+                if (registeredBridge) {
+                    await registeredBridge.upsertManifestEntry(entry);
+                } else {
+                    const { upsertManifestEntry } = await import('./store');
+                    await upsertManifestEntry(entry);
+                }
             } catch {}
 
             return { status: 200, uri: fileUri, sizeBytes };
@@ -288,7 +368,7 @@ export async function ensureAttachment(params: EnsureAttachmentParams): Promise<
     }
 
     const downloadPromise = (async (): Promise<EnsureAttachmentResult> => {
-        let token = activeDeps.getAccessToken();
+        let token = await activeDeps.getAccessToken();
         if (!token) {
             setStatus(driveFileId, { state: 'error', reason: 'no-session' });
             return { ok: false, reason: 'no-session' };
@@ -493,7 +573,7 @@ export function getFailureMessage(reason: AttachmentFailReason, language: string
  * or without arguments to automatically diagnose the first block with driveFileId (e.g. note "AVANZAR").
  */
 export async function diagnoseDriveAttachment(targetDriveFileId?: string): Promise<any> {
-    const { useStore } = require('./store');
+    const { useStore } = await import('./store');
     const state = useStore.getState();
     const token = state.googleUser?.accessToken;
 

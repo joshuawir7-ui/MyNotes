@@ -742,19 +742,40 @@ const mergeNotesLists = (
         }
 
         // PREVENT OVERWRITING LOCAL CACHE & NORMALIZE FOREIGN REMOTE PATHS:
-        // If we picked the remote note, preserve any valid local URL we already have for the same driveFileId,
-        // and otherwise ensure blocks with driveFileId carry `drive://<id>` rather than another device's local path.
+        // Keep any URI that is valid on the current platform (whether from localBlocks or from finalNote itself),
+        // and only normalize to `drive://<id>` when the URI is empty or belongs to a foreign platform.
+        const isUsableOnCurrentPlatform = (u: any): boolean => {
+            if (typeof u !== 'string' || !u || u.startsWith('drive://')) return false;
+            if (isNative) {
+                return u.startsWith('file://') || u.startsWith('/data/') || u.startsWith('content://') || u.startsWith('http://localhost') || u.startsWith('data:');
+            }
+            return u.startsWith('indexeddb://') || u.startsWith('data:') || u.startsWith('blob:');
+        };
+
         let finalNote = note;
         if (Array.isArray(finalNote.blocks)) {
             const preservedBlocks = finalNote.blocks.map(b => {
                 if (b && ['image', 'video', 'file', 'drawing'].includes(b.type) && b.driveFileId) {
-                    const localB = localBlocks.find(lb => lb && lb.id === b.id && lb.driveFileId === b.driveFileId);
+                    const currentUrl = typeof b.content === 'string' ? b.content : b.content?.url;
+                    if (isUsableOnCurrentPlatform(currentUrl)) {
+                        return b;
+                    }
+                    const localB = localBlocks.find(lb => lb && (lb.id === b.id || lb.driveFileId === b.driveFileId));
                     if (localB && localB.content) {
                         const localUrl = typeof localB.content === 'string' ? localB.content : localB.content?.url;
-                        if (localUrl && !localUrl.startsWith('drive://')) {
+                        if (isUsableOnCurrentPlatform(localUrl)) {
                             return typeof b.content === 'string' || b.content == null
                                 ? { ...b, content: localUrl }
                                 : { ...b, content: { ...b.content, url: localUrl } };
+                        }
+                    }
+                    const remoteB = remoteBlocks.find(rb => rb && (rb.id === b.id || rb.driveFileId === b.driveFileId));
+                    if (remoteB && remoteB.content) {
+                        const remoteUrl = typeof remoteB.content === 'string' ? remoteB.content : remoteB.content?.url;
+                        if (isUsableOnCurrentPlatform(remoteUrl)) {
+                            return typeof b.content === 'string' || b.content == null
+                                ? { ...b, content: remoteUrl }
+                                : { ...b, content: { ...b.content, url: remoteUrl } };
                         }
                     }
                     const driveUri = `drive://${b.driveFileId}`;
@@ -1958,6 +1979,15 @@ export const uploadMissingAttachments = async (token: string, notes: Note[]): Pr
                             if (driveSize !== undefined) block.driveSize = driveSize;
                             if (driveMd5 !== undefined) block.driveMd5 = driveMd5;
                             hasChanges = true;
+                            try {
+                                const { cacheUploadedAttachmentUri } = await import('./attachment-store');
+                                await cacheUploadedAttachmentUri(driveFileId, targetUrl, {
+                                    noteId: note.id,
+                                    blockId: block.id,
+                                    type: block.type as any,
+                                    sizeBytes: driveSize
+                                });
+                            } catch {}
                             console.log(`[Sync] Archivo subido exitosamente a Drive: ${driveFileId}`);
                         }
                     } catch (e) {
@@ -4419,6 +4449,21 @@ export const applyDownloadedAttachmentToStore = async (
 ): Promise<void> => {
     useStore.getState().updateNoteBlockContent(noteId, blockId, uri);
 };
+
+import('./attachment-store').then(({ registerAttachmentStoreBridge }) => {
+    registerAttachmentStoreBridge({
+        getAccessToken: () => {
+            const st = useStore.getState();
+            if (st.googleSessionExpired) return null;
+            return st.googleUser?.accessToken || null;
+        },
+        refreshAccessToken: () => silentRefreshGoogleToken(),
+        markSessionExpired: () => useStore.setState({ googleSessionExpired: true }),
+        applyBlockUri: (noteId, blockId, driveFileId, uri) => applyDownloadedAttachmentToStore(noteId, blockId, driveFileId, uri),
+        getAttachmentManifest: () => getAttachmentManifest(),
+        upsertManifestEntry: (entry) => upsertManifestEntry(entry)
+    });
+}).catch(() => {});
 
 export const checkAndEnqueueMissingImages = async () => {
     if (getPerfFlags().perfNoSync) { console.log(`[PERF][sync] ${perfStamp()} phase=checkAndEnqueueMissingImages:blocked(perf-no-sync)`); return; }

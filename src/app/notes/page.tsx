@@ -368,32 +368,26 @@ function getRawNoteThumbnail(blocks: any[] | undefined): string | null {
 
 const NoteThumbnail = memo(({ rawSrc }: { rawSrc: string | null }) => {
     const resolvedUrl = useLocalUrl(rawSrc);
-    const [isLoaded, setIsLoaded] = useState(false);
     const [hasError, setHasError] = useState(false);
 
     useEffect(() => {
-        setIsLoaded(false);
         setHasError(false);
     }, [rawSrc, resolvedUrl]);
 
-    const showImage = !!resolvedUrl && !hasError && isLoaded && !resolvedUrl.startsWith('indexeddb://') && !resolvedUrl.startsWith('drive://');
+    const validSrc = !!resolvedUrl && !hasError && !resolvedUrl.startsWith('indexeddb://') && !resolvedUrl.startsWith('drive://');
 
-    if (!rawSrc || hasError) return null;
+    if (!rawSrc || !validSrc) return null;
 
     return (
-        <div className={`w-full mt-3 shrink-0 flex justify-center transition-opacity duration-300 ${showImage ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-            {resolvedUrl && !hasError && (
-                <img
-                    src={resolvedUrl}
-                    alt="Note thumbnail"
-                    className="max-w-full max-h-48 w-auto h-auto rounded-xl"
-                    style={{ borderRadius: '12px', display: 'block' }}
-                    loading="lazy"
-                    decoding="async"
-                    onLoad={() => setIsLoaded(true)}
-                    onError={() => setHasError(true)}
-                />
-            )}
+        <div className="w-full mt-3 shrink-0 flex justify-center">
+            <img
+                src={resolvedUrl}
+                alt="Note thumbnail"
+                className="max-w-full max-h-48 w-auto h-auto rounded-xl"
+                style={{ borderRadius: '12px', display: 'block' }}
+                decoding="async"
+                onError={() => setHasError(true)}
+            />
         </div>
     );
 });

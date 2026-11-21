@@ -2539,7 +2539,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                         onPointerUp={onPointerUp}
                         onPointerCancel={onPointerUp}
                     >
-                        {imageError || (!imageSrc && block.driveFileId && !isDownloading) ? (
+                        {imageError ? (
                             <div className="flex flex-col items-center justify-center p-6 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-center w-full min-h-[160px]">
                                 <AlertCircle className="w-10 h-10 text-amber-500 mb-2" />
                                 <span className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-1">
@@ -2558,6 +2558,13 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                                         {isRetryingDownload ? (language === 'es' ? 'Descargando...' : 'Downloading...') : (language === 'es' ? 'Reintentar descarga' : 'Retry download')}
                                     </button>
                                 )}
+                            </div>
+                        ) : !imageSrc ? (
+                            <div className="flex flex-col items-center justify-center w-full min-h-[180px] bg-black/10 dark:bg-white/5 rounded-2xl animate-pulse">
+                                <ImageIcon className="w-10 h-10 text-muted-foreground/30 mb-2" />
+                                <span className="text-muted-foreground/50 text-xs font-medium">
+                                    {language === 'es' ? 'Cargando imagen...' : 'Loading image...'}
+                                </span>
                             </div>
                         ) : (
                             <img

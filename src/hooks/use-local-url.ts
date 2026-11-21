@@ -3,12 +3,25 @@ import { getLocalImageSrc } from '@/lib/image-utils';
 import { createObjectURLFromIndexedDB } from '@/lib/blob-storage';
 import { Capacitor } from '@capacitor/core';
 
+function getInitialSyncUrl(uriOrBase64: string | null | undefined): string {
+    if (!uriOrBase64) return '';
+    if (typeof window !== 'undefined' && !Capacitor.isNativePlatform()) {
+        if (uriOrBase64.startsWith('file://') || uriOrBase64.startsWith('/data/')) {
+            return '';
+        }
+    }
+    if (uriOrBase64.startsWith('drive://') || uriOrBase64.startsWith('indexeddb://')) {
+        return '';
+    }
+    return getLocalImageSrc(uriOrBase64);
+}
+
 /**
  * Hook to asynchronously resolve a local file path or IndexedDB URI into a browser-usable URL (e.g., blob:).
  * Automatically cleans up the object URL on unmount or when the source changes.
  */
 export function useLocalUrl(uriOrBase64: string | null | undefined): string {
-    const [resolvedUrl, setResolvedUrl] = useState<string>('');
+    const [resolvedUrl, setResolvedUrl] = useState<string>(() => getInitialSyncUrl(uriOrBase64));
 
     useEffect(() => {
         if (!uriOrBase64) {
@@ -24,12 +37,17 @@ export function useLocalUrl(uriOrBase64: string | null | undefined): string {
             }
         }
 
-        // If the block holds a drive://<id> reference, check local cache (IndexedDB on Web / Filesystem on Native) first
+        // If the block holds a drive://<id> reference, check local cache first, and if missing, fetch via ensureAttachment
         if (uriOrBase64.startsWith('drive://')) {
-            const driveFileId = uriOrBase64.replace('drive://', '');
+            const driveFileId = uriOrBase64.replace('drive://', '').trim();
+            if (!driveFileId) {
+                setResolvedUrl('');
+                return;
+            }
             let active = true;
             let objectUrl: string | null = null;
-            import('@/lib/attachment-store').then(({ getCachedUri }) => getCachedUri(driveFileId)).then(async (cachedUri) => {
+
+            const applyCachedUri = async (cachedUri: string | null) => {
                 if (!active || !cachedUri) {
                     if (active) setResolvedUrl('');
                     return;
@@ -45,9 +63,26 @@ export function useLocalUrl(uriOrBase64: string | null | undefined): string {
                 } else {
                     setResolvedUrl(getLocalImageSrc(cachedUri));
                 }
-            }).catch(() => {
-                if (active) setResolvedUrl('');
-            });
+            };
+
+            import('@/lib/attachment-store')
+                .then(async ({ getCachedUri, ensureAttachment }) => {
+                    const cached = await getCachedUri(driveFileId);
+                    if (cached) {
+                        await applyCachedUri(cached);
+                        return;
+                    }
+                    const ensured = await ensureAttachment({ driveFileId, type: 'image' });
+                    if (ensured.ok && ensured.uri) {
+                        await applyCachedUri(ensured.uri);
+                    } else if (active) {
+                        setResolvedUrl('');
+                    }
+                })
+                .catch(() => {
+                    if (active) setResolvedUrl('');
+                });
+
             return () => {
                 active = false;
                 if (objectUrl && objectUrl.startsWith('blob:')) {
