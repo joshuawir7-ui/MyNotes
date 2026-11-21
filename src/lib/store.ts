@@ -3375,10 +3375,17 @@ export const useStore = create<AppState>()(
                 setGoogleUser: (user) => set({ googleUser: user, googleSessionExpired: false }),
 
                 downloadAttachment: async (noteId: string, blockId: string) => {
-                    if (!isNative) return false;
                     const state = get();
                     const user = state.googleUser;
-                    if (!user || !user.accessToken) return false;
+                    if (!user || !user.accessToken) {
+                        state.showToast(
+                            state.language === 'es'
+                                ? 'Inicia sesión con Google para descargar de la nube'
+                                : 'Sign in with Google to download from cloud',
+                            'error'
+                        );
+                        return false;
+                    }
 
                     const note = state.notes.find(n => n.id === noteId);
                     if (!note) return false;
@@ -3390,50 +3397,61 @@ export const useStore = create<AppState>()(
                     else if (block.type === 'image') fileName = 'image.png';
 
                     try {
-                        const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-                        const localFileName = `attachment_${block.driveFileId}_${safeFileName}`;
-                        
-                        const result = await Filesystem.downloadFile({
-                            url: `https://www.googleapis.com/drive/v3/files/${block.driveFileId}?alt=media`,
-                            path: localFileName,
-                            directory: Directory.Data,
-                            headers: {
-                                Authorization: `Bearer ${user.accessToken}`
-                            }
-                        });
+                        let fileUri = '';
 
-                        if (result.path) {
-                            let fileUri = result.path;
-                            if (!fileUri.startsWith('file://') && !fileUri.startsWith('/')) {
-                                // Sometimes it returns a relative path, get full uri
-                                const uriRes = await Filesystem.getUri({ path: localFileName, directory: Directory.Data });
-                                fileUri = uriRes.uri;
-                            } else if (fileUri.startsWith('/')) {
-                                fileUri = 'file://' + fileUri;
-                            }
+                        if (isNative) {
+                            const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+                            const localFileName = `attachment_${block.driveFileId}_${safeFileName}`;
 
+                            const result = await Filesystem.downloadFile({
+                                url: `https://www.googleapis.com/drive/v3/files/${block.driveFileId}?alt=media`,
+                                path: localFileName,
+                                directory: Directory.Data,
+                                headers: {
+                                    Authorization: `Bearer ${user.accessToken}`
+                                }
+                            });
+
+                            if (result.path) {
+                                fileUri = result.path;
+                                if (!fileUri.startsWith('file://') && !fileUri.startsWith('/')) {
+                                    const uriRes = await Filesystem.getUri({ path: localFileName, directory: Directory.Data });
+                                    fileUri = uriRes.uri;
+                                } else if (fileUri.startsWith('/')) {
+                                    fileUri = 'file://' + fileUri;
+                                }
+                            }
+                        } else {
+                            // Web / Desktop fallback: fetch from Drive and persist Blob in IndexedDB
+                            const res = await fetch(`https://www.googleapis.com/drive/v3/files/${block.driveFileId}?alt=media`, {
+                                headers: { Authorization: `Bearer ${user.accessToken}` }
+                            });
+                            if (res.status === 401 || res.status === 403) {
+                                set({ googleSessionExpired: true });
+                                state.showToast(
+                                    state.language === 'es'
+                                        ? 'Tu sesión de Google expiró, reconecta tu cuenta'
+                                        : 'Google session expired, please reconnect your account',
+                                    'error'
+                                );
+                                return false;
+                            }
+                            if (!res.ok) {
+                                throw new Error(`Drive download failed (${res.status})`);
+                            }
+                            const blob = await res.blob();
+                            if (!blob || blob.size === 0) {
+                                throw new Error('Empty file from Drive');
+                            }
+                            const ext = (fileName.split('.').pop() || (block.type === 'image' ? 'png' : 'bin')).toLowerCase();
+                            const { saveBlobToIndexedDB } = await import('./blob-storage');
+                            fileUri = await saveBlobToIndexedDB(blob, ext);
+                        }
+
+                        if (fileUri) {
                             const now = Date.now();
                             const currentState = get();
-                            const newNotes = currentState.notes.map(n => {
-                                if (n.id === noteId) {
-                                    return {
-                                        ...n,
-                                        lastUpdated: now,
-                                        blocks: n.blocks.map(b => {
-                                            if (b.id === blockId) {
-                                                if (b.type === 'file' || b.type === 'video') {
-                                                    return { ...b, content: { ...b.content, url: fileUri } };
-                                                } else {
-                                                    return { ...b, content: fileUri };
-                                                }
-                                            }
-                                            return b;
-                                        })
-                                    };
-                                }
-                                return n;
-                            });
-                            
+
                             // Fix: Wait for persistence to finish before updating UI state (Single Source of Truth)
                             const allNotes = await readAllNotesFromDisk(currentState.notes);
                             const finalNotes = allNotes.map(n => {
@@ -3480,25 +3498,44 @@ export const useStore = create<AppState>()(
                                 return { notes: stateNotes };
                             });
 
-                            // Actualizar manifest tras descarga manual exitosa
-                            try {
-                                let sizeBytes = 0;
-                                try { const st = await Filesystem.stat({ path: fileUri.replace('file://', '') }); sizeBytes = st.size || 0; } catch {}
-                                await upsertManifestEntry({
-                                    driveFileId: block.driveFileId!,
-                                    noteId,
-                                    blockId,
-                                    type: block.type as 'video' | 'image' | 'file',
-                                    localPath: fileUri,
-                                    sizeBytes,
-                                    lastSyncedAt: Date.now()
-                                });
-                            } catch (mErr) { console.warn('[Manifest] Error actualizando manifest en downloadAttachment', mErr); }
+                            if (isNative) {
+                                // Actualizar manifest tras descarga manual exitosa
+                                try {
+                                    let sizeBytes = 0;
+                                    try { const st = await Filesystem.stat({ path: fileUri.replace('file://', '') }); sizeBytes = st.size || 0; } catch {}
+                                    await upsertManifestEntry({
+                                        driveFileId: block.driveFileId!,
+                                        noteId,
+                                        blockId,
+                                        type: block.type as 'video' | 'image' | 'file',
+                                        localPath: fileUri,
+                                        sizeBytes,
+                                        lastSyncedAt: Date.now()
+                                    });
+                                } catch (mErr) { console.warn('[Manifest] Error actualizando manifest en downloadAttachment', mErr); }
+                            }
 
                             return true;
                         }
-                    } catch (e) {
+                    } catch (e: any) {
                         console.error('downloadAttachment error:', e);
+                        const msg = String(e?.message || e || '');
+                        if (msg.includes('401') || msg.includes('403') || msg.toLowerCase().includes('unauthorized')) {
+                            set({ googleSessionExpired: true });
+                            get().showToast(
+                                get().language === 'es'
+                                    ? 'Tu sesión de Google expiró, reconecta tu cuenta'
+                                    : 'Google session expired, please reconnect your account',
+                                'error'
+                            );
+                        } else {
+                            get().showToast(
+                                get().language === 'es'
+                                    ? 'Error al descargar el archivo de la nube'
+                                    : 'Failed to download file from cloud',
+                                'error'
+                            );
+                        }
                     }
                     return false;
                 },
@@ -4293,10 +4330,9 @@ if (typeof window !== 'undefined') {
 export const checkAndEnqueueMissingImages = async () => {
     if (getPerfFlags().perfNoSync) { console.log(`[PERF][sync] ${perfStamp()} phase=checkAndEnqueueMissingImages:blocked(perf-no-sync)`); return; }
     console.log(`[PERF][sync] ${perfStamp()} phase=checkAndEnqueueMissingImages:start`);
-    if (!isNative) return;
     const state = useStore.getState();
     const token = state.googleUser?.accessToken;
-    if (!token) return;
+    if (!token || state.googleSessionExpired) return;
 
     for (const note of state.notes) {
         if (!note.blocks) continue;
@@ -4313,29 +4349,38 @@ export const checkAndEnqueueMissingImages = async () => {
                     else if (typeof block.content === 'string') fileUri = block.content;
                 }
 
-                if (fileUri && fileUri.startsWith('file://')) {
-                    try {
-                        const localSrc = Capacitor.convertFileSrc(fileUri);
-                        const res = await fetch(localSrc, { method: 'HEAD' });
-                        if (!res.ok) needsDownload = true;
-                    } catch (e) {
+                if (isNative) {
+                    if (fileUri && fileUri.startsWith('file://')) {
+                        try {
+                            const localSrc = Capacitor.convertFileSrc(fileUri);
+                            const res = await fetch(localSrc, { method: 'HEAD' });
+                            if (!res.ok) needsDownload = true;
+                        } catch (e) {
+                            needsDownload = true;
+                        }
+                    }
+                    if (needsDownload) {
+                        state.setBlockDownloading(note.id, block.id, true);
+                        let fileNameStr = '';
+                        if (block.type === 'file' && block.content && block.content.name) {
+                            fileNameStr = block.content.name;
+                        }
+                        WidgetSync.enqueueImageDownload({
+                            token,
+                            driveFileId: block.driveFileId,
+                            noteId: note.id,
+                            blockId: block.id,
+                            fileName: fileNameStr
+                        } as any).catch(console.error);
+                    }
+                } else {
+                    // En Web, rutas file:// o /data/ provienen de Android y no son accesibles; descargar a IndexedDB
+                    if (!fileUri || fileUri.startsWith('file://') || fileUri.startsWith('/data/')) {
                         needsDownload = true;
                     }
-                }
-
-                if (needsDownload) {
-                    state.setBlockDownloading(note.id, block.id, true);
-                    let fileNameStr = '';
-                    if (block.type === 'file' && block.content && block.content.name) {
-                        fileNameStr = block.content.name;
+                    if (needsDownload) {
+                        await state.downloadAttachment(note.id, block.id).catch(console.error);
                     }
-                    WidgetSync.enqueueImageDownload({
-                        token,
-                        driveFileId: block.driveFileId,
-                        noteId: note.id,
-                        blockId: block.id,
-                        fileName: fileNameStr
-                    } as any).catch(console.error);
                 }
             }
         }

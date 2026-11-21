@@ -2304,7 +2304,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
 
 // Sub-components for blocks (Inline for simplicity now, could separate)
 
-function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange, onImageClick }: any) {
+function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange, onImageClick, noteId }: any) {
     const [showControls, setShowControls] = useState(false);
     const [isResizingActive, setIsResizingActive] = useState(false);
     const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -2314,12 +2314,33 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
     const isDownloading = block.isDownloading;
     const isSynced = !!(block.driveFileId && hasImage && !isDownloading);
     const [imageError, setImageError] = useState(false);
+    const [isRetryingDownload, setIsRetryingDownload] = useState(false);
+    const autoRetriedRef = useRef<string | null>(null);
     // Width in pixels (null = auto/natural)
     const [imgWidth, setImgWidth] = useState<number | null>(block.imageWidth || null);
     const containerRef = useRef<HTMLDivElement>(null);
     const dragRef = useRef<{ startX: number; startY: number; startW: number; handle: string } | null>(null);
 
     useEffect(() => { setImageError(false); }, [block.content]);
+
+    const triggerManualDownload = useCallback(async () => {
+        if (!noteId || !block.driveFileId || isRetryingDownload) return;
+        setIsRetryingDownload(true);
+        try {
+            const { useStore } = await import('@/lib/store');
+            const ok = await useStore.getState().downloadAttachment(noteId, block.id);
+            if (ok) setImageError(false);
+        } finally {
+            setIsRetryingDownload(false);
+        }
+    }, [noteId, block.id, block.driveFileId, isRetryingDownload]);
+
+    useEffect(() => {
+        if (imageError && block.driveFileId && noteId && !isDownloading && autoRetriedRef.current !== block.driveFileId) {
+            autoRetriedRef.current = block.driveFileId;
+            triggerManualDownload();
+        }
+    }, [imageError, block.driveFileId, noteId, isDownloading, triggerManualDownload]);
 
     // Prefer the compressed editor thumbnail (if one exists); fall back to the original on load error
     const [thumbFailed, setThumbFailed] = useState(false);
@@ -2472,15 +2493,12 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                                 </span>
                                 {block.driveFileId && (
                                     <button
-                                        onClick={async () => {
-                                            const { useStore } = await import('@/lib/store');
-                                            await useStore.getState().downloadAttachment(block.noteId || '', block.id);
-                                            setImageError(false);
-                                        }}
-                                        className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 dark:text-amber-300 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                                        disabled={isRetryingDownload}
+                                        onClick={triggerManualDownload}
+                                        className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 disabled:opacity-50 text-amber-600 dark:text-amber-300 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                                     >
-                                        <Download className="w-3.5 h-3.5" />
-                                        Reintentar descarga
+                                        {isRetryingDownload ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                                        {isRetryingDownload ? 'Descargando...' : 'Reintentar descarga'}
                                     </button>
                                 )}
                             </div>
@@ -3771,6 +3789,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                     removeBlock={removeBlock}
                     onChange={onChange}
                     onImageClick={onImageClick}
+                    noteId={noteId}
                 />
             )
         }
