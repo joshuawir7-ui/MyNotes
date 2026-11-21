@@ -335,6 +335,8 @@ export default function TasksPage() {
         })
         return priorityGroups
     }, [habits])
+    const habitsByPriorityRef = useRef(habitsByPriority)
+    habitsByPriorityRef.current = habitsByPriority
 
     const progressiveLimitHigh = useProgressiveCount(habitsByPriority.High.length, 'High', 8, 6)
     const progressiveLimitMed = useProgressiveCount(habitsByPriority.Medium.length, 'Medium', 8, 6)
@@ -454,8 +456,9 @@ export default function TasksPage() {
 
         if (!isCompleted && focusEffectEnabled && (habit.energyLevel === 'Medium' || habit.energyLevel === 'Low')) {
             const isTaskCompleted = (h: Task) => h.completedDates && Array.isArray(h.completedDates) ? h.completedDates.includes(today) : h.completed
+            const currentByPriority = habitsByPriorityRef.current
 
-            const medLowTasks = [...habitsByPriority.Medium, ...habitsByPriority.Low]
+            const medLowTasks = [...currentByPriority.Medium, ...currentByPriority.Low]
             const totalMedLow = medLowTasks.length
 
             // Calculate how many med/low are completed (including this one being checked right now)
@@ -464,9 +467,9 @@ export default function TasksPage() {
             const threshold = Math.max(1, Math.ceil(totalMedLow / 2))
 
             // Calculate how many high are completed
-            const completedHigh = habitsByPriority.High.filter(isTaskCompleted).length
+            const completedHigh = currentByPriority.High.filter(isTaskCompleted).length
 
-            if (completedMedLow >= threshold && completedHigh === 0 && habitsByPriority.High.length > 0) {
+            if (completedMedLow >= threshold && completedHigh === 0 && currentByPriority.High.length > 0) {
                 if (typeof navigator !== 'undefined' && navigator.vibrate) {
                     try {
                         navigator.vibrate([100, 50, 100, 50, 100]);
@@ -506,7 +509,7 @@ export default function TasksPage() {
                 nextTourStep()
             }
         }
-    }, [focusEffectEnabled, habitsByPriority, toggleTask, showToast, language, tourStep, nextTourStep])
+    }, [focusEffectEnabled, toggleTask, showToast, language, tourStep, nextTourStep])
 
     const noteTasksGroup = useMemo(() => {
         if (!noteTaskKey) return [];

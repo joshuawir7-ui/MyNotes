@@ -1328,10 +1328,10 @@ function queueNotesSave(notes: Note[]) {
         .then(async () => {
             const tStart = performance.now();
             await saveAllNotesToDisk(notes);
-            const duration = (performance.now() - tStart).toFixed(2);
-            let kb = "0";
-            try { kb = (JSON.stringify(notes).length / 1024).toFixed(2); } catch (e) {}
-            console.log(`[PERF][queueNotesSave] Guardadas ${count} notas (${kb} KB). Duración I/O: ${duration} ms (tiempo total en cola: ${(performance.now() - tEnqueued).toFixed(2)} ms)`);
+            if (useStore.getState().developerMode) {
+                const duration = (performance.now() - tStart).toFixed(2);
+                console.log(`[PERF][queueNotesSave] Guardadas ${count} notas. Duración I/O: ${duration} ms (tiempo total en cola: ${(performance.now() - tEnqueued).toFixed(2)} ms)`);
+            }
         })
         .catch(err => console.error('[PERF][queueNotesSave] Error guardando notas:', err));
 }
@@ -1340,6 +1340,42 @@ function queueTasksSave(tasks: Task[]) {
     tasksSaveQueue = tasksSaveQueue
         .then(() => saveAllTasksToDisk(tasks))
         .catch(err => console.error('[Store] Error guardando tareas:', err));
+}
+
+let taskSideEffectsTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingTaskSideEffects = false;
+let pendingDailyHabitNotif = false;
+
+export const flushTaskSideEffectsNow = async (): Promise<void> => {
+    if (taskSideEffectsTimer) {
+        clearTimeout(taskSideEffectsTimer);
+        taskSideEffectsTimer = null;
+    }
+    if (!pendingTaskSideEffects) return;
+    const shouldNotifyHabit = pendingDailyHabitNotif;
+    pendingTaskSideEffects = false;
+    pendingDailyHabitNotif = false;
+
+    const s = useStore.getState();
+    const currentTasks = s.tasks;
+    queueTasksSave(currentTasks);
+    await tasksSaveQueue;
+    if (shouldNotifyHabit) {
+        showNativeHabitNotification(currentTasks).catch(console.error);
+    }
+    syncWidgetData(s.goals, s.appointments, s.notes, currentTasks).catch(console.error);
+};
+
+function scheduleTaskSideEffects(isDailyHabit: boolean) {
+    pendingTaskSideEffects = true;
+    if (isDailyHabit) pendingDailyHabitNotif = true;
+    if (taskSideEffectsTimer) {
+        clearTimeout(taskSideEffectsTimer);
+    }
+    taskSideEffectsTimer = setTimeout(() => {
+        taskSideEffectsTimer = null;
+        flushTaskSideEffectsNow().catch(console.error);
+    }, 600);
 }
 
 // Safe UUID generator: uses crypto.randomUUID when available (no collisions),
@@ -2453,18 +2489,8 @@ export const useStore = create<AppState>()(
                         }
                     });
 
-                    // Guarda a disco usando el estado ya actualizado en memoria
-                    const updatedTasks = get().tasks;
-                    queueTasksSave(updatedTasks);
-                    syncedTasks = updatedTasks;
-
-                    if (syncedTasks) {
-                        if (taskToSync && taskToSync.recurrence === 'Daily') {
-                            showNativeHabitNotification(syncedTasks).catch(console.error);
-                        }
-                        const state = get();
-                        syncWidgetData(state.goals, state.appointments, state.notes, syncedTasks).catch(console.error);
-                    }
+                    // Agrupa escritura de tareas, notificación nativa y widgets en un único planificador trailing (600 ms)
+                    scheduleTaskSideEffects(Boolean(taskToSync && taskToSync.recurrence === 'Daily'));
                 },
 
                 deleteTask: (taskId) => {
@@ -3959,7 +3985,7 @@ export const useStore = create<AppState>()(
                         }
 
                         const driveData = await downloadRes.json();
-                        const responseBytes = parseInt(downloadRes.headers.get('content-length') || '0', 10) || JSON.stringify(driveData).length;
+                        const responseBytes = parseInt(downloadRes.headers.get('content-length') || '0', 10) || (get().developerMode ? JSON.stringify(driveData).length : 0);
                         recordSyncMetric('fullSync', responseBytes);
                         const driveLastUpdated = (driveData && driveData.lastUpdated) || 0;
 
@@ -4268,7 +4294,8 @@ if (isNative) {
         if (!state.isActive) {
             console.log("[AppState] App is going to background. Starting BackgroundTask for sync...");
             const taskId = await BackgroundTask.beforeExit(async () => {
-                // Flush pending persist serialization before flushing disk writes
+                // Flush pending task side effects and persist serialization before flushing disk writes
+                await flushTaskSideEffectsNow();
                 await flushPersistNow();
 
                 // Flush local writes
@@ -4315,13 +4342,13 @@ if (isNative) {
 if (typeof window !== 'undefined') {
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
-            flushPersistNow().then(() => {
+            Promise.all([flushTaskSideEffectsNow(), flushPersistNow()]).then(() => {
                 if (!isNative) flushStorage();
             });
         }
     });
     window.addEventListener('pagehide', () => {
-        flushPersistNow().then(() => {
+        Promise.all([flushTaskSideEffectsNow(), flushPersistNow()]).then(() => {
             if (!isNative) flushStorage();
         });
     });

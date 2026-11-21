@@ -518,10 +518,13 @@ html.perf-no-motion *::after {
 .glass[data-lite="true"] .g3{ -webkit-mask-image:none; mask-image:none;
   -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); }
 
-/* ---------- MODO RENDIMIENTO / SIN SOPORTE: sin blur, tinte casi opaco ---------- */
-.glass[data-perf="true"] .g1, .glass[data-perf="true"] .g2, .glass[data-perf="true"] .g3{ display:none; }
-.glass[data-perf="true"] .tint{ background:rgba(255,255,255,.94); }
-.dark .glass[data-perf="true"] .tint{ background:rgba(14,14,14,.96); }
+/* ---------- MODO RENDIMIENTO / ANIMACIÓN EN CURSO / SIN SOPORTE: sin blur, tinte casi opaco ---------- */
+.glass[data-perf="true"] .g1, .glass[data-perf="true"] .g2, .glass[data-perf="true"] .g3,
+.glass[data-animating="true"] .g1, .glass[data-animating="true"] .g2, .glass[data-animating="true"] .g3{ display:none; }
+.glass[data-perf="true"] .tint,
+.glass[data-animating="true"] .tint{ background:rgba(255,255,255,.94); }
+.dark .glass[data-perf="true"] .tint,
+.dark .glass[data-animating="true"] .tint{ background:rgba(14,14,14,.96); }
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
   .glass .g1, .glass .g2, .glass .g3{ display:none; }
   .glass--sheet .tint, .glass--sheet-action .tint{ background:rgba(255,255,255,.94); }

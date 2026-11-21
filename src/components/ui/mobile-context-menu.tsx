@@ -18,10 +18,22 @@ interface MobileContextMenuProps {
 
 export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, children, title }: MobileContextMenuProps) {
     const appColor = useStore(state => state.appColor ?? 'purple')
+    const performanceMode = useStore(state => state.performanceMode ?? false)
     const [isOpen, setIsOpen] = useState(false)
+    const [isBlurSettled, setIsBlurSettled] = useState(false)
     const longPressTimer = useRef<NodeJS.Timeout | null>(null)
     const [isLongPressing, setIsLongPressing] = useState(false)
     const [mounted, setMounted] = useState(false)
+
+    const openMenu = () => {
+        setIsBlurSettled(false)
+        setIsOpen(true)
+    }
+
+    const closeMenu = () => {
+        setIsBlurSettled(false)
+        setIsOpen(false)
+    }
 
     useEffect(() => {
         setMounted(true)
@@ -50,7 +62,7 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
         }
         if (longPressTimer.current) clearTimeout(longPressTimer.current)
         longPressTimer.current = setTimeout(() => {
-            setIsOpen(true)
+            openMenu()
             if (typeof navigator !== 'undefined' && navigator.vibrate) {
                 try {
                     navigator.vibrate(50)
@@ -86,12 +98,12 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
             onTouchMove={handleTouchMove}
             onContextMenu={(e) => {
                 e.preventDefault()
-                setIsOpen(true)
+                openMenu()
             }}
         >
             {children}
 
-            {mounted && isOpen && createPortal(
+            {mounted && createPortal(
                 <AnimatePresence>
                     {isOpen && (
                         <>
@@ -99,16 +111,22 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                onClick={() => setIsOpen(false)}
+                                onClick={closeMenu}
                                 className="glass-scrim--light z-[999]"
                             />
                             <GlassSurface
                                 as={motion.div}
                                 variant="sheet-action"
+                                data-animating={!isBlurSettled || performanceMode ? "true" : "false"}
                                 initial={{ y: "100%" }}
                                 animate={{ y: 0 }}
                                 exit={{ y: "100%" }}
                                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                                onAnimationComplete={() => {
+                                    if (isOpen && !performanceMode) {
+                                        setIsBlurSettled(true)
+                                    }
+                                }}
                                 className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto rounded-t-3xl z-[1000] text-foreground"
                                 style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000 }}
                             >
@@ -125,7 +143,7 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
                                                 onClick={(e) => {
                                                     e.stopPropagation()
                                                     onEdit()
-                                                    setIsOpen(false)
+                                                    closeMenu()
                                                 }}
                                                 className="flex items-center gap-4 p-4 rounded-2xl glass-card hover:bg-white/80 dark:hover:bg-white/10 transition-colors text-left w-full pl-5"
                                             >
@@ -145,7 +163,7 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
                                                 onClick={(e) => {
                                                     e.stopPropagation()
                                                     onTogglePin()
-                                                    setIsOpen(false)
+                                                    closeMenu()
                                                 }}
                                                 className="flex items-center gap-4 p-4 rounded-2xl glass-card hover:bg-white/80 dark:hover:bg-white/10 transition-colors text-left w-full pl-5"
                                             >
@@ -164,7 +182,7 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
                                             onClick={(e) => {
                                                 e.stopPropagation()
                                                 onDelete()
-                                                setIsOpen(false)
+                                                closeMenu()
                                             }}
                                             className="flex items-center gap-4 p-4 rounded-2xl glass-card hover:bg-white/80 dark:hover:bg-white/10 transition-colors text-left w-full pl-5"
                                         >

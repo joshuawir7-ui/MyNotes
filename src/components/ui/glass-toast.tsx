@@ -9,19 +9,23 @@ import { Check, AlertCircle, Info, AlertTriangle } from "lucide-react"
 export function GlassToast() {
     const toast = useStore(state => state.toast)
     const clearToast = useStore(state => state.clearToast)
+    const performanceMode = useStore(state => state.performanceMode ?? false)
     const timerRef = useRef<NodeJS.Timeout | null>(null)
     const [mounted, setMounted] = useState(false)
+    const [blurSettled, setBlurSettled] = useState(false)
 
     useEffect(() => {
         setMounted(true)
     }, [])
 
     useEffect(() => {
+        setBlurSettled(false)
         if (toast) {
             if (timerRef.current) {
                 clearTimeout(timerRef.current)
             }
             timerRef.current = setTimeout(() => {
+                setBlurSettled(false)
                 clearToast()
             }, 2500) // 2.5 seconds duration as requested
         }
@@ -51,9 +55,18 @@ export function GlassToast() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -20, scale: 0.95, transition: { duration: 0.15 } }}
                         transition={{ type: "spring", damping: 22, stiffness: 350 }}
-                        className="pointer-events-auto flex items-center gap-3 px-5 py-3 rounded-full bg-white/15 dark:bg-black/25 border border-white/20 dark:border-white/10 shadow-[0_15px_30px_-5px_rgba(0,0,0,0.15)] shadow-purple-500/5 backdrop-blur-[25px] max-w-sm sm:max-w-md select-none relative overflow-hidden"
+                        onAnimationComplete={() => {
+                            if (toast && !performanceMode) {
+                                setBlurSettled(true)
+                            }
+                        }}
+                        className={`pointer-events-auto flex items-center gap-3 px-5 py-3 rounded-full ${
+                            blurSettled && !performanceMode
+                                ? "bg-white/15 dark:bg-black/25 backdrop-blur-[25px]"
+                                : "bg-white/90 dark:bg-zinc-900/92"
+                        } border border-white/20 dark:border-white/10 shadow-[0_15px_30px_-5px_rgba(0,0,0,0.15)] shadow-purple-500/5 max-w-sm sm:max-w-md select-none relative overflow-hidden`}
                         style={{
-                            WebkitBackdropFilter: "blur(25px)",
+                            ...(blurSettled && !performanceMode ? { WebkitBackdropFilter: "blur(25px)" } : {}),
                             boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.25)"
                         }}
                     >
