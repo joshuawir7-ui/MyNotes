@@ -24,6 +24,38 @@ export function useLocalUrl(uriOrBase64: string | null | undefined): string {
             }
         }
 
+        // If the block holds a drive://<id> reference, check local cache (IndexedDB on Web / Filesystem on Native) first
+        if (uriOrBase64.startsWith('drive://')) {
+            const driveFileId = uriOrBase64.replace('drive://', '');
+            let active = true;
+            let objectUrl: string | null = null;
+            import('@/lib/attachment-store').then(({ getCachedUri }) => getCachedUri(driveFileId)).then(async (cachedUri) => {
+                if (!active || !cachedUri) {
+                    if (active) setResolvedUrl('');
+                    return;
+                }
+                if (cachedUri.startsWith('indexeddb://')) {
+                    const url = await createObjectURLFromIndexedDB(cachedUri);
+                    if (active && url) {
+                        objectUrl = url;
+                        setResolvedUrl(url);
+                    } else if (active) {
+                        setResolvedUrl('');
+                    }
+                } else {
+                    setResolvedUrl(getLocalImageSrc(cachedUri));
+                }
+            }).catch(() => {
+                if (active) setResolvedUrl('');
+            });
+            return () => {
+                active = false;
+                if (objectUrl && objectUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(objectUrl);
+                }
+            };
+        }
+
         // Fast path for normal URLs / Base64 / Native file paths
         const syncUrl = getLocalImageSrc(uriOrBase64);
         

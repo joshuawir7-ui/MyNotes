@@ -105,20 +105,10 @@ export function getLocalImageSrc(uriOrBase64: string): string {
         return uriOrBase64;
     }
 
+    // drive:// references are resolved through attachment-store (local cache in Filesystem / IndexedDB),
+    // never loaded directly as raw ?alt=media URLs in <img> tags.
     if (uriOrBase64.startsWith('drive://')) {
-        const fileId = uriOrBase64.replace('drive://', '');
-        if (fileId && typeof window !== 'undefined') {
-            try {
-                const { useStore } = require('./store');
-                const token = useStore?.getState?.()?.googleUser?.accessToken;
-                if (token) {
-                    return `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${token}`;
-                }
-            } catch (e) {
-                // store not ready or require unavailable
-            }
-        }
-        return uriOrBase64;
+        return '';
     }
 
     // Attempt to use convertFileSrc if we are in a browser environment with Capacitor

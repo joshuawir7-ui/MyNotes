@@ -2620,16 +2620,39 @@ export const useStore = create<AppState>()(
                 updateNoteBlockContent: (noteId, blockId, content) => {
                     // Descargar una imagen/adjunto desde Drive a local es hidratación de caché, NO una edición del usuario.
                     // Usamos originalSet para NO ensuciar la nube (markCloudSyncDirty) ni mover lastUpdated.
+                    let changed = false;
                     originalSet((state) => {
-                        const newNotes = state.notes.map(n => n.id === noteId ? {
-                            ...n,
-                            blocks: n.blocks.map(b => b.id === blockId ? { ...b, content, isDownloading: false } : b)
-                        } : n);
-                        return { notes: newNotes };
+                        const newNotes = state.notes.map(n => {
+                            if (n.id !== noteId) return n;
+                            let blockModified = false;
+                            const newBlocks = n.blocks.map(b => {
+                                if (b.id !== blockId) return b;
+                                if (b.type === 'file' || b.type === 'video') {
+                                    const currentUrl = typeof b.content === 'object' ? b.content?.url : '';
+                                    if (currentUrl === content && !b.isDownloading) return b;
+                                    blockModified = true;
+                                    changed = true;
+                                    return {
+                                        ...b,
+                                        content: typeof b.content === 'object' ? { ...b.content, url: content } : { url: content },
+                                        isDownloading: false
+                                    };
+                                } else {
+                                    if (b.content === content && !b.isDownloading) return b;
+                                    blockModified = true;
+                                    changed = true;
+                                    return { ...b, content, isDownloading: false };
+                                }
+                            });
+                            return blockModified ? { ...n, blocks: newBlocks } : n;
+                        });
+                        return changed ? { notes: newNotes } : {};
                     });
 
-                    // Persiste el nuevo URI a disco local
-                    queueNotesSave(get().notes);
+                    if (changed) {
+                        // Persiste el nuevo URI a disco local
+                        queueNotesSave(get().notes);
+                    }
                 },
 
                 setBlockDownloading: (noteId, blockId, isDownloading) => {
@@ -3419,168 +3442,32 @@ export const useStore = create<AppState>()(
 
                 downloadAttachment: async (noteId: string, blockId: string) => {
                     const state = get();
-                    const user = state.googleUser;
-                    if (!user || !user.accessToken) {
-                        state.showToast(
-                            state.language === 'es'
-                                ? 'Inicia sesión con Google para descargar de la nube'
-                                : 'Sign in with Google to download from cloud',
-                            'error'
-                        );
-                        return false;
-                    }
-
                     const note = state.notes.find(n => n.id === noteId);
                     if (!note) return false;
                     const block = note.blocks.find(b => b.id === blockId);
                     if (!block || !block.driveFileId) return false;
 
-                    let fileName = 'attachment';
-                    if ((block.type === 'file' || block.type === 'video') && block.content?.name) fileName = block.content.name;
-                    else if (block.type === 'image') fileName = 'image.png';
+                    const { ensureAttachment, getFailureMessage } = await import('./attachment-store');
+                    const fileName = (block.type === 'file' || block.type === 'video') && block.content?.name
+                        ? block.content.name
+                        : (block.type === 'image' || block.type === 'drawing' ? 'image.png' : 'attachment');
 
-                    try {
-                        let fileUri = '';
+                    const res = await ensureAttachment({
+                        driveFileId: block.driveFileId,
+                        noteId,
+                        blockId,
+                        type: (['image', 'video', 'file', 'drawing'].includes(block.type) ? block.type : 'file') as 'image' | 'video' | 'file' | 'drawing',
+                        name: fileName,
+                        driveSize: block.driveSize,
+                        confirmLarge: true
+                    });
 
-                        if (isNative) {
-                            const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-                            const localFileName = `attachment_${block.driveFileId}_${safeFileName}`;
-
-                            const result = await Filesystem.downloadFile({
-                                url: `https://www.googleapis.com/drive/v3/files/${block.driveFileId}?alt=media`,
-                                path: localFileName,
-                                directory: Directory.Data,
-                                headers: {
-                                    Authorization: `Bearer ${user.accessToken}`
-                                }
-                            });
-
-                            if (result.path) {
-                                fileUri = result.path;
-                                if (!fileUri.startsWith('file://') && !fileUri.startsWith('/')) {
-                                    const uriRes = await Filesystem.getUri({ path: localFileName, directory: Directory.Data });
-                                    fileUri = uriRes.uri;
-                                } else if (fileUri.startsWith('/')) {
-                                    fileUri = 'file://' + fileUri;
-                                }
-                            }
-                        } else {
-                            // Web / Desktop fallback: fetch from Drive and persist Blob in IndexedDB
-                            const res = await fetch(`https://www.googleapis.com/drive/v3/files/${block.driveFileId}?alt=media`, {
-                                headers: { Authorization: `Bearer ${user.accessToken}` }
-                            });
-                            if (res.status === 401 || res.status === 403) {
-                                set({ googleSessionExpired: true });
-                                state.showToast(
-                                    state.language === 'es'
-                                        ? 'Tu sesión de Google expiró, reconecta tu cuenta'
-                                        : 'Google session expired, please reconnect your account',
-                                    'error'
-                                );
-                                return false;
-                            }
-                            if (!res.ok) {
-                                throw new Error(`Drive download failed (${res.status})`);
-                            }
-                            const blob = await res.blob();
-                            if (!blob || blob.size === 0) {
-                                throw new Error('Empty file from Drive');
-                            }
-                            const ext = (fileName.split('.').pop() || (block.type === 'image' ? 'png' : 'bin')).toLowerCase();
-                            const { saveBlobToIndexedDB } = await import('./blob-storage');
-                            fileUri = await saveBlobToIndexedDB(blob, ext);
-                        }
-
-                        if (fileUri) {
-                            const now = Date.now();
-                            const currentState = get();
-
-                            // Fix: Wait for persistence to finish before updating UI state (Single Source of Truth)
-                            const allNotes = await readAllNotesFromDisk(currentState.notes);
-                            const finalNotes = allNotes.map(n => {
-                                if (n.id === noteId) {
-                                    return {
-                                        ...n,
-                                        lastUpdated: now,
-                                        blocks: n.blocks.map(b => {
-                                            if (b.id === blockId) {
-                                                if (b.type === 'file' || b.type === 'video') {
-                                                    return { ...b, content: { ...b.content, url: fileUri } };
-                                                } else {
-                                                    return { ...b, content: fileUri };
-                                                }
-                                            }
-                                            return b;
-                                        })
-                                    };
-                                }
-                                return n;
-                            });
-                            await saveAllNotesToDisk(finalNotes);
-
-                            set((s) => {
-                                const stateNotes = s.notes.map(n => {
-                                    if (n.id === noteId) {
-                                        return {
-                                            ...n,
-                                            lastUpdated: now,
-                                            blocks: n.blocks.map(b => {
-                                                if (b.id === blockId) {
-                                                    if (b.type === 'file' || b.type === 'video') {
-                                                        return { ...b, content: { ...b.content, url: fileUri } };
-                                                    } else {
-                                                        return { ...b, content: fileUri };
-                                                    }
-                                                }
-                                                return b;
-                                            })
-                                        };
-                                    }
-                                    return n;
-                                });
-                                return { notes: stateNotes };
-                            });
-
-                            if (isNative) {
-                                // Actualizar manifest tras descarga manual exitosa
-                                try {
-                                    let sizeBytes = 0;
-                                    try { const st = await Filesystem.stat({ path: fileUri.replace('file://', '') }); sizeBytes = st.size || 0; } catch {}
-                                    await upsertManifestEntry({
-                                        driveFileId: block.driveFileId!,
-                                        noteId,
-                                        blockId,
-                                        type: block.type as 'video' | 'image' | 'file',
-                                        localPath: fileUri,
-                                        sizeBytes,
-                                        lastSyncedAt: Date.now()
-                                    });
-                                } catch (mErr) { console.warn('[Manifest] Error actualizando manifest en downloadAttachment', mErr); }
-                            }
-
-                            return true;
-                        }
-                    } catch (e: any) {
-                        console.error('downloadAttachment error:', e);
-                        const msg = String(e?.message || e || '');
-                        if (msg.includes('401') || msg.includes('403') || msg.toLowerCase().includes('unauthorized')) {
-                            set({ googleSessionExpired: true });
-                            get().showToast(
-                                get().language === 'es'
-                                    ? 'Tu sesión de Google expiró, reconecta tu cuenta'
-                                    : 'Google session expired, please reconnect your account',
-                                'error'
-                            );
-                        } else {
-                            get().showToast(
-                                get().language === 'es'
-                                    ? 'Error al descargar el archivo de la nube'
-                                    : 'Failed to download file from cloud',
-                                'error'
-                            );
-                        }
+                    if (!res.ok) {
+                        const msg = getFailureMessage(res.reason, get().language);
+                        get().showToast(`${msg.title}: ${msg.subtitle}`, 'error');
+                        return false;
                     }
-                    return false;
+                    return true;
                 },
 
                 resolveSyncConflict: async (keepLocal: boolean) => {
@@ -4370,6 +4257,15 @@ if (typeof window !== 'undefined') {
         });
     });
 }
+
+export const applyDownloadedAttachmentToStore = async (
+    noteId: string,
+    blockId: string,
+    _driveFileId: string,
+    uri: string
+): Promise<void> => {
+    useStore.getState().updateNoteBlockContent(noteId, blockId, uri);
+};
 
 export const checkAndEnqueueMissingImages = async () => {
     if (getPerfFlags().perfNoSync) { console.log(`[PERF][sync] ${perfStamp()} phase=checkAndEnqueueMissingImages:blocked(perf-no-sync)`); return; }
