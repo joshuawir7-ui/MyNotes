@@ -205,8 +205,6 @@ const WalletHistoryList = ({
     formatTransactionDate: (d: string) => string;
     deleteConfirmText: string;
 }) => {
-    const [isScrolledTop, setIsScrolledTop] = useState(true);
-
     if (transactions.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center p-8 bg-white/5 border border-dashed border-black/10 dark:border-white/10 rounded-3xl text-center w-full">
@@ -219,22 +217,11 @@ const WalletHistoryList = ({
 
     return (
         <div className="relative w-full py-1">
-            <div className={`absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-background via-background/70 to-transparent pointer-events-none z-20 transition-opacity duration-300 ${!isScrolledTop ? 'opacity-100' : 'opacity-0'}`} />
+            <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-background/80 via-background/30 to-transparent pointer-events-none z-20" />
             <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-background via-background/70 to-transparent pointer-events-none z-20" />
-            <div
-                className="w-full max-h-[380px] md:max-h-[540px] px-1 py-3"
-                style={{
-                    maskImage: !isScrolledTop
-                        ? 'linear-gradient(to bottom, transparent 0px, black 36px, black calc(100% - 36px), transparent 100%)'
-                        : 'linear-gradient(to bottom, black 0px, black calc(100% - 36px), transparent 100%)',
-                    WebkitMaskImage: !isScrolledTop
-                        ? 'linear-gradient(to bottom, transparent 0px, black 36px, black calc(100% - 36px), transparent 100%)'
-                        : 'linear-gradient(to bottom, black 0px, black calc(100% - 36px), transparent 100%)'
-                }}
-            >
+            <div className="w-full max-h-[380px] md:max-h-[540px] px-1 py-3">
                 <Virtuoso
                     style={{ height: '380px', maxHeight: '540px' }}
-                    atTopStateChange={(atTop) => setIsScrolledTop(atTop)}
                     data={transactions}
                     itemContent={(index, tx) => (
                         <div className="px-3.5 py-1.5 w-full">
@@ -243,8 +230,8 @@ const WalletHistoryList = ({
                                 onClick={() => onSelectTx(tx)}
                                 className={`flex items-center justify-between p-4 rounded-3xl text-white border border-transparent relative group overflow-hidden w-full cursor-pointer hover:brightness-105 active:scale-[0.99] transition-all
                                     ${tx.type === 'income'
-                                        ? 'bg-[#00b050] dark:bg-[#7030a0] dark:border-purple-400/40 dark:shadow-[0_0_18px_rgba(168,85,247,0.5),0_0_35px_rgba(112,48,160,0.3)] hover:dark:shadow-[0_0_25px_rgba(192,132,252,0.75),0_0_45px_rgba(147,51,234,0.45)]'
-                                        : 'bg-[#e60000] dark:bg-[#e60000] dark:border-rose-400/50 dark:shadow-[0_0_18px_rgba(255,40,40,0.55),0_0_35px_rgba(230,0,0,0.3)] hover:dark:shadow-[0_0_25px_rgba(255,80,80,0.85),0_0_45px_rgba(239,68,68,0.45)]'
+                                        ? 'bg-[#00b050] dark:bg-[#7030a0] dark:border-purple-400/40 dark:shadow-[0_0_22px_rgba(168,85,247,0.45)] hover:dark:shadow-[0_0_28px_rgba(192,132,252,0.65)]'
+                                        : 'bg-[#e60000] dark:bg-[#e60000] dark:border-rose-400/50 dark:shadow-[0_0_22px_rgba(255,40,40,0.45)] hover:dark:shadow-[0_0_28px_rgba(255,80,80,0.65)]'
                                     }`}
                             >
                                 <div className="flex items-center gap-3 w-full pr-8">
