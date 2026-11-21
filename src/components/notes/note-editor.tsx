@@ -2304,50 +2304,107 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
 
 // Sub-components for blocks (Inline for simplicity now, could separate)
 
+const sessionAutoAttemptedAttachments = new Set<string>();
+
 function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange, onImageClick, noteId }: any) {
+    const language = useStore(state => state.language);
     const [showControls, setShowControls] = useState(false);
     const [isResizingActive, setIsResizingActive] = useState(false);
     const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
     const suppressClickRef = useRef(false);
     const touchStartPosRef = useRef<{ x: number, y: number } | null>(null);
-    const hasImage = typeof block.content === 'string' && block.content;
-    const isDownloading = block.isDownloading;
-    const isSynced = !!(block.driveFileId && hasImage && !isDownloading);
+    const rawContent = typeof block.content === 'string' ? block.content : '';
+    const isNeedsRemoteFetch =
+        !!block.driveFileId &&
+        (!rawContent ||
+            rawContent.startsWith('drive://') ||
+            (!Capacitor.isNativePlatform() && (rawContent.startsWith('file://') || rawContent.startsWith('/data/'))));
+    const hasImage = !!rawContent || !!block.driveFileId;
     const [imageError, setImageError] = useState(false);
     const [isRetryingDownload, setIsRetryingDownload] = useState(false);
-    const autoRetriedRef = useRef<string | null>(null);
+    const [failReason, setFailReason] = useState<import('@/lib/attachment-store').AttachmentFailReason | null>(null);
+    const [failMessage, setFailMessage] = useState<{ title: string; subtitle: string } | null>(null);
+    const isDownloading = Boolean(block.isDownloading || isRetryingDownload);
+    const isSynced = !!(block.driveFileId && hasImage && !isDownloading && !imageError && !isNeedsRemoteFetch);
     // Width in pixels (null = auto/natural)
     const [imgWidth, setImgWidth] = useState<number | null>(block.imageWidth || null);
     const containerRef = useRef<HTMLDivElement>(null);
     const dragRef = useRef<{ startX: number; startY: number; startW: number; handle: string } | null>(null);
 
-    useEffect(() => { setImageError(false); }, [block.content]);
+    useEffect(() => {
+        if (rawContent && !rawContent.startsWith('drive://')) {
+            setImageError(false);
+            setFailReason(null);
+            setFailMessage(null);
+        }
+    }, [rawContent]);
 
-    const triggerManualDownload = useCallback(async () => {
-        if (!noteId || !block.driveFileId || isRetryingDownload) return;
+    const runDownload = useCallback(async (isManual: boolean) => {
+        if (!block.driveFileId || isRetryingDownload) return;
         setIsRetryingDownload(true);
         try {
-            const { useStore } = await import('@/lib/store');
-            const ok = await useStore.getState().downloadAttachment(noteId, block.id);
-            if (ok) setImageError(false);
+            const [{ ensureAttachment, getFailureMessage }, { useStore }] = await Promise.all([
+                import('@/lib/attachment-store'),
+                import('@/lib/store'),
+            ]);
+            const res = await ensureAttachment({
+                driveFileId: block.driveFileId,
+                noteId,
+                blockId: block.id,
+                type: block.type === 'drawing' ? 'drawing' : 'image',
+                driveSize: block.driveSize,
+                confirmLarge: isManual,
+            });
+            if (res.ok && res.uri) {
+                setImageError(false);
+                setFailReason(null);
+                setFailMessage(null);
+            } else {
+                const reason = res.reason || 'network';
+                const msg = getFailureMessage(reason, useStore.getState().language);
+                setFailReason(reason);
+                setFailMessage(msg);
+                setImageError(true);
+                if (isManual) {
+                    useStore.getState().showToast(`${msg.title}. ${msg.subtitle}`, 'error');
+                }
+            }
         } finally {
             setIsRetryingDownload(false);
         }
-    }, [noteId, block.id, block.driveFileId, isRetryingDownload]);
+    }, [noteId, block.id, block.driveFileId, block.type, block.driveSize, isRetryingDownload]);
 
+    const triggerManualDownload = useCallback(() => {
+        void runDownload(true);
+    }, [runDownload]);
+
+    // Auto-intentar descarga 1 sola vez por bloque y sesión al abrir la nota si falta copia local o da error de carga
     useEffect(() => {
-        if (imageError && block.driveFileId && noteId && !isDownloading && autoRetriedRef.current !== block.driveFileId) {
-            autoRetriedRef.current = block.driveFileId;
-            triggerManualDownload();
+        if (!block.driveFileId || isDownloading) return;
+        if (!isNeedsRemoteFetch && !imageError) return;
+        const attemptKey = `${noteId || 'nonote'}:${block.id}:${block.driveFileId}`;
+        if (sessionAutoAttemptedAttachments.has(attemptKey)) {
+            if (isNeedsRemoteFetch && !imageError) {
+                setImageError(true);
+            }
+            return;
         }
-    }, [imageError, block.driveFileId, noteId, isDownloading, triggerManualDownload]);
+        sessionAutoAttemptedAttachments.add(attemptKey);
+        void runDownload(false);
+    }, [isNeedsRemoteFetch, imageError, block.driveFileId, block.id, noteId, isDownloading, runDownload]);
 
     // Prefer the compressed editor thumbnail (if one exists); fall back to the original on load error
     const [thumbFailed, setThumbFailed] = useState(false);
-    useEffect(() => { setThumbFailed(false); }, [block.content]);
-    const thumbUri = hasImage && !imageError && !thumbFailed ? getEditorThumbUri(block.content) : null;
+    useEffect(() => { setThumbFailed(false); }, [rawContent]);
+    const thumbUri = hasImage && !imageError && !thumbFailed && !isNeedsRemoteFetch ? getEditorThumbUri(rawContent) : null;
     const usingThumb = !!thumbUri;
-    const imageSrc = useLocalUrl(hasImage ? (imageError && block.driveFileId ? `drive://${block.driveFileId}` : (thumbUri || block.content)) : null);
+    const imageSrc = useLocalUrl(
+        hasImage
+            ? (isNeedsRemoteFetch && block.driveFileId
+                ? `drive://${block.driveFileId}`
+                : (thumbUri || rawContent))
+            : null
+    );
 
     useEffect(() => {
         if (!isResizingActive) return;
@@ -2482,14 +2539,14 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                         onPointerUp={onPointerUp}
                         onPointerCancel={onPointerUp}
                     >
-                        {imageError ? (
+                        {imageError || (!imageSrc && block.driveFileId && !isDownloading) ? (
                             <div className="flex flex-col items-center justify-center p-6 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-center w-full min-h-[160px]">
                                 <AlertCircle className="w-10 h-10 text-amber-500 mb-2" />
                                 <span className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-1">
-                                    Imagen no disponible localmente
+                                    {failMessage?.title || (language === 'es' ? 'Imagen no disponible localmente' : 'Image unavailable locally')}
                                 </span>
                                 <span className="text-xs text-muted-foreground max-w-xs mb-3">
-                                    {block.driveFileId ? 'Guardada en Drive. Toca para descargar.' : 'Sincroniza tu cuenta para respaldar.'}
+                                    {failMessage?.subtitle || (block.driveFileId ? (language === 'es' ? 'Guardada en Drive. Toca para descargar.' : 'Saved in Drive. Tap to download.') : (language === 'es' ? 'Sincroniza tu cuenta para respaldar.' : 'Sync your account to back up.'))}
                                 </span>
                                 {block.driveFileId && (
                                     <button
@@ -2498,7 +2555,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                                         className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 disabled:opacity-50 text-amber-600 dark:text-amber-300 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                                     >
                                         {isRetryingDownload ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                                        {isRetryingDownload ? 'Descargando...' : 'Reintentar descarga'}
+                                        {isRetryingDownload ? (language === 'es' ? 'Descargando...' : 'Downloading...') : (language === 'es' ? 'Reintentar descarga' : 'Retry download')}
                                     </button>
                                 )}
                             </div>
@@ -2924,7 +2981,12 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
     const [showMoveMenu, setShowMoveMenu] = useState(false);
     const longPressRef = useRef<number | null>(null);
     const fileData = block.content || { url: '', name: '', type: '' };
-    const hasFile = !!fileData.url;
+    const isNeedsRemoteFetch =
+        !!block.driveFileId &&
+        (!fileData.url ||
+            fileData.url.startsWith('drive://') ||
+            (!Capacitor.isNativePlatform() && (fileData.url.startsWith('file://') || fileData.url.startsWith('/data/'))));
+    const hasFile = !!(fileData.url || block.driveFileId || fileData.name);
     const [isDownloadingState, setIsDownloadingState] = useState(false);
     const isDownloading = block.isDownloading || isDownloadingState;
 
@@ -2938,18 +3000,50 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
 
     const handleFileClick = async () => {
         if (isDownloading) return;
-        if (!hasFile && block.driveFileId && noteId) {
+        if (isNeedsRemoteFetch && block.driveFileId) {
             setIsDownloadingState(true);
-            const { useStore } = await import('@/lib/store');
-            const success = await useStore.getState().downloadAttachment(noteId, block.id);
-            setIsDownloadingState(false);
-            if (success) {
-                const updatedNote = useStore.getState().notes.find(n => n.id === noteId);
-                const updatedBlock = updatedNote?.blocks.find(b => b.id === block.id);
-                if (updatedBlock?.type === 'file' && updatedBlock.content?.url) {
-                    openFileHelper(updatedBlock.content.url, updatedBlock.content.name || fileData.name, block.driveFileId);
+            try {
+                const [{ ensureAttachment, getFailureMessage }, { useStore }] = await Promise.all([
+                    import('@/lib/attachment-store'),
+                    import('@/lib/store'),
+                ]);
+                let res = await ensureAttachment({
+                    driveFileId: block.driveFileId,
+                    noteId,
+                    blockId: block.id,
+                    type: 'file',
+                    fileName: fileData.name || `attachment_${block.driveFileId}`,
+                    mimeType: fileData.type,
+                    driveSize: block.driveSize,
+                });
+                if (!res.ok && res.reason === 'too-large') {
+                    const confirmDownload = typeof window !== 'undefined' && window.confirm(
+                        language === 'es'
+                            ? 'Este archivo supera los 50 MB. ¿Deseas descargarlo en este dispositivo?'
+                            : 'This file is over 50 MB. Download it to this device?'
+                    );
+                    if (confirmDownload) {
+                        res = await ensureAttachment({
+                            driveFileId: block.driveFileId,
+                            noteId,
+                            blockId: block.id,
+                            type: 'file',
+                            fileName: fileData.name || `attachment_${block.driveFileId}`,
+                            mimeType: fileData.type,
+                            driveSize: block.driveSize,
+                            confirmLarge: true,
+                        });
+                    }
+                }
+                if (res.ok && res.uri) {
+                    openFileHelper(res.uri, fileData.name, block.driveFileId);
                     return;
                 }
+                const msg = getFailureMessage(res.reason || 'network', useStore.getState().language);
+                useStore.getState().showToast(`${msg.title}. ${msg.subtitle}`, 'error');
+                return;
+            } finally {
+                setIsDownloadingState(false);
             }
         }
         openFileHelper(fileData.url, fileData.name, block.driveFileId);
@@ -3123,17 +3217,46 @@ function VideoPlaceholder({ name, noteId, blockId, driveFileId }: {
     driveFileId?: string;
 }) {
     const [isDownloading, setIsDownloading] = useState(false);
-    const canDownload = !!(noteId && blockId && driveFileId);
+    const canDownload = !!driveFileId;
 
     const handleManualDownload = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!canDownload || isDownloading) return;
         setIsDownloading(true);
         try {
-            const { useStore } = await import('@/lib/store');
-            const success = await useStore.getState().downloadAttachment(noteId!, blockId!);
-            if (!success) {
-                useStore.getState().showToast('No se pudo descargar el video.', 'error');
+            const [{ ensureAttachment, getFailureMessage }, { useStore }] = await Promise.all([
+                import('@/lib/attachment-store'),
+                import('@/lib/store'),
+            ]);
+            let res = await ensureAttachment({
+                driveFileId: driveFileId!,
+                noteId,
+                blockId,
+                type: 'video',
+                fileName: name || `video_${driveFileId}.mp4`,
+                mimeType: 'video/mp4',
+            });
+            if (!res.ok && res.reason === 'too-large') {
+                const confirmDownload = typeof window !== 'undefined' && window.confirm(
+                    useStore.getState().language === 'es'
+                        ? 'Este video supera los 50 MB. ¿Deseas descargarlo en este dispositivo?'
+                        : 'This video is over 50 MB. Download it to this device?'
+                );
+                if (confirmDownload) {
+                    res = await ensureAttachment({
+                        driveFileId: driveFileId!,
+                        noteId,
+                        blockId,
+                        type: 'video',
+                        fileName: name || `video_${driveFileId}.mp4`,
+                        mimeType: 'video/mp4',
+                        confirmLarge: true,
+                    });
+                }
+            }
+            if (!res.ok) {
+                const msg = getFailureMessage(res.reason || 'network', useStore.getState().language);
+                useStore.getState().showToast(`${msg.title}. ${msg.subtitle}`, 'error');
             }
         } catch (e) {
             console.error('[VideoPlaceholder] Error al descargar:', e);
@@ -3278,11 +3401,14 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
         console.log('[VIDEO] driveFileId:', block.driveFileId);
 
         let currentVideoUri = videoData.url;
-        let needsDownload = !hasVideo;
-        let localExists = false;
+        let needsDownload =
+            !hasVideo ||
+            currentVideoUri.startsWith('drive://') ||
+            (!Capacitor.isNativePlatform() && (currentVideoUri.startsWith('file://') || currentVideoUri.startsWith('/data/')));
+        let localExists = !needsDownload;
         
         if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
-            if (hasVideo && currentVideoUri) {
+            if (hasVideo && currentVideoUri && !needsDownload) {
                 if (currentVideoUri.startsWith('http://localhost/_capacitor_file_')) {
                     currentVideoUri = currentVideoUri.replace('http://localhost/_capacitor_file_', 'file://');
                 }
@@ -3297,41 +3423,68 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                     }
                 }
             }
-            
-            console.log('[VIDEO] ¿Archivo local existe?', localExists);
+        }
 
-            if (needsDownload) {
-                if (!block.driveFileId) {
-                    console.error('[VIDEO] No hay localPath válido NI driveFileId — video sin fuente');
-                    import('@/lib/store').then(({ useStore }) => {
-                        useStore.getState().showToast('Este video no está disponible.', 'error');
-                    });
-                    return;
-                }
-                console.log('[VIDEO] Descargando desde Drive...');
-                setIsDownloadingState(true);
-                const { useStore } = await import('@/lib/store');
-                try {
-                    const success = await useStore.getState().downloadAttachment(noteId, block.id);
-                    setIsDownloadingState(false);
-                    if (success) {
-                        const updatedNote = useStore.getState().notes.find(n => n.id === noteId);
-                        const updatedBlock = updatedNote?.blocks.find(b => b.id === block.id);
-                        if (updatedBlock?.type === 'video' && updatedBlock.content?.url) {
-                            currentVideoUri = updatedBlock.content.url;
-                            console.log('[VIDEO] Descarga completada:', currentVideoUri);
-                        }
-                    } else {
-                        console.error('[VIDEO] FALLÓ la descarga');
-                        useStore.getState().showToast("Error al descargar el video de la nube", "error");
-                        return;
+        console.log('[VIDEO] ¿Archivo local existe?', localExists);
+
+        if (needsDownload) {
+            if (!block.driveFileId) {
+                console.error('[VIDEO] No hay localPath válido NI driveFileId — video sin fuente');
+                import('@/lib/store').then(({ useStore }) => {
+                    useStore.getState().showToast('Este video no está disponible.', 'error');
+                });
+                return;
+            }
+            console.log('[VIDEO] Descargando desde Drive...');
+            setIsDownloadingState(true);
+            try {
+                const [{ ensureAttachment, getFailureMessage }, { useStore }] = await Promise.all([
+                    import('@/lib/attachment-store'),
+                    import('@/lib/store'),
+                ]);
+                let res = await ensureAttachment({
+                    driveFileId: block.driveFileId,
+                    noteId,
+                    blockId: block.id,
+                    type: 'video',
+                    fileName: videoData.name || `video_${block.driveFileId}.mp4`,
+                    mimeType: videoData.type || 'video/mp4',
+                    driveSize: block.driveSize,
+                });
+                if (!res.ok && res.reason === 'too-large') {
+                    const confirmDownload = typeof window !== 'undefined' && window.confirm(
+                        useStore.getState().language === 'es'
+                            ? 'Este video supera los 50 MB. ¿Deseas descargarlo en este dispositivo?'
+                            : 'This video is over 50 MB. Download it to this device?'
+                    );
+                    if (confirmDownload) {
+                        res = await ensureAttachment({
+                            driveFileId: block.driveFileId,
+                            noteId,
+                            blockId: block.id,
+                            type: 'video',
+                            fileName: videoData.name || `video_${block.driveFileId}.mp4`,
+                            mimeType: videoData.type || 'video/mp4',
+                            driveSize: block.driveSize,
+                            confirmLarge: true,
+                        });
                     }
-                } catch (err) {
-                    setIsDownloadingState(false);
-                    console.error('[VIDEO] FALLÓ la descarga:', err);
-                    useStore.getState().showToast('No se pudo descargar el video.', 'error');
+                }
+                setIsDownloadingState(false);
+                if (res.ok && res.uri) {
+                    currentVideoUri = res.uri;
+                    console.log('[VIDEO] Descarga completada:', currentVideoUri);
+                } else {
+                    const msg = getFailureMessage(res.reason || 'network', useStore.getState().language);
+                    useStore.getState().showToast(`${msg.title}. ${msg.subtitle}`, 'error');
                     return;
                 }
+            } catch (err) {
+                setIsDownloadingState(false);
+                console.error('[VIDEO] FALLÓ la descarga:', err);
+                const { useStore } = await import('@/lib/store');
+                useStore.getState().showToast('No se pudo descargar el video.', 'error');
+                return;
             }
         }
         
