@@ -504,8 +504,17 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         setBlocks(next);
     }, [recordHistorySnapshot])
 
+    const [blockToDelete, setBlockToDelete] = useState<string | null>(null)
+
+    const confirmRemoveBlock = useCallback((id: string) => {
+        const next = blocksRef.current.filter(b => b.id !== id);
+        blocksRef.current = next;
+        recordHistorySnapshot(titleRef.current, next);
+        setBlocks(next);
+    }, [recordHistorySnapshot])
+
     const removeBlock = useCallback((id: string) => {
-        setBlocks(prev => prev.filter(b => b.id !== id))
+        setBlockToDelete(id)
     }, [])
 
     const handleWrapperFocus = useCallback((id: string, type: BlockType) => {
@@ -759,6 +768,18 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                 }}
                 title={language === 'es' ? '¿Eliminar esta nota?' : 'Delete this note?'}
                 message={language === 'es' ? 'Esta nota se eliminará permanentemente.' : 'This note will be permanently deleted.'}
+            />
+            <ConfirmationDialog
+                isOpen={blockToDelete !== null}
+                onClose={() => setBlockToDelete(null)}
+                onConfirm={() => {
+                    if (blockToDelete) {
+                        confirmRemoveBlock(blockToDelete)
+                        setBlockToDelete(null)
+                    }
+                }}
+                title={language === 'es' ? '¿Eliminar esta sección?' : 'Delete this section?'}
+                message={language === 'es' ? 'Esta sección se eliminará de la nota.' : 'This section will be removed from the note.'}
             />
 
             {/* Keyboard Floating Toolbar */}
@@ -1400,7 +1421,8 @@ function InlineFileButton({ language }: { language: string }) {
             const iconSrc = iconInfo.imageSrc || '/icons/pdf.png';
             const openLabel = language === 'es' ? 'Abrir' : 'Open';
 
-            const fileHtml = `<div data-inline-file="1" contenteditable="false" data-file-url="${persistentUri}" data-file-name="${file.name}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:12px 16px;margin:10px 0;border-radius:16px;background:rgba(255,255,255,0.95);border:1px solid rgba(0,0,0,0.1);box-shadow:0 1px 3px rgba(0,0,0,0.08);cursor:pointer;user-select:none;clear:both;"><div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;"><img src="${iconSrc}" style="width:38px;height:38px;object-fit:contain;flex-shrink:0;" /><div style="display:flex;flex-direction:column;min-width:0;flex:1;"><span style="font-size:14px;font-weight:700;color:#18181b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;">${file.name}</span><span style="font-size:11px;font-weight:600;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">${ext}</span></div></div><div style="display:flex;align-items:center;gap:8px;flex-shrink:0;"><button type="button" data-file-action="open" style="padding:6px 16px;background:#f4f4f5;color:#18181b;border:1px solid rgba(0,0,0,0.1);border-radius:9999px;font-size:12px;font-weight:700;cursor:pointer;">${openLabel}</button><button type="button" data-file-action="delete" style="padding:6px;background:transparent;color:#ef4444;border:none;border-radius:8px;cursor:pointer;font-size:14px;" title="Eliminar">🗑️</button></div></div><p><br></p>`;
+            const trashSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`;
+            const fileHtml = `<div data-inline-file="1" contenteditable="false" data-file-url="${persistentUri}" data-file-name="${file.name}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:12px 16px;margin:10px 0;border-radius:16px;cursor:pointer;user-select:none;clear:both;"><div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;"><img src="${iconSrc}" style="width:38px;height:38px;object-fit:contain;flex-shrink:0;" /><div style="display:flex;flex-direction:column;min-width:0;flex:1;"><span data-file-title="1" style="font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;">${file.name}</span><span data-file-ext="1" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">${ext}</span></div></div><div style="display:flex;align-items:center;gap:8px;flex-shrink:0;"><button type="button" data-file-action="open" style="padding:6px 16px;border-radius:9999px;font-size:12px;font-weight:700;cursor:pointer;">${openLabel}</button><button type="button" data-file-action="delete" style="padding:6px;background:transparent;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Eliminar">${trashSvg}</button></div></div><p><br></p>`;
 
             restoreSelection();
             document.execCommand('insertHTML', false, fileHtml);
@@ -2881,7 +2903,8 @@ export async function openFileHelper(fileUrl: string, fileName: string, driveFil
 
 function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock, onChange, noteId }: any) {
     const language = useStore(state => state.language);
-    const [showControls, setShowControls] = useState(true);
+    const [showMoveMenu, setShowMoveMenu] = useState(false);
+    const longPressRef = useRef<number | null>(null);
     const fileData = block.content || { url: '', name: '', type: '' };
     const hasFile = !!fileData.url;
     const [isDownloadingState, setIsDownloadingState] = useState(false);
@@ -2916,23 +2939,55 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
 
     return (
         <div
-            className={`relative group rounded-2xl flex flex-col items-center justify-center transition-all w-full my-2 ${hasFile || isDownloading
+            className={`relative group rounded-2xl flex flex-col items-center justify-center transition-all w-full my-1 ${hasFile || isDownloading
                     ? 'p-3.5 bg-white dark:bg-[#18181c] border border-zinc-200/80 dark:border-white/10 shadow-sm'
                     : 'border-2 border-dashed border-zinc-200 dark:border-white/10 p-4 min-h-[120px] bg-zinc-50 dark:bg-black/20'
                 }`}
-            onMouseEnter={() => setShowControls(true)}
-            onMouseLeave={() => setShowControls(false)}
+            onContextMenu={(e) => {
+                if (!hasFile && !isDownloading) return;
+                e.preventDefault();
+                setShowMoveMenu(prev => !prev);
+            }}
+            onTouchStart={() => {
+                if (!hasFile && !isDownloading) return;
+                longPressRef.current = window.setTimeout(() => {
+                    setShowMoveMenu(true);
+                }, 450);
+            }}
+            onTouchEnd={() => {
+                if (longPressRef.current !== null) {
+                    clearTimeout(longPressRef.current);
+                    longPressRef.current = null;
+                }
+            }}
+            onTouchMove={() => {
+                if (longPressRef.current !== null) {
+                    clearTimeout(longPressRef.current);
+                    longPressRef.current = null;
+                }
+            }}
+            onMouseLeave={() => setShowMoveMenu(false)}
         >
-            {showControls && (hasFile || isDownloading) && (
-                <div className="absolute top-2 right-2 flex gap-1 md:hidden bg-white/90 dark:bg-zinc-950/80 backdrop-blur rounded-lg p-0.5 border border-zinc-200 dark:border-white/10 z-10 animate-in fade-in duration-200">
-                    <button onMouseDown={(e) => { e.preventDefault(); if (!isFirst) moveBlock(idx, 'up'); }} disabled={isFirst} className="p-1 text-zinc-700 dark:text-white/70 disabled:opacity-30">
+            {showMoveMenu && (hasFile || isDownloading) && (
+                <div
+                    className="absolute -top-9 right-2 flex items-center gap-1 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md rounded-full px-1.5 py-1 border border-zinc-200 dark:border-white/15 shadow-lg z-30 animate-in fade-in zoom-in-95 duration-150"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); if (!isFirst) moveBlock(idx, 'up'); setShowMoveMenu(false); }}
+                        disabled={isFirst}
+                        className="p-1 text-zinc-800 dark:text-white disabled:opacity-30"
+                    >
                         <ChevronUp className="w-3.5 h-3.5" />
                     </button>
-                    <button onMouseDown={(e) => { e.preventDefault(); if (!isLast) moveBlock(idx, 'down'); }} disabled={isLast} className="p-1 text-zinc-700 dark:text-white/70 disabled:opacity-30">
+                    <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); if (!isLast) moveBlock(idx, 'down'); setShowMoveMenu(false); }}
+                        disabled={isLast}
+                        className="p-1 text-zinc-800 dark:text-white disabled:opacity-30"
+                    >
                         <ChevronDown className="w-3.5 h-3.5" />
-                    </button>
-                    <button onMouseDown={(e) => { e.preventDefault(); removeBlock(block.id); }} className="p-1 text-red-500">
-                        <Trash2 className="w-3.5 h-3.5" />
                     </button>
                 </div>
             )}
@@ -2970,10 +3025,17 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
                         <button
                             type="button"
                             onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeBlock(block.id); }}
-                            className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-full transition-colors shrink-0"
+                            className="p-1.5 text-zinc-700 hover:text-black dark:text-zinc-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors shrink-0"
                             title="Eliminar archivo"
                         >
-                            <Trash2 className="w-4 h-4" />
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                                <path d="M3 6h18" />
+                                <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                <line x1="10" y1="11" x2="10" y2="17" />
+                                <line x1="12" y1="11" x2="12" y2="17" />
+                                <line x1="14" y1="11" x2="14" y2="17" />
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -3805,6 +3867,8 @@ const BlockWrapper = React.memo(({
     autoFocus: boolean;
     noteId: string;
 }) => {
+    const isMinimalFileBlock = block.type === 'file' && (!!block.content?.url || block.isDownloading);
+
     return (
         <div
             id={`block-${block.id}`}
@@ -3812,39 +3876,44 @@ const BlockWrapper = React.memo(({
             onFocus={() => handleWrapperFocus(block.id, block.type)}
             onClick={() => handleWrapperFocus(block.id, block.type)}
             onBlur={(e) => handleWrapperBlur(e.currentTarget)}
-            className="group relative flex flex-col gap-2 w-full p-2.5 rounded-xl border border-transparent hover:border-white/5 hover:bg-white/[0.01] focus:border-white/10 focus:bg-white/[0.02] focus-within:border-white/10 focus-within:bg-white/[0.02] transition-colors duration-150 outline-none"
+            className={isMinimalFileBlock
+                ? "group relative flex flex-col w-full p-0 border-0 outline-none"
+                : "group relative flex flex-col gap-2 w-full p-2.5 rounded-xl border border-transparent hover:border-white/5 hover:bg-white/[0.01] focus:border-white/10 focus:bg-white/[0.02] focus-within:border-white/10 focus-within:bg-white/[0.02] transition-colors duration-150 outline-none"
+            }
         >
-            <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 flex items-center justify-between border-b border-white/5 pb-1.5 text-[10px] font-bold text-muted-foreground/60 dark:text-white/70 uppercase tracking-widest select-none transition-opacity duration-150">
-                <span className="flex items-center gap-1.5">
-                    {getBlockIconAndLabel(block.type, language)}
-                </span>
-                <div className="flex items-center gap-1">
-                    <button
-                        onClick={() => moveBlock(idx, 'up')}
-                        disabled={isFirst}
-                        className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors active:scale-90"
-                        title={language === 'es' ? "Subir bloque" : "Move block up"}
-                    >
-                        <ChevronUp className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                        onClick={() => moveBlock(idx, 'down')}
-                        disabled={isLast}
-                        className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors active:scale-90"
-                        title={language === 'es' ? "Bajar bloque" : "Move block down"}
-                    >
-                        <ChevronDown className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                        onClick={() => removeBlock(block.id)}
-                        className="p-1 text-muted-foreground hover:text-red-400 transition-colors active:scale-90 ml-1"
-                        title={language === 'es' ? "Eliminar bloque" : "Delete block"}
-                    >
-                        <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+            {!isMinimalFileBlock && (
+                <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 flex items-center justify-between border-b border-white/5 pb-1.5 text-[10px] font-bold text-muted-foreground/60 dark:text-white/70 uppercase tracking-widest select-none transition-opacity duration-150">
+                    <span className="flex items-center gap-1.5">
+                        {getBlockIconAndLabel(block.type, language)}
+                    </span>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => moveBlock(idx, 'up')}
+                            disabled={isFirst}
+                            className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors active:scale-90"
+                            title={language === 'es' ? "Subir bloque" : "Move block up"}
+                        >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                            onClick={() => moveBlock(idx, 'down')}
+                            disabled={isLast}
+                            className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors active:scale-90"
+                            title={language === 'es' ? "Bajar bloque" : "Move block down"}
+                        >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                            onClick={() => removeBlock(block.id)}
+                            className="p-1 text-muted-foreground hover:text-red-400 transition-colors active:scale-90 ml-1"
+                            title={language === 'es' ? "Eliminar bloque" : "Delete block"}
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
                 </div>
-            </div>
-            <div className="pt-1">
+            )}
+            <div className={isMinimalFileBlock ? "" : "pt-1"}>
                 <BlockRenderer
                     block={block}
                     idx={idx}

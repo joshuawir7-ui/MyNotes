@@ -65,12 +65,6 @@ export function ConfirmationDialog({
                         transition={{ type: "spring", damping: 25, stiffness: 350 }}
                         className="bg-white/95 dark:bg-zinc-950/90 backdrop-blur-2xl w-full max-w-sm p-6 sm:p-8 rounded-[2rem] border border-black/5 dark:border-white/5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] relative z-10 overflow-hidden"
                     >
-                        {/* Ambient Glows */}
-                        <div className={`absolute -top-12 -left-12 w-24 h-24 rounded-full blur-2xl pointer-events-none opacity-40 dark:opacity-60
-                            ${variant === "danger" ? "bg-red-500" : "bg-indigo-500"}`} />
-                        <div className={`absolute -bottom-12 -right-12 w-24 h-24 rounded-full blur-2xl pointer-events-none opacity-40 dark:opacity-60
-                            ${variant === "danger" ? "bg-rose-500" : "bg-purple-500"}`} />
-
                         <button
                             onClick={onClose}
                             className="absolute top-5 right-5 p-1.5 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-all z-20"
@@ -79,22 +73,28 @@ export function ConfirmationDialog({
                         </button>
 
                         <div className="flex flex-col items-center text-center relative z-10 pt-2">
-                            <motion.div 
-                                initial={{ scale: 0.8, rotate: -10 }}
-                                animate={{ scale: 1, rotate: 0 }}
-                                transition={{ type: "spring", delay: 0.05, stiffness: 300, damping: 15 }}
-                                className={`w-16 h-16 rounded-[1.25rem] flex items-center justify-center mb-5 border shadow-inner relative
-                                    ${variant === "danger" 
-                                        ? "bg-gradient-to-tr from-red-500/20 to-rose-500/10 border-red-500/20 text-red-500 shadow-red-500/10" 
-                                        : "bg-gradient-to-tr from-indigo-500/20 to-purple-500/10 border-indigo-500/20 text-indigo-500 shadow-indigo-500/10"}`}
+                            <motion.div
+                                initial={{ scale: 0.85, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ type: "spring", delay: 0.04, stiffness: 300, damping: 18 }}
+                                className="mb-4 text-zinc-900 dark:text-white"
                             >
-                                <AlertCircle className="w-8 h-8" />
-                                {/* Pulsing Ring */}
-                                <motion.div 
-                                    animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0, 0.3] }}
-                                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                                    className={`absolute inset-0 rounded-[1.25rem] border ${variant === "danger" ? "border-red-500/30" : "border-indigo-500/30"}`}
-                                />
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="w-11 h-11"
+                                >
+                                    <path d="M3 6h18" />
+                                    <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                    <line x1="10" y1="11" x2="10" y2="17" />
+                                    <line x1="12" y1="11" x2="12" y2="17" />
+                                    <line x1="14" y1="11" x2="14" y2="17" />
+                                </svg>
                             </motion.div>
 
                             <h2 className="text-xl font-bold mb-3 tracking-tight text-foreground">{title}</h2>

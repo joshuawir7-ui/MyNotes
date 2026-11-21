@@ -294,6 +294,48 @@ html.perf-no-motion *::after {
 }
 
 
+/* ── Inline File Card inside Text Blocks (Light & Dark mode support) ── */
+[data-inline-file="1"] {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+[data-inline-file="1"] span:first-of-type {
+  color: #18181b !important;
+}
+[data-inline-file="1"] span:last-of-type {
+  color: #71717a !important;
+}
+[data-inline-file="1"] [data-file-action="open"] {
+  background: #f4f4f5 !important;
+  color: #18181b !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+[data-inline-file="1"] [data-file-action="delete"] {
+  color: #3f3f46 !important;
+  background: transparent !important;
+}
+.dark [data-inline-file="1"] {
+  background: #18181c !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35) !important;
+}
+.dark [data-inline-file="1"] span:first-of-type {
+  color: #ffffff !important;
+}
+.dark [data-inline-file="1"] span:last-of-type {
+  color: #a1a1aa !important;
+}
+.dark [data-inline-file="1"] [data-file-action="open"] {
+  background: #27272a !important;
+  color: #f4f4f5 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+.dark [data-inline-file="1"] [data-file-action="delete"] {
+  color: #d4d4d8 !important;
+  background: transparent !important;
+}
+
 /* Custom Glassmorphism Utilities */
 @utility glass-panel {
   @apply bg-white/92 dark:bg-zinc-950/88 border border-black/5 dark:border-white/10 shadow-md md:bg-white/88 md:dark:bg-zinc-900/82;
