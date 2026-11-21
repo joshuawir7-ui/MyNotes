@@ -300,6 +300,14 @@ html.perf-no-motion *::after {
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
 }
+[data-inline-file="1"] img {
+  width: 42px !important;
+  height: 42px !important;
+  max-width: none !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+  object-fit: contain !important;
+}
 [data-inline-file="1"] span:first-of-type {
   color: #18181b !important;
 }
