@@ -170,8 +170,41 @@ export const mergeListsWithDiff = <T extends SyncableItem>(
     };
 };
 
+const ATTACHMENT_BLOCK_TYPES = new Set(['image', 'video', 'file', 'drawing']);
+
+export const isLocalAttachmentUri = (u: any): boolean => {
+    if (typeof u !== 'string' || !u) return false;
+    return (
+        u.startsWith('file://') ||
+        u.startsWith('/data/') ||
+        u.startsWith('capacitor://') ||
+        u.startsWith('content://') ||
+        u.startsWith('indexeddb://') ||
+        u.startsWith('http://localhost') ||
+        u.startsWith('https://localhost') ||
+        u.startsWith('blob:') ||
+        u.startsWith('data:')
+    );
+};
+
+export const normalizeBlockForDrive = (b: any): any => {
+    if (!b || typeof b !== 'object') return b;
+    const { isDownloading, localPath, thumbnailPath, ...cleanBlock } = b;
+    if (ATTACHMENT_BLOCK_TYPES.has(cleanBlock.type) && cleanBlock.driveFileId) {
+        const cleanUrl = `drive://${cleanBlock.driveFileId}`;
+        if (typeof cleanBlock.content === 'string' || cleanBlock.content == null) {
+            return { ...cleanBlock, content: cleanUrl };
+        }
+        if (typeof cleanBlock.content === 'object') {
+            return { ...cleanBlock, content: { ...cleanBlock.content, url: cleanUrl } };
+        }
+    }
+    return cleanBlock;
+};
+
 /**
- * Fusión de notas preservando URIs locales de imágenes descargadas.
+ * Fusión de notas preservando URIs locales de imágenes descargadas
+ * y normalizando cualquier ruta local ajena proveniente del remoto a drive://<id>.
  */
 export const mergeNotesWithDiff = (
     localNotes: any[] | undefined,
@@ -179,27 +212,67 @@ export const mergeNotesWithDiff = (
     useLocalForConflicts: boolean = false,
     deletedItems?: Record<string, number>
 ): CollectionDiffResult<any> => {
-    const listRes = mergeListsWithDiff(localNotes, remoteNotes, useLocalForConflicts, deletedItems);
+    // 1. Normalizar bloques remotos que traigan rutas locales de otro dispositivo (ej. file:///data/...)
+    const sanitizedRemoteNotes = (remoteNotes || []).map(note => {
+        if (!note || !Array.isArray(note.blocks)) return note;
+        return {
+            ...note,
+            blocks: note.blocks.map((b: any) => {
+                if (!b || !ATTACHMENT_BLOCK_TYPES.has(b.type) || !b.driveFileId) return b;
+                const url = typeof b.content === 'string' ? b.content : b.content?.url;
+                if (!url || isLocalAttachmentUri(url) || url.startsWith('drive://')) {
+                    const driveUri = `drive://${b.driveFileId}`;
+                    return typeof b.content === 'string' || b.content == null
+                        ? { ...b, content: driveUri }
+                        : { ...b, content: { ...b.content, url: driveUri } };
+                }
+                return b;
+            })
+        };
+    });
+
+    // Para comparar igualdad de contenido cuando localTime === remoteTime sin falsos conflictos por caché local vs drive://
+    const normalizedLocalForDiff = (localNotes || []).map(note => {
+        if (!note || !Array.isArray(note.blocks)) return note;
+        return {
+            ...note,
+            blocks: note.blocks.map(normalizeBlockForDrive)
+        };
+    });
+    const normalizedRemoteForDiff = sanitizedRemoteNotes.map(note => {
+        if (!note || !Array.isArray(note.blocks)) return note;
+        return {
+            ...note,
+            blocks: note.blocks.map(normalizeBlockForDrive)
+        };
+    });
+
+    const listRes = mergeListsWithDiff(normalizedLocalForDiff, normalizedRemoteForDiff, useLocalForConflicts, deletedItems);
     const localMap = new Map((localNotes || []).map(n => [n.id, n]));
 
     const finalNotes = listRes.merged.map(note => {
         const local = localMap.get(note.id);
         const localBlocks = Array.isArray(local?.blocks) ? local.blocks : [];
 
-        // Si la nota ganadora tiene drive:// en bloques pero en local ya teníamos file:// o localPath,
-        // preservamos el enlace local de caché para no forzar una redescarga.
+        // Si el bloque ganador tiene drive:// pero en local ya teníamos una URI local válida para el mismo driveFileId,
+        // preservamos la URI local de este dispositivo para no forzar una redescarga ni perder la copia local.
         if (Array.isArray(note.blocks)) {
             const preservedBlocks = note.blocks.map((b: any) => {
-                if (['image', 'video', 'file', 'drawing'].includes(b.type) && b.driveFileId) {
-                    const localB = localBlocks.find((lb: any) => lb.id === b.id && lb.driveFileId === b.driveFileId);
+                if (b && ATTACHMENT_BLOCK_TYPES.has(b.type) && b.driveFileId) {
+                    const localB = localBlocks.find((lb: any) => lb && lb.id === b.id && lb.driveFileId === b.driveFileId);
                     if (localB && localB.content) {
-                        const localUrl = typeof localB.content === 'string' ? localB.content : localB.content.url;
+                        const localUrl = typeof localB.content === 'string' ? localB.content : localB.content?.url;
                         if (localUrl && !localUrl.startsWith('drive://')) {
-                            return typeof b.content === 'string'
+                            return typeof b.content === 'string' || b.content == null
                                 ? { ...b, content: localUrl }
                                 : { ...b, content: { ...b.content, url: localUrl } };
                         }
                     }
+                    // Si no hay copia local, garantizar que quede como drive://<driveFileId> (nunca ruta local remota)
+                    const driveUri = `drive://${b.driveFileId}`;
+                    return typeof b.content === 'string' || b.content == null
+                        ? { ...b, content: driveUri }
+                        : { ...b, content: { ...b.content, url: driveUri } };
                 }
                 return b;
             });
@@ -399,31 +472,9 @@ export const mergeBackupData = (
  * - Si un bloque tiene `driveFileId`, su URL se normaliza a `drive://${driveFileId}`.
  */
 export const sanitizeDataForDriveUpload = (data: SyncBackupData): any => {
-    const isLocalUrl = (u: any): boolean => {
-        if (typeof u !== 'string') return false;
-        return u.startsWith('file://') || u.startsWith('capacitor://') ||
-               u.startsWith('content://') || u.startsWith('http://localhost') ||
-               u.startsWith('data:') || u.length > 500;
-    };
-
     const cleanNotes = (data.notes || []).map(note => ({
         ...note,
-        blocks: (note.blocks || []).map((b: any) => {
-            if (!b) return b;
-            const { isDownloading, localPath, ...cleanBlock } = b;
-
-            if (['image', 'video', 'file', 'drawing'].includes(cleanBlock.type) && cleanBlock.driveFileId) {
-                const url = typeof cleanBlock.content === 'string' ? cleanBlock.content : cleanBlock.content?.url;
-                if (isLocalUrl(url)) {
-                    const cleanUrl = `drive://${cleanBlock.driveFileId}`;
-                    return {
-                        ...cleanBlock,
-                        content: typeof cleanBlock.content === 'string' ? cleanUrl : { ...cleanBlock.content, url: cleanUrl }
-                    };
-                }
-            }
-            return cleanBlock;
-        })
+        blocks: (note.blocks || []).map(normalizeBlockForDrive)
     }));
 
     const cleanExpenseNotes = (data.expenseNotes || []).map(exp => {

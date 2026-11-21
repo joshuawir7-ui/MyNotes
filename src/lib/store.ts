@@ -736,20 +736,26 @@ const mergeNotesLists = (
             }
         }
 
-        // PREVENT OVERWRITING LOCAL CACHE:
-        // If we picked the remote note, but the remote block has a stripped `drive://` URL,
-        // and we already have a real local URL (file:// or data:) for the same block, preserve the local URL.
+        // PREVENT OVERWRITING LOCAL CACHE & NORMALIZE FOREIGN REMOTE PATHS:
+        // If we picked the remote note, preserve any valid local URL we already have for the same driveFileId,
+        // and otherwise ensure blocks with driveFileId carry `drive://<id>` rather than another device's local path.
         let finalNote = note;
-        if (finalNote === remote) {
+        if (Array.isArray(finalNote.blocks)) {
             const preservedBlocks = finalNote.blocks.map(b => {
-                if (['image', 'video', 'file'].includes(b.type) && b.driveFileId && b.content?.url?.startsWith('drive://')) {
-                    const localB = localBlocks.find(lb => lb.id === b.id && lb.driveFileId === b.driveFileId);
-                    if (localB && localB.content?.url && !localB.content.url.startsWith('drive://')) {
-                        return {
-                            ...b,
-                            content: { ...b.content, url: localB.content.url }
-                        };
+                if (b && ['image', 'video', 'file', 'drawing'].includes(b.type) && b.driveFileId) {
+                    const localB = localBlocks.find(lb => lb && lb.id === b.id && lb.driveFileId === b.driveFileId);
+                    if (localB && localB.content) {
+                        const localUrl = typeof localB.content === 'string' ? localB.content : localB.content?.url;
+                        if (localUrl && !localUrl.startsWith('drive://')) {
+                            return typeof b.content === 'string' || b.content == null
+                                ? { ...b, content: localUrl }
+                                : { ...b, content: { ...b.content, url: localUrl } };
+                        }
                     }
+                    const driveUri = `drive://${b.driveFileId}`;
+                    return typeof b.content === 'string' || b.content == null
+                        ? { ...b, content: driveUri }
+                        : { ...b, content: { ...b.content, url: driveUri } };
                 }
                 return b;
             });
@@ -1010,9 +1016,12 @@ export interface NoteBlock {
     type: BlockType
     content: any
     driveFileId?: string
+    driveSize?: number
+    driveMd5?: string
     isDownloading?: boolean
     thumbnailPath?: string
     durationSeconds?: number
+    imageWidth?: number
 }
 
 export interface Note {
@@ -1511,14 +1520,14 @@ const stripLargePayloadsRaw = (notes: Note[]): Note[] => {
         ...note,
         blocks: note.blocks.map(block => {
             if (['image', 'video', 'file', 'drawing'].includes(block.type) && block.driveFileId) {
-                const url = typeof block.content === 'string' ? block.content : block.content?.url;
-                if (url && (url.startsWith('data:') || url.length > 500)) {
-                    const newContent = typeof block.content === 'string' ? `drive://${block.driveFileId}` : { ...block.content, url: `drive://${block.driveFileId}` };
-                    return {
-                        ...block,
-                        content: newContent
-                    };
-                }
+                const driveUri = `drive://${block.driveFileId}`;
+                const newContent = typeof block.content === 'string' || block.content == null
+                    ? driveUri
+                    : { ...block.content, url: driveUri };
+                return {
+                    ...block,
+                    content: newContent
+                };
             }
             return block;
         })
@@ -1861,6 +1870,8 @@ export const uploadMissingAttachments = async (token: string, notes: Note[]): Pr
                             metadata.parents = [targetFolderId];
                         }
                         let driveFileId: string | null = null;
+                        let driveSize: number | undefined = fileBlob.size;
+                        let driveMd5: string | undefined = undefined;
 
                         if (fileSizeMB < 4) {
                             const boundary = 'mynotes_upload_boundary';
@@ -1874,7 +1885,7 @@ export const uploadMissingAttachments = async (token: string, notes: Note[]): Pr
                             const fullBody = new Blob([multipartBody, fileBlob, closing]);
 
                             const uploadRes = await fetch(
-                                'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+                                'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,size,md5Checksum',
                                 {
                                     method: 'POST',
                                     headers: {
@@ -1888,13 +1899,15 @@ export const uploadMissingAttachments = async (token: string, notes: Note[]): Pr
                             if (uploadRes.ok) {
                                 const data = await uploadRes.json();
                                 driveFileId = data.id || null;
+                                if (data.size) driveSize = Number(data.size) || fileBlob.size;
+                                if (data.md5Checksum) driveMd5 = data.md5Checksum;
                             } else {
                                 console.error(`[Sync] Multipart upload failed: ${uploadRes.status}`);
                             }
                         } else {
                             console.log(`[Sync] Archivo grande (${fileSizeMB.toFixed(1)} MB) — usando Resumable Upload`);
                             const initiateRes = await fetch(
-                                'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
+                                'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,size,md5Checksum',
                                 {
                                     method: 'POST',
                                     headers: {
@@ -1921,6 +1934,8 @@ export const uploadMissingAttachments = async (token: string, notes: Note[]): Pr
                                     if (putRes.ok) {
                                         const data = await putRes.json();
                                         driveFileId = data.id || null;
+                                        if (data.size) driveSize = Number(data.size) || fileBlob.size;
+                                        if (data.md5Checksum) driveMd5 = data.md5Checksum;
                                     } else {
                                         console.error(`[Sync] Resumable PUT failed: ${putRes.status}`);
                                     }
@@ -1932,6 +1947,8 @@ export const uploadMissingAttachments = async (token: string, notes: Note[]): Pr
 
                         if (driveFileId) {
                             block.driveFileId = driveFileId;
+                            if (driveSize !== undefined) block.driveSize = driveSize;
+                            if (driveMd5 !== undefined) block.driveMd5 = driveMd5;
                             hasChanges = true;
                             console.log(`[Sync] Archivo subido exitosamente a Drive: ${driveFileId}`);
                         }
