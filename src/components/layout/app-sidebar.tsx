@@ -378,11 +378,13 @@ export function AppSidebar() {
             {isMobileLandscape ? (
                 /* Mobile Landscape Contracted Icon-Only Rail */
                 <aside
-                    className="fixed w-16 z-50 flex flex-col items-center justify-between py-3 px-2 rounded-[2rem] glass-panel backdrop-blur-2xl bg-white/70 dark:bg-zinc-950/75 border border-black/10 dark:border-white/15 shadow-[0_14px_34px_rgba(20,24,40,.15),0_3px_10px_rgba(20,24,40,.08)] dark:shadow-[0_14px_34px_rgba(0,0,0,.6),0_3px_10px_rgba(0,0,0,.3)] no-scrollbar"
+                    className="fixed w-16 z-50 flex flex-col items-center justify-between py-3 px-2 rounded-[2rem] bg-white/28 dark:bg-zinc-900/35 border border-white/45 dark:border-white/14 shadow-[0_14px_34px_rgba(20,24,40,.16),0_3px_10px_rgba(20,24,40,.08),inset_0_1px_0_rgba(255,255,255,.5)] dark:shadow-[0_14px_34px_rgba(0,0,0,.6),0_3px_10px_rgba(0,0,0,.3),inset_0_1px_0_rgba(255,255,255,.14)] no-scrollbar"
                     style={{
                         left: 'calc(var(--sal, 0px) + 12px)',
                         top: 'calc(var(--sat, 0px) + 12px)',
                         bottom: 'calc(var(--sab, 0px) + 12px)',
+                        WebkitBackdropFilter: lite ? 'blur(12px) saturate(140%)' : 'blur(24px) saturate(165%)',
+                        backdropFilter: lite ? 'blur(12px) saturate(140%)' : 'blur(24px) saturate(165%)',
                     }}
                 >
                     <nav className="flex flex-col items-center justify-around flex-1 w-full gap-1 py-1">
