@@ -18,6 +18,106 @@ import { useRouter } from "next/navigation"
 import { timerEngine } from '@/lib/timer-engine'
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
+function SettingsCloudSyncControls({
+    googleUser,
+    localSyncing,
+    localRestoring,
+    isRecovering,
+    recoveryMessage,
+    handleCloudSync,
+    handleCloudRestore,
+    handleRecoverImages,
+    language,
+    t,
+}: {
+    googleUser: any
+    localSyncing: boolean
+    localRestoring: boolean
+    isRecovering: boolean
+    recoveryMessage: string | null
+    handleCloudSync: () => void
+    handleCloudRestore: () => void
+    handleRecoverImages: () => void
+    language: string
+    t: any
+}) {
+    const isSyncingCloud = useStore(state => state.isSyncingCloud)
+    const restoreProgress = useStore(state => state.restoreProgress)
+    const cloudRestoreProgress = useStore(state => state.cloudRestoreProgress)
+    const syncError = useStore(state => state.syncError)
+
+    return (
+        <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <motion.button
+                    onClick={handleCloudSync}
+                    disabled={isSyncingCloud || localSyncing || localRestoring}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex-1 flex items-center justify-center gap-2 p-3 bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black disabled:opacity-50 rounded-xl font-bold transition-all text-xs shadow-lg shadow-black/20 dark:shadow-white/10"
+                >
+                    <motion.div
+                        animate={localSyncing ? { rotate: 360 } : { rotate: 0 }}
+                        transition={localSyncing ? { duration: 1, ease: "linear", repeat: Infinity } : undefined}
+                    >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                    </motion.div>
+                    {t.syncNow || "Sync now"}
+                </motion.button>
+                <motion.button
+                    onClick={handleCloudRestore}
+                    disabled={isSyncingCloud || localSyncing || localRestoring || !!cloudRestoreProgress}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex-1 flex items-center justify-center gap-2 p-3 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 disabled:opacity-50 text-foreground rounded-xl font-bold transition-all text-xs"
+                >
+                    <motion.div
+                        animate={localRestoring || !!cloudRestoreProgress ? { rotate: 360 } : undefined}
+                        transition={localRestoring || !!cloudRestoreProgress ? { duration: 1, ease: "linear", repeat: Infinity } : undefined}
+                    >
+                        {localRestoring || cloudRestoreProgress ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                            <Cloud className="w-3.5 h-3.5" />
+                        )}
+                    </motion.div>
+                    {cloudRestoreProgress && cloudRestoreProgress.total > 0
+                        ? `Videos: ${cloudRestoreProgress.done}/${cloudRestoreProgress.total}`
+                        : (restoreProgress || t.restoreFromCloud || "Restore")
+                    }
+                </motion.button>
+            </div>
+
+            {syncError && (
+                <p className="text-[10px] text-red-500 text-center leading-tight px-1">{syncError}</p>
+            )}
+
+            {/* Recover images from Drive revision history */}
+            <motion.button
+                onClick={handleRecoverImages}
+                disabled={isRecovering || isSyncingCloud || !googleUser}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full flex items-center justify-center gap-2 p-3 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-50 text-amber-600 dark:text-amber-400 rounded-xl font-bold transition-all text-xs mt-1"
+            >
+                {isRecovering ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                    <RefreshCw className="w-3.5 h-3.5" />
+                )}
+                {language === 'es'
+                    ? (isRecovering ? 'Buscando en historial...' : 'Recuperar imágenes de Drive')
+                    : (isRecovering ? 'Scanning history...' : 'Recover images from Drive')}
+            </motion.button>
+            {recoveryMessage && (
+                <p className="text-[10px] text-muted-foreground text-center mt-1 leading-tight px-1">
+                    {recoveryMessage}
+                </p>
+            )}
+        </div>
+    )
+}
+
 export function SettingsDialog() {
     const [isOpen, setIsOpen] = useState(false)
     const [isPerfDebugOpen, setIsPerfDebugOpen] = useState(false)
@@ -82,10 +182,6 @@ export function SettingsDialog() {
     const googleUser = useStore(state => state.googleUser)
     const setGoogleUser = useStore(state => state.setGoogleUser)
     const googleSessionExpired = useStore(state => state.googleSessionExpired)
-    const isSyncingCloud = useStore(state => state.isSyncingCloud)
-    const restoreProgress = useStore(state => state.restoreProgress)
-    const cloudRestoreProgress = useStore(state => state.cloudRestoreProgress)
-    const syncError = useStore(state => state.syncError)
     const lastCloudSync = useStore(state => state.lastCloudSync)
     const syncWithGoogleDrive = useStore(state => state.syncWithGoogleDrive)
     const syncCycle = useStore(state => state.syncCycle)
@@ -1609,70 +1705,18 @@ export function SettingsDialog() {
                                                         </div>
                                                     ) : (
                                                         <div className="flex flex-col gap-2">
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                                <motion.button
-                                                                    onClick={handleCloudSync}
-                                                                    disabled={isSyncingCloud || localSyncing || localRestoring}
-                                                                    whileHover={{ scale: 1.02 }}
-                                                                    whileTap={{ scale: 0.98 }}
-                                                                    className="flex-1 flex items-center justify-center gap-2 p-3 bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black disabled:opacity-50 rounded-xl font-bold transition-all text-xs shadow-lg shadow-black/20 dark:shadow-white/10"
-                                                                >
-                                                                    <motion.div
-                                                                        animate={localSyncing ? { rotate: 360 } : { rotate: 0 }}
-                                                                        transition={localSyncing ? { duration: 1, ease: "linear", repeat: Infinity } : undefined}
-                                                                    >
-                                                                        <RefreshCw className="w-3.5 h-3.5" />
-                                                                    </motion.div>
-                                                                    {t.syncNow || "Sync now"}
-                                                                </motion.button>
-                                                                <motion.button
-                                                                    onClick={handleCloudRestore}
-                                                                    disabled={isSyncingCloud || localSyncing || localRestoring || !!cloudRestoreProgress}
-                                                                    whileHover={{ scale: 1.02 }}
-                                                                    whileTap={{ scale: 0.98 }}
-                                                                    className="flex-1 flex items-center justify-center gap-2 p-3 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 disabled:opacity-50 text-foreground rounded-xl font-bold transition-all text-xs"
-                                                                >
-                                                                    <motion.div
-                                                                        animate={localRestoring || !!cloudRestoreProgress ? { rotate: 360 } : undefined}
-                                                                        transition={localRestoring || !!cloudRestoreProgress ? { duration: 1, ease: "linear", repeat: Infinity } : undefined}
-                                                                    >
-                                                                        {localRestoring || cloudRestoreProgress ? (
-                                                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                                                        ) : (
-                                                                            <Cloud className="w-3.5 h-3.5" />
-                                                                        )}
-                                                                    </motion.div>
-                                                                    {cloudRestoreProgress && cloudRestoreProgress.total > 0
-                                                                        ? (language === 'es'
-                                                                            ? `Videos: ${cloudRestoreProgress.done}/${cloudRestoreProgress.total}`
-                                                                            : `Videos: ${cloudRestoreProgress.done}/${cloudRestoreProgress.total}`)
-                                                                        : (t.restoreFromCloud || "Restore")
-                                                                    }
-                                                                </motion.button>
-                                                            </div>
-
-                                                            {/* Recover images from Drive revision history */}
-                                                            <motion.button
-                                                                onClick={handleRecoverImages}
-                                                                disabled={isRecovering || isSyncingCloud || !googleUser}
-                                                                whileHover={{ scale: 1.02 }}
-                                                                whileTap={{ scale: 0.98 }}
-                                                                className="w-full flex items-center justify-center gap-2 p-3 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-50 text-amber-600 dark:text-amber-400 rounded-xl font-bold transition-all text-xs mt-1"
-                                                            >
-                                                                {isRecovering ? (
-                                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                                                ) : (
-                                                                    <RefreshCw className="w-3.5 h-3.5" />
-                                                                )}
-                                                                {language === 'es'
-                                                                    ? (isRecovering ? 'Buscando en historial...' : 'Recuperar imágenes de Drive')
-                                                                    : (isRecovering ? 'Scanning history...' : 'Recover images from Drive')}
-                                                            </motion.button>
-                                                            {recoveryMessage && (
-                                                                <p className="text-[10px] text-muted-foreground text-center mt-1 leading-tight px-1">
-                                                                    {recoveryMessage}
-                                                                </p>
-                                                            )}
+                                                            <SettingsCloudSyncControls
+                                                                googleUser={googleUser}
+                                                                localSyncing={localSyncing}
+                                                                localRestoring={localRestoring}
+                                                                isRecovering={isRecovering}
+                                                                recoveryMessage={recoveryMessage}
+                                                                handleCloudSync={handleCloudSync}
+                                                                handleCloudRestore={handleCloudRestore}
+                                                                handleRecoverImages={handleRecoverImages}
+                                                                language={language}
+                                                                t={t}
+                                                            />
 
                                                             {lastCloudSync && (
                                                                 <p className="text-[10px] text-muted-foreground text-center mt-1">

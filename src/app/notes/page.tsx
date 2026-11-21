@@ -447,6 +447,7 @@ const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note;
         >
             <div
                 onClick={handleCardClick}
+                style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 220px' }}
                 className="glass-panel p-5 sm:p-6 rounded-2xl hover:scale-[1.02] transition-transform duration-150 cursor-pointer group flex flex-col justify-between min-h-[160px] gap-2 relative w-full"
             >
                 {/* Pin button */}

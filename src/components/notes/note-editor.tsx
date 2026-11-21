@@ -129,26 +129,34 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
     useEffect(() => setMounted(true), [])
     const contentContainerRef = useRef<HTMLDivElement>(null)
     const headerGlassRef = useRef<HTMLDivElement>(null)
+    const contentScrollRafRef = useRef<number | null>(null)
 
     // Dead-zone guard: when content scrolls underneath the top header/toolbar, deactivate any active editing/selection inside that zone
     const handleContentScroll = useCallback(() => {
-        if (typeof document === 'undefined' || !headerGlassRef.current || !contentContainerRef.current) return;
-        const headerBottom = headerGlassRef.current.getBoundingClientRect().bottom - 6;
+        if (typeof document === 'undefined') return;
+        const container = contentContainerRef.current;
         const activeEl = document.activeElement as HTMLElement | null;
-        if (activeEl && contentContainerRef.current.contains(activeEl)) {
+        if (!container || !activeEl || !container.contains(activeEl)) return;
+        if (contentScrollRafRef.current !== null) return;
+        contentScrollRafRef.current = requestAnimationFrame(() => {
+            contentScrollRafRef.current = null;
+            if (!headerGlassRef.current || !contentContainerRef.current) return;
+            const headerBottom = headerGlassRef.current.getBoundingClientRect().bottom - 6;
+            const currentActive = document.activeElement as HTMLElement | null;
+            if (!currentActive || !contentContainerRef.current.contains(currentActive)) return;
             const sel = window.getSelection();
             if (sel && sel.rangeCount > 0) {
                 const rangeRect = sel.getRangeAt(0).getBoundingClientRect();
                 if (rangeRect && rangeRect.height > 0 && rangeRect.bottom < headerBottom) {
-                    activeEl.blur();
+                    currentActive.blur();
                     return;
                 }
             }
-            const elRect = activeEl.getBoundingClientRect();
+            const elRect = currentActive.getBoundingClientRect();
             if (elRect.bottom < headerBottom) {
-                activeEl.blur();
+                currentActive.blur();
             }
-        }
+        });
     }, []);
 
     useEffect(() => {
@@ -1604,19 +1612,28 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTrigg
 
     // Keep rect synced with scroll/resize
     useEffect(() => {
-        const update = () => {
+        let rafId: number | null = null;
+        const updateNow = () => {
             if (!mediaEl.isConnected) {
                 onClose();
                 return;
             }
             setRect(mediaEl.getBoundingClientRect());
         };
-        update();
-        window.addEventListener('scroll', update, true);
-        window.addEventListener('resize', update);
-    return () => {
-            window.removeEventListener('scroll', update, true);
-            window.removeEventListener('resize', update);
+        const scheduleUpdate = () => {
+            if (rafId !== null) return;
+            rafId = requestAnimationFrame(() => {
+                rafId = null;
+                updateNow();
+            });
+        };
+        updateNow();
+        window.addEventListener('scroll', scheduleUpdate, { capture: true, passive: true });
+        window.addEventListener('resize', scheduleUpdate, { passive: true });
+        return () => {
+            if (rafId !== null) cancelAnimationFrame(rafId);
+            window.removeEventListener('scroll', scheduleUpdate, { capture: true });
+            window.removeEventListener('resize', scheduleUpdate);
         };
     }, [mediaEl, onClose]);
 

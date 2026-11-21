@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useStore } from "@/lib/store"
 import { markNavStart } from "@/lib/perf-debug"
+import { whenIdle } from "@/lib/interaction-gate"
 import { useState, useEffect, useRef, useMemo } from "react"
 import { createPortal } from "react-dom"
 import { translations } from "@/lib/translations"
@@ -308,6 +309,9 @@ export function AppSidebar() {
         }
         checkDevice()
         window.addEventListener('resize', checkDevice)
+        whenIdle(() => {
+            import("@/components/ui/settings-dialog")
+        }, 1500)
 
         // Low-end device detection for cheaper blur (nav-glass-lite)
         if (typeof navigator !== 'undefined') {
