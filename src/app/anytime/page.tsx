@@ -10,6 +10,7 @@ import { phrases } from "@/lib/phrases"
 import { MobileContextMenu } from "@/components/ui/mobile-context-menu"
 
 import { useState, useEffect, useMemo } from "react"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 export default function AnytimePage() {
     const language = useStore(state => state.language)
@@ -56,6 +57,8 @@ export default function AnytimePage() {
     const habits = tasks.filter(t => t.isHabit && t.recurrence !== 'Once' && t.recurrence !== 'None')
 
     const [showHistoryModal, setShowHistoryModal] = useState(false)
+    const celebrationBlur = useDeferredBlur(Boolean(celebration))
+    const historyBlur = useDeferredBlur(showHistoryModal)
     const completedOnceHabits = useStore(state => state.completedOnceHabits)
 
     const habitHistory = useMemo(() => {
@@ -223,7 +226,7 @@ export default function AnytimePage() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={clearCelebration}
-                            className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+                            className={`absolute inset-0 bg-black/80 ${celebrationBlur ? "backdrop-blur-xl" : ""}`}
                         />
 
                         {/* Particles */}
@@ -294,7 +297,7 @@ export default function AnytimePage() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setShowHistoryModal(false)}
-                            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                            className={`absolute inset-0 bg-black/60 ${historyBlur ? "backdrop-blur-md" : ""}`}
                         />
                         <motion.div
                             initial={{ opacity: 0, filter: "blur(20px)", y: 20, scale: 0.9 }}

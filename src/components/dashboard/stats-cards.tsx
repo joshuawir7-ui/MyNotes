@@ -7,6 +7,7 @@ import { translations } from "@/lib/translations"
 import { Flame, CheckCircle2, Timer, X, Trophy, Zap, Check, ArrowRight, Play } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { FocusTimer } from "./focus-timer"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 export function StatsCards() {
     // Atomic selectors: only subscribes to the specific fields used, not the entire user or tasks array
@@ -27,6 +28,7 @@ export function StatsCards() {
     const appColor = useStore(state => state.appColor ?? 'purple')
     const [mounted, setMounted] = useState(false)
     const [activeModal, setActiveModal] = useState<'completed' | 'focus' | 'streak' | null>(null)
+    const modalBlur = useDeferredBlur(Boolean(activeModal))
 
     const t = translations[language].dashboard.stats
     const tDashboard = translations[language].dashboard
@@ -100,7 +102,7 @@ export function StatsCards() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                        className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 ${modalBlur ? "backdrop-blur-sm" : ""}`}
                         onClick={() => setActiveModal(null)}
                     >
                         <motion.div
@@ -171,7 +173,7 @@ export function StatsCards() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                        className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 ${modalBlur ? "backdrop-blur-sm" : ""}`}
                         onClick={() => setActiveModal(null)}
                     >
                         <motion.div
@@ -191,7 +193,7 @@ export function StatsCards() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                        className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 ${modalBlur ? "backdrop-blur-sm" : ""}`}
                         onClick={() => setActiveModal(null)}
                     >
                         <motion.div

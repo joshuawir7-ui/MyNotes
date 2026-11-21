@@ -19,6 +19,7 @@ import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { Bell, Clock, RotateCcw, ChevronUp, ChevronDown, Check } from "lucide-react"
 import { useStore } from "@/lib/store"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types & helpers
@@ -188,6 +189,7 @@ function TimePickerModal({
     }
 
     if (typeof document === "undefined") return null
+    const scrimBlur = useDeferredBlur(isOpen)
 
     return createPortal(
         <AnimatePresence>
@@ -199,7 +201,7 @@ function TimePickerModal({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        className={`absolute inset-0 bg-black/40 ${scrimBlur ? "backdrop-blur-sm" : ""}`}
                     />
 
                     {/* Bottom sheet */}

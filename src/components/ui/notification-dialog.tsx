@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from "lucide-react"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 interface NotificationDialogProps {
     isOpen: boolean
@@ -23,6 +24,7 @@ export function NotificationDialog({
     confirmLabel = "OK"
 }: NotificationDialogProps) {
     const [mounted, setMounted] = useState(false)
+    const scrimBlur = useDeferredBlur(isOpen)
 
     useEffect(() => {
         setMounted(true)
@@ -77,7 +79,7 @@ export function NotificationDialog({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        className={`absolute inset-0 bg-black/40 ${scrimBlur ? "backdrop-blur-sm" : ""}`}
                     />
 
                     {/* Dialog Card */}

@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useDeferredBlur } from '@/hooks/use-deferred-blur'
 
 interface ResetBalanceModalProps {
     isOpen: boolean
@@ -16,6 +17,7 @@ export function ResetBalanceModal({
     onConfirm,
     language = 'es'
 }: ResetBalanceModalProps) {
+    const scrimBlur = useDeferredBlur(isOpen)
     return (
         <AnimatePresence>
             {isOpen && (
@@ -24,7 +26,7 @@ export function ResetBalanceModal({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                    className={`fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 ${scrimBlur ? "backdrop-blur-sm" : ""}`}
                     onClick={onClose}
                 >
                     <motion.div

@@ -7,6 +7,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { translations } from "@/lib/translations";
 import { Calendar, StickyNote, Plus, Clock, History, Target, Check } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
+import { useDeferredBlur } from "@/hooks/use-deferred-blur";
 
 // Read-only block renderer for dashboard
 function NotePreviewRenderer({ note, isPinned = false }: { note: Note; isPinned?: boolean }) {
@@ -125,6 +126,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
     const t = (translations[language]?.dashboard || translations['en'].dashboard) as any;
     const noteTranslations = (translations[language]?.pages?.notes || translations['en'].pages.notes) as any;
     const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
+    const selectModalBlur = useDeferredBlur(isSelectModalOpen);
     const [showPinnedActions, setShowPinnedActions] = useState(false);
 
     const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -433,7 +435,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
 
             {/* Note Selection Modal for Pinned Note */}
             {isSelectModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 ${selectModalBlur ? "backdrop-blur-sm" : ""} animate-in fade-in duration-200`}>
                     <div className="glass-panel w-full max-w-md p-6 rounded-3xl shadow-2xl border border-white/10 flex flex-col max-h-[80vh]">
                         <h2 className="text-xl font-bold mb-4">Seleccionar Nota para Fijar</h2>
                         

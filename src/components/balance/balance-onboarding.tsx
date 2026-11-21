@@ -3,6 +3,7 @@ import { useState } from "react"
 import { useStore } from "@/lib/store"
 import { translations } from "@/lib/translations"
 import { ChevronRight, ChevronLeft } from "lucide-react"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 interface BalanceOnboardingProps {
     onClose: () => void;
@@ -11,6 +12,7 @@ interface BalanceOnboardingProps {
 export function BalanceOnboarding({ onClose }: BalanceOnboardingProps) {
     const [step, setStep] = useState(1);
     const [isOpen, setIsOpen] = useState(true);
+    const scrimBlur = useDeferredBlur(isOpen);
     const language = useStore(state => state.language) || 'en';
     
     // Safely get translations
@@ -181,7 +183,7 @@ export function BalanceOnboarding({ onClose }: BalanceOnboardingProps) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed top-0 left-0 w-full h-[100dvh] z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/40 backdrop-blur-sm"
+                className={`fixed top-0 left-0 w-full h-[100dvh] z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/40 ${scrimBlur ? "backdrop-blur-sm" : ""}`}
                 onClick={step === 1 ? undefined : handleClose}
             >
                 <motion.div 

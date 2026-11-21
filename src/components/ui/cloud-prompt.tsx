@@ -5,6 +5,7 @@ import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, RefreshCw, WifiOff, Unplug } from "lucide-react"
 import { useStore } from "@/lib/store"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -376,13 +377,14 @@ function LiquidGlassBanner({ onClose, onDismissForever, onLogin, language }: {
 
 // ─── Backdrop ─────────────────────────────────────────────────────────────────
 function Backdrop({ onClose }: { onClose: () => void }) {
+    const scrimBlur = useDeferredBlur(true)
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[99996]"
+            className={`fixed inset-0 bg-black/30 z-[99996] ${scrimBlur ? "backdrop-blur-sm" : ""}`}
         />
     )
 }

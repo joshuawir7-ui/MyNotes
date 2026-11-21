@@ -8,6 +8,7 @@ import { useTimerRemaining } from "@/hooks/use-timer-remaining"
 import { togglePictureInPicture, isPipActive } from "@/lib/pip-timer"
 import { Capacitor } from "@capacitor/core"
 import { useStore } from "@/lib/store"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 interface FocusTimerProps {
     onClose?: () => void
@@ -20,6 +21,7 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
     const [customValue, setCustomValue] = useState("")
     const [showCustomInput, setShowCustomInput] = useState(false)
     const [showOverlayModal, setShowOverlayModal] = useState(false)
+    const overlayBlur = useDeferredBlur(showOverlayModal)
     const [isXiaomi, setIsXiaomi] = useState(false)
     const [isAndroidOrMobile, setIsAndroidOrMobile] = useState(false)
     const [isLandscape, setIsLandscape] = useState(false)
@@ -402,7 +404,7 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                        className={`fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 ${overlayBlur ? "backdrop-blur-sm" : ""}`}
                         onClick={() => setShowOverlayModal(false)}
                     >
                         <motion.div

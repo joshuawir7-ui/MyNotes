@@ -3,9 +3,11 @@ import { ShieldAlert, Battery, Rocket, X, Settings } from "lucide-react"
 import { WidgetSync, useStore } from "@/lib/store"
 import { useState, useEffect } from "react"
 import { Capacitor } from "@capacitor/core"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 export function MIUIOnboardingDialog() {
     const [isOpen, setIsOpen] = useState(false)
+    const scrimBlur = useDeferredBlur(isOpen)
     const language = useStore(state => state.language)
 
     useEffect(() => {
@@ -72,7 +74,7 @@ export function MIUIOnboardingDialog() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 ${scrimBlur ? "backdrop-blur-sm" : ""}`}
             >
                 <motion.div
                     initial={{ scale: 0.95, opacity: 0, y: 20 }}

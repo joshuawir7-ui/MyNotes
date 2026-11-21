@@ -16,6 +16,7 @@ const PerfDebugModal = dynamic(() => import("@/components/ui/perf-debug-modal").
 import { GlassSurface } from "@/components/ui/glass-surface"
 import { useRouter } from "next/navigation"
 import { timerEngine } from '@/lib/timer-engine'
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 export function SettingsDialog() {
     const [isOpen, setIsOpen] = useState(false)
@@ -110,6 +111,7 @@ export function SettingsDialog() {
     const [isRecovering, setIsRecovering] = useState(false)
     const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null)
     const [isSmartImportModalOpen, setIsSmartImportModalOpen] = useState(false)
+    const smartImportBlur = useDeferredBlur(isSmartImportModalOpen)
 
     // Micro-animation triggers
     const [bellAnimate, setBellAnimate] = useState(false)
@@ -1713,7 +1715,7 @@ export function SettingsDialog() {
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 onClick={() => setIsSmartImportModalOpen(false)}
-                                className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                                className={`fixed inset-0 bg-black/50 ${smartImportBlur ? "backdrop-blur-sm" : ""}`}
                             />
                             <motion.div
                                 initial={{ scale: 0.92, opacity: 0, y: 12 }}

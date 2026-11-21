@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Gauge, RotateCcw, Activity, CheckCircle2, Sliders, Layers, Sparkles } from "lucide-react"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 import {
     getPerfFlags,
     setPerfFlag,
@@ -24,6 +25,7 @@ interface PerfDebugModalProps {
 }
 
 export function PerfDebugModal({ isOpen, onClose }: PerfDebugModalProps) {
+    const scrimBlur = useDeferredBlur(isOpen);
     const [flags, setFlags] = useState<PerfFlags>(getPerfFlags());
     const [mounted, setMounted] = useState(false);
     const [timeline, setTimeline] = useState(getStartupTimeline());
@@ -64,7 +66,7 @@ export function PerfDebugModal({ isOpen, onClose }: PerfDebugModalProps) {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        className={`absolute inset-0 bg-black/60 ${scrimBlur ? "backdrop-blur-sm" : ""}`}
                     />
 
                     <motion.div

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useStore, WidgetSync } from "@/lib/store"
 import { useEffect, useState } from "react"
 import { Bell } from "lucide-react"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 export function HabitNotificationPrompt() {
     const tasks = useStore(state => state.tasks)
@@ -13,6 +14,7 @@ export function HabitNotificationPrompt() {
     const handleNotificationPromptResponse = useStore(state => state.handleNotificationPromptResponse)
     
     const [shouldShow, setShouldShow] = useState(false)
+    const scrimBlur = useDeferredBlur(shouldShow)
 
     useEffect(() => {
         // Wait a small delay before showing to not bombard the user instantly on load
@@ -66,7 +68,7 @@ export function HabitNotificationPrompt() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        className={`absolute inset-0 bg-black/40 ${scrimBlur ? "backdrop-blur-sm" : ""}`}
                         onClick={handleReject}
                     />
                     

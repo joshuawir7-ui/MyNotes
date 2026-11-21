@@ -16,6 +16,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { GlassSurface } from "@/components/ui/glass-surface"
 import { getOrCreateBackupFolderStructure, getTargetSubfolderId } from "@/lib/drive-folder-manager"
 import { isNoteEmpty } from "@/lib/note-utils"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 export { isNoteEmpty }
 
 interface NoteEditorProps {
@@ -24,6 +25,7 @@ interface NoteEditorProps {
 }
 
 export function NoteEditor({ note, onClose }: NoteEditorProps) {
+    const scrimBlur = useDeferredBlur(true)
     const updateNote = useStore(state => state.updateNote)
     const deleteNote = useStore(state => state.deleteNote)
     const language = useStore(state => state.language)
@@ -156,7 +158,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         }
         checkOrientation()
         window.addEventListener('resize', checkOrientation)
-        return () => window.removeEventListener('resize', checkOrientation)
+    return () => window.removeEventListener('resize', checkOrientation)
     }, [])
 
     useEffect(() => {
@@ -226,7 +228,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
             } catch (e) {}
         }
 
-        return () => {
+    return () => {
             window.removeEventListener('keydown', handleEscape)
             window.visualViewport?.removeEventListener('resize', updateViewportOffset)
             window.removeEventListener('resize', updateViewportOffset)
@@ -345,7 +347,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
             });
         }
         document.addEventListener('selectionchange', handler)
-        return () => {
+    return () => {
             cancelAnimationFrame(frameId);
             document.removeEventListener('selectionchange', handler);
         }
@@ -421,7 +423,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         window.addEventListener('beforeunload', handleUnload)
         window.addEventListener('pagehide', handleUnload)
 
-        return () => {
+    return () => {
             handleUnload()
             window.removeEventListener('beforeunload', handleUnload)
             window.removeEventListener('pagehide', handleUnload)
@@ -433,7 +435,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         const timeout = setTimeout(() => {
             handleSave(true)
         }, 5000)
-        return () => clearTimeout(timeout)
+    return () => clearTimeout(timeout)
     }, [blocks, title, note.id])
 
     const handleSave = async (isAuto = false) => {
@@ -534,11 +536,11 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
     return createPortal(
         <div
-            className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-200"
-            style={{
+            className={`fixed inset-0 z-[99999] bg-black/60 ${scrimBlur ? "backdrop-blur-xl" : ""} flex items-center justify-center p-4 animate-in fade-in duration-200`}
+            style={scrimBlur ? {
                 backdropFilter: 'blur(20px) saturate(1.2)',
                 WebkitBackdropFilter: 'blur(20px) saturate(1.2)'
-            }}
+            } : undefined}
         >
             <div className="w-full max-w-4xl h-[90vh] bg-white dark:bg-[#0c0c0e] border border-zinc-200 dark:border-white/10 rounded-2xl flex flex-col relative overflow-hidden shadow-2xl">
 
@@ -950,7 +952,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                         />
                     )}
                     {/* Soft frosted glass scrim for contrast */}
-                    <div className="absolute inset-0 bg-black/30 dark:bg-black/55 backdrop-blur-md pointer-events-none" />
+                    <div className={`absolute inset-0 bg-black/30 dark:bg-black/55 ${scrimBlur ? "backdrop-blur-md" : ""} pointer-events-none`} />
 
                     {/* Floating top bar with Close button */}
                     <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
@@ -1612,7 +1614,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTrigg
         update();
         window.addEventListener('scroll', update, true);
         window.addEventListener('resize', update);
-        return () => {
+    return () => {
             window.removeEventListener('scroll', update, true);
             window.removeEventListener('resize', update);
         };
@@ -1733,7 +1735,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTrigg
         window.addEventListener('touchend', onWinTouchEnd);
         window.addEventListener('touchcancel', onWinTouchEnd);
 
-        return () => {
+    return () => {
             window.removeEventListener('pointermove', onWinPointerMove);
             window.removeEventListener('pointerup', onWinPointerUp);
             window.removeEventListener('pointercancel', onWinPointerUp);
@@ -1754,7 +1756,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTrigg
             }
         };
         const t = setTimeout(() => document.addEventListener('pointerdown', handler), 180);
-        return () => { clearTimeout(t); document.removeEventListener('pointerdown', handler); };
+    return () => { clearTimeout(t); document.removeEventListener('pointerdown', handler); };
     }, [mediaEl, onClose]);
 
     const handleDelete = (e: React.MouseEvent) => {
@@ -2142,6 +2144,8 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
         { name: "Impact", fontName: "Impact", previewFamily: "Impact, Haettenschweiler, sans-serif" },
     ];
 
+    const fontScrimBlur = useDeferredBlur(isOpen);
+
     return (
         <div className="relative shrink-0">
             <button
@@ -2164,7 +2168,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
             </button>
 
             {isOpen && typeof document !== 'undefined' && createPortal(
-                <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
+                <div className={`fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/50 ${fontScrimBlur ? "backdrop-blur-sm" : ""} animate-in fade-in duration-150`}>
                     <div className="absolute inset-0" onClick={() => setIsOpen(false)} />
                     <div className="relative z-10 w-full max-w-xs sm:max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[75vh] animate-in zoom-in-95 duration-150">
                         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-white/10 bg-zinc-50/50 dark:bg-zinc-800/50">
@@ -2294,7 +2298,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
             }
         };
         document.addEventListener('pointerdown', handleOutside);
-        return () => document.removeEventListener('pointerdown', handleOutside);
+    return () => document.removeEventListener('pointerdown', handleOutside);
     }, [isResizingActive]);
 
     // Pointer-based resize & vertical block move (works for both mouse and touch)
@@ -2695,7 +2699,7 @@ function NoteAudioBlock({ block, removeBlock }: any) {
     }, [fileData.url]);
 
     if (!showPlayer) {
-        return (
+    return (
             <div className="flex items-center gap-4 w-full cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors group" onClick={() => setShowPlayer(true)}>
                 <div className="w-12 h-12 rounded-lg bg-transparent flex items-center justify-center shrink-0 overflow-hidden relative">
                     <img src="/icons/audio.png" alt="Audio" className="w-10 h-10 object-contain drop-shadow-md dark:invert" />
@@ -3112,7 +3116,7 @@ function VideoThumbnailWeb({ src, name, noteId, blockId, driveFileId }: { src: s
             setHasError(true);
         }, 8000);
 
-        return () => {
+    return () => {
             clearTimeout(timeoutId);
             video.removeEventListener('loadedmetadata', handleLoadedMetadata);
             video.removeEventListener('seeked', handleSeeked);
@@ -3371,7 +3375,7 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                     const useImgThumb = hasThumbnailImg && !!resolvedThumbSrc;
                     const canUseVideoThumb = !useImgThumb && isPlayableVideoUrl(resolvedVideoSrc);
 
-                    return (
+    return (
                         <div className="relative w-full cursor-pointer bg-black/10 group-hover:bg-black/20 transition-colors" onClick={handlePlayClick}>
                             {useImgThumb ? (
                                 <img
@@ -3445,7 +3449,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
         if (!block || typeof block !== 'object' || !block.id) return <div className="p-2 border border-red-500/20 bg-red-500/5 rounded text-red-400 text-xs">Invalid Block Structure</div>
 
         if (block.type === 'text') {
-            return (
+    return (
                 <RichTextEditor
                     content={typeof block.content === 'string' ? block.content : ''}
                     onChange={onChange}
@@ -3519,7 +3523,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                 onChange({ title: latestTitle, items: newItems })
             }
 
-            return (
+    return (
                 <div className="space-y-2">
                     {/* Optional Title Input (RichText compatible) */}
                     <RichTaskTitle
@@ -3532,7 +3536,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
 
                     {items.map((item: any, itemIdx: number) => {
                         if (!item || typeof item !== 'object') return null;
-                        return (
+    return (
                             <div key={item.id || itemIdx} className="flex items-center gap-3">
                                 <button
                                     onClick={() => toggle(item.id)}
@@ -3602,7 +3606,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                 }
             }
 
-            return (
+    return (
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse border border-black/20 dark:border-white/10">
                         <thead>
@@ -3681,7 +3685,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
         }
 
         if (block.type === 'image') {
-            return (
+    return (
                 <ImageBlockRenderer
                     block={block}
                     idx={idx}
@@ -3696,7 +3700,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
         }
 
         if (block.type === 'drawing') {
-            return (
+    return (
                 <div className="relative w-full">
                     <p className="text-xs font-semibold text-muted-foreground/60 mb-2">{language === 'es' ? "Lienzo de dibujo" : "Drawing Canvas"}</p>
                     <div className="h-64 w-full bg-black/30 border border-white/10 rounded-xl relative overflow-hidden">
@@ -3707,7 +3711,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
         }
 
         if (block.type === 'file') {
-            return (
+    return (
                 <FileBlockRenderer
                     block={block}
                     idx={idx}
@@ -3722,7 +3726,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
         }
 
         if (block.type === 'video') {
-            return (
+    return (
                 <VideoBlockRenderer
                     block={block}
                     idx={idx}
@@ -3737,7 +3741,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
         }
 
         if (block.type === 'separator') {
-            return (
+    return (
                 <div className="w-full py-3 flex items-center justify-center">
                     <hr className="w-full border-t border-zinc-200 dark:border-white/10" />
                 </div>
@@ -3747,7 +3751,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
         return <div>Unknown block type: {String(block.type)}</div>
     } catch (e: any) {
         console.error("Error rendering block:", e, block)
-        return (
+    return (
             <div className="p-4 border border-red-500/50 rounded bg-red-500/10 text-red-500">
                 Error rendering block: {e?.message || String(e)}
             </div>
@@ -4297,7 +4301,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             }
         };
         window.addEventListener('mynotes:flush-active-editor', handleFlush);
-        return () => window.removeEventListener('mynotes:flush-active-editor', handleFlush);
+    return () => window.removeEventListener('mynotes:flush-active-editor', handleFlush);
     }, [onChange]);
 
     const handleInput = useCallback(() => {
@@ -4563,49 +4567,49 @@ function getBlockIconAndLabel(type: BlockType, language: string) {
     const iconClass = (colorClass: string) => `w-3.5 h-3.5 ${isBlackTheme ? 'text-zinc-900 dark:text-zinc-100' : colorClass}`;
     switch (type) {
         case 'text':
-            return (
+    return (
                 <>
                     <Type className={iconClass("text-blue-400")} />
                     <span>{isEs ? "Texto" : "Text"}</span>
                 </>
             );
         case 'task-list':
-            return (
+    return (
                 <>
                     <CheckSquare className={iconClass("text-green-400")} />
                     <span>{isEs ? "Lista de tareas" : "Task List"}</span>
                 </>
             );
         case 'table':
-            return (
+    return (
                 <>
                     <TableIcon className={iconClass("text-purple-400")} />
                     <span>{isEs ? "Tabla" : "Table"}</span>
                 </>
             );
         case 'image':
-            return (
+    return (
                 <>
                     <ImageIcon className={iconClass("text-yellow-400")} />
                     <span>{isEs ? "Imagen" : "Image"}</span>
                 </>
             );
         case 'drawing':
-            return (
+    return (
                 <>
                     <PenTool className={iconClass("text-orange-400")} />
                     <span>{isEs ? "Dibujo" : "Drawing"}</span>
                 </>
             );
         case 'file':
-            return (
+    return (
                 <>
                     <Paperclip className={iconClass("text-sky-400")} />
                     <span>{isEs ? "Archivo" : "File"}</span>
                 </>
             );
         case 'video':
-            return (
+    return (
                 <>
                     <Film className={iconClass("text-purple-400")} />
                     <span>{isEs ? "Video" : "Video"}</span>

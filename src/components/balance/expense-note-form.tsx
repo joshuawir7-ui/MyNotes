@@ -5,8 +5,10 @@ import { useShallow } from 'zustand/react/shallow';
 import { Capacitor } from '@capacitor/core';
 import { saveBase64File, getOrCreateThumbnail, getLocalImageSrc } from '@/lib/image-utils';
 import { LocalImage } from '@/components/ui/local-image';
+import { useDeferredBlur } from '@/hooks/use-deferred-blur';
 
 export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
+    const scrimBlur = useDeferredBlur(true);
     const expenseNotes = useStore(useShallow(state => state.expenseNotes));
     const addExpenseNote = useStore(state => state.addExpenseNote);
     const updateExpenseNote = useStore(state => state.updateExpenseNote);
@@ -125,7 +127,7 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 ${scrimBlur ? "backdrop-blur-sm" : ""} animate-in fade-in duration-200`}>
             <style>{`@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600;700&display=swap');`}</style>
             
             <div className="bg-[#FFFFFF] dark:bg-zinc-900 border border-transparent dark:border-zinc-800/80 rounded-[24px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-2xl p-4 sm:p-[32px] w-full max-w-[800px] mx-auto relative max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col transition-colors">

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, Cloud, Smartphone, Check } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { useDeferredBlur } from "@/hooks/use-deferred-blur";
 
 export function SyncConflictDialog() {
     const language = useStore((state) => state.language);
@@ -12,6 +13,7 @@ export function SyncConflictDialog() {
     const resolveSyncConflict = useStore((state) => state.resolveSyncConflict);
     const [mounted, setMounted] = useState(false);
     const [isResolving, setIsResolving] = useState(false);
+    const scrimBlur = useDeferredBlur(Boolean(mounted && syncConflict));
 
     useEffect(() => {
         setMounted(true);
@@ -46,7 +48,7 @@ export function SyncConflictDialog() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/40 backdrop-blur-md z-[99998]"
+                className={`fixed inset-0 bg-black/40 z-[99998] ${scrimBlur ? "backdrop-blur-md" : ""}`}
             />
             <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 pointer-events-none">
                 <motion.div

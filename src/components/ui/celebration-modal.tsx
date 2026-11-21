@@ -4,11 +4,13 @@ import { useStore } from "@/lib/store"
 import { motion, AnimatePresence } from "framer-motion"
 import { PHILOSOPHICAL_QUOTES } from "@/lib/quotes"
 import { useState, useEffect } from "react"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 export function CelebrationModal() {
     const celebration = useStore(state => state.celebration)
     const clearCelebration = useStore(state => state.clearCelebration)
     const [quote, setQuote] = useState("")
+    const scrimBlur = useDeferredBlur(Boolean(celebration))
 
     useEffect(() => {
         if (celebration) {
@@ -28,7 +30,7 @@ export function CelebrationModal() {
                         transition={{ duration: 0.2 }}
                         onClick={clearCelebration}
                         style={{ willChange: "opacity" }}
-                        className="absolute inset-0 bg-black/40 backdrop-blur-md"
+                        className={`absolute inset-0 bg-black/40 ${scrimBlur ? "backdrop-blur-md" : ""}`}
                     />
                     
                     <motion.div

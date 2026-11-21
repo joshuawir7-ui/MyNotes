@@ -1,7 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { useState, useEffect, useRef } from "react"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 export function WelcomeNotesModal() {
     const [isOpen, setIsOpen] = useState(false);
+    const scrimBlur = useDeferredBlur(isOpen);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const cardRef = useRef<HTMLDivElement>(null);
     
@@ -46,7 +48,7 @@ export function WelcomeNotesModal() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+                className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 ${scrimBlur ? "backdrop-blur-sm" : ""}`}
                 onClick={onClose}
             >
                 <style>{`

@@ -9,6 +9,7 @@ import { useState, useEffect } from "react"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { translations } from "@/lib/translations"
 import { DatePicker } from "@/components/ui/date-picker"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 export function GoalCard({ goal }: { goal: Goal }) {
     const updateGoal = useStore(state => state.updateGoal)
@@ -50,6 +51,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
     const [newObjective, setNewObjective] = useState("")
     const [newObjectivePhoto, setNewObjectivePhoto] = useState<string | null>(null)
     const [activeOverlayImage, setActiveOverlayImage] = useState<string | null>(null)
+    const overlayBlur = useDeferredBlur(Boolean(activeOverlayImage))
     // Budget and progress states
     const [amountToAdd, setAmountToAdd] = useState("")
     const [isReportsOpen, setIsReportsOpen] = useState(false)
@@ -646,7 +648,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
             {activeOverlayImage && (
                 <div
                     onClick={() => setActiveOverlayImage(null)}
-                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200"
+                    className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 ${overlayBlur ? "backdrop-blur-md" : ""} animate-in fade-in duration-200`}
                 >
                     <button
                         onClick={() => setActiveOverlayImage(null)}

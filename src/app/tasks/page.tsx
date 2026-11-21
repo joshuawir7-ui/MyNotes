@@ -23,6 +23,7 @@ import { Trophy, Star, PartyPopper, Flame } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useProgressiveCount } from "@/hooks/use-progressive-count"
 import { DeferredSection } from "@/components/ui/deferred-section"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 const TourTooltip = ({
     children,
@@ -96,6 +97,8 @@ export default function TasksPage() {
     const [showCreator, setShowCreator] = useState(false)
     const [showGroupCreator, setShowGroupCreator] = useState(false)
     const [showHistoryModal, setShowHistoryModal] = useState(false)
+    const groupCreatorBlur = useDeferredBlur(showGroupCreator)
+    const historyModalBlur = useDeferredBlur(showHistoryModal)
     const [showNoteTasks, setShowNoteTasks] = useState(false)
     const [lostDaysHabit, setLostDaysHabit] = useState<Task | null>(null)
     const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
@@ -1262,7 +1265,7 @@ export default function TasksPage() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setShowGroupCreator(false)}
-                            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                            className={`absolute inset-0 bg-black/60 ${groupCreatorBlur ? "backdrop-blur-md" : ""}`}
                         />
                         <motion.div
                             initial={{ opacity: 0, y: 20, scale: 0.9 }}
@@ -1925,7 +1928,7 @@ export default function TasksPage() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setShowHistoryModal(false)}
-                            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                            className={`absolute inset-0 bg-black/60 ${historyModalBlur ? "backdrop-blur-md" : ""}`}
                         />
                         <motion.div
                             initial={{ opacity: 0, y: 20, scale: 0.9 }}

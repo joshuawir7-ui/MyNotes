@@ -7,6 +7,7 @@ import { Reveal } from "@/components/ui/reveal"
 import { PageDescription } from "@/components/ui/page-description"
 
 import { translations } from "@/lib/translations"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 export default function CalendarPage() {
     const appointments = useStore(state => state.appointments)
@@ -25,6 +26,7 @@ export default function CalendarPage() {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [selectedDate, setSelectedDate] = useState<string | null>(null)
     const [showAddModal, setShowAddModal] = useState(false)
+    const modalBlur = useDeferredBlur(showAddModal)
     const [newApptTitle, setNewApptTitle] = useState("")
     const [newApptNotes, setNewApptNotes] = useState("")
     const [selectedColor, setSelectedColor] = useState("#7f0df2") // Default to primary
@@ -683,7 +685,7 @@ export default function CalendarPage() {
             {showAddModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
                     <div
-                        className="absolute inset-0 bg-white/40 dark:bg-black/80 backdrop-blur-xl animate-in fade-in duration-500"
+                        className={`absolute inset-0 bg-white/40 dark:bg-black/80 ${modalBlur ? "backdrop-blur-xl" : ""} animate-in fade-in duration-500`}
                         onClick={() => setShowAddModal(false)}
                     />
                     <div className="w-full max-w-md md:max-w-2xl relative glass-panel rounded-[2.5rem] border border-zinc-200 dark:border-white/10 p-10 shadow-[0_20px_50px_rgba(0,0,0,0.15)] animate-in zoom-in-95 duration-300">

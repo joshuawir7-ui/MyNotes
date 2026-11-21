@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, History, Trash2, Check, ArrowRight, Delete } from "lucide-react"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 interface CalculatorModalProps {
     isOpen: boolean
@@ -19,6 +20,7 @@ interface HistoryItem {
 }
 
 export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es" }: CalculatorModalProps) {
+    const scrimBlur = useDeferredBlur(isOpen)
     const [displayValue, setDisplayValue] = useState<string>("0")
     const [prevValue, setPrevValue] = useState<number | null>(null)
     const [operator, setOperator] = useState<"+" | "-" | "*" | "/" | null>(null)
@@ -259,7 +261,7 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md"
+                className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 ${scrimBlur ? "backdrop-blur-md" : ""}`}
                 onClick={onClose}
             >
                 <motion.div

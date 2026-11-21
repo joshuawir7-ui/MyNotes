@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { AlertCircle, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
+import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 
 interface ConfirmationDialogProps {
     isOpen: boolean
@@ -27,6 +28,7 @@ export function ConfirmationDialog({
     variant = "danger"
 }: ConfirmationDialogProps) {
     const [mounted, setMounted] = useState(false)
+    const scrimBlur = useDeferredBlur(isOpen)
 
     useEffect(() => {
         setMounted(true)
@@ -53,7 +55,7 @@ export function ConfirmationDialog({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                        className={`absolute inset-0 bg-black/70 ${scrimBlur ? "backdrop-blur-sm" : ""}`}
                     />
 
                     <motion.div
