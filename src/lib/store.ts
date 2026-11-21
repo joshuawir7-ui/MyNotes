@@ -252,9 +252,100 @@ let isSyncing = false;
 let syncQueued = false;
 let activeSyncPromise: Promise<boolean> | null = null;
 let syncWorker: Worker | null = null;
+let workerReqId = 0;
+const workerResolvers = new Map<number, { resolve: (serialized: string) => void; reject: (err: unknown) => void }>();
+
 if (typeof window !== 'undefined') {
     syncWorker = new Worker(new URL('./sync-worker.ts', import.meta.url));
+    syncWorker.addEventListener('message', (e: MessageEvent) => {
+        const { id, serialized, error } = e.data || {};
+        const entry = workerResolvers.get(id);
+        if (!entry) return;
+        workerResolvers.delete(id);
+        if (error) {
+            entry.reject(new Error(error));
+        } else {
+            entry.resolve(serialized);
+        }
+    });
+    syncWorker.addEventListener('error', (err) => {
+        for (const [id, entry] of workerResolvers.entries()) {
+            workerResolvers.delete(id);
+            entry.reject(err);
+        }
+    });
 }
+
+const lastPersistedState: Record<string, Record<string, unknown>> = {};
+let pendingPersist: { name: string; value: any } | null = null;
+let persistDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let activePersistPromise: Promise<void> | null = null;
+
+function isShallowEqualObj(a: any, b: any): boolean {
+    if (a === b) return true;
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+    if (keysA.length !== keysB.length) return false;
+    for (let i = 0; i < keysA.length; i++) {
+        const k = keysA[i];
+        if (a[k] !== b[k]) return false;
+    }
+    return true;
+}
+
+function serializeWithWorker(name: string, value: any): Promise<string> {
+    if (!syncWorker) {
+        const tStr0 = performance.now();
+        const serialized = JSON.stringify(value);
+        hudRecordPersistSend(0);
+        hudRecordSerialized(performance.now() - tStr0, serialized.length / 1024);
+        return Promise.resolve(serialized);
+    }
+    const id = ++workerReqId;
+    return new Promise<string>((resolve, reject) => {
+        workerResolvers.set(id, { resolve, reject });
+        const tPost0 = performance.now();
+        syncWorker!.postMessage({ id, name, state: value });
+        const cloneMs = performance.now() - tPost0;
+        hudRecordPersistSend(cloneMs);
+    }).catch((err) => {
+        console.error('[PERF][persist.setItem] Worker falló:', err);
+        return JSON.stringify(value);
+    });
+}
+
+async function dispatchPersistNow(item: { name: string; value: any }): Promise<void> {
+    const { name, value } = item;
+    if (value?.state) {
+        lastPersistedState[name] = value.state;
+    }
+    const t0 = performance.now();
+    const serialized = await serializeWithWorker(name, value);
+    const dur = performance.now() - t0;
+    const kb = serialized.length / 1024;
+    hudRecordSerialized(dur, kb);
+    console.log(`[PERF][persist.setItem] Serializó ${kb.toFixed(2)} KB en ${dur.toFixed(2)} ms`);
+    await capacitorStorage.setItem(name, serialized);
+}
+
+export const flushPersistNow = async (): Promise<void> => {
+    if (persistDebounceTimer) {
+        clearTimeout(persistDebounceTimer);
+        persistDebounceTimer = null;
+    }
+    const item = pendingPersist;
+    pendingPersist = null;
+    if (item) {
+        const p = dispatchPersistNow(item).finally(() => {
+            if (activePersistPromise === p) activePersistPromise = null;
+        });
+        activePersistPromise = p;
+        await p;
+    } else if (activePersistPromise) {
+        await activePersistPromise;
+    }
+};
 
 // Enhanced to include backup and recovery to prevent data loss
 const capacitorStorage = {
@@ -340,13 +431,6 @@ const capacitorStorage = {
     },
     setItem: async (name: string, value: string): Promise<void> => {
         if (typeof window === 'undefined') return;
-
-        // Safety check to avoid overwriting stored data with an unhydrated initial state
-        // Cheap string check instead of JSON.parse of the whole state on every write (main-thread cost)
-        if (value.includes('"isHydrated":false')) {
-            console.warn("[Storage] Preventing write of unhydrated state to protect data");
-            return;
-        }
 
         const tCall = performance.now();
         const kb = (value.length / 1024).toFixed(2);
@@ -4026,44 +4110,41 @@ export const useStore = create<AppState>()(
             name: 'mynotes-storage-v1',
             storage: {
                 getItem: async (name: string) => {
+                    const tHyd0 = performance.now();
                     const str = await capacitorStorage.getItem(name);
                     if (!str) return null;
                     try {
-                        return JSON.parse(str);
+                        const parsed = JSON.parse(str);
+                        hudRecordHydration(performance.now() - tHyd0, str.length / 1024);
+                        return parsed;
                     } catch (e) {
                         console.error('Failed to parse state', e);
                         return null;
                     }
                 },
-                setItem: async (name: string, value: any) => {
-                    const t0 = performance.now();
-                    if (!syncWorker) {
-                        const tStr0 = performance.now();
-                        const serialized = JSON.stringify(value);
-                        const strDuration = (performance.now() - tStr0).toFixed(2);
-                        const kb = (serialized.length / 1024).toFixed(2);
-                        console.log(`[PERF][persist.setItem] JSON.stringify hilo principal: ${strDuration} ms (${kb} KB)`);
-                        await capacitorStorage.setItem(name, serialized);
-                        console.log(`[PERF][persist.setItem] Total setItem sin worker: ${(performance.now() - t0).toFixed(2)} ms`);
+                setItem: (name: string, value: any) => {
+                    if (value?.state?.isHydrated === false) {
                         return;
                     }
-                    return new Promise<void>((resolve) => {
-                        const handleMessage = (e: MessageEvent) => {
-                            if (e.data.name === name) {
-                                syncWorker!.removeEventListener('message', handleMessage);
-                                if (e.data.error) {
-                                    console.error('[PERF][persist.setItem] Worker falló:', e.data.error);
-                                    capacitorStorage.setItem(name, JSON.stringify(value)).then(resolve);
-                                } else {
-                                    const kb = (e.data.serialized.length / 1024).toFixed(2);
-                                    console.log(`[PERF][persist.setItem] Worker serializó ${kb} KB en ${(performance.now() - t0).toFixed(2)} ms`);
-                                    capacitorStorage.setItem(name, e.data.serialized).then(resolve);
-                                }
-                            }
-                        };
-                        syncWorker!.addEventListener('message', handleMessage);
-                        syncWorker!.postMessage({ name, state: value });
-                    });
+                    const prev = pendingPersist?.name === name ? pendingPersist.value?.state : lastPersistedState[name];
+                    if (prev && isShallowEqualObj(value?.state, prev)) {
+                        return;
+                    }
+                    pendingPersist = { name, value };
+                    if (persistDebounceTimer) {
+                        clearTimeout(persistDebounceTimer);
+                    }
+                    persistDebounceTimer = setTimeout(() => {
+                        persistDebounceTimer = null;
+                        const item = pendingPersist;
+                        pendingPersist = null;
+                        if (item) {
+                            const p = dispatchPersistNow(item).finally(() => {
+                                if (activePersistPromise === p) activePersistPromise = null;
+                            });
+                            activePersistPromise = p;
+                        }
+                    }, 1500);
                 },
                 removeItem: async (name: string) => {
                     await capacitorStorage.removeItem(name);
@@ -4120,7 +4201,20 @@ export const useStore = create<AppState>()(
                         serializableState[key] = state[key as keyof AppState];
                     }
                 }
-                const { isSyncingCloud, syncError, tourStep, isTourManuallyStarted, timer, ...rest } = serializableState;
+                const {
+                    isSyncingCloud,
+                    syncError,
+                    tourStep,
+                    isTourManuallyStarted,
+                    timer,
+                    toast,
+                    celebration,
+                    cloudRestoreProgress,
+                    restoreProgress,
+                    syncConflict,
+                    isCloudSyncDirty,
+                    ...rest
+                } = serializableState;
                 const result = {
                     ...rest,
                     areNotesLoaded: true,
@@ -4137,6 +4231,9 @@ if (isNative) {
         if (!state.isActive) {
             console.log("[AppState] App is going to background. Starting BackgroundTask for sync...");
             const taskId = await BackgroundTask.beforeExit(async () => {
+                // Flush pending persist serialization before flushing disk writes
+                await flushPersistNow();
+
                 // Flush local writes
                 for (const name of Object.keys(pendingWrites)) {
                     if (writeDebounces[name]) {
@@ -4176,6 +4273,21 @@ if (isNative) {
             });
         }
     });;
+}
+
+if (typeof window !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            flushPersistNow().then(() => {
+                if (!isNative) flushStorage();
+            });
+        }
+    });
+    window.addEventListener('pagehide', () => {
+        flushPersistNow().then(() => {
+            if (!isNative) flushStorage();
+        });
+    });
 }
 
 export const checkAndEnqueueMissingImages = async () => {

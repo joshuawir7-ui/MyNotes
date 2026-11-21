@@ -1,10 +1,11 @@
 // sync-worker.ts
 self.onmessage = (e: MessageEvent) => {
+    const { id, name, state } = e.data || {};
     try {
         // La serialización pesada ocurre aquí, fuera del hilo principal
-        const serialized = JSON.stringify(e.data.state);
-        self.postMessage({ serialized, name: e.data.name });
+        const serialized = JSON.stringify(state);
+        self.postMessage({ id, serialized, name });
     } catch (err) {
-        self.postMessage({ error: (err as Error).message, name: e.data.name });
+        self.postMessage({ id, error: (err as Error).message, name });
     }
 };
