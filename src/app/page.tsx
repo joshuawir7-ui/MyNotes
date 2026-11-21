@@ -170,10 +170,7 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-background text-foreground p-4 sm:p-8 font-[family-name:var(--font-geist-sans)] relative selection:bg-primary/30">
         {appColor !== 'black' && (
-          <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20" />
-          </div>
+          <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0" />
         )}
         <div className="relative z-10 max-w-4xl mx-auto w-full flex flex-col gap-4 pb-24 pt-0">
           <div className="h-20 animate-pulse bg-zinc-300/10 dark:bg-zinc-800/10 rounded-3xl" />
@@ -192,10 +189,7 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground p-4 sm:p-8 font-[family-name:var(--font-geist-sans)] relative selection:bg-primary/30">
       {/* Ambient Background Gradients — Unrendered on theme-black to save GPU composition */}
       {appColor !== 'black' && (
-        <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20" />
-        </div>
+        <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0" />
       )}
 
       <div className="relative z-10 max-w-4xl mx-auto w-full flex flex-col gap-4 pb-24 text-center sm:text-left pt-0">

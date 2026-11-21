@@ -367,10 +367,7 @@ export default function AnytimePage() {
             </AnimatePresence>
 
             {/* Ambient Background Gradients */}
-            <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20" />
-            </div>
+            <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0" />
 
             <div className="relative z-10 w-full max-w-5xl mx-auto space-y-8">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 border-b border-white/5 pb-6">

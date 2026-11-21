@@ -603,10 +603,7 @@ export default function TasksPage() {
     return (
         <div className="p-6 h-full container mx-auto max-w-5xl flex flex-col gap-8 pb-20 relative min-h-screen">
             {/* Ambient Background Gradients */}
-            <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px] dark:bg-purple-900/20" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px] dark:bg-blue-900/20" />
-            </div>
+            <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0" />
 
             <style>{`
                 @keyframes screenShake {
