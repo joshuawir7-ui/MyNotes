@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useStore } from "@/lib/store"
 import { markNavStart } from "@/lib/perf-debug"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { createPortal } from "react-dom"
 import { translations } from "@/lib/translations"
 import { LanguageToggle } from "@/components/ui/language-toggle"
@@ -215,18 +215,82 @@ const AnimatedWallet = ({ isActive, appColor }: { isActive: boolean; appColor?: 
     )
 }
 
+function RotatingLogo() {
+    const [logoType, setLogoType] = useState<'text' | 'image'>('text')
+    const performanceMode = useStore(state => state.performanceMode)
+
+    useEffect(() => {
+        if (performanceMode) {
+            setLogoType('text')
+            return
+        }
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                setLogoType(prev => prev === 'text' ? 'image' : 'text')
+            }
+        }, 8000)
+        return () => clearInterval(interval)
+    }, [performanceMode])
+
+    return (
+        <div className="w-24 h-24 flex items-center justify-center mb-2 animate-float relative group-hover:scale-105 active:scale-95 transition-transform">
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={logoType}
+                    initial={{ opacity: 0, rotateY: 90 }}
+                    animate={{ opacity: 1, rotateY: 0 }}
+                    exit={{ opacity: 0, rotateY: -90 }}
+                    transition={{ duration: 0.5 }}
+                    className="flex items-center justify-center w-36 h-36"
+                >
+                    {logoType === 'text' ? (
+                        <span
+                            translate="no"
+                            className="font-dancing font-bold text-[88px] leading-none text-black dark:text-white select-none antialiased"
+                            style={{ WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale' }}
+                        >
+                            n
+                        </span>
+                    ) : (
+                        <img src="/images/notes-logo-v4.png" className="w-32 h-32 object-contain dark:brightness-0 dark:invert" alt="Notes Logo" />
+                    )}
+                </motion.div>
+            </AnimatePresence>
+        </div>
+    )
+}
+
 export function AppSidebar() {
     const pathname = usePathname()
     const projects = useStore(state => state.projects)
     const addProject = useStore(state => state.addProject)
     const language = useStore(state => state.language)
     const appColor = useStore(state => state.appColor ?? 'purple')
-    const tasks = useStore(state => state.tasks)
+    const shortcutKeyStr = useStore(state => {
+        const today = new Date().toISOString().split('T')[0]
+        const out: string[] = []
+        for (let i = 0; i < state.tasks.length && out.length < 9; i++) {
+            const task = state.tasks[i]
+            const include = task.recurrence === 'None'
+                ? (!task.completed || (task.completedDates?.includes(today) ?? false))
+                : true
+            if (include) {
+                out.push(`${task.id}\x00${task.title}\x00${task.shortcutKey ?? ''}`)
+            }
+        }
+        return out.join('\x01')
+    })
+    const shortcutTasks = useMemo(() => {
+        if (!shortcutKeyStr) return []
+        return shortcutKeyStr.split('\x01').map(row => {
+            const [id, title, shortcutKey] = row.split('\x00')
+            return { id, title, shortcutKey: shortcutKey ? Number(shortcutKey) : undefined }
+        })
+    }, [shortcutKeyStr])
     const setTaskShortcut = useStore(state => state.setTaskShortcut)
     const tourStep = useStore(state => state.tourStep)
     const [isCreatingProject, setIsCreatingProject] = useState(false)
     const [newProjectTitle, setNewProjectTitle] = useState("")
-    const [logoType, setLogoType] = useState<'text' | 'image'>('text')
     const [isMounted, setIsMounted] = useState(false)
     const isMobileLandscape = useIsMobileLandscape()
 
@@ -255,16 +319,7 @@ export function AppSidebar() {
             }
         }
 
-        // Only toggle if not an APK/Mobile View?
-        // User wants it 'tal como estaba' for desktop
-        const interval = setInterval(() => {
-            if (document.visibilityState === 'visible') {
-                setLogoType(prev => prev === 'text' ? 'image' : 'text')
-            }
-        }, 8000)
-
         return () => {
-            clearInterval(interval)
             window.removeEventListener('resize', checkDevice)
         }
     }, [])
@@ -370,30 +425,7 @@ export function AppSidebar() {
                     className="flex flex-col items-center mb-8 shrink-0 cursor-pointer group select-none"
                     title={t.today}
                 >
-                    <div className="w-24 h-24 flex items-center justify-center mb-2 animate-float relative group-hover:scale-105 active:scale-95 transition-transform">
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={logoType}
-                                initial={{ opacity: 0, rotateY: 90 }}
-                                animate={{ opacity: 1, rotateY: 0 }}
-                                exit={{ opacity: 0, rotateY: -90 }}
-                                transition={{ duration: 0.5 }}
-                                className="flex items-center justify-center w-36 h-36"
-                            >
-                                {logoType === 'text' ? (
-                                    <span
-                                        translate="no"
-                                        className="font-dancing font-bold text-[88px] leading-none text-black dark:text-white select-none antialiased"
-                                        style={{ WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale' }}
-                                    >
-                                        n
-                                    </span>
-                                ) : (
-                                    <img src="/images/notes-logo-v4.png" className="w-32 h-32 object-contain dark:brightness-0 dark:invert" alt="Notes Logo" />
-                                )}
-                            </motion.div>
-                        </AnimatePresence>
-                    </div>
+                    <RotatingLogo />
                     <h1 className="text-2xl font-bold tracking-tight font-dancing">MyNotes</h1>
                 </Link>
 
@@ -507,11 +539,7 @@ export function AppSidebar() {
                         <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{t.shortcuts}</h3>
                     </div>
                     <div className="space-y-1 px-1">
-                        {tasks.filter(task => {
-                            const today = new Date().toISOString().split('T')[0]
-                            if (task.recurrence === 'None') return !task.completed || (task.completed && (task.completedDates?.includes(today) ?? false))
-                            return true
-                        }).slice(0, 9).map((task, idx) => (
+                        {shortcutTasks.map((task, idx) => (
                             <div key={task.id} className="flex items-center gap-3 px-3 py-2 bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 rounded-2xl group/item hover:bg-black/[0.05] dark:hover:bg-white/[0.05] hover:border-black/10 dark:hover:border-white/20 transition-all duration-300">
                                 <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                                     <span className="text-[10px] font-black text-primary">{task.shortcutKey || idx + 1}</span>
