@@ -13,7 +13,7 @@ import { BackgroundTask } from '@capawesome/capacitor-background-task'
 const isNative = Capacitor.isNativePlatform();
 
 import { isIdle, whenIdle } from './interaction-gate';
-import { recordSyncMetric, getPerfFlags, perfStamp, hudRecordSet, hudRecordPersistSend, hudRecordSerialized, hudRecordHydration } from './perf-debug';
+import { recordSyncMetric, getPerfFlags, perfStamp, hudRecordSet, hudRecordPersistSend, hudRecordSerialized, hudRecordHydration, hudRecordNotesDiskWrite } from './perf-debug';
 
 export const WidgetSync = registerPlugin<{
     updateWidgetData: (data: { goals?: string, appointments?: string, notes?: string, tasks?: string, dailySnapshots?: string, notificationsEnabled?: string, isDarkMode?: string, pinnedNoteId?: string, priorityRemindersEnabled?: boolean, priorityReminderSlots?: string, noteFontFamily?: string }) => Promise<void>;
@@ -226,6 +226,7 @@ export const saveAllTasksToDisk = async (tasks: Task[]) => {
 export const saveAllNotesToDisk = async (notes: Note[]) => {
     if (typeof window === 'undefined') return;
     try {
+        hudRecordNotesDiskWrite();
         const data = JSON.stringify(notes);
         if (isNative) {
             await Filesystem.writeFile({
@@ -1293,6 +1294,7 @@ interface AppState {
     addNote: (note: Omit<Note, 'id' | 'createdAt' | 'lastUpdated'>) => Note
     updateNote: (id: string, title: string, blocks: NoteBlock[]) => void
     updateNoteBlockContent: (noteId: string, blockId: string, content: string) => void
+    downloadingBlocks?: Record<string, boolean>
     setBlockDownloading: (noteId: string, blockId: string, isDownloading: boolean) => void
     toggleNotePin: (id: string) => void
     deleteNote: (id: string) => void
@@ -2088,7 +2090,8 @@ export const silentRefreshGoogleToken = async (): Promise<string | null> => {
  */
 const NON_DATA_KEYS = new Set<string>([
     'isSyncingCloud', 'syncError', 'lastCloudSync', 'lastCloudSyncAt', 'lastSyncedMd5',
-    'timer', 'googleUser', 'googleSessionExpired', 'toast', 'priorityReminderSettings'
+    'timer', 'googleUser', 'googleSessionExpired', 'toast', 'priorityReminderSettings',
+    'downloadingBlocks'
 ]);
 
 /** Marca de fin de sync: texto para la UI + número para cooldown/comparaciones (nunca Date.parse(toLocaleString)). */
@@ -2220,6 +2223,7 @@ export const useStore = create<AppState>()(
                 lastUpdated: 0,
                 restoreProgress: null,
                 cloudRestoreProgress: null,
+                downloadingBlocks: {},
                 toast: null,
                 showToast: (message, type = 'info') => set({ toast: { message, type } }),
                 clearToast: () => set({ toast: null }),
@@ -2663,51 +2667,21 @@ export const useStore = create<AppState>()(
                 },
 
                 updateNoteBlockContent: (noteId, blockId, content) => {
-                    // Descargar una imagen/adjunto desde Drive a local es hidratación de caché, NO una edición del usuario.
-                    // Usamos originalSet para NO ensuciar la nube (markCloudSyncDirty) ni mover lastUpdated.
-                    let changed = false;
-                    originalSet((state) => {
-                        const newNotes = state.notes.map(n => {
-                            if (n.id !== noteId) return n;
-                            let blockModified = false;
-                            const newBlocks = n.blocks.map(b => {
-                                if (b.id !== blockId) return b;
-                                if (b.type === 'file' || b.type === 'video') {
-                                    const currentUrl = typeof b.content === 'object' ? b.content?.url : '';
-                                    if (currentUrl === content && !b.isDownloading) return b;
-                                    blockModified = true;
-                                    changed = true;
-                                    return {
-                                        ...b,
-                                        content: typeof b.content === 'object' ? { ...b.content, url: content } : { url: content },
-                                        isDownloading: false
-                                    };
-                                } else {
-                                    if (b.content === content && !b.isDownloading) return b;
-                                    blockModified = true;
-                                    changed = true;
-                                    return { ...b, content, isDownloading: false };
-                                }
-                            });
-                            return blockModified ? { ...n, blocks: newBlocks } : n;
-                        });
-                        return changed ? { notes: newNotes } : {};
-                    });
-
-                    if (changed) {
-                        // Persiste el nuevo URI a disco local
-                        queueNotesSave(get().notes);
-                    }
+                    queueAttachmentResult(noteId, blockId, content);
                 },
 
                 setBlockDownloading: (noteId, blockId, isDownloading) => {
-                    // Estado transitorio de UI: usar originalSet para no alterar lastUpdated ni ensuciar la nube.
-                    originalSet((state) => ({
-                        notes: state.notes.map(n => n.id === noteId ? {
-                            ...n,
-                            blocks: n.blocks.map(b => b.id === blockId ? { ...b, isDownloading } : b)
-                        } : n)
-                    }));
+                    // Estado transitorio fuera de `notes` y excluido de `partialize`:
+                    // no dispara persist.setItem ni re-renderiza la lista completa de notas.
+                    const key = `${noteId}:${blockId}`;
+                    originalSet((state) => {
+                        const prev = state.downloadingBlocks || {};
+                        if (Boolean(prev[key]) === isDownloading) return {};
+                        const next = { ...prev };
+                        if (isDownloading) next[key] = true;
+                        else delete next[key];
+                        return { downloadingBlocks: next };
+                    });
                 },
 
                 deleteNote: (id) => {
@@ -4098,7 +4072,21 @@ export const useStore = create<AppState>()(
                         };
 
                         const useLocalForConflicts = localLastUpdated > driveLastUpdated;
+                        const prevDriveIds = new Set<string>();
+                        for (const n of diskNotes || []) {
+                            for (const b of n?.blocks || []) {
+                                if (b?.driveFileId) prevDriveIds.add(b.driveFileId);
+                            }
+                        }
                         const { merged, changedLocal, changedRemote } = mergeBackupData(localDataToMerge, driveData, useLocalForConflicts);
+                        const newlyAddedDriveIds = new Set<string>();
+                        for (const n of merged.notes || []) {
+                            for (const b of n?.blocks || []) {
+                                if ((b?.type === 'image' || b?.type === 'drawing') && b?.driveFileId && !prevDriveIds.has(b.driveFileId)) {
+                                    newlyAddedDriveIds.add(b.driveFileId);
+                                }
+                            }
+                        }
 
                         if (abortIfUserEdited()) return false;
 
@@ -4134,8 +4122,8 @@ export const useStore = create<AppState>()(
 
                             setTimeout(() => {
                                 syncWidgetData(merged.goals, merged.appointments, merged.notes, merged.tasks).catch(console.error);
-                                if (changedLocal) {
-                                    checkAndEnqueueMissingImages().catch(console.error);
+                                if (changedLocal && newlyAddedDriveIds.size > 0) {
+                                    checkAndEnqueueMissingImages(newlyAddedDriveIds).catch(console.error);
                                 }
                             }, 0);
 
@@ -4187,7 +4175,9 @@ export const useStore = create<AppState>()(
 
                             setTimeout(() => {
                                 syncWidgetData(merged.goals, merged.appointments, merged.notes, merged.tasks).catch(console.error);
-                                checkAndEnqueueMissingImages().catch(console.error);
+                                if (newlyAddedDriveIds.size > 0) {
+                                    checkAndEnqueueMissingImages(newlyAddedDriveIds).catch(console.error);
+                                }
                             }, 0);
 
                             if (!remoteLastUpdated || remoteLastUpdated !== finalTs) {
@@ -4363,6 +4353,7 @@ export const useStore = create<AppState>()(
                     restoreProgress,
                     syncConflict,
                     isCloudSyncDirty,
+                    downloadingBlocks,
                     ...rest
                 } = serializableState;
                 const result = {
@@ -4441,13 +4432,101 @@ if (typeof window !== 'undefined') {
     });
 }
 
+// ── Escrituras en lote para resultados de descargas de adjuntos ──────────────────────────
+const pendingAttachmentResults = new Map<string, { noteId: string; blockId: string; uri: string }>();
+let attachmentBatchTimer: ReturnType<typeof setTimeout> | null = null;
+let attachmentNotesSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+export const flushAttachmentResultsNow = () => {
+    if (attachmentBatchTimer) {
+        clearTimeout(attachmentBatchTimer);
+        attachmentBatchTimer = null;
+    }
+    if (pendingAttachmentResults.size === 0) return;
+
+    const batch = Array.from(pendingAttachmentResults.values());
+    pendingAttachmentResults.clear();
+
+    const byNote = new Map<string, Map<string, string>>();
+    for (const item of batch) {
+        let m = byNote.get(item.noteId);
+        if (!m) {
+            m = new Map();
+            byNote.set(item.noteId, m);
+        }
+        m.set(item.blockId, item.uri);
+    }
+
+    let anyChanged = false;
+    useStore.setState((state) => {
+        const nextNotes = state.notes.map((n) => {
+            const blockUpdates = byNote.get(n.id);
+            if (!blockUpdates) return n;
+            let noteChanged = false;
+            const nextBlocks = (n.blocks || []).map((b) => {
+                const newUri = blockUpdates.get(b.id);
+                if (!newUri) return b;
+                if (b.type === 'file' || b.type === 'video') {
+                    const currentUrl = typeof b.content === 'object' ? b.content?.url : '';
+                    if (currentUrl === newUri && !b.isDownloading) return b;
+                    noteChanged = true;
+                    anyChanged = true;
+                    return {
+                        ...b,
+                        content: typeof b.content === 'object' ? { ...b.content, url: newUri } : { url: newUri },
+                        isDownloading: false
+                    };
+                }
+                if (b.content === newUri && !b.isDownloading) return b;
+                noteChanged = true;
+                anyChanged = true;
+                return { ...b, content: newUri, isDownloading: false };
+            });
+            return noteChanged ? { ...n, blocks: nextBlocks } : n;
+        });
+
+        const nextDownloading = { ...(state.downloadingBlocks || {}) };
+        for (const item of batch) {
+            delete nextDownloading[`${item.noteId}:${item.blockId}`];
+        }
+
+        return anyChanged
+            ? { notes: nextNotes, downloadingBlocks: nextDownloading }
+            : { downloadingBlocks: nextDownloading };
+    });
+
+    if (anyChanged) {
+        if (attachmentNotesSaveTimer) clearTimeout(attachmentNotesSaveTimer);
+        attachmentNotesSaveTimer = setTimeout(() => {
+            attachmentNotesSaveTimer = null;
+            queueNotesSave(useStore.getState().notes);
+        }, 1500);
+    }
+};
+
+function queueAttachmentResult(noteId: string, blockId: string, uri: string) {
+    if (!noteId || !blockId || !uri) return;
+    pendingAttachmentResults.set(`${noteId}:${blockId}`, { noteId, blockId, uri });
+    if (attachmentBatchTimer) clearTimeout(attachmentBatchTimer);
+    attachmentBatchTimer = setTimeout(flushAttachmentResultsNow, 250);
+}
+
+export const applyAttachmentResults = (results: Array<{ noteId: string; blockId: string; uri: string }>) => {
+    for (const r of results) {
+        if (r.noteId && r.blockId && r.uri) {
+            pendingAttachmentResults.set(`${r.noteId}:${r.blockId}`, r);
+        }
+    }
+    flushAttachmentResultsNow();
+};
+
 export const applyDownloadedAttachmentToStore = async (
     noteId: string,
     blockId: string,
     _driveFileId: string,
     uri: string
 ): Promise<void> => {
-    useStore.getState().updateNoteBlockContent(noteId, blockId, uri);
+    queueAttachmentResult(noteId, blockId, uri);
 };
 
 import('./attachment-store').then(({ registerAttachmentStoreBridge }) => {
@@ -4465,20 +4544,24 @@ import('./attachment-store').then(({ registerAttachmentStoreBridge }) => {
     });
 }).catch(() => {});
 
-export const checkAndEnqueueMissingImages = async () => {
+const BACKGROUND_DOWNLOAD_RATE_LIMIT_PER_MIN = 8;
+const backgroundDownloadTimestamps: number[] = [];
+
+export const checkAndEnqueueMissingImages = async (onlyDriveIds?: Set<string>) => {
     if (getPerfFlags().perfNoSync) { console.log(`[PERF][sync] ${perfStamp()} phase=checkAndEnqueueMissingImages:blocked(perf-no-sync)`); return; }
     console.log(`[PERF][sync] ${perfStamp()} phase=checkAndEnqueueMissingImages:start`);
     const state = useStore.getState();
     const token = state.googleUser?.accessToken;
     if (!token || state.googleSessionExpired) return;
 
-    // PASO 4: Solo precargar 'image' y 'drawing'. 'video' y 'file' quedan estrictamente bajo demanda.
+    // Solo precargar 'image' y 'drawing'. 'video' y 'file' quedan estrictamente bajo demanda.
     const pendingItems: Array<{ noteId: string; blockId: string; driveFileId: string; type: 'image' | 'drawing'; driveSize?: number }> = [];
 
     for (const note of state.notes) {
         if (!note.blocks) continue;
         for (const block of note.blocks) {
             if ((block.type === 'image' || block.type === 'drawing') && block.driveFileId && !block.isDownloading) {
+                if (onlyDriveIds && !onlyDriveIds.has(block.driveFileId)) continue;
                 let needsDownload = false;
                 const fileUri = typeof block.content === 'string' ? block.content : '';
 
@@ -4517,13 +4600,32 @@ export const checkAndEnqueueMissingImages = async () => {
 
     if (pendingItems.length === 0) return;
 
-    const total = pendingItems.length;
+    // Límite por minuto para evitar ráfagas masivas en segundo plano
+    const now = Date.now();
+    while (backgroundDownloadTimestamps.length && now - backgroundDownloadTimestamps[0] > 60_000) {
+        backgroundDownloadTimestamps.shift();
+    }
+    const remainingBudget = Math.max(0, BACKGROUND_DOWNLOAD_RATE_LIMIT_PER_MIN - backgroundDownloadTimestamps.length);
+    const itemsToProcess = pendingItems.slice(0, remainingBudget);
+    if (itemsToProcess.length === 0) return;
+
+    const total = itemsToProcess.length;
     let done = 0;
     useStore.setState({ cloudRestoreProgress: { done: 0, total } });
 
     const { ensureAttachment } = await import('./attachment-store');
-    await Promise.all(
-        pendingItems.map(async (item) => {
+    const queue = [...itemsToProcess];
+    const CONCURRENCY = 2;
+
+    const worker = async () => {
+        while (queue.length > 0) {
+            // Pausar si el usuario está interactuando (scroll/toque)
+            if (!isIdle(1200)) {
+                await new Promise<void>((resolve) => whenIdle(resolve, 1500));
+            }
+            const item = queue.shift();
+            if (!item) break;
+            backgroundDownloadTimestamps.push(Date.now());
             try {
                 await ensureAttachment({
                     driveFileId: item.driveFileId,
@@ -4538,23 +4640,13 @@ export const checkAndEnqueueMissingImages = async () => {
                 done++;
                 useStore.setState({ cloudRestoreProgress: done < total ? { done, total } : null });
             }
-        })
-    );
+        }
+    };
+
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, itemsToProcess.length) }, worker));
+    flushAttachmentResultsNow();
     useStore.setState({ cloudRestoreProgress: null });
 };
-
-let lastKnownAttachmentCount = -1;
-useStore.subscribe((state) => {
-    // Solo verificar descargas pendientes de imágenes si los adjuntos con DriveFileId cambiaron
-    // (p. ej. tras una restauración o tras un merge que incorporó nuevas notas con adjuntos).
-    // Evita escanear y encolar en cada ciclo inactivo donde no cambió nada.
-    if (!state.notes) return;
-    const currentAttachmentCount = countAttachmentDriveIds(state.notes);
-    if (currentAttachmentCount > 0 && currentAttachmentCount !== lastKnownAttachmentCount) {
-        lastKnownAttachmentCount = currentAttachmentCount;
-        setTimeout(() => checkAndEnqueueMissingImages().catch(console.error), 1000);
-    }
-});
 
 /**
  * Scans the revision history of mynotes_backup.json in Google Drive looking for

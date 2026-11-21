@@ -37,7 +37,7 @@ export function useLocalUrl(uriOrBase64: string | null | undefined): string {
             }
         }
 
-        // If the block holds a drive://<id> reference, check local cache first, and if missing, fetch via ensureAttachment
+        // If the block holds a drive://<id> reference, ONLY read from local cache (never start network downloads during render)
         if (uriOrBase64.startsWith('drive://')) {
             const driveFileId = uriOrBase64.replace('drive://', '').trim();
             if (!driveFileId) {
@@ -47,36 +47,23 @@ export function useLocalUrl(uriOrBase64: string | null | undefined): string {
             let active = true;
             let objectUrl: string | null = null;
 
-            const applyCachedUri = async (cachedUri: string | null) => {
-                if (!active || !cachedUri) {
-                    if (active) setResolvedUrl('');
-                    return;
-                }
-                if (cachedUri.startsWith('indexeddb://')) {
-                    const url = await createObjectURLFromIndexedDB(cachedUri);
-                    if (active && url) {
-                        objectUrl = url;
-                        setResolvedUrl(url);
-                    } else if (active) {
-                        setResolvedUrl('');
-                    }
-                } else {
-                    setResolvedUrl(getLocalImageSrc(cachedUri));
-                }
-            };
-
             import('@/lib/attachment-store')
-                .then(async ({ getCachedUri, ensureAttachment }) => {
-                    const cached = await getCachedUri(driveFileId);
-                    if (cached) {
-                        await applyCachedUri(cached);
+                .then(({ getCachedUri }) => getCachedUri(driveFileId))
+                .then(async (cachedUri) => {
+                    if (!active || !cachedUri) {
+                        if (active) setResolvedUrl('');
                         return;
                     }
-                    const ensured = await ensureAttachment({ driveFileId, type: 'image' });
-                    if (ensured.ok && ensured.uri) {
-                        await applyCachedUri(ensured.uri);
-                    } else if (active) {
-                        setResolvedUrl('');
+                    if (cachedUri.startsWith('indexeddb://')) {
+                        const url = await createObjectURLFromIndexedDB(cachedUri);
+                        if (active && url) {
+                            objectUrl = url;
+                            setResolvedUrl(url);
+                        } else if (active) {
+                            setResolvedUrl('');
+                        }
+                    } else {
+                        setResolvedUrl(getLocalImageSrc(cachedUri));
                     }
                 })
                 .catch(() => {

@@ -2324,7 +2324,8 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
     const [isRetryingDownload, setIsRetryingDownload] = useState(false);
     const [failReason, setFailReason] = useState<import('@/lib/attachment-store').AttachmentFailReason | null>(null);
     const [failMessage, setFailMessage] = useState<{ title: string; subtitle: string } | null>(null);
-    const isDownloading = Boolean(block.isDownloading || isRetryingDownload);
+    const isDownloadingFromStore = useStore(state => Boolean(noteId && state.downloadingBlocks?.[`${noteId}:${block.id}`]));
+    const isDownloading = Boolean(block.isDownloading || isDownloadingFromStore || isRetryingDownload);
     const isSynced = !!(block.driveFileId && hasImage && !isDownloading && !imageError && !isNeedsRemoteFetch);
     // Width in pixels (null = auto/natural)
     const [imgWidth, setImgWidth] = useState<number | null>(block.imageWidth || null);

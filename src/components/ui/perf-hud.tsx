@@ -100,13 +100,15 @@ export function PerfHud() {
                 .map((l) => `  ${l.dur.toFixed(0)}ms ${l.name.slice(0, 48)}`)
                 .join("\n")
 
+            const buildId = process.env.NEXT_PUBLIC_BUILD_ID || "dev-local"
             const text =
+                `build: ${buildId}\n` +
                 `ruta: ${route}\n` +
                 `FPS(5s): ${fps.toFixed(0)}  peor: ${worst.toFixed(0)}ms  p95: ${p95.toFixed(0)}ms  >25ms: ${dropped}\n` +
                 `longtasks(10s): ${longTasks.length} (${ltTotal.toFixed(0)}ms) ${hasLoaf ? "[LoAF]" : "[longtask]"}\n` +
                 (ltLines ? ltLines + "\n" : "") +
-                `set()/min: ${s.setCallsPerMin}\n` +
-                `persist→worker/min: ${s.persistSendsPerMin}  total: ${s.totalPersistSends}\n` +
+                `set()/min: ${s.setCallsPerMin}  notas disco/min: ${s.notesWritesPerMin}\n` +
+                `ensure(30s): ${s.ensureCallsFirst30s}  persist→worker/min: ${s.persistSendsPerMin} (${s.totalPersistSends})\n` +
                 `último clon: ${fmt(s.lastCloneMs, 2)}ms  serializar: ${fmt(s.lastSerializeMs, 0)}ms\n` +
                 `estado: ${fmt(s.stateKB, 0)} KB  json arranque: ${fmt(s.storageJsonKB, 0)} KB\n` +
                 `rehidratación: ${fmt(s.hydrationMs, 0)}ms  hydrated@${fmt(st.hydrated, 0)}ms  1er render@${fmt(st.firstRender, 0)}ms`

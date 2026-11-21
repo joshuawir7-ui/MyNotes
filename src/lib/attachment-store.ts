@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { get as idbGet, set as idbSet } from 'idb-keyval';
 import { saveBlobToIndexedDB, getBlobFromIndexedDB } from './blob-storage';
+import { hudRecordEnsureAttachment } from './perf-debug';
 
 export type AttachmentFailReason =
     | 'no-session'
@@ -332,6 +333,7 @@ export async function getCachedUri(driveFileId: string): Promise<string | null> 
 }
 
 export async function ensureAttachment(params: EnsureAttachmentParams): Promise<EnsureAttachmentResult> {
+    hudRecordEnsureAttachment();
     const { driveFileId, noteId, blockId, type, name, fileName: paramFileName, driveSize, confirmLarge } = params;
     const effectiveName = name || paramFileName;
     if (!driveFileId) {

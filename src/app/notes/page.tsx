@@ -5,7 +5,7 @@ import { useStore, Note } from "@/lib/store"
 import { useShallow } from "zustand/react/shallow"
 import React, { useState, useEffect, useMemo, memo } from "react"
 import { useSearchParams } from "next/navigation"
-import { Plus, StickyNote, Trash2, Calendar, ArrowUpAZ, ArrowDownAZ, Pin } from "lucide-react"
+import { Plus, StickyNote, Trash2, Calendar, ArrowUpAZ, ArrowDownAZ, Pin, Image as ImageIcon } from "lucide-react"
 import { WelcomeNotesModal } from "@/components/ui/welcome-notes-modal"
 import { isNoteEmpty } from "@/lib/note-utils"
 import dynamic from "next/dynamic"
@@ -374,9 +374,19 @@ const NoteThumbnail = memo(({ rawSrc }: { rawSrc: string | null }) => {
         setHasError(false);
     }, [rawSrc, resolvedUrl]);
 
+    if (!rawSrc) return null;
+
     const validSrc = !!resolvedUrl && !hasError && !resolvedUrl.startsWith('indexeddb://') && !resolvedUrl.startsWith('drive://');
 
-    if (!rawSrc || !validSrc) return null;
+    if (!validSrc) {
+        return (
+            <div className="w-full mt-3 shrink-0 flex justify-center">
+                <div className="w-full h-24 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/5 dark:border-white/5 flex items-center justify-center">
+                    <ImageIcon className="w-6 h-6 text-muted-foreground/30" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full mt-3 shrink-0 flex justify-center">

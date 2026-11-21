@@ -376,6 +376,8 @@ if (typeof window !== 'undefined') {
 export interface PersistHudStats {
     setCalls: number[];        // timestamps de set() del store
     persistSends: number[];    // timestamps de envíos al worker de persistencia
+    notesDiskWrites: number[]; // timestamps de escrituras de mynotes_full_notes.json
+    ensureCallsFirst30s: number; // llamadas a ensureAttachment en los primeros 30s tras arrancar
     lastCloneMs: number | null;   // duración del último postMessage (clon estructurado)
     lastSerializeMs: number | null; // ida y vuelta al worker hasta tener el string
     stateKB: number | null;    // tamaño del último estado serializado
@@ -386,6 +388,8 @@ export interface PersistHudStats {
 const hudStats: PersistHudStats = {
     setCalls: [],
     persistSends: [],
+    notesDiskWrites: [],
+    ensureCallsFirst30s: 0,
     lastCloneMs: null,
     lastSerializeMs: null,
     stateKB: null,
@@ -415,6 +419,19 @@ export function hudRecordPersistSend(cloneMs: number) {
     pruneOld(hudStats.persistSends, now);
 }
 
+export function hudRecordNotesDiskWrite() {
+    const now = Date.now();
+    hudStats.notesDiskWrites.push(now);
+    pruneOld(hudStats.notesDiskWrites, now);
+}
+
+export function hudRecordEnsureAttachment() {
+    const elapsedMs = typeof performance !== 'undefined' ? (performance.now() - scriptStartTime) : 0;
+    if (elapsedMs <= 30_000) {
+        hudStats.ensureCallsFirst30s++;
+    }
+}
+
 export function hudRecordSerialized(serializeMs: number, kb: number) {
     hudStats.lastSerializeMs = serializeMs;
     hudStats.stateKB = kb;
@@ -429,9 +446,12 @@ export function getHudStats() {
     const now = Date.now();
     pruneOld(hudStats.setCalls, now);
     pruneOld(hudStats.persistSends, now);
+    pruneOld(hudStats.notesDiskWrites, now);
     return {
         setCallsPerMin: hudStats.setCalls.length,
         persistSendsPerMin: hudStats.persistSends.length,
+        notesWritesPerMin: hudStats.notesDiskWrites.length,
+        ensureCallsFirst30s: hudStats.ensureCallsFirst30s,
         totalPersistSends: totalPersistSends,
         lastCloneMs: hudStats.lastCloneMs,
         lastSerializeMs: hudStats.lastSerializeMs,

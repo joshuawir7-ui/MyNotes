@@ -1734,6 +1734,11 @@ export function SettingsDialog() {
                                                                     <Gauge className="w-3.5 h-3.5 opacity-60 text-primary" />
                                                                     <span>MyNotes v1.0.0 {versionClickCount > 0 ? `(${7 - versionClickCount})` : ''}</span>
                                                                 </button>
+                                                                {developerMode && (
+                                                                    <span className="text-[10px] font-mono text-muted-foreground/80 select-text text-center">
+                                                                        {process.env.NEXT_PUBLIC_BUILD_ID || "dev-local"}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     )}
