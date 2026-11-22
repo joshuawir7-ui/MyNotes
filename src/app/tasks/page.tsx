@@ -498,21 +498,24 @@ export default function TasksPage() {
         }
 
         toggleTask(habit.id)
-        if (isCompleted) {
-            showToast(language === 'es' ? "Hábito/Tarea pendiente" : "Habit/Task pending", "info")
+        const toastMsg = isCompleted
+            ? (language === 'es' ? "Hábito/Tarea pendiente" : "Habit/Task pending")
+            : habit.habitType === 'bad'
+                ? (() => {
+                    const badHabitMessagesEs = ["Bien hecho", "Mal hábito evitado", "¡Así se hace!"]
+                    const badHabitMessagesEn = ["Well done!", "Bad habit avoided!", "That's the way!"]
+                    const randomIndex = Math.floor(Math.random() * badHabitMessagesEs.length)
+                    return language === 'es' ? badHabitMessagesEs[randomIndex] : badHabitMessagesEn[randomIndex]
+                })()
+                : (language === 'es' ? "Hábito/Tarea completado" : "Habit/Task completed")
+        const toastType = isCompleted ? "info" : "success"
+        if (typeof window !== 'undefined' && 'requestAnimationFrame' in window) {
+            requestAnimationFrame(() => showToast(toastMsg, toastType))
         } else {
-            if (habit.habitType === 'bad') {
-                const badHabitMessagesEs = ["Bien hecho", "Mal hábito evitado", "¡Así se hace!"]
-                const badHabitMessagesEn = ["Well done!", "Bad habit avoided!", "That's the way!"]
-                const randomIndex = Math.floor(Math.random() * badHabitMessagesEs.length)
-                const msg = language === 'es' ? badHabitMessagesEs[randomIndex] : badHabitMessagesEn[randomIndex]
-                showToast(msg, "success")
-            } else {
-                showToast(language === 'es' ? "Hábito/Tarea completado" : "Habit/Task completed", "success")
-            }
-            if (tourStep === 8) {
-                nextTourStep()
-            }
+            showToast(toastMsg, toastType)
+        }
+        if (!isCompleted && tourStep === 8) {
+            nextTourStep()
         }
     }, [focusEffectEnabled, toggleTask, showToast, language, tourStep, nextTourStep])
 
@@ -1159,11 +1162,11 @@ export default function TasksPage() {
                                     className={`absolute inset-0 bg-black/55 ${lostDaysModalBlur ? "backdrop-blur-sm" : ""}`}
                                 />
                                 <motion.div
-                                    initial={{ opacity: 0, y: 20, scale: 0.92 }}
+                                    initial={{ opacity: 0, y: 12, scale: 0.96 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: 15, scale: 0.94 }}
-                                    transition={{ type: "spring", damping: 25, stiffness: 320 }}
-                                    className="relative z-10 my-auto w-full max-w-md max-h-[90dvh] overflow-y-auto glass-panel p-6 rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121215] shadow-2xl text-center flex flex-col items-center gap-4 text-foreground dark:text-white"
+                                    exit={{ opacity: 0, y: 10, scale: 0.96 }}
+                                    transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                                    className="relative z-10 my-auto w-full max-w-md max-h-[90dvh] overflow-y-auto p-6 rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121215] shadow-2xl text-center flex flex-col items-center gap-4 text-foreground dark:text-white"
                                 >
                                     <button
                                         type="button"
@@ -2183,81 +2186,34 @@ const HabitCard = memo(({
                                 }}
                                 className={`relative group/check flex-shrink-0 ${!isTodayActive && !habit.countLostDays ? 'cursor-not-allowed' : ''}`}
                             >
-                                <motion.div
-                                    initial={false}
-                                    whileHover={isTodayActive ? { scale: 1.1 } : {}}
-                                    whileTap={isTodayActive ? { scale: 0.9 } : {}}
-                                    animate={{
-                                        scale: displayCompleted ? [1, 1.05, 1] : 1,
-                                        backgroundColor: !isTodayActive ? "rgba(115, 115, 115, 0.08)" : displayCompleted ? "rgb(34, 197, 94)" : "transparent",
-                                        borderColor: !isTodayActive ? "rgba(115, 115, 115, 0.35)" : displayCompleted ? "rgb(34, 197, 94)" : habit.habitType === 'bad' ? "rgb(255, 255, 255)" : "rgb(115, 115, 115)"
-                                    }}
-                                    transition={{
-                                        duration: 0.3,
-                                        ease: "easeOut"
-                                    }}
-                                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 relative z-10
-                                 ${!isTodayActive
-                                            ? 'text-zinc-400 opacity-60 cursor-not-allowed'
-                                            : displayCompleted
-                                                ? 'text-black shadow-[0_0_20px_rgba(34,197,94,0.4)]'
-                                                : habit.habitType === 'bad'
-                                                    ? 'hover:border-white border-white/80 text-white'
-                                                    : 'hover:border-primary'
-                                        }`}
+                                <div
+                                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-transform transition-colors duration-150 active:scale-90 relative z-10
+                                    ${!isTodayActive
+                                        ? 'bg-zinc-500/10 border-zinc-500/35 text-zinc-400 opacity-60 cursor-not-allowed'
+                                        : displayCompleted
+                                            ? 'bg-green-500 border-green-500 text-black shadow-[0_0_16px_rgba(34,197,94,0.35)]'
+                                            : habit.habitType === 'bad'
+                                                ? 'bg-transparent hover:border-white border-white/80 text-white'
+                                                : 'bg-transparent border-zinc-500 hover:border-primary'
+                                    }`}
                                 >
-                                    <AnimatePresence mode="wait">
-                                        {!isTodayActive ? (
-                                            <motion.div
-                                                key="inactive"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                className="flex items-center justify-center"
-                                            >
-                                                <div className="w-3 h-0.5 bg-zinc-400 dark:bg-zinc-500 rounded-full" />
-                                            </motion.div>
-                                        ) : displayCompleted ? (
-                                            <motion.div
-                                                key="checked"
-                                                initial={{ scale: 0, rotate: -45 }}
-                                                animate={{ scale: 1, rotate: 0 }}
-                                                exit={{ scale: 0, rotate: 45 }}
-                                                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                                            >
-                                                {habit.habitType === 'bad' ? (
-                                                    <XIcon className="w-5 h-5 text-black stroke-[3.5]" />
-                                                ) : (
-                                                    <Check className="w-5 h-5" />
-                                                )}
-                                            </motion.div>
+                                    {!isTodayActive ? (
+                                        <div className="w-3 h-0.5 bg-zinc-400 dark:bg-zinc-500 rounded-full" />
+                                    ) : displayCompleted ? (
+                                        habit.habitType === 'bad' ? (
+                                            <XIcon className="w-5 h-5 text-black stroke-[3.5]" />
                                         ) : (
-                                            <motion.div
-                                                key="unchecked"
-                                                initial={{ scale: 0.5, opacity: 0 }}
-                                                animate={{ scale: 1, opacity: 1 }}
-                                                exit={{ scale: 0.5, opacity: 0 }}
-                                            >
-                                                {habit.icon && ICON_MAP[habit.icon] ? (
-                                                    (() => {
-                                                        const Icon = ICON_MAP[habit.icon]
-                                                        return <Icon className={`w-4 h-4 text-muted-foreground group-hover/check:text-primary transition-colors ${habit.habitType === 'bad' ? 'group-hover/check:text-white text-white' : ''}`} />
-                                                    })()
-                                                ) : null}
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </motion.div>
-
-                                {/* Ripple Effect (z-0 to keep it visible on top of card background) */}
-                                {displayCompleted && isTodayActive && (
-                                    <motion.div
-                                        initial={{ scale: 0.8, opacity: 0.5 }}
-                                        animate={{ scale: 2.2, opacity: 0 }}
-                                        transition={{ duration: 0.8, ease: "easeOut" }}
-                                        className="absolute inset-0 bg-green-500/30 rounded-full z-0"
-                                    />
-                                )}
+                                            <Check className="w-5 h-5" />
+                                        )
+                                    ) : (
+                                        habit.icon && ICON_MAP[habit.icon] ? (
+                                            (() => {
+                                                const Icon = ICON_MAP[habit.icon]
+                                                return <Icon className={`w-4 h-4 text-muted-foreground group-hover/check:text-primary transition-colors ${habit.habitType === 'bad' ? 'group-hover/check:text-white text-white' : ''}`} />
+                                            })()
+                                        ) : null
+                                    )}
+                                </div>
                             </button>
                             <div className="flex-1 min-w-0 flex flex-col justify-center">
                                 <div className="flex items-center gap-2 w-full">

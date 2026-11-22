@@ -42,6 +42,7 @@ const DEFAULT_BACKOFF_MS = [1000, 3000, 9000];
 const statusMap = new Map<string, AttachmentStatus>();
 const statusListeners = new Map<string, Set<(status: AttachmentStatus) => void>>();
 const inFlightMap = new Map<string, Promise<EnsureAttachmentResult>>();
+const memoryUriCache = new Map<string, string>();
 
 let activeDownloads = 0;
 const waitQueue: Array<() => void> = [];
@@ -143,6 +144,7 @@ export async function cacheUploadedAttachmentUri(
     if (Capacitor.isNativePlatform()) {
         if (localUri.startsWith('file://') || localUri.startsWith('/')) {
             const normalizedPath = localUri.startsWith('/') ? `file://${localUri}` : localUri;
+            memoryUriCache.set(driveFileId, normalizedPath);
             try {
                 if (registeredBridge) {
                     await registeredBridge.upsertManifestEntry({
@@ -169,6 +171,7 @@ export async function cacheUploadedAttachmentUri(
             } catch {}
         }
     } else if (localUri.startsWith('indexeddb://')) {
+        memoryUriCache.set(driveFileId, localUri);
         try {
             await idbSet(`${WEB_MANIFEST_PREFIX}${driveFileId}`, localUri);
         } catch {}
@@ -317,6 +320,7 @@ export function __setAttachmentStoreTestDeps(overrides: Partial<AttachmentStoreD
         activeDeps = { ...defaultDeps };
         statusMap.clear();
         inFlightMap.clear();
+        memoryUriCache.clear();
     } else {
         activeDeps = { ...defaultDeps, ...overrides };
     }
@@ -326,10 +330,15 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function getCachedUri(driveFileId: string): Promise<string | null> {
     if (!driveFileId) return null;
-    if (activeDeps.isNative()) {
-        return activeDeps.getNativeCachedUri(driveFileId);
+    const memHit = memoryUriCache.get(driveFileId);
+    if (memHit) return memHit;
+    const uri = activeDeps.isNative()
+        ? await activeDeps.getNativeCachedUri(driveFileId)
+        : await activeDeps.getWebCachedUri(driveFileId);
+    if (uri) {
+        memoryUriCache.set(driveFileId, uri);
     }
-    return activeDeps.getWebCachedUri(driveFileId);
+    return uri;
 }
 
 export async function ensureAttachment(params: EnsureAttachmentParams): Promise<EnsureAttachmentResult> {

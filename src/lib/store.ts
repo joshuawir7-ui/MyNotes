@@ -1579,20 +1579,25 @@ export type AttachmentManifestEntry = {
 export type AttachmentManifest = Record<string /*driveFileId*/, AttachmentManifestEntry>;
 
 const MANIFEST_KEY = 'mynotes_attachment_manifest';
+let cachedManifest: AttachmentManifest | null = null;
 
 export const getAttachmentManifest = async (): Promise<AttachmentManifest> => {
+    if (cachedManifest) return cachedManifest;
     try {
         if (isNative) {
             const { value } = await Preferences.get({ key: MANIFEST_KEY });
-            return value ? JSON.parse(value) : {};
+            cachedManifest = value ? JSON.parse(value) : {};
+            return cachedManifest!;
         } else {
             const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(MANIFEST_KEY) : null;
-            return raw ? JSON.parse(raw) : {};
+            cachedManifest = raw ? JSON.parse(raw) : {};
+            return cachedManifest!;
         }
     } catch { return {}; }
 };
 
 export const setAttachmentManifest = async (manifest: AttachmentManifest): Promise<void> => {
+    cachedManifest = manifest;
     try {
         const str = JSON.stringify(manifest);
         if (isNative) {

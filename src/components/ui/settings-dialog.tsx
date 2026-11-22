@@ -120,6 +120,7 @@ function SettingsCloudSyncControls({
 
 export function SettingsDialog() {
     const [isOpen, setIsOpen] = useState(false)
+    const sheetBlurSettled = useDeferredBlur(isOpen)
     const [isPerfDebugOpen, setIsPerfDebugOpen] = useState(false)
     const [versionClickCount, setVersionClickCount] = useState(0)
     const [bubbleSettings, setBubbleSettings] = useState<{ mode: 'always' | 'outside' | 'never'; hasPermission: boolean; isSupported: boolean }>({
@@ -963,10 +964,11 @@ export function SettingsDialog() {
                             <GlassSurface
                                 as={motion.div}
                                 variant="sheet"
-                                initial={{ scale: 0.95, y: 20 }}
-                                animate={{ scale: 1, y: 0 }}
-                                exit={{ scale: 0.95, y: 20 }}
-                                className="relative w-full max-w-sm md:max-w-3xl rounded-[2rem]"
+                                initial={{ opacity: 0, scale: 0.96, y: 14 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.96, y: 14 }}
+                                transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                                className={`relative w-full max-w-sm md:max-w-3xl rounded-[2rem] ${!sheetBlurSettled ? 'sheet-blur-deferred' : ''}`}
                             >
                                 <div className="p-6 md:p-8 overflow-y-auto max-h-[90vh] no-scrollbar">
                                 <button
