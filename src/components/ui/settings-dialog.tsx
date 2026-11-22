@@ -120,7 +120,7 @@ function SettingsCloudSyncControls({
 
 export function SettingsDialog() {
     const [isOpen, setIsOpen] = useState(false)
-    const sheetBlurSettled = useDeferredBlur(isOpen)
+    const [scrimBlurActive, setScrimBlurActive] = useState(false)
     const [isPerfDebugOpen, setIsPerfDebugOpen] = useState(false)
     const [versionClickCount, setVersionClickCount] = useState(0)
     const [bubbleSettings, setBubbleSettings] = useState<{ mode: 'always' | 'outside' | 'never'; hasPermission: boolean; isSupported: boolean }>({
@@ -178,6 +178,18 @@ export function SettingsDialog() {
     const setFocusEffectEnabled = useStore(state => state.setFocusEffectEnabled)
     const performanceMode = useStore(state => state.performanceMode ?? false)
     const setPerformanceMode = useStore(state => state.setPerformanceMode)
+
+    useEffect(() => {
+        if (!isOpen || performanceMode) {
+            setScrimBlurActive(false)
+            return
+        }
+        const t = window.setTimeout(() => setScrimBlurActive(true), 170)
+        return () => {
+            window.clearTimeout(t)
+            setScrimBlurActive(false)
+        }
+    }, [isOpen, performanceMode])
     const developerMode = useStore(state => state.developerMode ?? false)
     const setDeveloperMode = useStore(state => state.setDeveloperMode)
     const googleUser = useStore(state => state.googleUser)
@@ -306,6 +318,18 @@ export function SettingsDialog() {
             type
         })
     }
+
+    useEffect(() => {
+        if (!isOpen || performanceMode) {
+            setScrimBlurActive(false)
+            return
+        }
+        const t = window.setTimeout(() => setScrimBlurActive(true), 170)
+        return () => {
+            window.clearTimeout(t)
+            setScrimBlurActive(false)
+        }
+    }, [isOpen, performanceMode])
 
     useEffect(() => {
         if (isOpen) {
@@ -957,18 +981,19 @@ export function SettingsDialog() {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
+                                transition={{ duration: 0.16 }}
                                 onClick={() => setIsOpen(false)}
-                                className="glass-scrim--light"
+                                className={`glass-scrim--light transition-[backdrop-filter] duration-150 ${scrimBlurActive ? 'backdrop-blur-[6px]' : ''}`}
                             />
 
                             <GlassSurface
                                 as={motion.div}
                                 variant="sheet"
-                                initial={{ opacity: 0, scale: 0.96, y: 14 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.96, y: 14 }}
-                                transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-                                className={`relative w-full max-w-sm md:max-w-3xl rounded-[2rem] ${!sheetBlurSettled ? 'sheet-blur-deferred' : ''}`}
+                                initial={{ scale: 0.95, y: 20 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.95, y: 20 }}
+                                transition={{ type: "spring", damping: 26, stiffness: 360, mass: 0.7 }}
+                                className="relative w-full max-w-sm md:max-w-3xl rounded-[2rem]"
                             >
                                 <div className="p-6 md:p-8 overflow-y-auto max-h-[90vh] no-scrollbar">
                                 <button
