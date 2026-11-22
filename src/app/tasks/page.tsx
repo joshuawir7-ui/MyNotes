@@ -681,6 +681,28 @@ export default function TasksPage() {
                 .neon-glow-red {
                     box-shadow: 0 0 15px rgba(239, 68, 68, 0.4), inset 0 0 15px rgba(239, 68, 68, 0.2);
                 }
+                @keyframes habitCheckPop {
+                    0% { transform: scale(0.86); }
+                    55% { transform: scale(1.12); }
+                    100% { transform: scale(1); }
+                }
+                @keyframes habitIconIn {
+                    0% { transform: scale(0.35) rotate(-35deg); opacity: 0; }
+                    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+                }
+                @keyframes habitRipple {
+                    0% { transform: scale(0.85); opacity: 0.45; }
+                    100% { transform: scale(2.15); opacity: 0; }
+                }
+                .habit-check-pop {
+                    animation: habitCheckPop 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+                }
+                .habit-icon-in {
+                    animation: habitIconIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+                }
+                .habit-ripple-anim {
+                    animation: habitRipple 480ms ease-out forwards;
+                }
             `}</style>
 
             <div className={`relative z-10 w-full flex flex-col gap-8 gpu-accelerated ${isFocusEffectActive ? 'shake-effect' : ''}`}>
@@ -2187,11 +2209,11 @@ const HabitCard = memo(({
                                 className={`relative group/check flex-shrink-0 ${!isTodayActive && !habit.countLostDays ? 'cursor-not-allowed' : ''}`}
                             >
                                 <div
-                                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-transform transition-colors duration-150 active:scale-90 relative z-10
+                                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-transform transition-colors duration-200 active:scale-90 relative z-10
                                     ${!isTodayActive
                                         ? 'bg-zinc-500/10 border-zinc-500/35 text-zinc-400 opacity-60 cursor-not-allowed'
                                         : displayCompleted
-                                            ? 'bg-green-500 border-green-500 text-black shadow-[0_0_16px_rgba(34,197,94,0.35)]'
+                                            ? 'bg-green-500 border-green-500 text-black shadow-[0_0_16px_rgba(34,197,94,0.38)] habit-check-pop'
                                             : habit.habitType === 'bad'
                                                 ? 'bg-transparent hover:border-white border-white/80 text-white'
                                                 : 'bg-transparent border-zinc-500 hover:border-primary'
@@ -2200,11 +2222,13 @@ const HabitCard = memo(({
                                     {!isTodayActive ? (
                                         <div className="w-3 h-0.5 bg-zinc-400 dark:bg-zinc-500 rounded-full" />
                                     ) : displayCompleted ? (
-                                        habit.habitType === 'bad' ? (
-                                            <XIcon className="w-5 h-5 text-black stroke-[3.5]" />
-                                        ) : (
-                                            <Check className="w-5 h-5" />
-                                        )
+                                        <span className="habit-icon-in flex items-center justify-center">
+                                            {habit.habitType === 'bad' ? (
+                                                <XIcon className="w-5 h-5 text-black stroke-[3.5]" />
+                                            ) : (
+                                                <Check className="w-5 h-5" />
+                                            )}
+                                        </span>
                                     ) : (
                                         habit.icon && ICON_MAP[habit.icon] ? (
                                             (() => {
@@ -2214,6 +2238,10 @@ const HabitCard = memo(({
                                         ) : null
                                     )}
                                 </div>
+
+                                {displayCompleted && isTodayActive && (
+                                    <span className="absolute inset-0 bg-green-500/30 rounded-full z-0 pointer-events-none habit-ripple-anim" />
+                                )}
                             </button>
                             <div className="flex-1 min-w-0 flex flex-col justify-center">
                                 <div className="flex items-center gap-2 w-full">

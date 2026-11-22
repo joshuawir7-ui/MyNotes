@@ -120,7 +120,6 @@ function SettingsCloudSyncControls({
 
 export function SettingsDialog() {
     const [isOpen, setIsOpen] = useState(false)
-    const [scrimBlurActive, setScrimBlurActive] = useState(false)
     const [isPerfDebugOpen, setIsPerfDebugOpen] = useState(false)
     const [versionClickCount, setVersionClickCount] = useState(0)
     const [bubbleSettings, setBubbleSettings] = useState<{ mode: 'always' | 'outside' | 'never'; hasPermission: boolean; isSupported: boolean }>({
@@ -178,18 +177,6 @@ export function SettingsDialog() {
     const setFocusEffectEnabled = useStore(state => state.setFocusEffectEnabled)
     const performanceMode = useStore(state => state.performanceMode ?? false)
     const setPerformanceMode = useStore(state => state.setPerformanceMode)
-
-    useEffect(() => {
-        if (!isOpen || performanceMode) {
-            setScrimBlurActive(false)
-            return
-        }
-        const t = window.setTimeout(() => setScrimBlurActive(true), 170)
-        return () => {
-            window.clearTimeout(t)
-            setScrimBlurActive(false)
-        }
-    }, [isOpen, performanceMode])
     const developerMode = useStore(state => state.developerMode ?? false)
     const setDeveloperMode = useStore(state => state.setDeveloperMode)
     const googleUser = useStore(state => state.googleUser)
@@ -318,18 +305,6 @@ export function SettingsDialog() {
             type
         })
     }
-
-    useEffect(() => {
-        if (!isOpen || performanceMode) {
-            setScrimBlurActive(false)
-            return
-        }
-        const t = window.setTimeout(() => setScrimBlurActive(true), 170)
-        return () => {
-            window.clearTimeout(t)
-            setScrimBlurActive(false)
-        }
-    }, [isOpen, performanceMode])
 
     useEffect(() => {
         if (isOpen) {
@@ -983,7 +958,7 @@ export function SettingsDialog() {
                                 exit={{ opacity: 0 }}
                                 transition={{ duration: 0.16 }}
                                 onClick={() => setIsOpen(false)}
-                                className={`glass-scrim--light transition-[backdrop-filter] duration-150 ${scrimBlurActive ? 'backdrop-blur-[6px]' : ''}`}
+                                className="glass-scrim"
                             />
 
                             <GlassSurface
@@ -994,8 +969,12 @@ export function SettingsDialog() {
                                 exit={{ scale: 0.95, y: 20 }}
                                 transition={{ type: "spring", damping: 26, stiffness: 360, mass: 0.7 }}
                                 className="relative w-full max-w-sm md:max-w-3xl rounded-[2rem]"
+                                style={{ contain: 'layout paint' }}
                             >
-                                <div className="p-6 md:p-8 overflow-y-auto max-h-[90vh] no-scrollbar">
+                                <div
+                                    className="p-6 md:p-8 overflow-y-auto max-h-[90vh] no-scrollbar overscroll-contain"
+                                    style={{ transform: 'translateZ(0)', WebkitOverflowScrolling: 'touch' }}
+                                >
                                 <button
                                     onClick={() => setIsOpen(false)}
                                     className="absolute top-4 right-4 p-2 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
