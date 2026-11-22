@@ -356,22 +356,23 @@ function getRawNoteThumbnail(blocks: any[] | undefined): NotePreviewMedia | null
             if (fileName || fileType || b.driveFileId) {
                 candidates.push({ kind: 'file', fileName: fileName || 'Archivo', fileType });
             }
-        } else if (b.type === 'text' && typeof b.content === 'string' && (b.content.includes('<img') || b.content.includes('data-inline-file'))) {
+        } else if (b.type === 'text' && typeof b.content === 'string' && (b.content.includes('<img') || b.content.includes('data-inline-file') || b.content.includes('data-file-card'))) {
             // Scan both <img> and inline file cards in document order so the last added item wins
-            const tokenRegex = /<div\b[^>]*\bdata-inline-file=["']1["'][^>]*>|<img\b([^>]*?)(?:\/>|>)/gi;
+            const tokenRegex = /<div\b[^>]*\b(?:data-inline-file|data-file-card)\b[^>]*>|<img\b([^>]*?)(?:\/>|>)/gi;
             let match;
             while ((match = tokenRegex.exec(b.content)) !== null) {
                 const full = match[0];
                 if (full.toLowerCase().startsWith('<div')) {
-                    const nameMatch = /\bdata-file-name=["']([^"']+)["']/i.exec(full);
-                    if (nameMatch?.[1]) {
-                        candidates.push({ kind: 'file', fileName: nameMatch[1], fileType: '' });
+                    const nameMatch = /\bdata-file-name=(?:"([^"]+)"|'([^']+)'|([^\s>]+))/i.exec(full);
+                    const fileName = nameMatch?.[1] || nameMatch?.[2] || nameMatch?.[3];
+                    if (fileName) {
+                        candidates.push({ kind: 'file', fileName, fileType: '' });
                     }
                 } else {
                     const attrs = match[1] || '';
-                    const localUriMatch = /\bdata-local-uri=["']([^"']+)["']/i.exec(attrs);
-                    const srcMatch = /\bsrc=["']([^"']+)["']/i.exec(attrs);
-                    const candidate = localUriMatch?.[1] || srcMatch?.[1];
+                    const localUriMatch = /\bdata-local-uri=(?:"([^"]+)"|'([^']+)'|([^\s>]+))/i.exec(attrs);
+                    const srcMatch = /\bsrc=(?:"([^"]+)"|'([^']+)'|([^\s>]+))/i.exec(attrs);
+                    const candidate = localUriMatch?.[1] || localUriMatch?.[2] || localUriMatch?.[3] || srcMatch?.[1] || srcMatch?.[2] || srcMatch?.[3];
                     if (
                         candidate &&
                         !candidate.startsWith('blob:') &&
