@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { useStore, Note } from "@/lib/store"
 import { useShallow } from "zustand/react/shallow"
-import React, { useState, useEffect, useMemo, memo } from "react"
+import React, { useState, useEffect, useMemo, useRef, memo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Plus, StickyNote, Trash2, Calendar, ArrowUpAZ, ArrowDownAZ, Pin, Image as ImageIcon, Film } from "lucide-react"
 import { getFileIcon } from "@/lib/file-icons"
@@ -320,9 +320,11 @@ const NoteCardSkeleton = () => (
 )
 
 type NotePreviewMedia =
-    | { kind: 'image'; src: string }
+    | { kind: 'image'; src: string; driveFileId?: string; blockId?: string }
     | { kind: 'video'; thumbSrc: string | null; videoSrc: string | null; name?: string }
     | { kind: 'file'; fileName: string; fileType: string };
+
+const sessionThumbnailFetchedIds = new Set<string>();
 
 function getRawNoteThumbnail(blocks: any[] | undefined): NotePreviewMedia | null {
     if (!blocks || !Array.isArray(blocks)) return null;
@@ -332,11 +334,16 @@ function getRawNoteThumbnail(blocks: any[] | undefined): NotePreviewMedia | null
         if (!b || typeof b !== 'object') continue;
         if (b.type === 'image' || b.type === 'drawing') {
             if (typeof b.content === 'string' && b.content.trim() !== '') {
-                candidates.push({ kind: 'image', src: b.content === 'drive://' && b.driveFileId ? `drive://${b.driveFileId}` : b.content });
+                candidates.push({
+                    kind: 'image',
+                    src: b.content === 'drive://' && b.driveFileId ? `drive://${b.driveFileId}` : b.content,
+                    driveFileId: b.driveFileId,
+                    blockId: b.id,
+                });
             } else if (b.content && typeof b.content === 'object' && typeof b.content.url === 'string' && b.content.url.trim() !== '') {
-                candidates.push({ kind: 'image', src: b.content.url });
+                candidates.push({ kind: 'image', src: b.content.url, driveFileId: b.driveFileId, blockId: b.id });
             } else if (b.driveFileId && typeof b.driveFileId === 'string' && b.driveFileId.trim() !== '') {
-                candidates.push({ kind: 'image', src: `drive://${b.driveFileId}` });
+                candidates.push({ kind: 'image', src: `drive://${b.driveFileId}`, driveFileId: b.driveFileId, blockId: b.id });
             }
         } else if (b.type === 'expense-note') {
             const expImg = typeof b.content === 'object' && b.content ? (b.content.imageUrl || b.content.image) : null;
@@ -390,16 +397,62 @@ function getRawNoteThumbnail(blocks: any[] | undefined): NotePreviewMedia | null
     return candidates[candidates.length - 1];
 }
 
-const NoteThumbnail = memo(({ media }: { media: NotePreviewMedia | null }) => {
+const NoteThumbnail = memo(({ media, noteId }: { media: NotePreviewMedia | null; noteId: string }) => {
     const rawImageUrl = media?.kind === 'image' ? media.src : (media?.kind === 'video' ? media.thumbSrc : null);
     const rawVideoUrl = media?.kind === 'video' && !media.thumbSrc ? media.videoSrc : null;
     const resolvedImageUrl = useLocalUrl(rawImageUrl);
     const resolvedVideoUrl = useLocalUrl(rawVideoUrl);
     const [hasError, setHasError] = useState(false);
+    const [viewportFetchedUri, setViewportFetchedUri] = useState<string | null>(null);
+    const resolvedFetchedUrl = useLocalUrl(viewportFetchedUri);
+    const placeholderRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setHasError(false);
+        setViewportFetchedUri(null);
     }, [rawImageUrl, resolvedImageUrl, rawVideoUrl, resolvedVideoUrl]);
+
+    const effectiveImageUrl = resolvedFetchedUrl || resolvedImageUrl;
+    const driveIdToLazyLoad =
+        media?.kind === 'image' &&
+        !effectiveImageUrl &&
+        (media.driveFileId || (media.src.startsWith('drive://') ? media.src.replace('drive://', '') : ''))
+            ? (media.driveFileId || media.src.replace('drive://', ''))
+            : '';
+
+    useEffect(() => {
+        if (!driveIdToLazyLoad || sessionThumbnailFetchedIds.has(driveIdToLazyLoad)) return;
+        const el = placeholderRef.current;
+        if (!el || typeof IntersectionObserver === 'undefined') return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries.some((e) => e.isIntersecting)) {
+                    observer.disconnect();
+                    if (sessionThumbnailFetchedIds.has(driveIdToLazyLoad)) return;
+                    sessionThumbnailFetchedIds.add(driveIdToLazyLoad);
+                    import('@/lib/attachment-store')
+                        .then(({ ensureAttachment }) =>
+                            ensureAttachment({
+                                driveFileId: driveIdToLazyLoad,
+                                noteId,
+                                blockId: media?.kind === 'image' ? media.blockId : undefined,
+                                type: 'image',
+                            })
+                        )
+                        .then((res) => {
+                            if (res.ok && res.uri) {
+                                setViewportFetchedUri(res.uri);
+                            }
+                        })
+                        .catch(() => {});
+                }
+            },
+            { rootMargin: '120px' }
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [driveIdToLazyLoad, noteId, media]);
 
     if (!media) return null;
 
@@ -478,11 +531,11 @@ const NoteThumbnail = memo(({ media }: { media: NotePreviewMedia | null }) => {
         );
     }
 
-    const validSrc = !!resolvedImageUrl && !hasError && !resolvedImageUrl.startsWith('indexeddb://') && !resolvedImageUrl.startsWith('drive://');
+    const validSrc = !!effectiveImageUrl && !hasError && !effectiveImageUrl.startsWith('indexeddb://') && !effectiveImageUrl.startsWith('drive://');
 
     if (!validSrc) {
         return (
-            <div className="w-full mt-3 shrink-0 flex justify-center">
+            <div ref={placeholderRef} className="w-full mt-3 shrink-0 flex justify-center">
                 <div className="w-full h-24 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/5 dark:border-white/5 flex items-center justify-center">
                     <ImageIcon className="w-6 h-6 text-muted-foreground/30" />
                 </div>
@@ -493,7 +546,7 @@ const NoteThumbnail = memo(({ media }: { media: NotePreviewMedia | null }) => {
     return (
         <div className="w-full mt-3 shrink-0 flex justify-center">
             <img
-                src={resolvedImageUrl}
+                src={effectiveImageUrl}
                 alt="Note thumbnail"
                 className="max-w-full max-h-48 w-auto h-auto rounded-xl"
                 style={{ borderRadius: '12px', display: 'block' }}
@@ -576,7 +629,7 @@ const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note;
                     </div>
                 </div>
 
-                <NoteThumbnail media={rawThumb} />
+                <NoteThumbnail media={rawThumb} noteId={note.id} />
 
                 <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/5">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">

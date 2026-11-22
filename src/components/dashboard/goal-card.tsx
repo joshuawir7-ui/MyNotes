@@ -16,6 +16,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
     const deleteGoal = useStore(state => state.deleteGoal)
     const addGoalPhoto = useStore(state => state.addGoalPhoto)
     const language = useStore(state => state.language)
+    const appColor = useStore(state => state.appColor ?? 'purple')
     const showToast = useStore(state => state.showToast)
     const [isDeleting, setIsDeleting] = useState(false)
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
@@ -320,11 +321,11 @@ export function GoalCard({ goal }: { goal: Goal }) {
                         <span className="font-medium">Progreso</span>
                         <span className="text-primary font-bold">{localProgress}%</span>
                     </div>
-                    <div className="h-3 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-3 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
                         <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${localProgress}%` }}
-                            className="h-full bg-gradient-to-r from-primary to-purple-500 neon-glow"
+                            className={`h-full ${appColor === 'black' ? 'bg-black dark:bg-white' : 'bg-gradient-to-r from-primary to-purple-500 neon-glow'}`}
                         />
                     </div>
 

@@ -34,6 +34,35 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
     const [title, setTitle] = useState(note.title)
     const [blocks, setBlocks] = useState<NoteBlock[]>(note.blocks || [])
 
+    // Sync hydrated attachment URIs from storeNote into local blocks without overwriting user edits
+    useEffect(() => {
+        if (!storeNote?.blocks) return;
+        setBlocks(prevBlocks => {
+            let changed = false;
+            const next = prevBlocks.map(pb => {
+                const sb = storeNote.blocks.find(b => b.id === pb.id);
+                if (!sb || !sb.driveFileId) return pb;
+                if (pb.type === 'image' || pb.type === 'drawing') {
+                    const pStr = typeof pb.content === 'string' ? pb.content : '';
+                    const sStr = typeof sb.content === 'string' ? sb.content : '';
+                    if (sStr && !sStr.startsWith('drive://') && (!pStr || pStr.startsWith('drive://') || (!Capacitor.isNativePlatform() && (pStr.startsWith('file://') || pStr.startsWith('/data/'))))) {
+                        changed = true;
+                        return { ...pb, content: sStr };
+                    }
+                } else if (pb.type === 'file' || pb.type === 'video') {
+                    const pUrl = typeof pb.content === 'object' ? pb.content?.url : '';
+                    const sUrl = typeof sb.content === 'object' ? sb.content?.url : '';
+                    if (sUrl && !sUrl.startsWith('drive://') && (!pUrl || pUrl.startsWith('drive://') || (!Capacitor.isNativePlatform() && (pUrl.startsWith('file://') || pUrl.startsWith('/data/'))))) {
+                        changed = true;
+                        return { ...pb, content: { ...(typeof pb.content === 'object' ? pb.content : {}), url: sUrl } };
+                    }
+                }
+                return pb;
+            });
+            return changed ? next : prevBlocks;
+        });
+    }, [storeNote]);
+
     // ─── Undo / Redo History Stack ───────────────────────────────────────────
     const historyRef = useRef<{ title: string; blocks: NoteBlock[] }[]>([
         { title: note.title || '', blocks: JSON.parse(JSON.stringify(note.blocks || [])) }
@@ -2313,7 +2342,8 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
     const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
     const suppressClickRef = useRef(false);
     const touchStartPosRef = useRef<{ x: number, y: number } | null>(null);
-    const rawContent = typeof block.content === 'string' ? block.content : '';
+    const [downloadedUri, setDownloadedUri] = useState<string | null>(null);
+    const rawContent = downloadedUri || (typeof block.content === 'string' ? block.content : '');
     const isNeedsRemoteFetch =
         !!block.driveFileId &&
         (!rawContent ||
@@ -2333,7 +2363,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
     const dragRef = useRef<{ startX: number; startY: number; startW: number; handle: string } | null>(null);
 
     useEffect(() => {
-        if (rawContent && !rawContent.startsWith('drive://')) {
+        if (rawContent && !rawContent.startsWith('drive://') && (Capacitor.isNativePlatform() || (!rawContent.startsWith('file://') && !rawContent.startsWith('/data/')))) {
             setImageError(false);
             setFailReason(null);
             setFailMessage(null);
@@ -2357,6 +2387,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                 confirmLarge: isManual,
             });
             if (res.ok && res.uri) {
+                setDownloadedUri(res.uri);
                 setImageError(false);
                 setFailReason(null);
                 setFailMessage(null);
@@ -2381,18 +2412,15 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
 
     // Auto-intentar descarga 1 sola vez por bloque y sesión al abrir la nota si falta copia local o da error de carga
     useEffect(() => {
-        if (!block.driveFileId || isDownloading) return;
+        if (!block.driveFileId || isDownloading || downloadedUri) return;
         if (!isNeedsRemoteFetch && !imageError) return;
         const attemptKey = `${noteId || 'nonote'}:${block.id}:${block.driveFileId}`;
         if (sessionAutoAttemptedAttachments.has(attemptKey)) {
-            if (isNeedsRemoteFetch && !imageError) {
-                setImageError(true);
-            }
             return;
         }
         sessionAutoAttemptedAttachments.add(attemptKey);
         void runDownload(false);
-    }, [isNeedsRemoteFetch, imageError, block.driveFileId, block.id, noteId, isDownloading, runDownload]);
+    }, [isNeedsRemoteFetch, imageError, block.driveFileId, block.id, noteId, isDownloading, downloadedUri, runDownload]);
 
     // Prefer the compressed editor thumbnail (if one exists); fall back to the original on load error
     const [thumbFailed, setThumbFailed] = useState(false);
