@@ -5,7 +5,8 @@ import { useStore, Note } from "@/lib/store"
 import { useShallow } from "zustand/react/shallow"
 import React, { useState, useEffect, useMemo, memo } from "react"
 import { useSearchParams } from "next/navigation"
-import { Plus, StickyNote, Trash2, Calendar, ArrowUpAZ, ArrowDownAZ, Pin, Image as ImageIcon } from "lucide-react"
+import { Plus, StickyNote, Trash2, Calendar, ArrowUpAZ, ArrowDownAZ, Pin, Image as ImageIcon, Film } from "lucide-react"
+import { getFileIcon } from "@/lib/file-icons"
 import { WelcomeNotesModal } from "@/components/ui/welcome-notes-modal"
 import { isNoteEmpty } from "@/lib/note-utils"
 import dynamic from "next/dynamic"
@@ -318,45 +319,67 @@ const NoteCardSkeleton = () => (
     </div>
 )
 
-function getRawNoteThumbnail(blocks: any[] | undefined): string | null {
+type NotePreviewMedia =
+    | { kind: 'image'; src: string }
+    | { kind: 'video'; thumbSrc: string | null; videoSrc: string | null; name?: string }
+    | { kind: 'file'; fileName: string; fileType: string };
+
+function getRawNoteThumbnail(blocks: any[] | undefined): NotePreviewMedia | null {
     if (!blocks || !Array.isArray(blocks)) return null;
-    const candidates: string[] = [];
+    const candidates: NotePreviewMedia[] = [];
 
     for (const b of blocks) {
         if (!b || typeof b !== 'object') continue;
         if (b.type === 'image' || b.type === 'drawing') {
             if (typeof b.content === 'string' && b.content.trim() !== '') {
-                candidates.push(b.content === 'drive://' && b.driveFileId ? `drive://${b.driveFileId}` : b.content);
+                candidates.push({ kind: 'image', src: b.content === 'drive://' && b.driveFileId ? `drive://${b.driveFileId}` : b.content });
             } else if (b.content && typeof b.content === 'object' && typeof b.content.url === 'string' && b.content.url.trim() !== '') {
-                candidates.push(b.content.url);
+                candidates.push({ kind: 'image', src: b.content.url });
             } else if (b.driveFileId && typeof b.driveFileId === 'string' && b.driveFileId.trim() !== '') {
-                candidates.push(`drive://${b.driveFileId}`);
+                candidates.push({ kind: 'image', src: `drive://${b.driveFileId}` });
             }
         } else if (b.type === 'expense-note') {
             const expImg = typeof b.content === 'object' && b.content ? (b.content.imageUrl || b.content.image) : null;
             if (typeof expImg === 'string' && expImg.trim() !== '') {
-                candidates.push(expImg);
+                candidates.push({ kind: 'image', src: expImg });
             }
-        } else if (b.type === 'video' && typeof b.thumbnailPath === 'string' && b.thumbnailPath.trim() !== '') {
-            candidates.push(b.thumbnailPath);
-        } else if (b.type === 'text' && typeof b.content === 'string' && b.content.includes('<img')) {
-            // Parse each <img> tag individually and prefer data-local-uri (stable, persistent)
-            // over src (which may be a stale blob:, a huge base64, or indexeddb://)
-            const imgTagRegex = /<img\b([^>]*?)(?:\/>|>)/gi;
-            let imgMatch;
-            while ((imgMatch = imgTagRegex.exec(b.content)) !== null) {
-                const attrs = imgMatch[1];
-                // Prefer data-local-uri (persistent IndexedDB / native file URI)
-                const localUriMatch = /\bdata-local-uri=["']([^"']+)["']/i.exec(attrs);
-                const srcMatch = /\bsrc=["']([^"']+)["']/i.exec(attrs);
-                const candidate = localUriMatch?.[1] || srcMatch?.[1];
-                if (
-                    candidate &&
-                    !candidate.startsWith('blob:') &&       // stale across sessions
-                    !candidate.includes('/icons/') &&
-                    !candidate.includes('icons/')
-                ) {
-                    candidates.push(candidate);
+        } else if (b.type === 'video') {
+            const thumbSrc = typeof b.thumbnailPath === 'string' && b.thumbnailPath.trim() !== '' ? b.thumbnailPath : null;
+            const videoSrc = b.content && typeof b.content === 'object' && typeof b.content.url === 'string' && b.content.url.trim() !== '' ? b.content.url : null;
+            const name = b.content && typeof b.content === 'object' ? b.content.name : undefined;
+            if (thumbSrc || videoSrc || b.driveFileId) {
+                candidates.push({ kind: 'video', thumbSrc, videoSrc, name });
+            }
+        } else if (b.type === 'file') {
+            const fileName = (b.content && typeof b.content === 'object' && b.content.name) ? String(b.content.name) : '';
+            const fileType = (b.content && typeof b.content === 'object' && b.content.type) ? String(b.content.type) : '';
+            if (fileName || fileType || b.driveFileId) {
+                candidates.push({ kind: 'file', fileName: fileName || 'Archivo', fileType });
+            }
+        } else if (b.type === 'text' && typeof b.content === 'string' && (b.content.includes('<img') || b.content.includes('data-inline-file'))) {
+            // Scan both <img> and inline file cards in document order so the last added item wins
+            const tokenRegex = /<div\b[^>]*\bdata-inline-file=["']1["'][^>]*>|<img\b([^>]*?)(?:\/>|>)/gi;
+            let match;
+            while ((match = tokenRegex.exec(b.content)) !== null) {
+                const full = match[0];
+                if (full.toLowerCase().startsWith('<div')) {
+                    const nameMatch = /\bdata-file-name=["']([^"']+)["']/i.exec(full);
+                    if (nameMatch?.[1]) {
+                        candidates.push({ kind: 'file', fileName: nameMatch[1], fileType: '' });
+                    }
+                } else {
+                    const attrs = match[1] || '';
+                    const localUriMatch = /\bdata-local-uri=["']([^"']+)["']/i.exec(attrs);
+                    const srcMatch = /\bsrc=["']([^"']+)["']/i.exec(attrs);
+                    const candidate = localUriMatch?.[1] || srcMatch?.[1];
+                    if (
+                        candidate &&
+                        !candidate.startsWith('blob:') &&
+                        !candidate.includes('/icons/') &&
+                        !candidate.includes('icons/')
+                    ) {
+                        candidates.push({ kind: 'image', src: candidate });
+                    }
                 }
             }
         }
@@ -366,17 +389,95 @@ function getRawNoteThumbnail(blocks: any[] | undefined): string | null {
     return candidates[candidates.length - 1];
 }
 
-const NoteThumbnail = memo(({ rawSrc }: { rawSrc: string | null }) => {
-    const resolvedUrl = useLocalUrl(rawSrc);
+const NoteThumbnail = memo(({ media }: { media: NotePreviewMedia | null }) => {
+    const rawImageUrl = media?.kind === 'image' ? media.src : (media?.kind === 'video' ? media.thumbSrc : null);
+    const rawVideoUrl = media?.kind === 'video' && !media.thumbSrc ? media.videoSrc : null;
+    const resolvedImageUrl = useLocalUrl(rawImageUrl);
+    const resolvedVideoUrl = useLocalUrl(rawVideoUrl);
     const [hasError, setHasError] = useState(false);
 
     useEffect(() => {
         setHasError(false);
-    }, [rawSrc, resolvedUrl]);
+    }, [rawImageUrl, resolvedImageUrl, rawVideoUrl, resolvedVideoUrl]);
 
-    if (!rawSrc) return null;
+    if (!media) return null;
 
-    const validSrc = !!resolvedUrl && !hasError && !resolvedUrl.startsWith('indexeddb://') && !resolvedUrl.startsWith('drive://');
+    if (media.kind === 'file') {
+        const { Icon, imageSrc, color, bg } = getFileIcon(media.fileType, media.fileName);
+        const ext = (media.fileName.split('.').pop() || media.fileType || 'FILE').toUpperCase();
+        const isAudio = ['MP3', 'WAV', 'OGG', 'M4A', 'AUDIO', 'MPEG'].includes(ext);
+        return (
+            <div className="w-full mt-3 shrink-0 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/5 dark:border-white/10">
+                {imageSrc ? (
+                    <img
+                        src={imageSrc}
+                        alt={ext}
+                        className={`w-8 h-8 object-contain shrink-0 ${isAudio ? 'dark:invert' : ''}`}
+                    />
+                ) : (
+                    <div className={`w-8 h-8 rounded-lg ${bg} ${color} flex items-center justify-center shrink-0`}>
+                        <Icon className="w-4 h-4" />
+                    </div>
+                )}
+                <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-xs font-bold text-foreground truncate">{media.fileName}</span>
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{ext}</span>
+                </div>
+            </div>
+        );
+    }
+
+    if (media.kind === 'video') {
+        const validThumb = !!resolvedImageUrl && !hasError && !resolvedImageUrl.startsWith('indexeddb://') && !resolvedImageUrl.startsWith('drive://');
+        if (validThumb) {
+            return (
+                <div className="w-full mt-3 shrink-0 flex justify-center relative">
+                    <img
+                        src={resolvedImageUrl}
+                        alt={media.name || "Video preview"}
+                        className="max-w-full max-h-48 w-auto h-auto rounded-xl"
+                        style={{ borderRadius: '12px', display: 'block' }}
+                        decoding="async"
+                        onError={() => setHasError(true)}
+                    />
+                    <div className="absolute bottom-2 right-2 bg-black/65 text-white rounded-full p-1 pointer-events-none">
+                        <Film className="w-3.5 h-3.5" />
+                    </div>
+                </div>
+            );
+        }
+        const validVideo = !!resolvedVideoUrl && !hasError && !resolvedVideoUrl.startsWith('indexeddb://') && !resolvedVideoUrl.startsWith('drive://');
+        if (validVideo) {
+            return (
+                <div className="w-full mt-3 shrink-0 flex justify-center relative">
+                    <video
+                        src={`${resolvedVideoUrl}#t=0.1`}
+                        preload="metadata"
+                        muted
+                        playsInline
+                        className="max-w-full max-h-48 w-auto h-auto rounded-xl pointer-events-none"
+                        onError={() => setHasError(true)}
+                    />
+                    <div className="absolute bottom-2 right-2 bg-black/65 text-white rounded-full p-1 pointer-events-none">
+                        <Film className="w-3.5 h-3.5" />
+                    </div>
+                </div>
+            );
+        }
+        return (
+            <div className="w-full mt-3 shrink-0 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/5 dark:border-white/10">
+                <div className="w-8 h-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                    <Film className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-xs font-bold text-foreground truncate">{media.name || 'Video'}</span>
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">VIDEO</span>
+                </div>
+            </div>
+        );
+    }
+
+    const validSrc = !!resolvedImageUrl && !hasError && !resolvedImageUrl.startsWith('indexeddb://') && !resolvedImageUrl.startsWith('drive://');
 
     if (!validSrc) {
         return (
@@ -391,7 +492,7 @@ const NoteThumbnail = memo(({ rawSrc }: { rawSrc: string | null }) => {
     return (
         <div className="w-full mt-3 shrink-0 flex justify-center">
             <img
-                src={resolvedUrl}
+                src={resolvedImageUrl}
                 alt="Note thumbnail"
                 className="max-w-full max-h-48 w-auto h-auto rounded-xl"
                 style={{ borderRadius: '12px', display: 'block' }}
@@ -474,7 +575,7 @@ const NoteCard = memo(({ note, onEdit, onDelete, onTogglePin, t }: { note: Note;
                     </div>
                 </div>
 
-                <NoteThumbnail rawSrc={rawThumb} />
+                <NoteThumbnail media={rawThumb} />
 
                 <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/5">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
