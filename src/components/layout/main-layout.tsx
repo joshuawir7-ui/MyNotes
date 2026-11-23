@@ -536,7 +536,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             // Notification.requestPermission()
         }
         
-        NotificationManager.initialize();
+        NotificationManager.initialize().then(() => {
+            const st = useStore.getState();
+            NotificationManager.schedulePhilosophicalQuote(
+                st.notificationsEnabled && st.philosophicalQuotesEnabled,
+                st.language
+            ).catch(console.error);
+        });
 
         // Web notifications: register SW + permission + start polling loop
         if (!Capacitor.isNativePlatform()) {
@@ -547,7 +553,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         () => useStore.getState().appointments,
                         () => useStore.getState().language,
                         () => useStore.getState().notificationsEnabled,
-                        () => useStore.getState().priorityReminderSettings
+                        () => useStore.getState().priorityReminderSettings,
+                        () => useStore.getState().philosophicalQuotesEnabled
                     );
                 }
             });

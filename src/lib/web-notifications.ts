@@ -13,6 +13,7 @@
 import { Capacitor } from '@capacitor/core';
 import type { Task, Appointment } from './store';
 import { assignSlot, DEFAULT_SLOTS } from './notification-slots';
+import { getPhilosophicalQuoteForDate, shouldSendPhilosophicalQuoteToday } from './philosophical-quotes';
 
 const SW_PATH = '/sw.js';
 let swRegistration: ServiceWorkerRegistration | null = null;
@@ -304,6 +305,32 @@ function checkPriorityTaskReminders(
     }
 }
 
+function checkPhilosophicalQuoteReminder(enabled: boolean, language: string) {
+    if (!enabled) return;
+    const now = new Date();
+    if (!shouldSendPhilosophicalQuoteToday(now)) return;
+    if (now.getHours() < 9) return;
+
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const key = `philosophy-quote-${todayStr}`;
+    if (notifiedIds.has(key)) return;
+    if (typeof window !== 'undefined' && localStorage.getItem('mynotes_last_web_quote_date') === todayStr) {
+        notifiedIds.add(key);
+        return;
+    }
+
+    const quote = getPhilosophicalQuoteForDate(now);
+    const isEs = language === 'es' || language === 'es-419';
+    const title = isEs ? '✦ Disciplina & Filosofía' : '✦ Discipline & Philosophy';
+    const body = `"${isEs ? quote.es : quote.en}" — ${quote.author}`;
+
+    sendNotification(title, body, key);
+    notifiedIds.add(key);
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('mynotes_last_web_quote_date', todayStr);
+    }
+}
+
 // ─────────────────────────────────────────────────
 // Main polling loop: run every 60 seconds
 // ─────────────────────────────────────────────────
@@ -316,6 +343,7 @@ export function startWebNotificationPolling(
     getLanguage: () => string,
     notificationsEnabled: () => boolean,
     getPriorityReminderSettings?: () => { enabled: boolean; slots: string[] },
+    getPhilosophicalQuotesEnabled?: () => boolean,
 ) {
     if (Capacitor.isNativePlatform()) return;
     if (pollingInterval) clearInterval(pollingInterval);
@@ -335,6 +363,10 @@ export function startWebNotificationPolling(
         if (getPriorityReminderSettings) {
             const settings = getPriorityReminderSettings();
             checkPriorityTaskReminders(tasks, settings, language);
+        }
+
+        if (getPhilosophicalQuotesEnabled) {
+            checkPhilosophicalQuoteReminder(getPhilosophicalQuotesEnabled(), language);
         }
     };
 

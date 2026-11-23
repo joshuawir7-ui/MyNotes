@@ -423,7 +423,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
                         <div key={i} className="flex items-center justify-center w-full aspect-square">
                             <div className={`flex items-center justify-center w-6 h-6 md:w-8 md:h-8 text-xs md:text-sm transition-colors ${
                                 d.isCurrentMonth 
-                                    ? (d.isToday ? 'bg-primary text-white font-bold rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)]' : 'text-foreground') 
+                                    ? (d.isToday ? 'bg-primary text-primary-foreground font-bold rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)]' : 'text-foreground') 
                                     : 'text-muted-foreground/30'
                             }`}>
                                 {d.day}

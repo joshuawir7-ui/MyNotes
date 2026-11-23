@@ -2,12 +2,15 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 import { Task } from './store';
 import { assignSlot, buildTriggerDate, getNotificationSlots } from './notification-slots';
+import { getPhilosophicalQuoteForDate, shouldSendPhilosophicalQuoteToday } from './philosophical-quotes';
 
 const CHANNEL_ID = 'reminders';
 const PRIORITY_CHANNEL_ID = 'priority_reminders';
+const PHILOSOPHY_CHANNEL_ID = 'philosophical_quotes';
 
 // Stable notification IDs for the 3 priority reminder slots (must not collide with habit IDs)
 const PRIORITY_NOTIF_IDS = [2001, 2002, 2003];
+const PHILOSOPHY_NOTIF_ID = 3001;
 
 /**
  * Hash a string (like a task ID) to a stable 32-bit integer for the notification ID.
@@ -49,6 +52,15 @@ export const NotificationManager = {
                 name: 'Tareas Prioritarias',
                 description: 'Recordatorios de tareas de alta prioridad',
                 importance: 4,
+                visibility: 1,
+            });
+
+            // Create philosophical discipline quotes channel (Android 8.0+)
+            await LocalNotifications.createChannel({
+                id: PHILOSOPHY_CHANNEL_ID,
+                name: 'Frases de Disciplina',
+                description: 'Frases filosóficas ocasionales de disciplina y constancia',
+                importance: 3,
                 visibility: 1,
             });
         } catch (err) {
@@ -185,6 +197,67 @@ export const NotificationManager = {
             }
         } catch (err) {
             console.error('Failed to schedule priority reminders:', err);
+        }
+    },
+
+    /**
+     * Schedule an occasional philosophical discipline quote notification on the next
+     * eligible day (not every day).
+     */
+    async schedulePhilosophicalQuote(enabled: boolean, language: string = 'es') {
+        if (!Capacitor.isNativePlatform()) return;
+
+        try {
+            try {
+                await LocalNotifications.cancel({ notifications: [{ id: PHILOSOPHY_NOTIF_ID }] });
+            } catch (_) {
+                // ignore if none pending
+            }
+
+            if (!enabled) return;
+
+            const now = new Date();
+            let targetDate: Date | null = null;
+
+            // Find the next occasional day within the next 7 days
+            for (let offset = 0; offset < 7; offset++) {
+                const candidate = new Date(now);
+                candidate.setDate(now.getDate() + offset);
+                candidate.setHours(10, 15, 0, 0);
+
+                if (candidate.getTime() <= Date.now()) continue;
+                if (shouldSendPhilosophicalQuoteToday(candidate)) {
+                    targetDate = candidate;
+                    break;
+                }
+            }
+
+            if (!targetDate) return;
+
+            const quote = getPhilosophicalQuoteForDate(targetDate);
+            const isEs = language === 'es' || language === 'es-419';
+            const quoteText = isEs ? quote.es : quote.en;
+
+            await LocalNotifications.schedule({
+                notifications: [{
+                    id: PHILOSOPHY_NOTIF_ID,
+                    title: isEs ? '✦ Disciplina & Filosofía' : '✦ Discipline & Philosophy',
+                    body: `"${quoteText}" — ${quote.author}`,
+                    channelId: PHILOSOPHY_CHANNEL_ID,
+                    schedule: {
+                        at: targetDate,
+                        allowWhileIdle: true,
+                    },
+                    extra: {
+                        channelId: PHILOSOPHY_CHANNEL_ID,
+                        type: 'philosophical_quote',
+                        quote: quoteText,
+                        author: quote.author,
+                    }
+                }]
+            });
+        } catch (err) {
+            console.error('Failed to schedule philosophical quote:', err);
         }
     }
 };

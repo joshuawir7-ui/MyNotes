@@ -9,6 +9,7 @@ import { translations } from "@/lib/translations"
 import { ModeToggle } from "@/components/ui/mode-toggle"
 import { LanguageToggle } from "@/components/ui/language-toggle"
 import { Capacitor } from "@capacitor/core"
+import { LocalNotifications } from "@capacitor/local-notifications"
 import { NotificationDialog } from "@/components/ui/notification-dialog"
 import { PriorityReminderSettings } from "@/components/ui/priority-reminder-settings"
 import dynamic from "next/dynamic"
@@ -173,6 +174,28 @@ export function SettingsDialog() {
     const removeCustomFont = useStore(state => state.removeCustomFont)
     const notificationsEnabled = useStore(state => state.notificationsEnabled)
     const setNotificationsEnabled = useStore(state => state.setNotificationsEnabled)
+    const philosophicalQuotesEnabled = useStore(state => state.philosophicalQuotesEnabled ?? true)
+    const setPhilosophicalQuotesEnabled = useStore(state => state.setPhilosophicalQuotesEnabled)
+    const [osNotifPermission, setOsNotifPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown')
+
+    const refreshOsNotifPermission = async () => {
+        try {
+            if (Capacitor.isNativePlatform()) {
+                const res = await LocalNotifications.checkPermissions()
+                setOsNotifPermission((res.display as any) || 'prompt')
+            } else if (typeof window !== 'undefined' && 'Notification' in window) {
+                setOsNotifPermission(Notification.permission === 'default' ? 'prompt' : Notification.permission)
+            }
+        } catch {
+            setOsNotifPermission('unknown')
+        }
+    }
+
+    useEffect(() => {
+        if (isOpen) {
+            refreshOsNotifPermission()
+        }
+    }, [isOpen])
     const focusEffectEnabled = useStore(state => state.focusEffectEnabled)
     const setFocusEffectEnabled = useStore(state => state.setFocusEffectEnabled)
     const performanceMode = useStore(state => state.performanceMode ?? false)
@@ -1027,6 +1050,99 @@ export function SettingsDialog() {
                                                 <span className={`inline-block h-4 w-4 transform rounded-full ${notificationsEnabled ? 'bg-white dark:bg-zinc-900 translate-x-6' : 'bg-white translate-x-1'} transition-transform duration-300`} />
                                             </button>
                                         </motion.div>
+
+                                        {/* Verificar aviso y permisos de notificaciones */}
+                                        <div className="p-4 glass-card rounded-2xl flex flex-col gap-3">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <div className={`p-2 rounded-xl ${osNotifPermission === 'granted' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-amber-500/15 text-amber-500'}`}>
+                                                        {osNotifPermission === 'granted' ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <h4 className="font-semibold text-xs truncate">
+                                                            {language === 'es' ? 'Estado y aviso de notificaciones' : 'Notification status & prompt'}
+                                                        </h4>
+                                                        <p className="text-[11px] text-muted-foreground">
+                                                            {language === 'es' ? 'Permiso del sistema: ' : 'System permission: '}
+                                                            <span className={`font-semibold ${osNotifPermission === 'granted' ? 'text-emerald-500' : osNotifPermission === 'denied' ? 'text-rose-500' : 'text-amber-500'}`}>
+                                                                {osNotifPermission === 'granted'
+                                                                    ? (language === 'es' ? 'Permitidas' : 'Granted')
+                                                                    : osNotifPermission === 'denied'
+                                                                        ? (language === 'es' ? 'Denegadas' : 'Denied')
+                                                                        : (language === 'es' ? 'Pendiente' : 'Pending')}
+                                                            </span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setIsOpen(false);
+                                                        setTimeout(() => {
+                                                            window.dispatchEvent(new CustomEvent('mynotes:show-notification-prompt'));
+                                                        }, 180);
+                                                    }}
+                                                    className="flex-1 py-2 px-3 rounded-xl bg-black text-white dark:bg-white dark:text-black text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
+                                                >
+                                                    {language === 'es' ? 'Activar / Probar aviso' : 'Show notification prompt'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={refreshOsNotifPermission}
+                                                    className="py-2 px-3 rounded-xl bg-black/5 dark:bg-white/10 text-xs font-medium hover:bg-black/10 dark:hover:bg-white/15 active:scale-[0.98] transition-all"
+                                                >
+                                                    {language === 'es' ? 'Verificar' : 'Verify'}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Frases filosóficas de disciplina */}
+                                        <div
+                                            onClick={() => setPhilosophicalQuotesEnabled(!philosophicalQuotesEnabled)}
+                                            className="flex items-center justify-between p-4 glass-card rounded-2xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0 pr-2">
+                                                <div className={`p-2 rounded-xl transition-colors duration-300 ${
+                                                    philosophicalQuotesEnabled
+                                                        ? "bg-black/10 text-black dark:bg-white/20 dark:text-white"
+                                                        : "bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400"
+                                                }`}>
+                                                    <Sparkles className="w-5 h-5" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="font-semibold text-sm truncate">
+                                                            {language === 'es' ? 'Frases de disciplina' : 'Discipline quotes'}
+                                                        </h3>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                window.dispatchEvent(new CustomEvent('mynotes:show-philosophical-quote'));
+                                                            }}
+                                                            className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/15 hover:opacity-80"
+                                                        >
+                                                            {language === 'es' ? 'Ver frase' : 'Preview'}
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {language === 'es'
+                                                            ? 'Frases filosóficas ocasionales (solo ciertos días)'
+                                                            : 'Occasional philosophical quotes (only certain days)'}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                tabIndex={-1}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 pointer-events-none flex-shrink-0 ${philosophicalQuotesEnabled ? 'bg-black dark:bg-white' : 'bg-zinc-300 dark:bg-zinc-700'
+                                                    }`}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full ${philosophicalQuotesEnabled ? 'bg-white dark:bg-zinc-900 translate-x-6' : 'bg-white translate-x-1'} transition-transform duration-300`} />
+                                            </button>
+                                        </div>
 
                                         {/* Priority task reminder time slots */}
                                         <PriorityReminderSettings />

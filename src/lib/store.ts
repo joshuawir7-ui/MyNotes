@@ -30,7 +30,7 @@ export const WidgetSync = registerPlugin<{
     stopTaskGroupReminder: () => Promise<void>;
     enqueueImageDownload: (data: { token: string, driveFileId: string, noteId: string, blockId: string, fileName?: string }) => Promise<void>;
     openAppSettings: () => Promise<void>;
-    requestNotificationPermission: () => Promise<void>;
+    requestNotificationPermission: () => Promise<{ granted?: boolean } | void>;
     openFile: (data: { url: string, mimeType?: string }) => Promise<void>;
     generateVideoThumbnailNative: (data: { videoPath: string }) => Promise<{ base64: string }>;
     updateBalanceTransactions: (data: { transactions: string }) => Promise<void>;
@@ -1238,6 +1238,7 @@ interface AppState {
     downloadAttachment: (noteId: string, blockId: string) => Promise<boolean>
     inAppNotificationDates: number[]
     notificationsEnabled: boolean
+    philosophicalQuotesEnabled: boolean
     dailySnapshots: Record<string, { total: number, completed: number }> // Key: YYYY-MM-DD
     lastProcessedDate?: string // YYYY-MM-DD to avoid multi-processing day resets
     taskGroups: TaskGroup[]
@@ -1331,6 +1332,7 @@ interface AppState {
     handleNotificationPromptResponse: (response: 'accepted' | 'rejected') => void
     addInAppNotificationDate: () => void
     setNotificationsEnabled: (enabled: boolean) => void
+    setPhilosophicalQuotesEnabled: (enabled: boolean) => void
     setFocusEffectEnabled: (enabled: boolean) => void
     setPriorityReminderSlot: (index: number, time: string) => void
     togglePriorityReminders: (enabled: boolean) => void
@@ -2162,6 +2164,7 @@ export const useStore = create<AppState>()(
                 notificationPromptStatus: 'pending',
                 inAppNotificationDates: [],
                 notificationsEnabled: true,
+                philosophicalQuotesEnabled: true,
                 dailySnapshots: {},
                 lastProcessedDate: undefined,
                 taskGroups: [],
@@ -3553,6 +3556,11 @@ export const useStore = create<AppState>()(
                 })),
 
                 setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
+                setPhilosophicalQuotesEnabled: (enabled) => {
+                    set({ philosophicalQuotesEnabled: enabled });
+                    const lang = get().language;
+                    NotificationManager.schedulePhilosophicalQuote(enabled, lang).catch(console.error);
+                },
                 setFocusEffectEnabled: (enabled) => set({ focusEffectEnabled: enabled }),
 
                 setPriorityReminderSlot: (index, time) => set((state) => {
