@@ -190,12 +190,18 @@ export function HabitNotificationToast() {
                                 setShouldShow(false)
                             }
                         }}
-                        className="fixed top-safe mt-16 left-4 right-4 z-[70] mx-auto max-w-md cursor-pointer select-none"
-                        style={{ top: 'env(safe-area-inset-top)' }}
+                        className="fixed left-4 right-4 z-[70] mx-auto max-w-md cursor-pointer select-none mt-2 md:mt-8"
+                        style={{ top: 'env(safe-area-inset-top, 0px)' }}
                     >
                         <motion.div
-                            animate={{ y: [0, -5, 0] }}
-                            transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+                            animate={{ y: [0, -4, 0] }}
+                            transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
+                            style={{
+                                willChange: "transform",
+                                transform: "translateZ(0)",
+                                backfaceVisibility: "hidden",
+                                WebkitFontSmoothing: "antialiased",
+                            }}
                             onClick={handleClick}
                             className="bg-white dark:bg-[#161618] px-6 py-5 rounded-[28px] shadow-[0_10px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.55)] border border-black/10 dark:border-white/15 flex items-center justify-between gap-4"
                         >
@@ -249,8 +255,8 @@ export function HabitNotificationToast() {
                             if (Math.abs(info.offset.x) > 50) setActiveQuote(null)
                         }}
                         onClick={() => setActiveQuote(null)}
-                        className="fixed left-4 right-4 z-[65] mx-auto max-w-md mt-16 cursor-pointer select-none"
-                        style={{ top: 'env(safe-area-inset-top)' }}
+                        className="fixed left-4 right-4 z-[65] mx-auto max-w-md mt-2 md:mt-8 cursor-pointer select-none"
+                        style={{ top: 'env(safe-area-inset-top, 0px)' }}
                     >
                         <div className="bg-white dark:bg-[#161618] px-6 py-5 rounded-[28px] shadow-[0_10px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.55)] border border-black/10 dark:border-white/15">
                             <p className="font-dancing-n text-[22px] leading-snug text-black dark:text-white text-center">
