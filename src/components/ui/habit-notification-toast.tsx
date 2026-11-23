@@ -195,17 +195,17 @@ export function HabitNotificationToast() {
                             {/* Right pill toggle switch + light-mode-only bottom shadow */}
                             <div className="flex flex-col items-center justify-center flex-shrink-0 pl-1">
                                 <div
-                                    className={`relative w-[60px] h-[34px] rounded-full p-1 transition-colors duration-200 flex items-center bg-black dark:bg-white`}
+                                    className={`relative w-[48px] h-[28px] rounded-full p-[3px] transition-colors duration-200 flex items-center bg-black dark:bg-white`}
                                 >
                                     <motion.div
-                                        animate={{ x: toggleActive ? 26 : 26 }}
+                                        animate={{ x: toggleActive ? 20 : 20 }}
                                         initial={false}
                                         transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                        className="w-[26px] h-[26px] rounded-full bg-white dark:bg-black"
+                                        className="w-[22px] h-[22px] rounded-full bg-white dark:bg-black"
                                     />
                                 </div>
                                 {/* Subtle shadow ONLY in light mode, hidden in dark mode */}
-                                <div className="w-11 h-2 mt-2 rounded-full bg-black/20 blur-[4px] dark:hidden pointer-events-none" />
+                                <div className="w-9 h-1.5 mt-3.5 rounded-full bg-black/20 blur-[4px] dark:hidden pointer-events-none" />
                             </div>
                         </div>
                     </motion.div>
