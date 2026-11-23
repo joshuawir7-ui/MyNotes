@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion"
 import { useStore, WidgetSync } from "@/lib/store"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { LocalNotifications } from "@capacitor/local-notifications"
 import { Capacitor } from "@capacitor/core"
 import {
@@ -26,6 +26,7 @@ export function HabitNotificationToast() {
     const [shouldShow, setShouldShow] = useState(false)
     const [toggleActive, setToggleActive] = useState(false)
     const [activeQuote, setActiveQuote] = useState<PhilosophicalQuote | null>(null)
+    const toastRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         // Only show if global notifications are supposedly enabled in our logic
@@ -46,23 +47,42 @@ export function HabitNotificationToast() {
             return; // Reached max weekly limit
         }
 
-        let dismissTimer: ReturnType<typeof setTimeout> | null = null;
         // Delay show a bit after app open so it feels organic
         const showTimer = setTimeout(() => {
             setToggleActive(false)
             setShouldShow(true)
             addInAppNotificationDate()
-
-            dismissTimer = setTimeout(() => {
-                setShouldShow(false)
-            }, 12000)
         }, 3000)
 
         return () => {
             clearTimeout(showTimer)
-            if (dismissTimer) clearTimeout(dismissTimer)
         }
     }, [notificationsEnabled, notificationPromptStatus, inAppNotificationDates, tasks, addInAppNotificationDate])
+
+    // Auto-dismiss notification prompt after 10s OR after 2 clicks outside the card
+    useEffect(() => {
+        if (!shouldShow) return;
+
+        const dismissTimer = setTimeout(() => {
+            setShouldShow(false);
+        }, 10000);
+
+        let outsideClicks = 0;
+        const handleOutsidePointerDown = (e: PointerEvent) => {
+            if (toastRef.current && !toastRef.current.contains(e.target as Node)) {
+                outsideClicks += 1;
+                if (outsideClicks >= 2) {
+                    setShouldShow(false);
+                }
+            }
+        };
+
+        document.addEventListener('pointerdown', handleOutsidePointerDown, true);
+        return () => {
+            clearTimeout(dismissTimer);
+            document.removeEventListener('pointerdown', handleOutsidePointerDown, true);
+        };
+    }, [shouldShow])
 
     // Allow Settings (or tests) to manually trigger this notification prompt card
     useEffect(() => {
@@ -158,6 +178,7 @@ export function HabitNotificationToast() {
             <AnimatePresence>
                 {shouldShow && (
                     <motion.div
+                        ref={toastRef}
                         initial={{ opacity: 0, y: -50, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95, y: -20 }}
@@ -172,7 +193,9 @@ export function HabitNotificationToast() {
                         className="fixed top-safe mt-16 left-4 right-4 z-[70] mx-auto max-w-md cursor-pointer select-none"
                         style={{ top: 'env(safe-area-inset-top)' }}
                     >
-                        <div
+                        <motion.div
+                            animate={{ y: [0, -5, 0] }}
+                            transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
                             onClick={handleClick}
                             className="bg-white dark:bg-[#161618] px-6 py-5 rounded-[28px] shadow-[0_10px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.55)] border border-black/10 dark:border-white/15 flex items-center justify-between gap-4"
                         >
@@ -207,7 +230,7 @@ export function HabitNotificationToast() {
                                 {/* Subtle shadow ONLY in light mode, hidden in dark mode */}
                                 <div className="w-9 h-1.5 mt-3.5 rounded-full bg-black/20 blur-[4px] dark:hidden pointer-events-none" />
                             </div>
-                        </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
