@@ -4,7 +4,7 @@ import { LocalImage } from "@/components/ui/local-image"
 
 import { Goal, GoalObjective, useStore, computeNetBalance, computeGoalProgress } from "@/lib/store"
 import { motion, AnimatePresence } from "framer-motion"
-import { Trash2, Camera, Target, Plus, Check, X, FileText, Pin, RotateCcw, Pencil } from "lucide-react"
+import { Trash2, Camera, Target, Plus, Check, X, FileText, Pin, RotateCcw, Pencil, ChevronDown } from "lucide-react"
 import { useState, useEffect, useRef, useMemo, memo } from "react"
 import { createPortal } from "react-dom"
 import { useShallow } from "zustand/react/shallow"
@@ -104,6 +104,7 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
     // Budget and progress states
     const [amountToAdd, setAmountToAdd] = useState("")
     const [isReportsOpen, setIsReportsOpen] = useState(false)
+    const [isTimelineCollapsed, setIsTimelineCollapsed] = useState(false)
     const [reportDate, setReportDate] = useState("")
     const [reportNote, setReportNote] = useState("")
 
@@ -752,20 +753,42 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
 
             {/* Progress Reports Timeline Section */}
             <div className="mt-8 border-t border-black/5 dark:border-white/10 pt-6">
-                <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-2">
+                <div className={`flex justify-between items-center ${isTimelineCollapsed && !isReportsOpen ? 'mb-0' : 'mb-4'}`}>
+                    <button
+                        type="button"
+                        onClick={() => setIsTimelineCollapsed(prev => !prev)}
+                        className="flex items-center gap-2 text-left cursor-pointer group"
+                    >
                         <Target className="w-4 h-4 text-primary" />
                         <h4 className="text-sm font-bold text-foreground">{t.progressReportsLabel || "Bitácora de Avances"}</h4>
-                    </div>
-
-                    <button
-                        onClick={() => setIsReportsOpen(!isReportsOpen)}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs rounded-xl transition-all"
-                        title={lt(language, "Añadir Avance / Reporte", "Add Progress Report")}
-                    >
-                        <Plus className="w-3.5 h-3.5" />
-                        <FileText className="w-4 h-4" />
                     </button>
+
+                    <div className="flex items-center gap-1">
+                        <button
+                            type="button"
+                            onClick={() => setIsTimelineCollapsed(prev => !prev)}
+                            className="p-2 text-muted-foreground hover:text-foreground rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                            title={isTimelineCollapsed
+                                ? pick(language, { es: "Expandir bitácora", en: "Expand log", zh: "展开日志" })
+                                : pick(language, { es: "Contraer bitácora", en: "Collapse log", zh: "收起日志" })}
+                        >
+                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isTimelineCollapsed ? '' : 'rotate-180'}`} />
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const nextOpen = !isReportsOpen
+                                setIsReportsOpen(nextOpen)
+                                if (nextOpen && isTimelineCollapsed) setIsTimelineCollapsed(false)
+                            }}
+                            className="flex items-center gap-1.5 px-2.5 py-2 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 text-primary font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                            title={lt(language, "Añadir Avance / Reporte", "Add Progress Report")}
+                        >
+                            <Plus className="w-3.5 h-3.5" />
+                            <FileText className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
 
                 {/* New Report Panel */}
@@ -806,6 +829,7 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                 )}
 
                 {/* Timeline display */}
+                {!isTimelineCollapsed && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
                     {goal.reports && goal.reports.length > 0 ? (
                         [...goal.reports]
@@ -846,6 +870,7 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                         </div>
                     )}
                 </div>
+                )}
             </div>
 
             {/* Full screen Image Lightbox Overlay */}
