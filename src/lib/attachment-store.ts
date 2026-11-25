@@ -528,8 +528,11 @@ export async function ensureAttachment(params: EnsureAttachmentParams): Promise<
     inFlightMap.set(driveFileId, downloadPromise);
     try {
         const result = await downloadPromise;
-        if (result.ok && noteId && blockId) {
-            await activeDeps.applyBlockUri(noteId, blockId, driveFileId, result.uri);
+        if (result.ok && result.uri) {
+            memoryUriCache.set(driveFileId, result.uri);
+            if (noteId && blockId) {
+                await activeDeps.applyBlockUri(noteId, blockId, driveFileId, result.uri);
+            }
         }
         return result;
     } finally {

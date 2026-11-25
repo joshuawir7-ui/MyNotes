@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocalUrl } from "@/hooks/use-local-url";
+import { Capacitor } from "@capacitor/core";
 import React, { useState, useEffect } from "react";
 
 interface LocalImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> {
@@ -16,8 +17,7 @@ export function LocalImage({ src, alt = "", className, fallback, ...props }: Loc
         setHasError(false);
     }, [src, resolvedUrl]);
 
-    // Use resolvedUrl if valid, or fallback to src if src is a direct base64/http/blob URL
-    const effectiveSrc = (resolvedUrl && !resolvedUrl.startsWith('indexeddb://'))
+    const effectiveSrc = (resolvedUrl && !resolvedUrl.startsWith('indexeddb://') && !resolvedUrl.startsWith('drive://'))
         ? resolvedUrl
         : (src && (src.startsWith('data:') || src.startsWith('http') || src.startsWith('blob:')) ? src : '');
 
@@ -26,8 +26,18 @@ export function LocalImage({ src, alt = "", className, fallback, ...props }: Loc
         return null;
     }
 
+    // Foreign-platform local URIs (e.g. Android file:// viewed on Web before the phone uploads it to Drive,
+    // or Web indexeddb:// viewed on Android) cannot resolve locally until synced as drive://<id>
+    const isForeignLocalUri = typeof window !== 'undefined' && (
+        (!Capacitor.isNativePlatform() && (src.startsWith('file://') || src.startsWith('/data/') || src.startsWith('content://'))) ||
+        (Capacitor.isNativePlatform() && src.startsWith('indexeddb://'))
+    );
+    if (isForeignLocalUri && !effectiveSrc) {
+        if (fallback) return <>{fallback}</>;
+        return null;
+    }
+
     if (hasError) {
-        // If effectiveSrc failed but original src is a valid data/http URL, try src
         if (src && src !== effectiveSrc && (src.startsWith('data:') || src.startsWith('http') || src.startsWith('blob:'))) {
             return (
                 <img
@@ -46,7 +56,7 @@ export function LocalImage({ src, alt = "", className, fallback, ...props }: Loc
 
     if (!effectiveSrc) {
         if (fallback) return <>{fallback}</>;
-        return <div className={`animate-pulse bg-zinc-300/20 dark:bg-zinc-800/20 ${className || ''}`} />;
+        return <div className={`min-h-[80px] rounded-xl animate-pulse bg-zinc-300/20 dark:bg-zinc-800/20 ${className || ''}`} />;
     }
 
     return (

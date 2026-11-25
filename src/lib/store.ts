@@ -1094,6 +1094,7 @@ export interface Goal {
     syncWithBalance?: boolean
     reports?: GoalReport[]
     pinned?: boolean
+    lastUpdated?: number
 }
 
 export function computeNetBalance(transactions: Transaction[]): number {
@@ -1733,6 +1734,8 @@ export const reconcileCloudAttachments = async (
     // B) Determinar que hay que eliminar
     const toDelete: string[] = [];
     for (const driveFileId of Object.keys(manifest)) {
+        const entry = manifest[driveFileId];
+        if (entry?.noteId === '__goal__' || entry?.noteId === '__task__') continue;
         if (!remoteIdSet.has(driveFileId)) {
             toDelete.push(driveFileId);
         }
@@ -2051,6 +2054,206 @@ export const uploadMissingAttachments = async (token: string, notes: Note[]): Pr
     }
     
     return notes;
+};
+
+const uploadSingleLocalImageToDrive = async (
+    token: string,
+    targetUrl: string,
+    folders: Awaited<ReturnType<typeof getOrCreateBackupFolderStructure>> | null,
+    meta: { ownerKind: '__goal__' | '__task__'; ownerId: string }
+): Promise<string | null> => {
+    if (!targetUrl || typeof targetUrl !== 'string') return null;
+    if (targetUrl.startsWith('drive://') || targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+        return null;
+    }
+
+    const isData = targetUrl.startsWith('data:');
+    const isIndexedDb = targetUrl.startsWith('indexeddb://');
+    const isFile = targetUrl.startsWith('file://') || targetUrl.startsWith('/');
+    if (!isData && !isIndexedDb && !isFile) return null;
+
+    // On Web, an Android file:// path from another device doesn't exist locally — skip until that device uploads it
+    if (!isNative && isFile) return null;
+    // On Native, a Web indexeddb:// URI from another device doesn't exist in Capacitor Filesystem — skip
+    if (isNative && isIndexedDb) return null;
+
+    try {
+        let fileBlob: Blob | null = null;
+        let mimeType = 'image/jpeg';
+        const fileName = `img_${meta.ownerKind.replace(/_/g, '')}_${meta.ownerId}_${Date.now()}.jpg`;
+
+        if (isIndexedDb) {
+            const data = await getBlobFromIndexedDB(targetUrl);
+            if (!data) return null;
+            if (data instanceof Blob) {
+                fileBlob = data;
+                if (fileBlob.type) mimeType = fileBlob.type;
+            } else if (typeof data === 'string' && data.startsWith('data:')) {
+                const pureBase64 = data.includes(',') ? data.split(',')[1] : data;
+                const byteCharacters = atob(pureBase64);
+                const byteArray = new Uint8Array(byteCharacters.length);
+                for (let k = 0; k < byteCharacters.length; k++) byteArray[k] = byteCharacters.charCodeAt(k);
+                const match = data.match(/^data:([^;]+);/);
+                if (match) mimeType = match[1];
+                fileBlob = new Blob([byteArray], { type: mimeType });
+            }
+        } else if (isData) {
+            const pureBase64 = targetUrl.includes(',') ? targetUrl.split(',')[1] : targetUrl;
+            const byteCharacters = atob(pureBase64);
+            const byteArray = new Uint8Array(byteCharacters.length);
+            for (let k = 0; k < byteCharacters.length; k++) byteArray[k] = byteCharacters.charCodeAt(k);
+            const match = targetUrl.match(/^data:([^;]+);/);
+            if (match) mimeType = match[1];
+            fileBlob = new Blob([byteArray], { type: mimeType });
+        } else if (isFile) {
+            const { Filesystem, Directory } = await import('@capacitor/filesystem');
+            let base64Str = '';
+            try {
+                const cleanPath = targetUrl.replace('file://', '');
+                const fileData = await Filesystem.readFile({ path: cleanPath });
+                base64Str = typeof fileData.data === 'string' ? fileData.data : '';
+            } catch {
+                const shortName = targetUrl.split('/').pop() || '';
+                if (shortName) {
+                    const fileData = await Filesystem.readFile({ path: shortName, directory: Directory.Data });
+                    base64Str = typeof fileData.data === 'string' ? fileData.data : '';
+                }
+            }
+            if (base64Str) {
+                const pureBase64 = base64Str.includes(',') ? base64Str.split(',')[1] : base64Str;
+                const byteCharacters = atob(pureBase64);
+                const byteArray = new Uint8Array(byteCharacters.length);
+                for (let k = 0; k < byteCharacters.length; k++) byteArray[k] = byteCharacters.charCodeAt(k);
+                fileBlob = new Blob([byteArray], { type: mimeType });
+            }
+        }
+
+        if (!fileBlob || fileBlob.size === 0) return null;
+
+        const targetFolderId = folders ? getTargetSubfolderId(folders, 'image', fileName, mimeType) : undefined;
+        const metadata: { name: string; mimeType: string; parents?: string[] } = { name: fileName, mimeType };
+        if (targetFolderId) metadata.parents = [targetFolderId];
+
+        const boundary = 'mynotes_upload_boundary';
+        const multipartBody =
+            `--${boundary}\r\n` +
+            `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+            `${JSON.stringify(metadata)}\r\n` +
+            `--${boundary}\r\n` +
+            `Content-Type: ${mimeType}\r\n\r\n`;
+        const closing = `\r\n--${boundary}--`;
+        const fullBody = new Blob([multipartBody, fileBlob, closing]);
+
+        const uploadRes = await fetch(
+            'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,size',
+            {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': `multipart/related; boundary=${boundary}`,
+                },
+                body: fullBody,
+            }
+        );
+
+        if (!uploadRes.ok) return null;
+        const data = await uploadRes.json();
+        const driveFileId: string | null = data.id || null;
+        const driveSize = Number(data.size) || fileBlob.size;
+
+        if (driveFileId) {
+            try {
+                const { cacheUploadedAttachmentUri } = await import('./attachment-store');
+                await cacheUploadedAttachmentUri(driveFileId, targetUrl, {
+                    noteId: meta.ownerKind,
+                    blockId: meta.ownerId,
+                    type: 'image',
+                    sizeBytes: driveSize,
+                });
+            } catch {}
+            return `drive://${driveFileId}`;
+        }
+    } catch (err) {
+        console.error('[Sync] Error uploading goal/task image to Drive:', err);
+    }
+    return null;
+};
+
+export const uploadMissingGoalAndTaskImages = async (token: string): Promise<void> => {
+    if (getPerfFlags().perfNoSync) return;
+    const st = useStore.getState();
+    const currentGoals = st.goals || [];
+    const currentTasks = await readAllTasksFromDisk(st.tasks || []);
+
+    const hasCandidateInGoals = currentGoals.some(g =>
+        (g.photos || []).some(p => p && !p.startsWith('drive://') && !p.startsWith('http')) ||
+        (g.objectives || []).some(o => o.image && !o.image.startsWith('drive://') && !o.image.startsWith('http'))
+    );
+    const hasCandidateInTasks = currentTasks.some(t =>
+        (t.photos || []).some(p => p && !p.startsWith('drive://') && !p.startsWith('http'))
+    );
+
+    if (!hasCandidateInGoals && !hasCandidateInTasks) return;
+
+    const folders = await getOrCreateBackupFolderStructure(token).catch(() => null);
+    let goalsChanged = false;
+    let tasksChanged = false;
+    const nowTs = Date.now();
+
+    const updatedGoals = await Promise.all(currentGoals.map(async (goal) => {
+        let thisGoalChanged = false;
+        const newPhotos = await Promise.all((goal.photos || []).map(async (p) => {
+            const uploaded = await uploadSingleLocalImageToDrive(token, p, folders, { ownerKind: '__goal__', ownerId: goal.id });
+            if (uploaded) {
+                thisGoalChanged = true;
+                goalsChanged = true;
+                return uploaded;
+            }
+            return p;
+        }));
+        const newObjectives = goal.objectives
+            ? await Promise.all(goal.objectives.map(async (obj) => {
+                if (!obj.image) return obj;
+                const uploaded = await uploadSingleLocalImageToDrive(token, obj.image, folders, { ownerKind: '__goal__', ownerId: `${goal.id}_${obj.id}` });
+                if (uploaded) {
+                    thisGoalChanged = true;
+                    goalsChanged = true;
+                    return { ...obj, image: uploaded };
+                }
+                return obj;
+            }))
+            : goal.objectives;
+
+        return thisGoalChanged
+            ? { ...goal, photos: newPhotos, objectives: newObjectives, lastUpdated: nowTs }
+            : goal;
+    }));
+
+    const updatedTasks = await Promise.all(currentTasks.map(async (task) => {
+        if (!task.photos || task.photos.length === 0) return task;
+        let thisTaskChanged = false;
+        const newPhotos = await Promise.all(task.photos.map(async (p) => {
+            const uploaded = await uploadSingleLocalImageToDrive(token, p, folders, { ownerKind: '__task__', ownerId: task.id });
+            if (uploaded) {
+                thisTaskChanged = true;
+                tasksChanged = true;
+                return uploaded;
+            }
+            return p;
+        }));
+        return thisTaskChanged ? { ...task, photos: newPhotos, lastUpdated: nowTs } : task;
+    }));
+
+    if (tasksChanged) {
+        await saveAllTasksToDisk(updatedTasks);
+    }
+    if (goalsChanged || tasksChanged) {
+        useStore.setState({
+            ...(goalsChanged ? { goals: updatedGoals } : {}),
+            ...(tasksChanged ? { tasks: updatedTasks } : {}),
+            lastUpdated: nowTs,
+        });
+    }
 };
 
 export const reconcileMediaManifest = async (token: string, notes: Note[]): Promise<void> => {
@@ -2843,12 +3046,13 @@ export const useStore = create<AppState>()(
 
                         // Recalculate progress if modifying relevant fields
                         if (updatedGoal.type === 'checklist') {
-                            if (updatedGoal.objectives && updatedGoal.objectives.length > 0) {
-                                const completed = updatedGoal.objectives.filter(o => o.completed).length;
-                                updatedGoal.progress = Math.round((completed / updatedGoal.objectives.length) * 100);
-                            } else {
-                                updatedGoal.progress = 0;
-                            }
+                            updatedGoal.progress = computeGoalProgress({
+                                type: updatedGoal.type,
+                                objectives: updatedGoal.objectives,
+                                targetValue: updatedGoal.targetValue,
+                                currentValue: updatedGoal.currentValue,
+                                manualProgress: updatedGoal.progress,
+                            });
                         } else if (updatedGoal.type === 'numeric' && updatedGoal.targetValue && updatedGoal.targetValue > 0) {
                             const val = updatedGoal.currentValue || 0;
                             const rawProgress = (val / updatedGoal.targetValue) * 100;
@@ -3954,6 +4158,7 @@ export const useStore = create<AppState>()(
                         const token = user.accessToken;
                         if (!token) throw new Error("No access token");
                         await uploadMissingAttachments(token, get().notes);
+                        await uploadMissingGoalAndTaskImages(token);
 
                         const searchRes = await fetchWithTimeout(
                             `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false&fields=files(id,appProperties,md5Checksum,parents)`,
@@ -4123,21 +4328,38 @@ export const useStore = create<AppState>()(
                         };
 
                         const useLocalForConflicts = localLastUpdated > driveLastUpdated;
-                        const prevDriveIds = new Set<string>();
-                        for (const n of diskNotes || []) {
-                            for (const b of n?.blocks || []) {
-                                if (b?.driveFileId) prevDriveIds.add(b.driveFileId);
-                            }
-                        }
-                        const { merged, changedLocal, changedRemote } = mergeBackupData(localDataToMerge, driveData, useLocalForConflicts);
-                        const newlyAddedDriveIds = new Set<string>();
-                        for (const n of merged.notes || []) {
-                            for (const b of n?.blocks || []) {
-                                if ((b?.type === 'image' || b?.type === 'drawing') && b?.driveFileId && !prevDriveIds.has(b.driveFileId)) {
-                                    newlyAddedDriveIds.add(b.driveFileId);
+                        const collectDriveIds = (notesArr: any[], goalsArr: any[], tasksArr: any[], out: Set<string>) => {
+                            for (const n of notesArr || []) {
+                                for (const b of n?.blocks || []) {
+                                    if (b?.driveFileId) out.add(b.driveFileId);
                                 }
                             }
-                        }
+                            for (const g of goalsArr || []) {
+                                for (const p of g?.photos || []) {
+                                    if (typeof p === 'string' && p.startsWith('drive://')) out.add(p.replace('drive://', '').trim());
+                                }
+                                for (const o of g?.objectives || []) {
+                                    if (typeof o?.image === 'string' && o.image.startsWith('drive://')) out.add(o.image.replace('drive://', '').trim());
+                                }
+                            }
+                            for (const t of tasksArr || []) {
+                                for (const p of t?.photos || []) {
+                                    if (typeof p === 'string' && p.startsWith('drive://')) out.add(p.replace('drive://', '').trim());
+                                }
+                            }
+                        };
+
+                        const prevDriveIds = new Set<string>();
+                        collectDriveIds(diskNotes, freshState.goals || [], diskTasks, prevDriveIds);
+
+                        const { merged, changedLocal, changedRemote } = mergeBackupData(localDataToMerge, driveData, useLocalForConflicts);
+
+                        const currentMergedDriveIds = new Set<string>();
+                        collectDriveIds(merged.notes || [], merged.goals || [], merged.tasks || [], currentMergedDriveIds);
+                        const newlyAddedDriveIds = new Set<string>();
+                        currentMergedDriveIds.forEach(id => {
+                            if (id && !prevDriveIds.has(id)) newlyAddedDriveIds.add(id);
+                        });
 
                         if (abortIfUserEdited()) return false;
 
@@ -4606,7 +4828,7 @@ export const checkAndEnqueueMissingImages = async (onlyDriveIds?: Set<string>) =
     if (!token || state.googleSessionExpired) return;
 
     // Solo precargar 'image' y 'drawing'. 'video' y 'file' quedan estrictamente bajo demanda.
-    const pendingItems: Array<{ noteId: string; blockId: string; driveFileId: string; type: 'image' | 'drawing'; driveSize?: number }> = [];
+    const pendingItems: Array<{ noteId?: string; blockId?: string; driveFileId: string; type: 'image' | 'drawing'; driveSize?: number }> = [];
 
     for (const note of state.notes) {
         if (!note.blocks) continue;
@@ -4647,6 +4869,29 @@ export const checkAndEnqueueMissingImages = async (onlyDriveIds?: Set<string>) =
                 }
             }
         }
+    }
+
+    // También encolar imágenes drive://<id> de Metas (goals.photos + goals.objectives[].image) y Hábitos (tasks.photos)
+    const { getCachedUri } = await import('./attachment-store');
+    const seenGoalTaskDriveIds = new Set<string>(pendingItems.map(i => i.driveFileId));
+    const enqueueStandaloneDriveUri = async (uri: string | undefined) => {
+        if (!uri || typeof uri !== 'string' || !uri.startsWith('drive://')) return;
+        const driveFileId = uri.replace('drive://', '').trim();
+        if (!driveFileId || seenGoalTaskDriveIds.has(driveFileId)) return;
+        if (onlyDriveIds && !onlyDriveIds.has(driveFileId)) return;
+        seenGoalTaskDriveIds.add(driveFileId);
+        const cached = await getCachedUri(driveFileId);
+        if (!cached) {
+            pendingItems.push({ driveFileId, type: 'image' });
+        }
+    };
+
+    for (const goal of state.goals || []) {
+        for (const p of goal.photos || []) await enqueueStandaloneDriveUri(p);
+        for (const o of goal.objectives || []) await enqueueStandaloneDriveUri(o.image);
+    }
+    for (const task of state.tasks || []) {
+        for (const p of task.photos || []) await enqueueStandaloneDriveUri(p);
     }
 
     if (pendingItems.length === 0) return;

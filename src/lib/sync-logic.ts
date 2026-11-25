@@ -407,8 +407,61 @@ export const mergeBackupData = (
     const delRes = mergeDeletedItemsWithDiff(local.deletedItems, remote.deletedItems);
 
     const notesRes = mergeNotesWithDiff(local.notes, remote.notes, useLocalForConflicts, delRes.merged);
-    const tasksRes = mergeListsWithDiff(local.tasks, remote.tasks, useLocalForConflicts, delRes.merged);
-    const goalsRes = mergeListsWithDiff(local.goals, remote.goals, useLocalForConflicts, delRes.merged);
+    const tasksResRaw = mergeListsWithDiff(local.tasks, remote.tasks, useLocalForConflicts, delRes.merged);
+    const goalsResRaw = mergeListsWithDiff(local.goals, remote.goals, useLocalForConflicts, delRes.merged);
+
+    // Preserve cloud drive://<id> references over foreign/un-uploaded local URIs when merging tasks and goals
+    const localTaskMap = new Map((local.tasks || []).filter(Boolean).map((t: any) => [t.id, t]));
+    const remoteTaskMap = new Map((remote.tasks || []).filter(Boolean).map((t: any) => [t.id, t]));
+    const tasksRes = {
+        ...tasksResRaw,
+        merged: tasksResRaw.merged.map((task: any) => {
+            if (!task || !Array.isArray(task.photos)) return task;
+            const lt = localTaskMap.get(task.id);
+            const rt = remoteTaskMap.get(task.id);
+            const photos = task.photos.map((p: string, idx: number) => {
+                if (typeof p === 'string' && p.startsWith('drive://')) return p;
+                const lp = lt?.photos?.[idx];
+                const rp = rt?.photos?.[idx];
+                if (typeof lp === 'string' && lp.startsWith('drive://')) return lp;
+                if (typeof rp === 'string' && rp.startsWith('drive://')) return rp;
+                return p;
+            });
+            return { ...task, photos };
+        })
+    };
+
+    const localGoalMap = new Map((local.goals || []).filter(Boolean).map((g: any) => [g.id, g]));
+    const remoteGoalMap = new Map((remote.goals || []).filter(Boolean).map((g: any) => [g.id, g]));
+    const goalsRes = {
+        ...goalsResRaw,
+        merged: goalsResRaw.merged.map((goal: any) => {
+            if (!goal) return goal;
+            const lg = localGoalMap.get(goal.id);
+            const rg = remoteGoalMap.get(goal.id);
+            const photos = Array.isArray(goal.photos)
+                ? goal.photos.map((p: string, idx: number) => {
+                    if (typeof p === 'string' && p.startsWith('drive://')) return p;
+                    const lp = lg?.photos?.[idx];
+                    const rp = rg?.photos?.[idx];
+                    if (typeof lp === 'string' && lp.startsWith('drive://')) return lp;
+                    if (typeof rp === 'string' && rp.startsWith('drive://')) return rp;
+                    return p;
+                })
+                : goal.photos;
+            const objectives = Array.isArray(goal.objectives)
+                ? goal.objectives.map((obj: any) => {
+                    if (!obj || !obj.image || (typeof obj.image === 'string' && obj.image.startsWith('drive://'))) return obj;
+                    const lo = Array.isArray(lg?.objectives) ? lg.objectives.find((o: any) => o && o.id === obj.id) : null;
+                    const ro = Array.isArray(rg?.objectives) ? rg.objectives.find((o: any) => o && o.id === obj.id) : null;
+                    if (typeof lo?.image === 'string' && lo.image.startsWith('drive://')) return { ...obj, image: lo.image };
+                    if (typeof ro?.image === 'string' && ro.image.startsWith('drive://')) return { ...obj, image: ro.image };
+                    return obj;
+                })
+                : goal.objectives;
+            return { ...goal, photos, objectives };
+        })
+    };
     const apptsRes = mergeListsWithDiff(local.appointments, remote.appointments, useLocalForConflicts, delRes.merged);
     const projsRes = mergeListsWithDiff(local.projects, remote.projects, useLocalForConflicts, delRes.merged);
     const groupsRes = mergeListsWithDiff(local.taskGroups, remote.taskGroups, useLocalForConflicts, delRes.merged);
