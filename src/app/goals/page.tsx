@@ -41,6 +41,7 @@ export default function GoalsPage() {
     const [tempObjectivePhoto, setTempObjectivePhoto] = useState<string | null>(null)
     const [targetBudget, setTargetBudget] = useState("")
     const [hasBudget, setHasBudget] = useState(false)
+    const [syncWithBalance, setSyncWithBalance] = useState(false)
 
     const handleAddObjective = () => {
         if (!newObjectiveTitle.trim()) return
@@ -78,7 +79,8 @@ export default function GoalsPage() {
             objectives: goalObjectives,
             targetValue: finalTargetValue,
             currentValue: finalCurrentValue,
-            unit: hasBudget ? '$' : undefined
+            unit: hasBudget ? '$' : undefined,
+            syncWithBalance: hasBudget ? syncWithBalance : false
         })
 
         showToast(language === 'es' ? "Meta creada correctamente" : "Goal created successfully", "success")
@@ -94,6 +96,7 @@ export default function GoalsPage() {
         setTempObjectivePhoto(null)
         setTargetBudget("")
         setHasBudget(false)
+        setSyncWithBalance(false)
         setIsCreating(false)
     }
 
@@ -181,9 +184,7 @@ export default function GoalsPage() {
                                         </button>
 
                                         <div className="flex items-center gap-3 mb-6">
-                                            <div className="p-3 bg-primary/20 rounded-2xl text-primary">
-                                                <Target className="w-6 h-6" />
-                                            </div>
+                                            <Target className="w-6 h-6 text-foreground shrink-0" />
                                             <h2 className="text-2xl font-bold">{t.newGoal}</h2>
                                         </div>
 
@@ -241,6 +242,46 @@ export default function GoalsPage() {
                                                             placeholder="Ej: 500"
                                                             className="w-full glass-field rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-colors"
                                                         />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                                                            {language === 'es' ? "Origen del dinero" : "Money source"}
+                                                        </label>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSyncWithBalance(false)}
+                                                                className={`p-3 rounded-xl border text-left transition-all ${
+                                                                    !syncWithBalance
+                                                                        ? 'bg-black text-white dark:bg-white dark:text-black border-transparent font-semibold'
+                                                                        : 'glass-field text-foreground/80 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5'
+                                                                }`}
+                                                            >
+                                                                <div className="text-xs font-bold">
+                                                                    {language === 'es' ? "Dinero reservado" : "Reserved money"}
+                                                                </div>
+                                                                <div className={`text-[10px] mt-0.5 ${!syncWithBalance ? 'opacity-80' : 'text-muted-foreground'}`}>
+                                                                    {language === 'es' ? "Separado del Balance (Añadir / Restar)" : "Separate from Balance (Add / Subtract)"}
+                                                                </div>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSyncWithBalance(true)}
+                                                                className={`p-3 rounded-xl border text-left transition-all ${
+                                                                    syncWithBalance
+                                                                        ? 'bg-black text-white dark:bg-white dark:text-black border-transparent font-semibold'
+                                                                        : 'glass-field text-foreground/80 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5'
+                                                                }`}
+                                                            >
+                                                                <div className="text-xs font-bold">
+                                                                    {language === 'es' ? "Sincronizar con Balance" : "Sync with Balance"}
+                                                                </div>
+                                                                <div className={`text-[10px] mt-0.5 ${syncWithBalance ? 'opacity-80' : 'text-muted-foreground'}`}>
+                                                                    {language === 'es' ? "Usa el Balance General automáticamente" : "Automatically reflects General Balance"}
+                                                                </div>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             )}
@@ -347,16 +388,16 @@ export default function GoalsPage() {
                                                     </label>
                                                 </div>
                                                 {tempPhotos.length > 0 && (
-                                                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                                    <div className="grid grid-cols-1 gap-3 pt-1">
                                                         {tempPhotos.map((photo, i) => (
-                                                            <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-black/5 dark:border-white/10 flex-shrink-0">
-                                                                <LocalImage src={photo} alt="" className="w-full h-full object-cover" />
+                                                            <div key={i} className="relative w-full rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] flex items-center justify-center">
+                                                                <LocalImage src={photo} alt="" className="w-full max-h-56 h-auto object-contain" />
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setTempPhotos(tempPhotos.filter((_, idx) => idx !== i))}
-                                                                    className="absolute top-0.5 right-0.5 p-0.5 bg-black/50 rounded-full text-white hover:bg-red-500 transition-colors"
+                                                                    className="absolute top-2 right-2 p-1.5 bg-black/65 rounded-full text-white hover:bg-red-500 transition-colors"
                                                                 >
-                                                                    <X className="w-3 h-3" />
+                                                                    <X className="w-3.5 h-3.5" />
                                                                 </button>
                                                             </div>
                                                         ))}

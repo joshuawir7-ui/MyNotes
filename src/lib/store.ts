@@ -1091,8 +1091,46 @@ export interface Goal {
     currentValue?: number
     startValue?: number
     unit?: string
+    syncWithBalance?: boolean
     reports?: GoalReport[]
     pinned?: boolean
+}
+
+export function computeNetBalance(transactions: Transaction[]): number {
+    const raw = (transactions || []).reduce((sum, t) => {
+        const amt = Number(t.amount) || 0;
+        return sum + (t.type === 'expense' ? -amt : amt);
+    }, 0);
+    return Math.abs(raw) < 1e-9 ? 0 : Number(raw.toFixed(2));
+}
+
+export function computeGoalProgress(params: {
+    type?: GoalType;
+    objectives?: GoalObjective[];
+    targetValue?: number;
+    currentValue?: number;
+    manualProgress?: number;
+}): number {
+    const hasSteps = params.type === 'checklist';
+    const hasBudget = params.targetValue !== undefined && params.targetValue > 0;
+    const objectives = params.objectives || [];
+    const stepsRatio = objectives.length > 0
+        ? objectives.filter(o => o.completed).length / objectives.length
+        : 0;
+    const budgetRatio = hasBudget
+        ? Math.min(1, Math.max(0, (params.currentValue || 0) / (params.targetValue || 1)))
+        : 0;
+
+    if (hasSteps && hasBudget) {
+        return Math.min(100, Math.round(stepsRatio * 50 + budgetRatio * 50));
+    }
+    if (hasSteps) {
+        return objectives.length > 0 ? Math.round(stepsRatio * 100) : 0;
+    }
+    if (hasBudget) {
+        return Math.min(100, Math.round(budgetRatio * 100));
+    }
+    return Math.min(100, Math.max(0, params.manualProgress ?? 0));
 }
 
 export type ExpenseNote = {

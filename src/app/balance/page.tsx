@@ -1395,16 +1395,18 @@ export default function BalancePage() {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="glass-scrim"
+                                transition={{ duration: 0.14, ease: "easeOut" }}
+                                className="fixed inset-0 bg-black/45"
+                                style={{ willChange: "opacity" }}
                                 onClick={() => setIsModalOpen(false)}
                             />
-                            <GlassSurface
-                                as={motion.div}
-                                variant="sheet"
-                                initial={{ scale: 0.95, y: 20 }}
-                                animate={{ scale: 1, y: 0 }}
-                                exit={{ scale: 0.95, y: 20 }}
-                                className="w-full max-w-md rounded-[40px] relative"
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.96, y: 12 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.96, y: 10 }}
+                                transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+                                style={{ willChange: "transform, opacity", transform: "translateZ(0)" }}
+                                className="w-full max-w-md rounded-[40px] relative z-10 bg-white dark:bg-[#18181b] border border-black/10 dark:border-white/15 shadow-2xl"
                                 onClick={(e: any) => e.stopPropagation()}
                             >
                                 <div className="p-6 sm:p-8 relative">
@@ -1426,7 +1428,6 @@ export default function BalancePage() {
                                     {/* Amount Input with gray border, allowing negative values for debt */}
                                     <div className="relative">
                                         <input
-                                            autoFocus
                                             required
                                             type="number"
                                             step="0.01"
@@ -1563,7 +1564,7 @@ export default function BalancePage() {
 
                             </form>
                                 </div>
-                            </GlassSurface>
+                            </motion.div>
                         </div>
                     )}
                 </AnimatePresence>,

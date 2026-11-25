@@ -2,10 +2,12 @@
 import { getLocalImageSrc } from "@/lib/image-utils"
 import { LocalImage } from "@/components/ui/local-image"
 
-import { Goal, GoalObjective, useStore } from "@/lib/store"
-import { motion } from "framer-motion"
+import { Goal, GoalObjective, useStore, computeNetBalance, computeGoalProgress } from "@/lib/store"
+import { motion, AnimatePresence } from "framer-motion"
 import { Trash2, Camera, Target, Plus, Check, X, FileText, Pin, RotateCcw } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
+import { createPortal } from "react-dom"
+import { useShallow } from "zustand/react/shallow"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { translations } from "@/lib/translations"
 import { DatePicker } from "@/components/ui/date-picker"
@@ -15,19 +17,41 @@ export function GoalCard({ goal }: { goal: Goal }) {
     const updateGoal = useStore(state => state.updateGoal)
     const deleteGoal = useStore(state => state.deleteGoal)
     const addGoalPhoto = useStore(state => state.addGoalPhoto)
+    const rawTransactions = useStore(useShallow(state => state.transactions ?? []))
+    const transactions = Array.isArray(rawTransactions) ? rawTransactions : []
     const language = useStore(state => state.language)
     const appColor = useStore(state => state.appColor ?? 'purple')
     const showToast = useStore(state => state.showToast)
     const [isDeleting, setIsDeleting] = useState(false)
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
+    const [showCongratsModal, setShowCongratsModal] = useState(false)
     const t = (translations[language]?.pages?.goals || translations['en'].pages.goals) as any
     const common = (translations[language]?.common || translations['en'].common) as any
+
+    const syncedBalance = useMemo(() => computeNetBalance(transactions), [transactions])
+    const effectiveMoney = goal.syncWithBalance ? Math.max(0, syncedBalance) : (goal.currentValue || 0)
 
     const [localProgress, setLocalProgress] = useState(goal.progress)
 
     useEffect(() => {
         setLocalProgress(goal.progress)
     }, [goal.progress])
+
+    const effectiveProgress = useMemo(() => computeGoalProgress({
+        type: goal.type,
+        objectives: goal.objectives,
+        targetValue: goal.targetValue,
+        currentValue: effectiveMoney,
+        manualProgress: localProgress,
+    }), [goal.type, goal.objectives, goal.targetValue, effectiveMoney, localProgress])
+
+    const prevProgressRef = useRef<number>(effectiveProgress)
+    useEffect(() => {
+        if (prevProgressRef.current < 100 && effectiveProgress >= 100) {
+            setShowCongratsModal(true)
+        }
+        prevProgressRef.current = effectiveProgress
+    }, [effectiveProgress])
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -78,9 +102,13 @@ export function GoalCard({ goal }: { goal: Goal }) {
         const updatedObjectives = goal.objectives.map(obj =>
             obj.id === objId ? { ...obj, completed: !obj.completed } : obj
         )
-        const total = updatedObjectives.length
-        const completed = updatedObjectives.filter(o => o.completed).length
-        const newProgress = total > 0 ? Math.round((completed / total) * 100) : 0
+        const newProgress = computeGoalProgress({
+            type: goal.type,
+            objectives: updatedObjectives,
+            targetValue: goal.targetValue,
+            currentValue: effectiveMoney,
+            manualProgress: localProgress,
+        })
 
         const toggledObj = goal.objectives.find(o => o.id === objId)
         if (toggledObj) {
@@ -108,9 +136,13 @@ export function GoalCard({ goal }: { goal: Goal }) {
             ...(goal.objectives || []),
             { id: Math.random().toString(36).substring(7), title: newObjective.trim(), completed: false, image: newObjectivePhoto || undefined }
         ]
-        const total = updatedObjectives.length
-        const completed = updatedObjectives.filter(o => o.completed).length
-        const newProgress = total > 0 ? Math.round((completed / total) * 100) : 0
+        const newProgress = computeGoalProgress({
+            type: goal.type,
+            objectives: updatedObjectives,
+            targetValue: goal.targetValue,
+            currentValue: effectiveMoney,
+            manualProgress: localProgress,
+        })
 
         const formattedDate = new Date().toISOString().split('T')[0]
         const autoReport = {
@@ -134,9 +166,13 @@ export function GoalCard({ goal }: { goal: Goal }) {
         if (!goal.objectives) return
         const deletedObj = goal.objectives.find(obj => obj.id === objId)
         const updatedObjectives = goal.objectives.filter(obj => obj.id !== objId)
-        const total = updatedObjectives.length
-        const completed = updatedObjectives.filter(o => o.completed).length
-        const newProgress = total > 0 ? Math.round((completed / total) * 100) : 0
+        const newProgress = computeGoalProgress({
+            type: goal.type,
+            objectives: updatedObjectives,
+            targetValue: goal.targetValue,
+            currentValue: effectiveMoney,
+            manualProgress: localProgress,
+        })
 
         if (deletedObj) {
             const formattedDate = new Date().toISOString().split('T')[0]
@@ -167,7 +203,13 @@ export function GoalCard({ goal }: { goal: Goal }) {
         const target = goal.targetValue || 1
         const change = operation === 'add' ? val : -val
         const nextValue = Math.round(Math.max(0, current + change) * 100) / 100
-        const nextProgress = Math.min(100, Math.round((nextValue / target) * 100))
+        const nextProgressVal = computeGoalProgress({
+            type: goal.type,
+            objectives: goal.objectives,
+            targetValue: goal.targetValue,
+            currentValue: nextValue,
+            manualProgress: localProgress,
+        })
 
         const formattedDate = new Date().toISOString().split('T')[0]
         const autoReport = {
@@ -177,9 +219,6 @@ export function GoalCard({ goal }: { goal: Goal }) {
                 ? `${operation === 'add' ? "Ahorro añadido" : "Ahorro retirado"}: ${operation === 'add' ? '+' : '-'}$${val} (Total: $${nextValue} / $${target})`
                 : `${operation === 'add' ? "Savings added" : "Savings removed"}: ${operation === 'add' ? '+' : '-'}$${val} (Total: $${nextValue} / $${target})`
         }
-
-        const isGeneral = goal.type !== 'checklist'
-        const nextProgressVal = isGeneral ? nextProgress : goal.progress
 
         updateGoal(goal.id, {
             currentValue: nextValue,
@@ -204,9 +243,16 @@ export function GoalCard({ goal }: { goal: Goal }) {
                 ? `Presupuesto reiniciado a $0`
                 : `Budget reset to $0`
         }
+        const nextProgressVal = computeGoalProgress({
+            type: goal.type,
+            objectives: goal.objectives,
+            targetValue: goal.targetValue,
+            currentValue: 0,
+            manualProgress: localProgress,
+        })
         updateGoal(goal.id, {
             currentValue: 0,
-            progress: goal.type !== 'checklist' ? 0 : goal.progress,
+            progress: nextProgressVal,
             reports: [...(goal.reports || []), autoReport]
         })
         showToast(
@@ -314,24 +360,20 @@ export function GoalCard({ goal }: { goal: Goal }) {
                 message={language === 'es' ? "Esta acción es irreversible." : "This action is irreversible."}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Progress Tracking */}
-                <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                {/* Progress Tracking (Left in landscape, 1st in portrait) */}
+                <div className="space-y-4 md:col-start-1 md:row-start-1">
                     <div className="flex justify-between items-center text-sm">
                         <span className="font-medium">Progreso</span>
-                        <span className="text-primary font-bold">{localProgress}%</span>
+                        <span className="text-primary font-bold">{effectiveProgress}%</span>
                     </div>
                     <div className="h-3 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
                         <motion.div
                             initial={{ width: 0 }}
-                            animate={{ width: `${localProgress}%` }}
+                            animate={{ width: `${effectiveProgress}%` }}
                             className={`h-full ${appColor === 'black' ? 'bg-black dark:bg-white' : 'bg-gradient-to-r from-primary to-purple-500 neon-glow'}`}
                         />
                     </div>
-
-
-
-
 
                     {/* Manual slider (only when not checklist and no budget) */}
                     {goal.type !== 'checklist' && (goal.targetValue === undefined || goal.targetValue === 0) && (
@@ -348,94 +390,95 @@ export function GoalCard({ goal }: { goal: Goal }) {
                     )}
                 </div>
 
-                {/* Photos Section */}
-                <div>
-                    <div className="flex justify-between items-center mb-4">
-                        <span className="text-sm font-medium">{t.inspirationPhotosLabel}</span>
-                        <label className="p-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 cursor-pointer transition-all">
-                            <Camera className="w-4 h-4" />
-                            <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                        </label>
-                    </div>
-                    <div className="flex flex-wrap gap-4 mt-2">
+                {/* Photos Section (Right in landscape, 2nd in portrait; clean without label/camera icon) */}
+                {goal.photos.length > 0 && (
+                    <div className="md:col-start-2 md:row-start-1 md:row-span-3 flex flex-col gap-4 items-center md:items-end justify-start">
                         {goal.photos.map((photo, i) => (
-                            <div key={i} className="relative group w-full max-w-sm rounded-xl overflow-hidden">
-                                <LocalImage src={photo} alt="" className="w-full h-auto max-h-64 object-contain transition-transform group-hover:scale-[1.02]" />
+                            <div
+                                key={i}
+                                onClick={() => setActiveOverlayImage(photo)}
+                                className="relative group w-full max-w-md rounded-2xl overflow-hidden cursor-zoom-in"
+                            >
+                                <LocalImage src={photo} alt="" className="w-full h-auto max-h-72 object-contain transition-transform group-hover:scale-[1.02]" />
                             </div>
                         ))}
-                        {goal.photos.length === 0 && (
-                            <div className="w-full h-32 rounded-xl border-2 border-dashed border-black/10 dark:border-white/5 flex flex-col items-center justify-center text-muted-foreground text-xs">
-                                <Plus className="w-4 h-4 mb-1 opacity-20" />
-                                <span>{t.inspirationPhotosLabel}</span>
+                    </div>
+                )}
+
+                {/* Budget section (Left in landscape below progress, 3rd in portrait) */}
+                {goal.targetValue !== undefined && goal.targetValue > 0 && (
+                    <div className="space-y-2 bg-transparent py-1 text-left w-full md:col-start-1">
+                        <div className="flex justify-between items-center px-1 gap-2">
+                            <div className="flex flex-col">
+                                <span className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
+                                    {language === 'es' ? "Presupuesto" : "Budget"}
+                                </span>
+                                {goal.syncWithBalance && (
+                                    <span className="text-[10px] font-semibold text-primary/80 mt-0.5">
+                                        {language === 'es' ? "Sincronizado con Balance" : "Synced with Balance"}
+                                    </span>
+                                )}
+                            </div>
+                            <span className="text-base font-bold text-foreground font-mono whitespace-nowrap flex items-center gap-1.5">
+                                <span>$ {Number(effectiveMoney).toFixed(2).replace(/\.00$/, '')} / {goal.targetValue}</span>
+                                {!goal.syncWithBalance && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsResetConfirmOpen(true)}
+                                        className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-muted-foreground hover:text-primary transition-all active:scale-95 flex items-center justify-center"
+                                        title={language === 'es' ? "Reiniciar presupuesto" : "Reset budget"}
+                                    >
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
+                            </span>
+                        </div>
+
+                        {/* Add / Subtract savings input (only for reserved money, hidden when synced with Balance) */}
+                        {!goal.syncWithBalance && (
+                            <div className="flex flex-col items-center gap-1.5 mt-1 max-w-xs mx-auto w-full">
+                                <span className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 text-center">
+                                    {language === 'es' ? "Monto" : "Amount"}
+                                </span>
+                                <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    pattern="[0-9]*[.,]?[0-9]*"
+                                    value={amountToAdd}
+                                    onChange={(e) => setAmountToAdd(e.target.value)}
+                                    placeholder="0.00 $"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault()
+                                            handleUpdateMoney('add')
+                                        }
+                                    }}
+                                    className="w-full bg-black/[0.02] dark:bg-white/5 border border-black/20 dark:border-white/20 rounded-xl px-3 py-1.5 text-xs text-center focus:outline-none focus:border-primary/50 transition-colors font-medium"
+                                />
+                                <div className="flex gap-2 w-full mt-0.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleUpdateMoney('add')}
+                                        className="flex-1 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 font-bold text-xs rounded-xl transition-all active:scale-[0.98] text-center"
+                                    >
+                                        {language === 'es' ? "Añadir" : "Add"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleUpdateMoney('subtract')}
+                                        className="flex-1 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 dark:text-red-400 font-bold text-xs rounded-xl transition-all active:scale-[0.98] text-center"
+                                    >
+                                        {language === 'es' ? "Restar" : "Subtract"}
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
-                </div>
-            </div>
+                )}
 
-            {/* Budget section */}
-            {goal.targetValue !== undefined && goal.targetValue > 0 && (
-                <div className="space-y-2 mt-6 bg-transparent py-2.5 text-left w-full">
-                    <div className="flex justify-between items-center px-1">
-                        <span className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
-                            {language === 'es' ? "Presupuesto" : "Budget"}
-                        </span>
-                        <span className="text-base font-bold text-foreground font-mono whitespace-nowrap flex items-center gap-1.5">
-                            <span>$ {Number(goal.currentValue || 0).toFixed(2).replace(/\.00$/, '')} / {goal.targetValue}</span>
-                            <button
-                                type="button"
-                                onClick={() => setIsResetConfirmOpen(true)}
-                                className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-muted-foreground hover:text-primary transition-all active:scale-95 flex items-center justify-center"
-                                title={language === 'es' ? "Reiniciar presupuesto" : "Reset budget"}
-                            >
-                                <RotateCcw className="w-3.5 h-3.5" />
-                            </button>
-                        </span>
-                    </div>
-
-                    {/* Add savings input */}
-                    <div className="flex flex-col items-center gap-1.5 mt-1 max-w-xs mx-auto w-full">
-                        <span className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 text-center">
-                            {language === 'es' ? "Monto" : "Amount"}
-                        </span>
-                        <input
-                            type="text"
-                            inputMode="decimal"
-                            pattern="[0-9]*[.,]?[0-9]*"
-                            value={amountToAdd}
-                            onChange={(e) => setAmountToAdd(e.target.value)}
-                            placeholder="0.00 $"
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault()
-                                    handleUpdateMoney('add')
-                                }
-                            }}
-                            className="w-full bg-black/[0.02] dark:bg-white/5 border border-black/20 dark:border-white/20 rounded-xl px-3 py-1.5 text-xs text-center focus:outline-none focus:border-primary/50 transition-colors font-medium"
-                        />
-                        <div className="flex gap-2 w-full mt-0.5">
-                            <button
-                                type="button"
-                                onClick={() => handleUpdateMoney('add')}
-                                className="flex-1 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 font-bold text-xs rounded-xl transition-all active:scale-[0.98] text-center"
-                            >
-                                {language === 'es' ? "Añadir" : "Add"}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handleUpdateMoney('subtract')}
-                                className="flex-1 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 dark:text-red-400 font-bold text-xs rounded-xl transition-all active:scale-[0.98] text-center"
-                            >
-                                {language === 'es' ? "Restar" : "Subtract"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Checklist section */}
-            {goal.type === 'checklist' && (
-                <div className="space-y-3 mt-6 text-left w-full">
+                {/* Checklist section (Left in landscape below progress/budget, 4th in portrait) */}
+                {goal.type === 'checklist' && (
+                    <div className="space-y-3 text-left w-full md:col-start-1">
                     {goal.objectives && goal.objectives.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                             {goal.objectives.map((obj) => (
@@ -545,7 +588,8 @@ export function GoalCard({ goal }: { goal: Goal }) {
                         </div>
                     </div>
                 </div>
-            )}
+                )}
+            </div>
 
             {/* Progress Reports Timeline Section */}
             <div className="mt-8 border-t border-black/5 dark:border-white/10 pt-6">
@@ -681,6 +725,58 @@ export function GoalCard({ goal }: { goal: Goal }) {
                 cancelLabel={language === 'es' ? "Cancelar" : "Cancel"}
                 variant="danger"
             />
+
+            {/* Goal Completion Congratulations Modal */}
+            {typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {showCongratsModal && (
+                        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.16 }}
+                                className="fixed inset-0 bg-black/50"
+                                onClick={() => setShowCongratsModal(false)}
+                            />
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.92, y: 12 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.94, y: 10 }}
+                                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="relative z-10 w-full max-w-sm bg-white dark:bg-[#161618] border border-black/10 dark:border-white/15 rounded-[32px] p-7 shadow-2xl flex flex-col items-center text-center"
+                            >
+                                {/* Medal / Rosette Icon */}
+                                <div className="w-20 h-20 mb-4 text-black dark:text-white">
+                                    <svg viewBox="0 0 64 64" fill="currentColor" className="w-full h-full">
+                                        <path d="M32 4l4.5 3.6 5.7-.9 2.4 5.3 5.5 1.8-.3 5.8 3.9 4.2-2.9 5 1.4 5.6-4.8 3.1-1.3 5.6-5.7.6-3.6 4.5-5.5-1.9-5.5 1.9-3.6-4.5-5.7-.6-1.3-5.6-4.8-3.1 1.4-5.6-2.9-5 3.9-4.2-.3-5.8 5.5-1.8 2.4-5.3 5.7.9L32 4zm0 11a12 12 0 100 24 12 12 0 000-24z" />
+                                        <path d="M20 43l-7 16 7-3 4 5 5-13.5a15.5 15.5 0 01-9-4.5zm24 0a15.5 15.5 0 01-9 4.5L40 61l4-5 7 3-7-16z" />
+                                    </svg>
+                                </div>
+
+                                <h3 className="font-dancing-n text-3xl text-black dark:text-white mb-2">
+                                    {language === 'es' ? "¡Meta Completada!" : "Goal Completed!"}
+                                </h3>
+                                <p className="text-sm font-bold text-foreground mb-1">{goal.title}</p>
+                                <p className="text-xs text-muted-foreground mb-6">
+                                    {language === 'es'
+                                        ? "Tu constancia y disciplina dieron frutos. ¡Sigue avanzando!"
+                                        : "Your consistency and discipline paid off. Keep going!"}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCongratsModal(false)}
+                                    className="w-full py-3 rounded-2xl bg-black text-white dark:bg-white dark:text-black font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all"
+                                >
+                                    {language === 'es' ? "Continuar" : "Continue"}
+                                </button>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
         </motion.div>
     )
 }
