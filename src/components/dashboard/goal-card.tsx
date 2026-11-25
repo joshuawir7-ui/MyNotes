@@ -80,25 +80,15 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
     const [newObjective, setNewObjective] = useState("")
     const [newObjectivePhoto, setNewObjectivePhoto] = useState<string | null>(null)
     const [isAddStepOpen, setIsAddStepOpen] = useState(false)
-    const [isImageShaking, setIsImageShaking] = useState(false)
-    const shakeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const photosContainerRef = useRef<HTMLDivElement | null>(null)
     const [activeOverlayImage, setActiveOverlayImage] = useState<string | null>(null)
 
-    useEffect(() => {
-        return () => {
-            if (shakeTimeoutRef.current) clearTimeout(shakeTimeoutRef.current)
-        }
-    }, [])
-
     const triggerImageShake = () => {
-        if (shakeTimeoutRef.current) clearTimeout(shakeTimeoutRef.current)
-        setIsImageShaking(false)
-        requestAnimationFrame(() => {
-            setIsImageShaking(true)
-            shakeTimeoutRef.current = setTimeout(() => {
-                setIsImageShaking(false)
-            }, 520)
-        })
+        const container = photosContainerRef.current
+        if (!container) return
+        container.classList.remove('animate-goal-image-shake')
+        void container.offsetWidth
+        container.classList.add('animate-goal-image-shake')
     }
     const overlayBlur = useDeferredBlur(Boolean(activeOverlayImage))
     // Edit Goal modal states
@@ -501,10 +491,9 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                                 <span className="text-primary font-bold">{effectiveProgress}%</span>
                             </div>
                             <div className="h-3 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${effectiveProgress}%` }}
-                                    className={`h-full ${appColor === 'black' ? 'bg-black dark:bg-white' : 'bg-gradient-to-r from-primary to-purple-500 neon-glow'}`}
+                                <div
+                                    style={{ transform: `scaleX(${Math.max(0, Math.min(100, effectiveProgress)) / 100})` }}
+                                    className={`h-full w-full origin-left transition-transform duration-300 ease-out ${appColor === 'black' ? 'bg-black dark:bg-white' : 'bg-gradient-to-r from-primary to-purple-500 neon-glow'}`}
                                 />
                             </div>
 
@@ -525,12 +514,15 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
 
                         {/* Photos Section (Right in landscape alongside progress & objectives, 2nd in portrait) */}
                         {goal.photos.length > 0 && (
-                            <div className={`sm:landscape:col-start-2 sm:landscape:row-start-1 ${hasChecklist ? 'sm:landscape:row-span-2' : ''} flex flex-col gap-4 items-center sm:landscape:items-end justify-start`}>
+                            <div
+                                ref={photosContainerRef}
+                                className={`sm:landscape:col-start-2 sm:landscape:row-start-1 ${hasChecklist ? 'sm:landscape:row-span-2' : ''} flex flex-col gap-4 items-center sm:landscape:items-end justify-start`}
+                            >
                                 {goal.photos.map((photo, i) => (
                                     <div
                                         key={i}
                                         onClick={() => setActiveOverlayImage(photo)}
-                                        className={`relative group w-full max-w-md rounded-2xl overflow-hidden cursor-zoom-in ${isImageShaking ? 'animate-goal-image-shake' : ''}`}
+                                        className="relative group w-full max-w-md rounded-2xl overflow-hidden cursor-zoom-in"
                                     >
                                         <LocalImage src={photo} alt="" className="w-full h-auto max-h-72 object-contain" />
                                     </div>
