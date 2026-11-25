@@ -5,7 +5,7 @@ import { LocalImage } from "@/components/ui/local-image"
 import { Goal, GoalObjective, useStore, computeNetBalance, computeGoalProgress } from "@/lib/store"
 import { motion, AnimatePresence } from "framer-motion"
 import { Trash2, Camera, Target, Plus, Check, X, FileText, Pin, RotateCcw, Pencil } from "lucide-react"
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useRef, useMemo, memo } from "react"
 import { createPortal } from "react-dom"
 import { useShallow } from "zustand/react/shallow"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
@@ -16,7 +16,7 @@ import { GlassSurface } from "@/components/ui/glass-surface"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 import { lt, pick } from "@/lib/i18n-inline"
 
-export function GoalCard({ goal }: { goal: Goal }) {
+export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
     const updateGoal = useStore(state => state.updateGoal)
     const deleteGoal = useStore(state => state.deleteGoal)
     const addGoalPhoto = useStore(state => state.addGoalPhoto)
@@ -80,7 +80,26 @@ export function GoalCard({ goal }: { goal: Goal }) {
     const [newObjective, setNewObjective] = useState("")
     const [newObjectivePhoto, setNewObjectivePhoto] = useState<string | null>(null)
     const [isAddStepOpen, setIsAddStepOpen] = useState(false)
+    const [isImageShaking, setIsImageShaking] = useState(false)
+    const shakeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const [activeOverlayImage, setActiveOverlayImage] = useState<string | null>(null)
+
+    useEffect(() => {
+        return () => {
+            if (shakeTimeoutRef.current) clearTimeout(shakeTimeoutRef.current)
+        }
+    }, [])
+
+    const triggerImageShake = () => {
+        if (shakeTimeoutRef.current) clearTimeout(shakeTimeoutRef.current)
+        setIsImageShaking(false)
+        requestAnimationFrame(() => {
+            setIsImageShaking(true)
+            shakeTimeoutRef.current = setTimeout(() => {
+                setIsImageShaking(false)
+            }, 520)
+        })
+    }
     const overlayBlur = useDeferredBlur(Boolean(activeOverlayImage))
     // Edit Goal modal states
     const [isEditingGoal, setIsEditingGoal] = useState(false)
@@ -191,6 +210,9 @@ export function GoalCard({ goal }: { goal: Goal }) {
         })
 
         const toggledObj = goal.objectives.find(o => o.id === objId)
+        if (toggledObj && !toggledObj.completed) {
+            triggerImageShake()
+        }
         if (toggledObj) {
             const formattedDate = new Date().toISOString().split('T')[0]
             const autoReport = {
@@ -384,11 +406,9 @@ export function GoalCard({ goal }: { goal: Goal }) {
     }
 
     return (
-        <motion.div
-            layout
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass-panel p-6 rounded-2xl border border-white/10 hover:border-primary/30 transition-all duration-300"
+        <div
+            style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 380px' }}
+            className="glass-panel p-6 rounded-2xl border border-white/10 hover:border-primary/30 transition-colors duration-200"
         >
             <div className="flex justify-between items-start mb-6">
                 <div>
@@ -510,9 +530,9 @@ export function GoalCard({ goal }: { goal: Goal }) {
                                     <div
                                         key={i}
                                         onClick={() => setActiveOverlayImage(photo)}
-                                        className="relative group w-full max-w-md rounded-2xl overflow-hidden cursor-zoom-in"
+                                        className={`relative group w-full max-w-md rounded-2xl overflow-hidden cursor-zoom-in ${isImageShaking ? 'animate-goal-image-shake' : ''}`}
                                     >
-                                        <LocalImage src={photo} alt="" className="w-full h-auto max-h-72 object-contain transition-transform group-hover:scale-[1.02]" />
+                                        <LocalImage src={photo} alt="" className="w-full h-auto max-h-72 object-contain" />
                                     </div>
                                 ))}
                             </div>
@@ -1119,7 +1139,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                 </AnimatePresence>,
                 document.body
             )}
-        </motion.div>
+        </div>
     )
-}
+})
 

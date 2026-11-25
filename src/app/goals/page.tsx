@@ -425,9 +425,7 @@ export default function GoalsPage() {
 
             <div className="grid grid-cols-1 gap-6">
                 {goals.map((goal) => (
-                    <Reveal key={goal.id} delay={0.1}>
-                        <GoalCard goal={goal} />
-                    </Reveal>
+                    <GoalCard key={goal.id} goal={goal} />
                 ))}
             </div>
 

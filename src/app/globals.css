@@ -266,6 +266,21 @@ html.perf-no-backdrop *:not(.nav-shell):not(.nav-glass):not(.bl)::after {
   -webkit-backdrop-filter: none !important;
 }
 
+@keyframes goal-image-shake {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  15%  { transform: translate3d(-4px, -1px, 0) rotate(-2deg) scale(1.025); }
+  30%  { transform: translate3d(4px, 1px, 0) rotate(2deg) scale(1.025); }
+  45%  { transform: translate3d(-3px, 0, 0) rotate(-1.5deg) scale(1.02); }
+  60%  { transform: translate3d(3px, -1px, 0) rotate(1.5deg) scale(1.015); }
+  78%  { transform: translate3d(-1.5px, 0, 0) rotate(-0.7deg) scale(1.005); }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+}
+
+.animate-goal-image-shake {
+  animation: goal-image-shake 0.48s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  will-change: transform;
+}
+
 html.perf-no-orbs [class*="blur-[120px]"],
 html.perf-no-orbs [class*="bg-purple-900"],
 html.perf-no-orbs [class*="bg-blue-900"] {
@@ -1553,4 +1568,19 @@ html.mobile-landscape .nav-shell {
   transition-duration: 0.001ms !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+@keyframes goal-image-shake {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  15%  { transform: translate3d(-4px, -1px, 0) rotate(-2deg) scale(1.025); }
+  30%  { transform: translate3d(4px, 1px, 0) rotate(2deg) scale(1.025); }
+  45%  { transform: translate3d(-3px, 0, 0) rotate(-1.5deg) scale(1.02); }
+  60%  { transform: translate3d(3px, -1px, 0) rotate(1.5deg) scale(1.015); }
+  78%  { transform: translate3d(-1.5px, 0, 0) rotate(-0.7deg) scale(1.005); }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+}
+
+.animate-goal-image-shake {
+  animation: goal-image-shake 0.48s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  will-change: transform;
 }
