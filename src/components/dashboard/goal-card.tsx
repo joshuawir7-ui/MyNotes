@@ -4,13 +4,15 @@ import { LocalImage } from "@/components/ui/local-image"
 
 import { Goal, GoalObjective, useStore, computeNetBalance, computeGoalProgress } from "@/lib/store"
 import { motion, AnimatePresence } from "framer-motion"
-import { Trash2, Camera, Target, Plus, Check, X, FileText, Pin, RotateCcw } from "lucide-react"
+import { Trash2, Camera, Target, Plus, Check, X, FileText, Pin, RotateCcw, Pencil } from "lucide-react"
 import { useState, useEffect, useRef, useMemo } from "react"
 import { createPortal } from "react-dom"
 import { useShallow } from "zustand/react/shallow"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { translations } from "@/lib/translations"
 import { DatePicker } from "@/components/ui/date-picker"
+import { CustomSelect } from "@/components/ui/custom-select"
+import { GlassSurface } from "@/components/ui/glass-surface"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 import { lt, pick } from "@/lib/i18n-inline"
 
@@ -77,13 +79,89 @@ export function GoalCard({ goal }: { goal: Goal }) {
 
     const [newObjective, setNewObjective] = useState("")
     const [newObjectivePhoto, setNewObjectivePhoto] = useState<string | null>(null)
+    const [isAddStepOpen, setIsAddStepOpen] = useState(false)
     const [activeOverlayImage, setActiveOverlayImage] = useState<string | null>(null)
     const overlayBlur = useDeferredBlur(Boolean(activeOverlayImage))
+    // Edit Goal modal states
+    const [isEditingGoal, setIsEditingGoal] = useState(false)
+    const [editTitle, setEditTitle] = useState(goal.title)
+    const [editDescription, setEditDescription] = useState(goal.description || "")
+    const [editDate, setEditDate] = useState(goal.targetDate || "")
+    const [editType, setEditType] = useState<'general' | 'checklist'>(goal.type === 'checklist' ? 'checklist' : 'general')
+    const [editHasBudget, setEditHasBudget] = useState(Boolean(goal.targetValue && goal.targetValue > 0))
+    const [editTargetBudget, setEditTargetBudget] = useState(goal.targetValue ? String(goal.targetValue) : "")
+    const [editSyncWithBalance, setEditSyncWithBalance] = useState(Boolean(goal.syncWithBalance))
+    const [editPhotos, setEditPhotos] = useState<string[]>(goal.photos || [])
     // Budget and progress states
     const [amountToAdd, setAmountToAdd] = useState("")
     const [isReportsOpen, setIsReportsOpen] = useState(false)
     const [reportDate, setReportDate] = useState("")
     const [reportNote, setReportNote] = useState("")
+
+    const openEditModal = () => {
+        setEditTitle(goal.title)
+        setEditDescription(goal.description || "")
+        setEditDate(goal.targetDate || "")
+        setEditType(goal.type === 'checklist' ? 'checklist' : 'general')
+        setEditHasBudget(Boolean(goal.targetValue && goal.targetValue > 0))
+        setEditTargetBudget(goal.targetValue ? String(goal.targetValue) : "")
+        setEditSyncWithBalance(Boolean(goal.syncWithBalance))
+        setEditPhotos(goal.photos || [])
+        setIsEditingGoal(true)
+    }
+
+    const handleEditPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            const reader = new FileReader()
+            reader.onloadend = async () => {
+                const base64 = reader.result as string
+                const { saveBase64ImageToFile } = await import('@/lib/image-utils')
+                const uri = await saveBase64ImageToFile(base64)
+                setEditPhotos(prev => [...prev, uri || base64])
+            }
+            reader.readAsDataURL(file)
+        }
+    }
+
+    const handleSaveGoalEdit = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!editTitle.trim()) return
+
+        const parsedTarget = editHasBudget ? parseFloat(editTargetBudget) : undefined
+        const validTarget = parsedTarget && !isNaN(parsedTarget) && parsedTarget > 0 ? parsedTarget : undefined
+        const nextCurrentValue = validTarget ? (goal.currentValue ?? 0) : undefined
+        const nextSync = validTarget ? editSyncWithBalance : false
+        const nextMoney = nextSync ? Math.max(0, syncedBalance) : (nextCurrentValue || 0)
+
+        const nextProgress = computeGoalProgress({
+            type: editType,
+            objectives: goal.objectives,
+            targetValue: validTarget,
+            currentValue: nextMoney,
+            manualProgress: localProgress,
+        })
+
+        updateGoal(goal.id, {
+            title: editTitle.trim(),
+            description: editDescription.trim(),
+            targetDate: editDate,
+            type: editType,
+            targetValue: validTarget,
+            currentValue: nextCurrentValue,
+            unit: validTarget ? currency : undefined,
+            syncWithBalance: nextSync,
+            photos: editPhotos,
+            progress: nextProgress,
+        })
+
+        setIsEditingGoal(false)
+        showToast(pick(language, {
+            es: "Meta actualizada correctamente",
+            en: "Goal updated successfully",
+            zh: "目标已更新"
+        }), "success")
+    }
 
     const handleCardObjectiveFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -166,6 +244,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
         })
         setNewObjective("")
         setNewObjectivePhoto(null)
+        setIsAddStepOpen(false)
     }
 
     const handleDeleteObjectiveCard = (objId: string) => {
@@ -354,6 +433,16 @@ export function GoalCard({ goal }: { goal: Goal }) {
                     </motion.button>
 
                     <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={openEditModal}
+                        className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all"
+                        title={pick(language, { es: "Editar meta", en: "Edit goal", zh: "编辑目标" })}
+                    >
+                        <Pencil className="w-4 h-4" />
+                    </motion.button>
+
+                    <motion.button
                         whileHover={{ scale: 1.1, rotate: 5 }}
                         whileTap={{ scale: 0.9, rotate: -3 }}
                         onClick={() => setIsDeleting(true)}
@@ -510,7 +599,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                                             key={obj.id}
                                             className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all duration-200 select-none
                                                 ${obj.completed
-                                                    ? "bg-primary/5 border-primary/20 hover:bg-primary/10"
+                                                    ? "bg-transparent border-transparent hover:bg-black/[0.03] dark:hover:bg-white/5"
                                                     : "bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10"
                                                 }
                                             `}
@@ -566,51 +655,81 @@ export function GoalCard({ goal }: { goal: Goal }) {
                                 </p>
                             )}
 
-                            {/* Preview of attached photo for card objective */}
-                            {newObjectivePhoto && (
-                                <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-black/5 dark:border-white/10 flex-shrink-0 mt-2">
-                                    <LocalImage src={newObjectivePhoto} alt="" className="w-full h-full object-cover" />
+                            {/* Collapsible + button to add objective directly on the card */}
+                            {!isAddStepOpen ? (
+                                <div className="flex justify-center pt-1">
                                     <button
                                         type="button"
-                                        onClick={() => setNewObjectivePhoto(null)}
-                                        className="absolute top-0.5 right-0.5 p-0.5 bg-black/50 rounded-full text-white hover:bg-red-500 transition-colors"
+                                        onClick={() => setIsAddStepOpen(true)}
+                                        className="w-9 h-9 rounded-full bg-primary/15 hover:bg-primary/25 text-primary flex items-center justify-center transition-all active:scale-95"
+                                        title={t.addStepPlaceholder || pick(language, { es: "Agregar paso", en: "Add step", zh: "添加步骤" })}
                                     >
-                                        <X className="w-2.5 h-2.5" />
+                                        <Plus className="w-4 h-4" />
                                     </button>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-2 mt-2 max-w-xs mx-auto w-full animate-in fade-in slide-in-from-top-1 duration-200">
+                                    {/* Preview of attached photo for card objective */}
+                                    {newObjectivePhoto && (
+                                        <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-black/5 dark:border-white/10 flex-shrink-0 mx-auto">
+                                            <LocalImage src={newObjectivePhoto} alt="" className="w-full h-full object-cover" />
+                                            <button
+                                                type="button"
+                                                onClick={() => setNewObjectivePhoto(null)}
+                                                className="absolute top-0.5 right-0.5 p-0.5 bg-black/50 rounded-full text-white hover:bg-red-500 transition-colors"
+                                            >
+                                                <X className="w-2.5 h-2.5" />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center gap-1.5 w-full">
+                                        <input
+                                            autoFocus
+                                            type="text"
+                                            value={newObjective}
+                                            onChange={(e) => setNewObjective(e.target.value)}
+                                            placeholder={t.addStepPlaceholder || "Agrega un paso..."}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault()
+                                                    handleAddObjectiveCard()
+                                                } else if (e.key === 'Escape') {
+                                                    setIsAddStepOpen(false)
+                                                }
+                                            }}
+                                            className="flex-1 bg-white/5 border border-black/20 dark:border-white/20 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-primary/50 transition-colors text-center font-medium"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsAddStepOpen(false)
+                                                setNewObjective("")
+                                                setNewObjectivePhoto(null)
+                                            }}
+                                            className="p-2 text-muted-foreground hover:text-foreground rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
+                                            title={lt(language, "Cerrar", "Close")}
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    <div className="flex gap-2 w-full">
+                                        {/* Card inline objective photo upload button */}
+                                        <label className="flex-1 flex justify-center items-center py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 cursor-pointer transition-all shrink-0">
+                                            <Camera className="w-4 h-4" />
+                                            <input type="file" className="hidden" accept="image/*" onChange={handleCardObjectiveFileChange} />
+                                        </label>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleAddObjectiveCard}
+                                            className="flex-1 py-2 bg-primary/20 text-primary font-bold text-xs rounded-xl hover:bg-primary/30 transition-all active:scale-[0.98] text-center"
+                                        >
+                                            {lt(language, "Añadir", "Add")}
+                                        </button>
+                                    </div>
                                 </div>
                             )}
-
-                            {/* Mini Input to add objective directly on the card */}
-                            <div className="flex flex-col gap-2 mt-2 max-w-xs mx-auto w-full">
-                                <input
-                                    type="text"
-                                    value={newObjective}
-                                    onChange={(e) => setNewObjective(e.target.value)}
-                                    placeholder={t.addStepPlaceholder || "Agrega un paso..."}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault()
-                                            handleAddObjectiveCard()
-                                        }
-                                    }}
-                                    className="w-full bg-white/5 border border-black/20 dark:border-white/20 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-primary/50 transition-colors text-center font-medium"
-                                />
-                                <div className="flex gap-2 w-full">
-                                    {/* Card inline objective photo upload button */}
-                                    <label className="flex-1 flex justify-center items-center py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 cursor-pointer transition-all shrink-0">
-                                        <Camera className="w-4 h-4" />
-                                        <input type="file" className="hidden" accept="image/*" onChange={handleCardObjectiveFileChange} />
-                                    </label>
-
-                                    <button
-                                        type="button"
-                                        onClick={handleAddObjectiveCard}
-                                        className="flex-1 py-2 bg-primary/20 text-primary font-bold text-xs rounded-xl hover:bg-primary/30 transition-all active:scale-[0.98] text-center"
-                                    >
-                                        {lt(language, "Añadir", "Add")}
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                         )}
                     </div>
@@ -751,6 +870,205 @@ export function GoalCard({ goal }: { goal: Goal }) {
                 cancelLabel={lt(language, "Cancelar", "Cancel")}
                 variant="danger"
             />
+
+            {/* Edit Goal Modal */}
+            {typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {isEditingGoal && (
+                        <div className="fixed inset-0 z-[105] flex items-center justify-center p-4">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="glass-scrim"
+                                onClick={() => setIsEditingGoal(false)}
+                            />
+                            <motion.div
+                                initial={{ scale: 0.95, y: 15 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.95, y: 15 }}
+                                transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                                className="relative z-10 w-full max-w-lg"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <GlassSurface variant="sheet" className="w-full rounded-3xl">
+                                    <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto custom-scrollbar relative">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsEditingGoal(false)}
+                                            className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors z-20 cursor-pointer"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </button>
+
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <Target className="w-6 h-6 text-foreground shrink-0" />
+                                            <h2 className="text-2xl font-bold">
+                                                {pick(language, { es: "Editar Meta", en: "Edit Goal", zh: "编辑目标" })}
+                                            </h2>
+                                        </div>
+
+                                        <form onSubmit={handleSaveGoalEdit} className="space-y-5">
+                                            <div>
+                                                <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">{t.goalName}</label>
+                                                <input
+                                                    autoFocus
+                                                    required
+                                                    type="text"
+                                                    value={editTitle}
+                                                    onChange={(e) => setEditTitle(e.target.value)}
+                                                    placeholder={t.placeholderGeneral}
+                                                    className="w-full glass-field rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-colors"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">{t.goalType}</label>
+                                                <CustomSelect
+                                                    options={[
+                                                        { label: t.typeManual || lt(language, "Progreso Manual", "Manual Progress"), value: "general" },
+                                                        { label: t.typeChecklist || lt(language, "Cumplimiento de objetivos (Mini tareas)", "By Objectives"), value: "checklist" }
+                                                    ]}
+                                                    value={editType}
+                                                    onChange={(val) => setEditType(val === 'checklist' ? 'checklist' : 'general')}
+                                                />
+                                            </div>
+
+                                            <div className="flex items-center gap-3 glass-card p-4 rounded-2xl">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`editHasBudget-${goal.id}`}
+                                                    checked={editHasBudget}
+                                                    onChange={(e) => setEditHasBudget(e.target.checked)}
+                                                    className="w-4 h-4 rounded text-primary focus:ring-primary border-white/10 bg-white/5 cursor-pointer accent-primary"
+                                                />
+                                                <label htmlFor={`editHasBudget-${goal.id}`} className="text-sm font-medium text-foreground select-none cursor-pointer">
+                                                    {lt(language, "¿Establecer presupuesto / meta de ahorro?", "Set budget / savings goal?")}
+                                                </label>
+                                            </div>
+
+                                            {editHasBudget && (
+                                                <div className="space-y-4 glass-card p-4 rounded-2xl">
+                                                    <div>
+                                                        <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground/60 mb-2">
+                                                            {`${lt(language, "Presupuesto Objetivo ($)", "Target Budget ($)").replace(/\(\$\)/g, `(${currency})`)}`}
+                                                        </label>
+                                                        <input
+                                                            required
+                                                            type="number"
+                                                            min="1"
+                                                            value={editTargetBudget}
+                                                            onChange={(e) => setEditTargetBudget(e.target.value)}
+                                                            placeholder="500"
+                                                            className="w-full glass-field rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-colors"
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                                                            {lt(language, "Origen del dinero", "Money source")}
+                                                        </label>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEditSyncWithBalance(false)}
+                                                                className={`p-3 rounded-xl border text-left transition-all ${
+                                                                    !editSyncWithBalance
+                                                                        ? 'bg-black text-white dark:bg-white dark:text-black border-transparent font-semibold'
+                                                                        : 'glass-field text-foreground/80 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5'
+                                                                }`}
+                                                            >
+                                                                <div className="text-xs font-bold">
+                                                                    {lt(language, "Dinero reservado", "Reserved money")}
+                                                                </div>
+                                                                <div className={`text-[10px] mt-0.5 ${!editSyncWithBalance ? 'opacity-80' : 'text-muted-foreground'}`}>
+                                                                    {lt(language, "Separado del Balance (Añadir / Restar)", "Separate from Balance (Add / Subtract)")}
+                                                                </div>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEditSyncWithBalance(true)}
+                                                                className={`p-3 rounded-xl border text-left transition-all ${
+                                                                    editSyncWithBalance
+                                                                        ? 'bg-black text-white dark:bg-white dark:text-black border-transparent font-semibold'
+                                                                        : 'glass-field text-foreground/80 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5'
+                                                                }`}
+                                                            >
+                                                                <div className="text-xs font-bold">
+                                                                    {lt(language, "Sincronizar con Balance", "Sync with Balance")}
+                                                                </div>
+                                                                <div className={`text-[10px] mt-0.5 ${editSyncWithBalance ? 'opacity-80' : 'text-muted-foreground'}`}>
+                                                                    {lt(language, "Usa el Balance General automáticamente", "Automatically reflects General Balance")}
+                                                                </div>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div>
+                                                <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">{t.descriptionLabel}</label>
+                                                <textarea
+                                                    value={editDescription}
+                                                    onChange={(e) => setEditDescription(e.target.value)}
+                                                    placeholder={t.descriptionPlaceholder}
+                                                    rows={3}
+                                                    className="w-full glass-field rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-colors resize-none"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <DatePicker
+                                                    label={t.targetDateLabel}
+                                                    value={editDate}
+                                                    onChange={setEditDate}
+                                                />
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 text-left">
+                                                        {t.inspirationPhotosLabel || pick(language, { es: "Imágenes", en: "Images", zh: "图片" })}
+                                                    </label>
+                                                    <label className="p-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 cursor-pointer transition-all">
+                                                        <Camera className="w-4 h-4" />
+                                                        <input type="file" className="hidden" accept="image/*" onChange={handleEditPhotoUpload} />
+                                                    </label>
+                                                </div>
+                                                {editPhotos.length > 0 && (
+                                                    <div className="grid grid-cols-1 gap-3 pt-1">
+                                                        {editPhotos.map((photo, i) => (
+                                                            <div key={i} className="relative w-full rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] flex items-center justify-center">
+                                                                <LocalImage src={photo} alt="" className="w-full max-h-56 h-auto object-contain" />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setEditPhotos(editPhotos.filter((_, idx) => idx !== i))}
+                                                                    className="absolute top-2 right-2 p-1.5 bg-black/65 rounded-full text-white hover:bg-red-500 transition-colors"
+                                                                >
+                                                                    <X className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <button
+                                                type="submit"
+                                                className="w-full py-4 bg-primary text-white font-bold rounded-2xl hover:opacity-90 transition-all shadow-lg shadow-primary/20 active:scale-[0.98]"
+                                            >
+                                                {pick(language, { es: "Guardar cambios", en: "Save changes", zh: "保存更改" })}
+                                            </button>
+                                        </form>
+                                    </div>
+                                </GlassSurface>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
 
             {/* Goal Completion Congratulations Modal */}
             {typeof document !== 'undefined' && createPortal(
