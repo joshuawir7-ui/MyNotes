@@ -37,6 +37,7 @@ import { useIsMobile } from "@/hooks/use-is-mobile"
 import { useIsMobileLandscape } from "@/lib/use-mobile-landscape"
 import { isIdle, whenIdle } from "@/lib/interaction-gate"
 import { timerEngine } from "@/lib/timer-engine"
+import { lt } from "@/lib/i18n-inline"
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -817,7 +818,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     }}
                 >
                     <CircleHelp className="w-3.5 h-3.5 text-primary animate-pulse" />
-                    <span>{language === 'es' ? 'Guía' : 'Guide'}</span>
+                    <span>{lt(language, 'Guía', 'Guide')}</span>
                 </button>
             )}
 
@@ -844,7 +845,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                         </p>
                                     )}
                                     <p className="text-[10px] text-zinc-400 dark:text-zinc-600 mt-8 animate-pulse tracking-wider">
-                                        {language === 'es' ? 'Toca la pantalla para omitir' : 'Tap screen to skip'}
+                                        {lt(language, 'Toca la pantalla para omitir', 'Tap screen to skip')}
                                     </p>
                                 </div>
                             </motion.div>
@@ -882,9 +883,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                         <div className="w-12 h-0.5 bg-primary/30 rounded-full" />
                                     </div>
                                     <p className="text-zinc-700 dark:text-zinc-300 text-sm font-semibold leading-relaxed mb-6">
-                                        {language === 'es'
-                                            ? "Bienvenido nuevo usuario, desarrollemos juntos tu mejor versión, primero queremos explicar cómo funciona la app"
-                                            : "Welcome new user, let's develop your best version together! First, we want to explain how the app works."}
+                                        {lt(language, "Bienvenido nuevo usuario, desarrollemos juntos tu mejor versión, primero queremos explicar cómo funciona la app", "Welcome new user, let's develop your best version together! First, we want to explain how the app works.")}
                                     </p>
                                     <button
                                         onClick={() => {
@@ -893,7 +892,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                         }}
                                         className="w-full py-3.5 bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/30 flex items-center justify-center gap-2 cursor-pointer"
                                     >
-                                        {language === 'es' ? "Crea tu primer hábito" : "Create your first habit"}
+                                        {lt(language, "Crea tu primer hábito", "Create your first habit")}
                                     </button>
                                 </motion.div>
                                 <TourArrow targetId={window.innerWidth < 768 ? "nav-item-tasks" : "nav-item-tasks-desktop"} startRef={welcomeModalRef} />

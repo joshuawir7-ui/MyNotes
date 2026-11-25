@@ -15,6 +15,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { CustomSelect } from "@/components/ui/custom-select"
 import { createPortal } from "react-dom"
 import { GlassSurface } from "@/components/ui/glass-surface"
+import { lt } from "@/lib/i18n-inline"
 
 export default function GoalsPage() {
     const language = useStore(state => state.language)
@@ -83,7 +84,7 @@ export default function GoalsPage() {
             syncWithBalance: hasBudget ? syncWithBalance : false
         })
 
-        showToast(language === 'es' ? "Meta creada correctamente" : "Goal created successfully", "success")
+        showToast(lt(language, "Meta creada correctamente", "Goal created successfully"), "success")
 
         // Reset form
         setTitle("")
@@ -206,8 +207,8 @@ export default function GoalsPage() {
                                                 <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">{t.goalType}</label>
                                                 <CustomSelect
                                                     options={[
-                                                        { label: t.typeManual || (language === 'es' ? "Progreso Manual" : "Manual Progress"), value: "general" },
-                                                        { label: t.typeChecklist || (language === 'es' ? "Cumplimiento de objetivos (Mini tareas)" : "By Objectives"), value: "checklist" }
+                                                        { label: t.typeManual || (lt(language, "Progreso Manual", "Manual Progress")), value: "general" },
+                                                        { label: t.typeChecklist || (lt(language, "Cumplimiento de objetivos (Mini tareas)", "By Objectives")), value: "checklist" }
                                                     ]}
                                                     value={type}
                                                     onChange={(val) => setType(val as GoalType)}
@@ -223,7 +224,7 @@ export default function GoalsPage() {
                                                     className="w-4 h-4 rounded text-primary focus:ring-primary border-white/10 bg-white/5 cursor-pointer accent-primary"
                                                 />
                                                 <label htmlFor="hasBudget" className="text-sm font-medium text-foreground select-none cursor-pointer">
-                                                    {language === 'es' ? "¿Establecer presupuesto / meta de ahorro?" : "Set budget / savings goal?"}
+                                                    {lt(language, "¿Establecer presupuesto / meta de ahorro?", "Set budget / savings goal?")}
                                                 </label>
                                             </div>
 
@@ -231,7 +232,7 @@ export default function GoalsPage() {
                                                 <div className="space-y-4 glass-card p-4 rounded-2xl animate-in fade-in slide-in-from-top-1 duration-250">
                                                     <div>
                                                         <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground/60 mb-2">
-                                                            {language === 'es' ? "Presupuesto Objetivo ($)" : "Target Budget ($)"}
+                                                            {lt(language, "Presupuesto Objetivo ($)", "Target Budget ($)")}
                                                         </label>
                                                         <input
                                                             required
@@ -246,7 +247,7 @@ export default function GoalsPage() {
 
                                                     <div className="space-y-2">
                                                         <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
-                                                            {language === 'es' ? "Origen del dinero" : "Money source"}
+                                                            {lt(language, "Origen del dinero", "Money source")}
                                                         </label>
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                             <button
@@ -259,10 +260,10 @@ export default function GoalsPage() {
                                                                 }`}
                                                             >
                                                                 <div className="text-xs font-bold">
-                                                                    {language === 'es' ? "Dinero reservado" : "Reserved money"}
+                                                                    {lt(language, "Dinero reservado", "Reserved money")}
                                                                 </div>
                                                                 <div className={`text-[10px] mt-0.5 ${!syncWithBalance ? 'opacity-80' : 'text-muted-foreground'}`}>
-                                                                    {language === 'es' ? "Separado del Balance (Añadir / Restar)" : "Separate from Balance (Add / Subtract)"}
+                                                                    {lt(language, "Separado del Balance (Añadir / Restar)", "Separate from Balance (Add / Subtract)")}
                                                                 </div>
                                                             </button>
                                                             <button
@@ -275,10 +276,10 @@ export default function GoalsPage() {
                                                                 }`}
                                                             >
                                                                 <div className="text-xs font-bold">
-                                                                    {language === 'es' ? "Sincronizar con Balance" : "Sync with Balance"}
+                                                                    {lt(language, "Sincronizar con Balance", "Sync with Balance")}
                                                                 </div>
                                                                 <div className={`text-[10px] mt-0.5 ${syncWithBalance ? 'opacity-80' : 'text-muted-foreground'}`}>
-                                                                    {language === 'es' ? "Usa el Balance General automáticamente" : "Automatically reflects General Balance"}
+                                                                    {lt(language, "Usa el Balance General automáticamente", "Automatically reflects General Balance")}
                                                                 </div>
                                                             </button>
                                                         </div>
@@ -354,7 +355,7 @@ export default function GoalsPage() {
                                                             onClick={handleAddObjective}
                                                             className="px-4 py-2 bg-primary/20 text-primary font-bold text-xs rounded-xl hover:bg-primary/30 transition-all active:scale-[0.98]"
                                                         >
-                                                            {language === 'es' ? "Añadir" : "Add"}
+                                                            {lt(language, "Añadir", "Add")}
                                                         </button>
                                                     </div>
                                                 </div>

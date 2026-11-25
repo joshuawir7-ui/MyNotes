@@ -9,6 +9,7 @@ import { CustomSelect } from "@/components/ui/custom-select"
 import { DatePicker } from "@/components/ui/date-picker"
 
 import { translations } from "@/lib/translations"
+import { lt } from "@/lib/i18n-inline"
 
 export default function SomedayPage() {
     const tasks = useStore(state => state.tasks)
@@ -52,7 +53,7 @@ export default function SomedayPage() {
                 completionTimes: [],
                 activeDays: isHabit ? [1, 2, 3, 4, 5, 6, 0] : undefined
             })
-            showToast(language === 'es' ? "Tarea programada" : "Task scheduled", "success")
+            showToast(lt(language, "Tarea programada", "Task scheduled"), "success")
         } else {
             addProject({
                 title,
@@ -60,7 +61,7 @@ export default function SomedayPage() {
                 status: 'Someday',
                 startDate: date
             })
-            showToast(language === 'es' ? "Proyecto planificado" : "Project planned", "success")
+            showToast(lt(language, "Proyecto planificado", "Project planned"), "success")
         }
         // Reset
         setTitle("")
@@ -107,10 +108,10 @@ export default function SomedayPage() {
 
                         <form onSubmit={handleCreate} className="flex flex-col lg:flex-row gap-4 items-end">
                             <div className="flex-1 w-full space-y-2">
-                                <label className="text-sm font-medium ml-1">{language === 'es' ? 'Título' : 'Title'}</label>
+                                <label className="text-sm font-medium ml-1">{lt(language, 'Título', 'Title')}</label>
                                 <input
                                     type="text"
-                                    placeholder={activeTab === 'task' ? (language === 'es' ? "ej: Aprender español" : "e.g., Learn Spanish") : (language === 'es' ? "ej: Renovación de cocina" : "e.g., Kitchen Renovations")}
+                                    placeholder={activeTab === 'task' ? (lt(language, "ej: Aprender español", "e.g., Learn Spanish")) : (lt(language, "ej: Renovación de cocina", "e.g., Kitchen Renovations"))}
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-primary/50 text-foreground placeholder-muted-foreground"
@@ -118,13 +119,13 @@ export default function SomedayPage() {
                             </div>
                             {activeTab === 'task' && (
                                 <div className="w-full lg:w-48 space-y-2">
-                                    <label className="text-sm font-medium ml-1">{language === 'es' ? 'Frecuencia' : 'Recurrence'}</label>
+                                    <label className="text-sm font-medium ml-1">{lt(language, 'Frecuencia', 'Recurrence')}</label>
                                     <CustomSelect
                                         options={[
-                                            { label: language === 'es' ? 'Una sola vez' : 'One-time', value: 'None' },
-                                            { label: language === 'es' ? 'Diario' : 'Daily', value: 'Daily' },
-                                            { label: language === 'es' ? 'Semanal' : 'Weekly', value: 'Weekly' },
-                                            { label: language === 'es' ? 'Mensual' : 'Monthly', value: 'Monthly' }
+                                            { label: lt(language, 'Una sola vez', 'One-time'), value: 'None' },
+                                            { label: lt(language, 'Diario', 'Daily'), value: 'Daily' },
+                                            { label: lt(language, 'Semanal', 'Weekly'), value: 'Weekly' },
+                                            { label: lt(language, 'Mensual', 'Monthly'), value: 'Monthly' }
                                         ]}
                                         value={recurrence}
                                         onChange={(val) => setRecurrence(val as any)}
@@ -217,8 +218,8 @@ export default function SomedayPage() {
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
                                                     <Calendar className="w-3 h-3" /> {t.isHabit
-                                                        ? (language === 'es' ? 'Comienza' : 'Starts')
-                                                        : (language === 'es' ? 'Vence' : 'Due')
+                                                        ? (lt(language, 'Comienza', 'Starts'))
+                                                        : (lt(language, 'Vence', 'Due'))
                                                     }: {t.dueDate}
                                                 </p>
                                             </div>

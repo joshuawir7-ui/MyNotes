@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { useStore, WidgetSync } from "@/lib/store"
 import { useEffect, useRef, useState } from "react"
+import { pick } from "@/lib/i18n-inline"
 import { LocalNotifications } from "@capacitor/local-notifications"
 import { Capacitor } from "@capacitor/core"
 import {
@@ -208,16 +209,18 @@ export function HabitNotificationToast() {
                             {/* Left content */}
                             <div className="flex flex-col flex-1 text-left min-w-0">
                                 <h3 className="font-dancing-n text-[28px] leading-none text-black dark:text-white tracking-wide">
-                                    {isEs ? "notificaciones" : "notifications"}
+                                    {pick(language, { es: "notificaciones", en: "notifications", zh: "通知" })}
                                 </h3>
                                 <div className="h-[1px] w-full bg-black/80 dark:bg-white/60 mt-1.5 mb-2.5" />
                                 <p className="text-black/85 dark:text-white/85 text-[13px] leading-snug font-normal">
-                                    {isEs
-                                        ? "¿Le gustaría recibir recordatorios de eventos y hábitos?, incluso completar hábitos sin abrir la app"
-                                        : "Would you like to receive reminders for events and habits?, even complete habits without opening the app"}
+                                    {pick(language, {
+                                        es: "¿Le gustaría recibir recordatorios de eventos y hábitos?, incluso completar hábitos sin abrir la app",
+                                        en: "Would you like to receive reminders for events and habits?, even complete habits without opening the app",
+                                        zh: "您想接收事件和习惯的提醒吗？甚至无需打开应用即可完成习惯",
+                                    })}
                                 </p>
                                 <p className="text-black dark:text-white text-[13px] font-bold mt-1.5">
-                                    {isEs ? "Active las notificaciones de Mynotes" : "Enable Mynotes notifications"}
+                                    {pick(language, { es: "Active las notificaciones de Mynotes", en: "Enable Mynotes notifications", zh: "开启 Mynotes 通知" })}
                                 </p>
                             </div>
 

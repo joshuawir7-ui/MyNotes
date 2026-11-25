@@ -6,6 +6,7 @@ import { useStore } from "@/lib/store"
 import { useShallow } from 'zustand/react/shallow'
 import { translations } from "@/lib/translations"
 import { motion } from "framer-motion"
+import { lt } from "@/lib/i18n-inline"
 
 const CustomTooltip = ({ active, payload }: any) => {
     const language = useStore(state => state.language);
@@ -16,7 +17,7 @@ const CustomTooltip = ({ active, payload }: any) => {
                 <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]" />
                     <p className="text-sm font-bold text-foreground">
-                        {payload[0].value} <span className="text-muted-foreground font-medium text-xs">{language === 'es' ? 'tareas' : 'tasks'}</span>
+                        {payload[0].value} <span className="text-muted-foreground font-medium text-xs">{lt(language, 'tareas', 'tasks')}</span>
                     </p>
                 </div>
             </div>

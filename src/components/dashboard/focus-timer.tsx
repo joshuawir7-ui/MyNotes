@@ -9,6 +9,7 @@ import { togglePictureInPicture, isPipActive } from "@/lib/pip-timer"
 import { Capacitor } from "@capacitor/core"
 import { useStore } from "@/lib/store"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
+import { lt } from "@/lib/i18n-inline"
 
 interface FocusTimerProps {
     onClose?: () => void
@@ -100,9 +101,7 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
             await timerEngine.setBubbleMode('outside')
             await timerEngine.showBubble()
             showToast(
-                language === 'es'
-                    ? "Burbuja flotante activada: aparecerá en tu pantalla cuando salgas de la aplicación."
-                    : "Floating bubble activated: will appear on your screen when you exit the app.",
+                lt(language, "Burbuja flotante activada: aparecerá en tu pantalla cuando salgas de la aplicación.", "Floating bubble activated: will appear on your screen when you exit the app."),
                 "success"
             )
         } else {
@@ -116,16 +115,12 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
             await timerEngine.setBubbleMode('outside')
             setShowOverlayModal(false)
             showToast(
-                language === 'es'
-                    ? "¡Permiso concedido! La burbuja flotante aparecerá al salir de la app."
-                    : "Permission granted! Floating bubble will appear when you leave the app.",
+                lt(language, "¡Permiso concedido! La burbuja flotante aparecerá al salir de la app.", "Permission granted! Floating bubble will appear when you leave the app."),
                 "success"
             )
         } else {
             showToast(
-                language === 'es'
-                    ? "Permiso aún no detectado. Asegúrate de activarlo en los Ajustes."
-                    : "Permission not yet granted. Please make sure to enable it in Settings.",
+                lt(language, "Permiso aún no detectado. Asegúrate de activarlo en los Ajustes.", "Permission not yet granted. Please make sure to enable it in Settings."),
                 "warning"
             )
         }
@@ -428,30 +423,26 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                                 </div>
                                 <div>
                                     <h3 className="text-base font-bold text-foreground">
-                                        {language === 'es' ? "Activar Reloj Flotante" : "Enable Floating Timer"}
+                                        {lt(language, "Activar Reloj Flotante", "Enable Floating Timer")}
                                     </h3>
                                     <p className="text-[11px] text-muted-foreground">
-                                        {language === 'es' ? "Burbuja flotante fuera de la app" : "Floating bubble outside app"}
+                                        {lt(language, "Burbuja flotante fuera de la app", "Floating bubble outside app")}
                                     </p>
                                 </div>
                             </div>
 
                             <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                                {language === 'es'
-                                    ? "Para que el temporizador siga visible como una burbuja flotante al salir a la pantalla de inicio o usar otras apps, Android requiere conceder el permiso de superposición."
-                                    : "To keep the timer visible as a floating bubble when you switch apps or go to your home screen, Android requires the overlay permission."}
+                                {lt(language, "Para que el temporizador siga visible como una burbuja flotante al salir a la pantalla de inicio o usar otras apps, Android requiere conceder el permiso de superposición.", "To keep the timer visible as a floating bubble when you switch apps or go to your home screen, Android requires the overlay permission.")}
                             </p>
 
                             {isXiaomi && (
                                 <div className="p-3 mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[11px] leading-snug space-y-1.5">
                                     <div className="font-bold flex items-center gap-1.5">
                                         <ShieldAlert className="w-4 h-4 shrink-0" />
-                                        <span>{language === 'es' ? "Dispositivo Xiaomi / HyperOS detectado" : "Xiaomi / HyperOS detected"}</span>
+                                        <span>{lt(language, "Dispositivo Xiaomi / HyperOS detectado", "Xiaomi / HyperOS detected")}</span>
                                     </div>
                                     <p>
-                                        {language === 'es'
-                                            ? "Xiaomi requiere 2 permisos: 1) 'Mostrar sobre otras apps' y 2) 'Mostrar ventanas emergentes mientras se ejecuta en segundo plano'."
-                                            : "Xiaomi requires 2 permissions: 1) 'Display over other apps' and 2) 'Display pop-up windows while running in background'."}
+                                        {lt(language, "Xiaomi requiere 2 permisos: 1) 'Mostrar sobre otras apps' y 2) 'Mostrar ventanas emergentes mientras se ejecuta en segundo plano'.", "Xiaomi requires 2 permissions: 1) 'Display over other apps' and 2) 'Display pop-up windows while running in background'.")}
                                     </p>
                                 </div>
                             )}
@@ -462,7 +453,7 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                                     onClick={() => timerEngine.requestOverlayPermission()}
                                     className="w-full py-2.5 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:opacity-90 active:scale-98 transition-all shadow-md text-center"
                                 >
-                                    {language === 'es' ? "1. Conceder 'Mostrar sobre otras apps'" : "1. Grant 'Display over other apps'"}
+                                    {lt(language, "1. Conceder 'Mostrar sobre otras apps'", "1. Grant 'Display over other apps'")}
                                 </button>
 
                                 {isXiaomi && (
@@ -471,7 +462,7 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                                         onClick={() => timerEngine.openMiuiPermissions()}
                                         className="w-full py-2.5 px-4 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/30 text-xs font-bold active:scale-98 transition-all text-center"
                                     >
-                                        {language === 'es' ? "2. Conceder 'Ventanas emergentes en 2° plano' (Xiaomi)" : "2. Grant 'Pop-ups in background' (Xiaomi)"}
+                                        {lt(language, "2. Conceder 'Ventanas emergentes en 2° plano' (Xiaomi)", "2. Grant 'Pop-ups in background' (Xiaomi)")}
                                     </button>
                                 )}
 
@@ -481,7 +472,7 @@ export function FocusTimer({ onClose, showCloseButton = true }: FocusTimerProps)
                                     className="w-full py-2 px-4 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-foreground text-xs font-semibold active:scale-98 transition-all flex items-center justify-center gap-1.5 mt-1"
                                 >
                                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                                    <span>{language === 'es' ? "Ya concedí los permisos" : "I already granted permissions"}</span>
+                                    <span>{lt(language, "Ya concedí los permisos", "I already granted permissions")}</span>
                                 </button>
                             </div>
                         </motion.div>

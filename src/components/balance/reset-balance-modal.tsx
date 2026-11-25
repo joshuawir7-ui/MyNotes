@@ -3,6 +3,7 @@
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useDeferredBlur } from '@/hooks/use-deferred-blur'
+import { lt } from "@/lib/i18n-inline"
 
 interface ResetBalanceModalProps {
     isOpen: boolean
@@ -59,7 +60,7 @@ export function ResetBalanceModal({
 
                         {/* Title in Dancing Script font */}
                         <h3 className="font-dancing text-lg sm:text-xl font-bold text-black dark:text-white mb-2.5 leading-tight">
-                            {language === 'es' ? '¿Reiniciar Balance?' : 'Reset balance?'}
+                            {lt(language, '¿Reiniciar Balance?', 'Reset balance?')}
                         </h3>
 
                         {/* Body Text */}
@@ -92,14 +93,14 @@ export function ResetBalanceModal({
                                 onClick={onClose}
                                 className="w-[170px] sm:w-[190px] py-2.5 rounded-xl bg-[#D9D9D9] dark:bg-[#3A3A3A] text-white font-bold text-sm sm:text-base hover:opacity-90 active:scale-95 transition-all shadow-sm cursor-pointer"
                             >
-                                {language === 'es' ? 'Cancelar' : 'Cancel'}
+                                {lt(language, 'Cancelar', 'Cancel')}
                             </button>
                             <button
                                 type="button"
                                 onClick={onConfirm}
                                 className="w-[170px] sm:w-[190px] py-2.5 rounded-xl bg-[#3A3A3A] dark:bg-[#D9D9D9] text-white dark:text-[#18181b] font-bold text-sm sm:text-base hover:opacity-90 active:scale-95 transition-all shadow-sm cursor-pointer"
                             >
-                                {language === 'es' ? 'Reiniciar' : 'Reset'}
+                                {lt(language, 'Reiniciar', 'Reset')}
                             </button>
                         </div>
                     </motion.div>

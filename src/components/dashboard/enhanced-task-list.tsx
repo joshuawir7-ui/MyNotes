@@ -3,6 +3,7 @@ import { translations } from "@/lib/translations"
 import { CheckCircle2, Circle, Repeat, Battery, BatteryMedium, BatteryLow, Calendar, Edit2, Trash2 } from "lucide-react"
 import { useState, useEffect, useRef, useMemo } from "react"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
+import { lt } from "@/lib/i18n-inline"
 
 export function EnhancedTaskList() {
     const tasks = useStore(state => state.tasks)
@@ -131,7 +132,7 @@ export function EnhancedTaskList() {
                                                     onBlur={() => {
                                                         if (editValue.trim() && editValue !== task.title) {
                                                             updateTask(task.id, { title: editValue })
-                                                            showToast(language === 'es' ? "Tarea actualizada" : "Task updated", "success")
+                                                            showToast(lt(language, "Tarea actualizada", "Task updated"), "success")
                                                         }
                                                         setEditingId(null)
                                                     }}
@@ -139,7 +140,7 @@ export function EnhancedTaskList() {
                                                         if (e.key === 'Enter') {
                                                             if (editValue.trim() && editValue !== task.title) {
                                                                 updateTask(task.id, { title: editValue })
-                                                                showToast(language === 'es' ? "Tarea actualizada" : "Task updated", "success")
+                                                                showToast(lt(language, "Tarea actualizada", "Task updated"), "success")
                                                             }
                                                             setEditingId(null)
                                                         }
@@ -219,7 +220,7 @@ export function EnhancedTaskList() {
                                             </div>
                                             {!isTodayActive && (
                                                 <span className="text-[7px] bg-zinc-500/20 text-zinc-400 px-1 py-0.5 rounded uppercase font-black tracking-wider">
-                                                    {language === 'es' ? 'Inactivo hoy' : 'Inactive today'}
+                                                    {lt(language, 'Inactivo hoy', 'Inactive today')}
                                                 </span>
                                             )}
                                         </div>
@@ -309,12 +310,12 @@ export function EnhancedTaskList() {
                 onConfirm={() => {
                     if (taskToDelete) {
                         deleteTask(taskToDelete)
-                        showToast(language === 'es' ? "Tarea eliminada" : "Task deleted", "info")
+                        showToast(lt(language, "Tarea eliminada", "Task deleted"), "info")
                     }
                     setTaskToDelete(null)
                 }}
-                title={language === 'es' ? '¿Eliminar esta tarea?' : 'Delete this task?'}
-                message={language === 'es' ? 'Esta acción no se puede deshacer.' : 'This action cannot be undone.'}
+                title={lt(language, '¿Eliminar esta tarea?', 'Delete this task?')}
+                message={lt(language, 'Esta acción no se puede deshacer.', 'This action cannot be undone.')}
             />
         </div>
     )

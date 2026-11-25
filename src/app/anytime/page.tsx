@@ -11,6 +11,7 @@ import { MobileContextMenu } from "@/components/ui/mobile-context-menu"
 
 import { useState, useEffect, useMemo } from "react"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
+import { lt } from "@/lib/i18n-inline"
 
 export default function AnytimePage() {
     const language = useStore(state => state.language)
@@ -80,12 +81,12 @@ export default function AnytimePage() {
             itemsByDate[dateStr] = []
 
             if (dateStr === todayStr) {
-                dateLabels[dateStr] = language === 'es' ? 'Hoy' : 'Today'
+                dateLabels[dateStr] = lt(language, 'Hoy', 'Today')
             } else if (dateStr === yesterdayStr) {
-                dateLabels[dateStr] = language === 'es' ? 'Ayer' : 'Yesterday'
+                dateLabels[dateStr] = lt(language, 'Ayer', 'Yesterday')
             } else {
                 const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'short' }
-                let label = d.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', options)
+                let label = d.toLocaleDateString(lt(language, 'es-ES', 'en-US'), options)
                 label = label.charAt(0).toUpperCase() + label.slice(1)
                 dateLabels[dateStr] = label
             }
@@ -267,7 +268,7 @@ export default function AnytimePage() {
                         >
                             <div className="pt-2 space-y-3">
                                 <h2 className="text-2xl font-medium tracking-tight text-foreground">
-                                    {language === 'es' ? "Grupo de tareas completado" : "Task group completed"}
+                                    {lt(language, "Grupo de tareas completado", "Task group completed")}
                                 </h2>
                                 <div className="py-2 px-4 bg-white/5 rounded-xl border border-white/10 inline-block">
                                     <span className="text-lg font-bold text-foreground">"{celebration.title}"</span>
@@ -281,7 +282,7 @@ export default function AnytimePage() {
                                 onClick={clearCelebration}
                                 className="w-full py-3 bg-white/10 hover:bg-white/20 text-foreground rounded-xl font-medium transition-all"
                             >
-                                {language === 'es' ? "Cerrar" : "Close"}
+                                {lt(language, "Cerrar", "Close")}
                             </button>
                         </motion.div>
                     </div>
@@ -314,10 +315,10 @@ export default function AnytimePage() {
 
                             <h3 className="text-2xl font-black mb-1 flex items-center gap-2">
                                 <History className="w-6 h-6 text-primary" />
-                                {language === 'es' ? 'Historial de Hábitos' : 'Habits History'}
+                                {lt(language, 'Historial de Hábitos', 'Habits History')}
                             </h3>
                             <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold mb-6">
-                                {language === 'es' ? 'Últimos 7 días' : 'Last 7 days'}
+                                {lt(language, 'Últimos 7 días', 'Last 7 days')}
                             </p>
 
                             <div className="flex-1 overflow-y-auto pr-1 space-y-6 custom-scrollbar">
@@ -325,7 +326,7 @@ export default function AnytimePage() {
                                     <div className="py-12 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl opacity-40">
                                         <History className="w-8 h-8 mb-2" />
                                         <p className="text-xs font-bold uppercase tracking-widest">
-                                            {language === 'es' ? 'No hay hábitos completados' : 'No completed habits'}
+                                            {lt(language, 'No hay hábitos completados', 'No completed habits')}
                                         </p>
                                     </div>
                                 ) : (
@@ -359,7 +360,7 @@ export default function AnytimePage() {
                                 onClick={() => setShowHistoryModal(false)}
                                 className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-foreground font-bold rounded-2xl mt-6 transition-all"
                             >
-                                {language === 'es' ? 'Cerrar' : 'Close'}
+                                {lt(language, 'Cerrar', 'Close')}
                             </button>
                         </motion.div>
                     </div>
@@ -380,13 +381,13 @@ export default function AnytimePage() {
                             <button
                                 onClick={() => setShowHistoryModal(true)}
                                 className="flex flex-col items-center justify-center p-3 w-full md:w-28 h-24 bg-white/5 hover:bg-white/10 dark:bg-black/20 dark:hover:bg-black/30 border border-white/10 hover:border-primary/30 rounded-2xl transition-all duration-300 group shadow-lg cursor-pointer"
-                                title={language === 'es' ? 'Ver historial de hábitos' : 'View habits history'}
+                                title={lt(language, 'Ver historial de hábitos', 'View habits history')}
                             >
                                 <div className="p-2 rounded-xl bg-primary/10 text-primary group-hover:scale-110 transition-transform duration-300">
                                     <History className="w-5 h-5" />
                                 </div>
                                 <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mt-2">
-                                    {language === 'es' ? 'Historial' : 'History'}
+                                    {lt(language, 'Historial', 'History')}
                                 </span>
                             </button>
 
@@ -398,15 +399,15 @@ export default function AnytimePage() {
                                     <Star className="w-3.5 h-3.5 fill-yellow-500" />
                                 </div>
                                 <span className="text-[9px] font-black uppercase tracking-wider text-yellow-500 mb-1">
-                                    {language === 'es' ? 'Favorito' : 'Favorite'}
+                                    {lt(language, 'Favorito', 'Favorite')}
                                 </span>
                                 <span className="font-bold text-xs text-foreground text-center line-clamp-1 px-1 w-full" title={favoriteHabit ? favoriteHabit.title : ''}>
-                                    {favoriteHabit ? favoriteHabit.title : (language === 'es' ? 'Ninguno' : 'None')}
+                                    {favoriteHabit ? favoriteHabit.title : (lt(language, 'Ninguno', 'None'))}
                                 </span>
                                 <span className="text-[9px] text-muted-foreground mt-1 font-medium">
                                     {favoriteHabit
-                                        ? `${favoriteHabit.completedDates?.length || 0} ${language === 'es' ? 'completados' : 'completed'}`
-                                        : (language === 'es' ? 'Sin datos' : 'No data')}
+                                        ? `${favoriteHabit.completedDates?.length || 0} ${lt(language, 'completados', 'completed')}`
+                                        : (lt(language, 'Sin datos', 'No data'))}
                                 </span>
                             </div>
 
@@ -418,15 +419,15 @@ export default function AnytimePage() {
                                     <AlertTriangle className="w-3.5 h-3.5 fill-red-500/10" />
                                 </div>
                                 <span className="text-[9px] font-black uppercase tracking-wider text-red-400 mb-1">
-                                    {language === 'es' ? 'Más cuesta' : 'Hardest'}
+                                    {lt(language, 'Más cuesta', 'Hardest')}
                                 </span>
                                 <span className="font-bold text-xs text-foreground text-center line-clamp-1 px-1 w-full" title={hardestHabit ? hardestHabit.title : ''}>
-                                    {hardestHabit ? hardestHabit.title : (language === 'es' ? 'Ninguno' : 'None')}
+                                    {hardestHabit ? hardestHabit.title : (lt(language, 'Ninguno', 'None'))}
                                 </span>
                                 <span className="text-[9px] text-muted-foreground mt-1 font-medium">
                                     {hardestHabit
-                                        ? `${hardestHabit.missed || 0} ${language === 'es' ? 'perdidos' : 'missed'}`
-                                        : (language === 'es' ? 'Sin datos' : 'No data')}
+                                        ? `${hardestHabit.missed || 0} ${lt(language, 'perdidos', 'missed')}`
+                                        : (lt(language, 'Sin datos', 'No data'))}
                                 </span>
                             </div>
                         </div>
@@ -497,7 +498,7 @@ export default function AnytimePage() {
                                         <button
                                             onClick={() => {
                                                 resetHabitStats(habit.id);
-                                                showToast(language === 'es' ? "Estadísticas reiniciadas" : "Stats reset", "success");
+                                                showToast(lt(language, "Estadísticas reiniciadas", "Stats reset"), "success");
                                             }}
                                             className="p-2 aspect-square rounded-xl bg-white/5 hover:bg-red-500/20 text-muted-foreground hover:text-red-500 transition-colors flex items-center justify-center"
                                             title="Reiniciar estadísticas"
@@ -517,7 +518,7 @@ export default function AnytimePage() {
                         <div className="space-y-6">
                             <h2 className="text-2xl font-bold flex items-center gap-3">
                                 <Layers className="w-6 h-6 text-indigo-500" />
-                                {language === 'es' ? "Grupos de Tareas" : "Task Groups"}
+                                {lt(language, "Grupos de Tareas", "Task Groups")}
                             </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {!isMounted ? (
@@ -600,7 +601,7 @@ export default function AnytimePage() {
                                                                     title={task.title}
                                                                     onDelete={() => {
                                                                         deleteTaskFromGroup(group.id, task.id);
-                                                                        showToast(language === 'es' ? "Tarea eliminada" : "Task deleted", "info");
+                                                                        showToast(lt(language, "Tarea eliminada", "Task deleted"), "info");
                                                                     }}
                                                                 >
                                                                     <div

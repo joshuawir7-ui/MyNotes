@@ -12,6 +12,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { translations } from "@/lib/translations"
 import { DatePicker } from "@/components/ui/date-picker"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
+import { lt } from "@/lib/i18n-inline"
 
 export function GoalCard({ goal }: { goal: Goal }) {
     const updateGoal = useStore(state => state.updateGoal)
@@ -62,7 +63,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                 const { saveBase64ImageToFile } = await import('@/lib/image-utils');
                 const uri = await saveBase64ImageToFile(base64);
                 addGoalPhoto(goal.id, uri || base64)
-                showToast(language === 'es' ? "Foto de inspiración agregada" : "Inspiration photo added", "success")
+                showToast(lt(language, "Foto de inspiración agregada", "Inspiration photo added"), "success")
             }
             reader.readAsDataURL(file)
         }
@@ -70,7 +71,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
 
     const handleProgressUpdate = () => {
         updateGoal(goal.id, { progress: localProgress })
-        showToast(language === 'es' ? "Progreso de la meta actualizado" : "Goal progress updated", "success")
+        showToast(lt(language, "Progreso de la meta actualizado", "Goal progress updated"), "success")
     }
 
     const [newObjective, setNewObjective] = useState("")
@@ -256,9 +257,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
             reports: [...(goal.reports || []), autoReport]
         })
         showToast(
-            language === 'es'
-                ? "Presupuesto reiniciado con éxito"
-                : "Budget reset successfully",
+            lt(language, "Presupuesto reiniciado con éxito", "Budget reset successfully"),
             "success"
         )
     }
@@ -267,7 +266,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
         if (!goal.reports) return
         const updatedReports = goal.reports.filter(r => r.id !== reportId)
         updateGoal(goal.id, { reports: updatedReports })
-        showToast(language === 'es' ? "Reporte eliminado" : "Progress report deleted", "info")
+        showToast(lt(language, "Reporte eliminado", "Progress report deleted"), "info")
     }
 
     const handleAddReport = (e: React.FormEvent) => {
@@ -289,7 +288,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
         updateGoal(goal.id, { reports: updatedReports })
         setReportNote("")
         setIsReportsOpen(false)
-        showToast(language === 'es' ? "Reporte guardado en la bitácora" : "Progress report saved", "success")
+        showToast(lt(language, "Reporte guardado en la bitácora", "Progress report saved"), "success")
     }
 
     return (
@@ -342,7 +341,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                         whileTap={{ scale: 0.9, rotate: -3 }}
                         onClick={() => setIsDeleting(true)}
                         className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded-full transition-all"
-                        title={language === 'es' ? "Eliminar meta" : "Delete goal"}
+                        title={lt(language, "Eliminar meta", "Delete goal")}
                     >
                         <Trash2 className="w-4 h-4" />
                     </motion.button>
@@ -354,10 +353,10 @@ export function GoalCard({ goal }: { goal: Goal }) {
                 onClose={() => setIsDeleting(false)}
                 onConfirm={() => {
                     deleteGoal(goal.id)
-                    showToast(language === 'es' ? "Meta eliminada" : "Goal deleted", "info")
+                    showToast(lt(language, "Meta eliminada", "Goal deleted"), "info")
                 }}
                 title={common.confirmDelete || "¿Eliminar esta meta?"}
-                message={language === 'es' ? "Esta acción es irreversible." : "This action is irreversible."}
+                message={lt(language, "Esta acción es irreversible.", "This action is irreversible.")}
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
@@ -411,11 +410,11 @@ export function GoalCard({ goal }: { goal: Goal }) {
                         <div className="flex justify-between items-center px-1 gap-2">
                             <div className="flex flex-col">
                                 <span className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
-                                    {language === 'es' ? "Presupuesto" : "Budget"}
+                                    {lt(language, "Presupuesto", "Budget")}
                                 </span>
                                 {goal.syncWithBalance && (
                                     <span className="text-[10px] font-semibold text-primary/80 mt-0.5">
-                                        {language === 'es' ? "Sincronizado con Balance" : "Synced with Balance"}
+                                        {lt(language, "Sincronizado con Balance", "Synced with Balance")}
                                     </span>
                                 )}
                             </div>
@@ -426,7 +425,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                                         type="button"
                                         onClick={() => setIsResetConfirmOpen(true)}
                                         className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-muted-foreground hover:text-primary transition-all active:scale-95 flex items-center justify-center"
-                                        title={language === 'es' ? "Reiniciar presupuesto" : "Reset budget"}
+                                        title={lt(language, "Reiniciar presupuesto", "Reset budget")}
                                     >
                                         <RotateCcw className="w-3.5 h-3.5" />
                                     </button>
@@ -438,7 +437,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                         {!goal.syncWithBalance && (
                             <div className="flex flex-col items-center gap-1.5 mt-1 max-w-xs mx-auto w-full">
                                 <span className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 text-center">
-                                    {language === 'es' ? "Monto" : "Amount"}
+                                    {lt(language, "Monto", "Amount")}
                                 </span>
                                 <input
                                     type="text"
@@ -461,14 +460,14 @@ export function GoalCard({ goal }: { goal: Goal }) {
                                         onClick={() => handleUpdateMoney('add')}
                                         className="flex-1 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 font-bold text-xs rounded-xl transition-all active:scale-[0.98] text-center"
                                     >
-                                        {language === 'es' ? "Añadir" : "Add"}
+                                        {lt(language, "Añadir", "Add")}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => handleUpdateMoney('subtract')}
                                         className="flex-1 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 dark:text-red-400 font-bold text-xs rounded-xl transition-all active:scale-[0.98] text-center"
                                     >
-                                        {language === 'es' ? "Restar" : "Subtract"}
+                                        {lt(language, "Restar", "Subtract")}
                                     </button>
                                 </div>
                             </div>
@@ -538,7 +537,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                         </div>
                     ) : (
                         <p className="text-xs text-muted-foreground/60 italic text-left">
-                            {language === 'es' ? "No hay objetivos creados." : "No objectives created."}
+                            {lt(language, "No hay objetivos creados.", "No objectives created.")}
                         </p>
                     )}
 
@@ -583,7 +582,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                                 onClick={handleAddObjectiveCard}
                                 className="flex-1 py-2 bg-primary/20 text-primary font-bold text-xs rounded-xl hover:bg-primary/30 transition-all active:scale-[0.98] text-center"
                             >
-                                {language === 'es' ? "Añadir" : "Add"}
+                                {lt(language, "Añadir", "Add")}
                             </button>
                         </div>
                     </div>
@@ -602,7 +601,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                     <button
                         onClick={() => setIsReportsOpen(!isReportsOpen)}
                         className="flex items-center gap-1.5 px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs rounded-xl transition-all"
-                        title={language === 'es' ? "Añadir Avance / Reporte" : "Add Progress Report"}
+                        title={lt(language, "Añadir Avance / Reporte", "Add Progress Report")}
                     >
                         <Plus className="w-3.5 h-3.5" />
                         <FileText className="w-4 h-4" />
@@ -625,7 +624,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
 
                         <div className="space-y-2">
                             <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground/60 text-left">
-                                {language === 'es' ? "Detalles del Avance" : "Progress Details"}
+                                {lt(language, "Detalles del Avance", "Progress Details")}
                             </label>
                             <textarea
                                 required
@@ -654,7 +653,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                             .map((rep) => {
                                 const repDate = new Date(rep.date + 'T00:00:00');
                                 const formattedDate = repDate.toLocaleDateString(
-                                    language === 'es' ? 'es-ES' : 'en-US',
+                                    lt(language, 'es-ES', 'en-US'),
                                     { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }
                                 );
 
@@ -719,10 +718,10 @@ export function GoalCard({ goal }: { goal: Goal }) {
                 isOpen={isResetConfirmOpen}
                 onClose={() => setIsResetConfirmOpen(false)}
                 onConfirm={handleResetBudget}
-                title={language === 'es' ? "¿Reiniciar presupuesto?" : "Reset budget?"}
-                message={language === 'es' ? "Esto restablecerá tu saldo actual a $0.00. Los reportes de avance no se decolarán ni eliminarán." : "This will reset your current balance to $0.00. Progress reports will not be deleted."}
-                confirmLabel={language === 'es' ? "Reiniciar" : "Reset"}
-                cancelLabel={language === 'es' ? "Cancelar" : "Cancel"}
+                title={lt(language, "¿Reiniciar presupuesto?", "Reset budget?")}
+                message={lt(language, "Esto restablecerá tu saldo actual a $0.00. Los reportes de avance no se decolarán ni eliminarán.", "This will reset your current balance to $0.00. Progress reports will not be deleted.")}
+                confirmLabel={lt(language, "Reiniciar", "Reset")}
+                cancelLabel={lt(language, "Cancelar", "Cancel")}
                 variant="danger"
             />
 
@@ -756,20 +755,18 @@ export function GoalCard({ goal }: { goal: Goal }) {
                                 </div>
 
                                 <h3 className="font-dancing-n text-3xl text-black dark:text-white mb-2">
-                                    {language === 'es' ? "¡Meta Completada!" : "Goal Completed!"}
+                                    {lt(language, "¡Meta Completada!", "Goal Completed!")}
                                 </h3>
                                 <p className="text-sm font-bold text-foreground mb-1">{goal.title}</p>
                                 <p className="text-xs text-muted-foreground mb-6">
-                                    {language === 'es'
-                                        ? "Tu constancia y disciplina dieron frutos. ¡Sigue avanzando!"
-                                        : "Your consistency and discipline paid off. Keep going!"}
+                                    {lt(language, "Tu constancia y disciplina dieron frutos. ¡Sigue avanzando!", "Your consistency and discipline paid off. Keep going!")}
                                 </p>
                                 <button
                                     type="button"
                                     onClick={() => setShowCongratsModal(false)}
                                     className="w-full py-3 rounded-2xl bg-black text-white dark:bg-white dark:text-black font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all"
                                 >
-                                    {language === 'es' ? "Continuar" : "Continue"}
+                                    {lt(language, "Continuar", "Continue")}
                                 </button>
                             </motion.div>
                         </div>

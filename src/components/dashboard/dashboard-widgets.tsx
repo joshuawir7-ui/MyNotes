@@ -8,6 +8,7 @@ import { translations } from "@/lib/translations";
 import { Calendar, StickyNote, Plus, Clock, History, Target, Check } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
 import { useDeferredBlur } from "@/hooks/use-deferred-blur";
+import { lt } from "@/lib/i18n-inline"
 
 // Read-only block renderer for dashboard
 function NotePreviewRenderer({ note, isPinned = false }: { note: Note; isPinned?: boolean }) {
@@ -345,7 +346,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
                                 {upcomingEvents.length > 0 ? (
                                     upcomingEvents.map(evt => {
                                         const evtDate = new Date(evt.date);
-                                        const dateStr = evtDate.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short' });
+                                        const dateStr = evtDate.toLocaleDateString(lt(language, 'es-ES', 'en-US'), { day: 'numeric', month: 'short' });
                                         return (
                                             <div key={evt.id} className="flex flex-col py-2 border-b border-white/5 last:border-0 group gap-1 w-full">
                                                 <div className="flex items-start gap-1.5 md:gap-3 w-full">
@@ -410,7 +411,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
             <div className="glass-panel p-4 md:p-5 rounded-3xl w-full border border-white/5 flex flex-col items-center bg-background/40">
                 <div className="w-full flex items-center justify-center mb-4">
                     <h3 className="font-bold text-sm md:text-base capitalize text-foreground/90">
-                        {todayDate.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { month: 'long', year: 'numeric' })}
+                        {todayDate.toLocaleDateString(lt(language, 'es-ES', 'en-US'), { month: 'long', year: 'numeric' })}
                     </h3>
                 </div>
                 <div className="grid grid-cols-7 w-full gap-1 md:gap-2 mb-2">

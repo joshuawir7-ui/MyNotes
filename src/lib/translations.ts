@@ -1,4 +1,4 @@
-export const translations = {
+const rawTranslations = {
     en: {
         nav: {
             goals: "Goals",
@@ -454,59 +454,144 @@ export const translations = {
         common: { language: "Idioma", theme: "Tema", add: "Agregar", cancel: "Cancelar", save: "Guardar", saving: "Guardando...", saved: "¡Guardado!", delete: "Eliminar", placeholder: "Agregar nueva tarea...", addTask: "Agregar Tarea", confirmDelete: "¿Estás seguro de que quieres eliminar esto?", noRepeat: "Sin Repetición", energy: "Energía {level}", energyLevels: { high: "Alta", medium: "Media", low: "Baja" }, recurrence: { none: "Ninguna", daily: "Diaria", weekly: "Semanal", monthly: "Mensual", once: "Una vez" }, days: { mon: "Lun", tue: "Mar", wed: "Mié", thu: "Jue", fri: "Vie", sat: "Sáb", sun: "Dom", thursdayFull: "Jueves" } }
     },
     zh: {
-        nav: { goals: "目标", today: "今天", tasks: "习惯 / 任务", calendar: "日历", anytime: "随时", someday: "将来", notes: "笔记", projects: "项目", newProject: "项目名称...", shortcuts: "快捷键 (1-9)", balance: "收支平衡" },
+        nav: {
+            goals: "目标",
+            today: "今天",
+            tasks: "习惯 / 任务",
+            calendar: "日历",
+            anytime: "随时",
+            someday: "将来",
+            notes: "笔记",
+            projects: "项目",
+            newProject: "项目名称...",
+            shortcuts: "快捷键 (1-9)",
+            balance: "收支平衡"
+        },
+        settings: "设置",
+        notifications: "通知",
+        notificationsDesc: "提醒和习惯",
+        theme: "主题",
+        language: "语言",
+        cloudSync: "云同步",
+        googleLogin: "使用 Google 登录",
+        demoLogin: "测试登录（演示）",
+        googleLogout: "退出登录",
+        syncNow: "立即同步",
+        restoreFromCloud: "从云端恢复",
+        lastSync: "上次备份：{date}",
+        syncSuccess: "同步完成",
+        restoreSuccess: "数据恢复成功",
         pages: {
-            balance: { onboarding: {
-                step1: {
-                    title: "YOUR MONEY IS IMPORTANT",
-                    body: "\"He who carries his own bucket values every drop spilled\" in <b>balance</b> you can manage your money yourself...",
-                    ctaLearn: "I want to know how it works",
-                    ctaDismiss: "Okay"
+            goals: {
+                title: "目标",
+                description: "定义并追踪您的长期目标。",
+                newGoal: "新目标",
+                newGoalBtn: "新目标",
+                goalType: "目标类型",
+                typeManual: "手动进度",
+                typeChecklist: "按目标完成（小任务）",
+                goalName: "目标名称",
+                placeholderGeneral: "例如：买一辆车、学习德语...",
+                placeholderNumeric: "例如：为房子存钱...",
+                placeholderWeight: "例如：减重10公斤...",
+                descriptionLabel: "描述",
+                descriptionPlaceholder: "为什么这个目标对您很重要？",
+                targetDateLabel: "目标日期",
+                stepsToComplete: "待完成的步骤",
+                addStepPlaceholder: "添加一个步骤...",
+                currentSavings: "当前金额",
+                savingsGoal: "目标金额",
+                initialWeight: "初始",
+                currentWeight: "当前",
+                targetWeight: "目标",
+                unitPlaceholderNumeric: "例如：USD、EUR、$",
+                unitPlaceholderWeight: "例如：公斤、磅",
+                inspirationPhotosLabel: "灵感照片",
+                saveGoalBtn: "保存目标",
+                emptyStateQuote: "未来属于那些相信梦想之美的人。",
+                emptyStateFooter: "从创建您的第一个大目标开始",
+                progressReportsLabel: "进度报告",
+                addReportBtn: "添加进度报告",
+                reportDateLabel: "报告日期",
+                reportNotePlaceholder: "例如：今天完成了第一章，练习了30分钟...",
+                saveReportBtn: "保存报告",
+                noReportsYet: "尚未添加进度报告。",
+                deleteReportConfirm: "删除此进度报告？"
+            },
+            balance: {
+                onboarding: {
+                    step1: {
+                        title: "您的金钱很重要",
+                        quote: "“自己提水桶的人，珍惜每一滴洒落的水”",
+                        bodyText: "在 <b>收支平衡</b> 中，您可以亲自管理自己的资金，手动统计您拥有多少钱。这并不是坏事，而是好事，因为它教会您为自己的金钱负责——银行、系统或其他人都不会替您统计，您会珍惜账户中的每一分钱。",
+                        body: "“自己提水桶的人，珍惜每一滴洒落的水” 在 <b>收支平衡</b> 中，您可以亲自管理自己的资金...",
+                        ctaLearn: "我想了解如何使用",
+                        ctaDismiss: "好的"
+                    },
+                    step2: {
+                        title: "收支平衡！",
+                        body: "如果您想轻松了解 <b>有多少钱进入和离开您的钱包</b>，收支平衡就适合您。这个部分使用简单但非常有用。",
+                        meta: "<b>目标</b> 设定您想拥有或计划保留的金额，",
+                        adds: "<b>增加</b> 记录您赚到的钱，以免忘记！",
+                        spend: "<b>花费：</b> 花了一些钱，我们也会记录下来，以便了解剩余总额！"
+                    },
+                    step3: {
+                        title: "增加",
+                        body: "赚到钱了？太好了，把它添加到余额中进行登记，这样如果丢失、被盗或已经花掉，您会更清楚。非常简单，有两种方式。",
+                        simpleTitle: "增加（简单）",
+                        simpleStep1: "<b>步骤 1：</b> 输入金额数字",
+                        simpleStep2: "<b>步骤 2：</b> 点击增加即可！",
+                        descTitle: "带说明的增加",
+                        descStep1: "<b>步骤 1：</b> 先点击增加",
+                        descStep2: "<b>步骤 2：</b> 在 <b>金额</b> 中输入您赚了多少钱。",
+                        descStep3: "<b>步骤 3：</b> 这笔钱从哪里来？为自己添加一条备注，说明这笔钱的来源，完成！",
+                        calloutStep2: "步骤 2",
+                        calloutStep3: "步骤 3",
+                        calloutOptional: "（可选）<b>保留目标</b> 会在日历上标记您计划保留这笔钱到哪一天，方便您记住而不忘记。",
+                        calloutTarget: "资金保留目标"
+                    },
+                    step4: {
+                        title: "花费",
+                        body: "花钱并不是坏事，不知道花了多少、花在什么地方才是坏事。用收支平衡清楚记录您的支出。同样，有两种登记方式。",
+                        simpleTitle: "花费（简单）",
+                        simpleStep1: "<b>步骤 1：</b> 输入您花费的金额数字",
+                        simpleStep2: "<b>步骤 2：</b> 点击 <b>花费</b> 即可，将被登记为一笔支出",
+                        descTitle: "花费",
+                        descStep1: "<b>步骤 1：</b> 点击 <b>花费</b>，将打开更详细的界面来设置花费用途",
+                        descStep2: "<b>步骤 2：</b> 输入您花费的金额（数字）",
+                        descStep3: "<b>步骤 3：</b> 说明这笔钱花在了什么上",
+                        calloutDate: "您预计收回的日期（可选）",
+                        calloutDateDesc: "您是否花费或借出了钱并期待收回？设置预计收回的日期，应用会在日历上标记并向您发送提醒。"
+                    },
+                    step5: {
+                        title: "支出记录！",
+                        body: "同样，您可以查看历史记录，在那里看到您的收入和支出。<br/><br/>并查看您把钱花在了什么上。",
+                        ctaFinish: "明白了"
+                    },
+                    next: "下一步",
+                    close: "关闭"
                 },
-                step2: {
-                    title: "Balance!",
-                    body: "Balance is for you if you want to easily know <b>how much money enters and leaves your wallet</b>. This section is very simple to use but very useful.",
-                    meta: "<b>Goal</b> Set how much money you want to have or plan to keep,",
-                    adds: "<b>Add</b> money you earn to keep track and not forget it!",
-                    spend: "<b>Spend:</b> spend some money, well record it anyway to know the total remaining!"
-                },
-                step3: {
-                    title: "ADD",
-                    body: "Earned money? Great, add it to the balance to register it, so you'll know better if it gets lost, stolen or if you already spent it. It's very simple but there are two ways.",
-                    simpleTitle: "Add (simple)",
-                    simpleStep1: "<b>Step 1:</b> add the numeric amount of money",
-                    simpleStep2: "<b>Step 2:</b> tap add and done!",
-                    descTitle: "Add with description",
-                    descStep1: "<b>Step 1:</b> first tap add",
-                    descStep2: "<b>Step 2:</b> in <b>amount</b> add how much you earned.",
-                    descStep3: "<b>Step 3:</b> what did you earn it from? Add a note for yourself about what gave you that money, done!",
-                    calloutStep2: "Step 2",
-                    calloutStep3: "Step 3",
-                    calloutOptional: "(optional) <b>conservation goal</b> this puts on the calendar until what date you plan to keep that money, to keep it in mind and not forget.",
-                    calloutTarget: "conservation goal C."
-                },
-                step4: {
-                    title: "Spend",
-                    body: "Spending isn't bad, spending is bad when you don't know how much you spend or what you've been spending it on. Keep a clear record of your expenses with balance. Similarly, there are two ways to register it.",
-                    simpleTitle: "Spend (simple)",
-                    simpleStep1: "<b>Step 1:</b> enter the amount or numeric quantity of money you spent",
-                    simpleStep2: "<b>Step 2:</b> tap <b>spend</b> and done, it will be registered as an expense",
-                    descTitle: "Spend",
-                    descStep1: "<b>Step 1:</b> tap <b>spend</b> and a more defined interface will open to set what you spent on",
-                    descStep2: "<b>Step 2:</b> enter the amount you are spending (numeric value)",
-                    descStep3: "<b>Step 3:</b> define what you spent the money on",
-                    calloutDate: "Date you expect it back (optional)",
-                    calloutDateDesc: "Did you spend or lend money and expect to get it back? Schedule the date you expect it back so the app will notify you, marking it on the calendar and sending you a message."
-                },
-                step5: {
-                    title: "Expense Record!",
-                    body: "Similarly, you'll have access to a History, where you'll see the Income and expenses you've had.<br/><br/>And see what you've spent on.",
-                    ctaFinish: "Got it"
-                },
-                next: "Next",
-                close: "Close"
-            } },
-            goals: { title: "目标", description: "定义并追踪您的长期目标。" },
+                title: "总收支平衡",
+                description: "追踪您当前的资金、收入和支出。",
+                currentBalance: "当前余额",
+                editBalance: "编辑余额",
+                saveBalance: "保存余额",
+                balancePlaceholder: "输入当前资金...",
+                addTransaction: "添加交易",
+                amount: "金额 ($)",
+                descriptionLabel: "描述",
+                descriptionPlaceholder: "例如：周二买菜、工资、房租...",
+                typeExpense: "支出",
+                typeIncome: "收入",
+                saveTransaction: "保存交易",
+                recentTransactions: "最近交易",
+                noTransactions: "尚未登记任何交易。",
+                deleteTransactionConfirm: "删除此交易？",
+                incomeTotal: "总收入",
+                expenseTotal: "总支出",
+                summary: "财务摘要",
+                date: "日期"
+            },
             today: { title: "今天", description: "专注于今天最重要的事情。" },
             notes: { title: "笔记", description: "捕捉想法、绘图和计划。", create: "创建新笔记", untitled: "无标题笔记", empty: "空笔记...", confirmDelete: "您确定要删除此笔记吗？" },
             calendar: {
@@ -521,7 +606,38 @@ export const translations = {
             },
             anytime: { title: "随时", description: "没有特定截止日期的任务。", noTasks: "这里还没有任务" },
             someday: { title: "将来", description: "安排在以后的梦想和计划。", futureProjects: "未来项目", scheduledTasks: "安排的任务", noProjects: "没有计划的未来项目。", noTasks: "没有即将到来的任务。", scheduleTask: "安排任务", planProject: "计划未来项目", startDate: "开始日期", scheduleIt: "安排它" },
-            habits: { title: "习惯追踪器", description: "通过每日和每周的日常建立一致性。", newHabit: "新习惯", createRoutine: "创建新日常", habitTitle: "习惯标题（例如：阅读30分钟）", startRoutine: "开始日常", myRoutines: "我的日常", active: "活跃", noHabits: "还没有习惯。创建一个开始吧！", missed: "错过" }
+            habits: {
+                title: "习惯追踪器",
+                description: "通过每日和每周的日常建立一致性。",
+                newHabit: "新习惯",
+                createRoutine: "创建新日常",
+                habitTitle: "习惯标题（例如：阅读30分钟）",
+                startRoutine: "开始日常",
+                myRoutines: "我的日常",
+                active: "活跃",
+                noHabits: "还没有习惯。创建一个开始吧！",
+                missed: "错过",
+                addTaskGroup: "添加任务组",
+                newTaskGroup: "新任务组",
+                groupName: "组名称",
+                groupColor: "组颜色",
+                createGroup: "创建组",
+                epic: "太棒了！",
+                masteredGroup: "您已掌握这个组！",
+                keepShining: "继续闪耀",
+                customizeHabit: "自定义您的习惯",
+                achieveWhat: "您想要实现什么？",
+                importance: "重要性",
+                monthlyActiveDesc: "习惯将在每月的这些日期触发",
+                weeklyActiveDesc: "习惯将在每周的这些日子触发",
+                inspirationalPhotos: "灵感照片",
+                upload: "上传",
+                taskGroups: "任务组",
+                tasksCompletedCount: "已完成 {completed} / {total} 项任务",
+                newTaskPlaceholder: "添加任务...",
+                deleteGroup: "删除组",
+                editSaveHint: "按 Enter 保存，按 Esc 取消"
+            }
         },
         dashboard: {
             dailyFocus: "每日进度",
@@ -560,10 +676,18 @@ export const translations = {
                 lastYear: "去年",
                 progress: "进度"
             },
-            projects: { complete: "完成" }
+            projects: { complete: "完成" },
+            week: "周",
+            newNote: "新笔记"
         },
         habits: { title: "习惯与日常", addHabit: "添加新习惯...", active: "活跃", completed: "已完成" },
-        common: { language: "语言", theme: "主题", add: "添加", cancel: "取消", save: "保存", saving: "保存中...", saved: "已保存！", delete: "删除", placeholder: "添加新任务...", addTask: "添加任务", confirmDelete: "您确定要删除这个吗？", noRepeat: "不重复", energy: "{level} 能量", energyLevels: { high: "高", medium: "中", low: "低" }, recurrence: { none: "无", daily: "每天", weekly: "每周", monthly: "每月", once: "一次性" }, days: { mon: "一", tue: "二", wed: "三", thu: "四", fri: "五", sat: "六", sun: "日", thursdayFull: "星期四" } }
+        common: {
+            language: "语言", theme: "主题", add: "添加", cancel: "取消", save: "保存", saving: "保存中...", saved: "已保存！", delete: "删除",
+            placeholder: "添加新任务...", addTask: "添加任务", confirmDelete: "您确定要删除这个吗？", noRepeat: "不重复",
+            energy: "{level} 能量", energyLevels: { high: "高", medium: "中", low: "低" },
+            recurrence: { none: "无", daily: "每天", weekly: "每周", monthly: "每月", once: "一次性" },
+            days: { mon: "一", tue: "二", wed: "三", thu: "四", fri: "五", sat: "六", sun: "日", thursdayFull: "星期四" }
+        }
     },
     fr: {
         nav: { goals: "Objectifs", today: "Aujourd'hui", tasks: "Habitudes / Tâches", calendar: "Calendrier", anytime: "N'importe quand", someday: "Un jour", notes: "Notes", projects: "Projets", newProject: "Nom du projet...", shortcuts: "RACCOURCIS (1-9)", balance: "Bilan général" },
@@ -1200,6 +1324,28 @@ export const translations = {
         common: { language: "भाषा", theme: "थीम", add: "जोड़ें", cancel: "रद्द करें", save: "सहेजें", saving: "सहेजा जा रहा है...", saved: "सहेजा गया!", delete: "हटाएं", placeholder: "एक नया कार्य जोड़ें...", addTask: "कार्य जोड़ें", confirmDelete: "क्या आप वाकई इसे हटाना चाहते हैं?", noRepeat: "कोई दोहराव नहीं", energy: "{level} ऊर्जा", energyLevels: { high: "उच्च", medium: "मध्यम", low: "निम्न" }, recurrence: { none: "कोई नहीं", daily: "दैनिक", weekly: "साप्ताहिक", monthly: "मासिक" }, days: { mon: "सोम", tue: "मंगल", wed: "बुध", thu: "गुरु", fri: "शुक्र", sat: "शनि", sun: "रवि", thursdayFull: "गुरुवार" } }
     }
 }
+
+
+/**
+ * Deep-merge every language over the English base so a missing key in any
+ * language (fr, de, zh, ...) can never crash the app with "undefined" lookups.
+ */
+function mergeWithFallback(base: any, over: any): any {
+    if (over === undefined || over === null) return base;
+    if (typeof base !== 'object' || base === null || Array.isArray(base)) return over;
+    const out: any = { ...base };
+    for (const key of Object.keys(over)) {
+        out[key] = key in base ? mergeWithFallback(base[key], over[key]) : over[key];
+    }
+    return out;
+}
+
+export const translations = Object.fromEntries(
+    Object.entries(rawTranslations).map(([code, dict]) => [
+        code,
+        code === 'en' ? dict : mergeWithFallback(rawTranslations.en, dict),
+    ])
+) as unknown as typeof rawTranslations;
 
 export type Language = 'en' | 'es' | 'zh' | 'fr' | 'de' | 'pt' | 'ar' | 'ja' | 'hi'
 export type TranslationKey = keyof typeof translations.en

@@ -8,6 +8,7 @@ import { PageDescription } from "@/components/ui/page-description"
 
 import { translations } from "@/lib/translations"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
+import { lt } from "@/lib/i18n-inline"
 
 export default function CalendarPage() {
     const appointments = useStore(state => state.appointments)
@@ -363,7 +364,7 @@ export default function CalendarPage() {
                         })}
                         {dayItems.length > 3 && (
                             <div className="text-[7.5px] md:text-[8px] text-muted-foreground text-center font-bold">
-                                +{dayItems.length - 3} {language === 'es' ? 'más' : 'more'}
+                                +{dayItems.length - 3} {lt(language, 'más', 'more')}
                             </div>
                         )}
                     </div>
@@ -598,12 +599,12 @@ export default function CalendarPage() {
                                                                 {isHabit ? (
                                                                     <>
                                                                         <Flame className="w-3 h-3 text-orange-400 fill-orange-400" />
-                                                                        {language === 'es' ? 'Hábito' : 'Habit'}
+                                                                        {lt(language, 'Hábito', 'Habit')}
                                                                     </>
                                                                 ) : (
                                                                     <>
                                                                         <Calendar className="w-3 h-3 text-blue-400" />
-                                                                        {language === 'es' ? 'Tarea' : 'Task'}
+                                                                        {lt(language, 'Tarea', 'Task')}
                                                                     </>
                                                                 )}
                                                             </div>
@@ -613,11 +614,11 @@ export default function CalendarPage() {
                                                         {isComp ? (
                                                             <span className="text-xs bg-green-500/10 text-green-500 border border-green-500/20 px-2.5 py-1 rounded-xl font-bold flex items-center gap-1">
                                                                 <CheckCircle2 className="w-3.5 h-3.5" />
-                                                                {language === 'es' ? 'Completado' : 'Completed'}
+                                                                {lt(language, 'Completado', 'Completed')}
                                                             </span>
                                                         ) : (
                                                             <span className="text-xs bg-zinc-500/10 text-zinc-400 border border-zinc-500/20 px-2.5 py-1 rounded-xl font-bold">
-                                                                {language === 'es' ? 'Pendiente' : 'Pending'}
+                                                                {lt(language, 'Pendiente', 'Pending')}
                                                             </span>
                                                         )}
                                                     </div>
@@ -646,31 +647,31 @@ export default function CalendarPage() {
                             <input
                                 type="text"
                                 className="w-full h-11 bg-white/5 border border-white/5 rounded-2xl px-4 outline-none focus:ring-1 focus:ring-white/20 transition-all text-sm font-bold placeholder:text-muted-foreground/30 shadow-inner"
-                                placeholder={language === 'es' ? 'Título de la nota...' : 'Note title...'}
+                                placeholder={lt(language, 'Título de la nota...', 'Note title...')}
                                 value={quickNoteTitle}
                                 onChange={(e) => { setQuickNoteTitle(e.target.value); setNoteSaved(false) }}
                             />
                             {/* Note body */}
                             <textarea
                                 className="w-full flex-1 min-h-[100px] bg-white/5 border border-white/5 rounded-2xl p-4 outline-none focus:ring-1 focus:ring-white/20 transition-all resize-none text-sm placeholder:text-muted-foreground/30 font-medium leading-relaxed shadow-inner"
-                                placeholder={language === 'es' ? 'Anota detalles, recordatorios...' : 'Jot down details, reminders...'}
+                                placeholder={lt(language, 'Anota detalles, recordatorios...', 'Jot down details, reminders...')}
                                 value={quickNoteText}
                                 onChange={(e) => { setQuickNoteText(e.target.value); setNoteSaved(false) }}
                             />
                             <div className="flex items-center justify-between gap-3">
                                 <div className={`text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${noteSaved ? 'text-green-400' : 'text-muted-foreground/30'}`}>
                                     {noteSaved
-                                        ? (language === 'es' ? 'Guardado' : 'Saved')
+                                        ? (lt(language, 'Guardado', 'Saved'))
                                         : (calendarNotes[selectedDate!]
-                                            ? (language === 'es' ? 'Nota guardada' : 'Note saved')
-                                            : (language === 'es' ? 'Sin guardar' : 'Not saved'))}
+                                            ? (lt(language, 'Nota guardada', 'Note saved'))
+                                            : (lt(language, 'Sin guardar', 'Not saved')))}
                                 </div>
                                 <button
                                     onClick={handleSaveNote}
                                     disabled={!quickNoteTitle.trim() && !quickNoteText.trim()}
                                     className="px-6 h-10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 bg-black text-white hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-white dark:text-black dark:hover:bg-zinc-100"
                                 >
-                                    {language === 'es' ? 'Guardar' : 'Save'}
+                                    {lt(language, 'Guardar', 'Save')}
                                 </button>
                             </div>
                         </div>

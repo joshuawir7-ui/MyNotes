@@ -23,6 +23,7 @@ import { DailyFocusWidget } from "@/components/dashboard/daily-focus";
 import { EnhancedTaskList } from "@/components/dashboard/enhanced-task-list";
 import { WeeklyProgressChart } from "@/components/dashboard/weekly-progress-chart";
 import { DashboardWidgets } from "@/components/dashboard/dashboard-widgets";
+import { lt } from "@/lib/i18n-inline"
 
 export default function Home() {
   const router = useRouter();
@@ -159,7 +160,7 @@ export default function Home() {
       tags: []
     });
     setEditingNote(newNote);
-    showToast(language === 'es' ? "Nota creada" : "Note created", "success");
+    showToast(lt(language, "Nota creada", "Note created"), "success");
   };
 
   const strokeDashoffset = 175.9 - (percentage / 100) * 175.9;
@@ -240,7 +241,7 @@ export default function Home() {
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-                      {language === 'es' ? "Meta de Conservación de Capital" : "Capital Conservation Goal"}
+                      {lt(language, "Meta de Conservación de Capital", "Capital Conservation Goal")}
                     </h3>
                     <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
                       {language === 'es'
@@ -310,13 +311,13 @@ export default function Home() {
                   <div className="text-[10px] sm:text-xs text-rose-600 dark:text-rose-400 font-bold flex items-center justify-between gap-1.5 bg-rose-500/10 p-2 rounded-xl border border-rose-500/20 w-full mt-1">
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                      <span>{language === 'es' ? "Alerta: Tu saldo bajó de la meta de conservación!" : "Warning: Your balance is below the conservation goal!"}</span>
+                      <span>{lt(language, "Alerta: Tu saldo bajó de la meta de conservación!", "Warning: Your balance is below the conservation goal!")}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowConservationAlert(false)}
                       className="text-rose-500 hover:text-rose-750 p-1 rounded-lg hover:bg-rose-500/10 transition-colors shrink-0"
-                      title={language === 'es' ? "Quitar" : "Dismiss"}
+                      title={lt(language, "Quitar", "Dismiss")}
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -376,7 +377,7 @@ export default function Home() {
             <Reveal delay={0.42} margin="0px">
               <section className="w-full mt-2">
                 <span className="text-[10px] font-black uppercase text-primary/40 tracking-widest block mb-1.5 px-0.5 text-left">
-                  {language === 'es' ? "Meta Fijada" : "Pinned Goal"}
+                  {lt(language, "Meta Fijada", "Pinned Goal")}
                 </span>
                 <GoalCard goal={pinnedGoal} />
               </section>
@@ -468,7 +469,7 @@ export default function Home() {
                   <div className="flex justify-between items-center">
                     <div>
                       <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-                        {language === 'es' ? "Meta de Conservación de Capital" : "Capital Conservation Goal"}
+                        {lt(language, "Meta de Conservación de Capital", "Capital Conservation Goal")}
                       </h3>
                       <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
                         {language === 'es'
@@ -538,13 +539,13 @@ export default function Home() {
                     <div className="text-[10px] sm:text-xs text-rose-600 dark:text-rose-400 font-bold flex items-center justify-between gap-1.5 bg-rose-500/10 p-2 rounded-xl border border-rose-500/20 w-full mt-1">
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                        <span>{language === 'es' ? "Alerta: Tu saldo bajó de la meta de conservación!" : "Warning: Your current balance is below the conservation goal starting balance!"}</span>
+                        <span>{lt(language, "Alerta: Tu saldo bajó de la meta de conservación!", "Warning: Your current balance is below the conservation goal starting balance!")}</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => setShowConservationAlert(false)}
                         className="text-rose-500 hover:text-rose-750 p-1 rounded-lg hover:bg-rose-500/10 transition-colors shrink-0"
-                        title={language === 'es' ? "Quitar" : "Dismiss"}
+                        title={lt(language, "Quitar", "Dismiss")}
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -579,7 +580,7 @@ export default function Home() {
             <Reveal delay={0.48} margin="0px">
               <section className="w-full mt-2">
                 <span className="text-sm font-bold tracking-tight uppercase block mb-3 px-1 text-left">
-                  {language === 'es' ? "Meta Fijada" : "Pinned Goal"}
+                  {lt(language, "Meta Fijada", "Pinned Goal")}
                 </span>
                 <GoalCard goal={pinnedGoal} />
               </section>

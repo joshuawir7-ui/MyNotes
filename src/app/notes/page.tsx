@@ -19,6 +19,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { MobileContextMenu } from "@/components/ui/mobile-context-menu"
 import { getLocalImageSrc } from "@/lib/image-utils"
 import { useLocalUrl } from "@/hooks/use-local-url"
+import { lt } from "@/lib/i18n-inline"
 
 export default function NotesPage() {
     const notes = useStore(useShallow(state => state.notes))
@@ -200,7 +201,7 @@ export default function NotesPage() {
                                                 }`}
                                         >
                                             <Calendar className="w-3.5 h-3.5" />
-                                            {language === 'es' ? 'Más reciente primero' : 'Most recent first'}
+                                            {lt(language, 'Más reciente primero', 'Most recent first')}
                                         </button>
                                         <button
                                             onClick={() => { setSortBy('oldest'); setIsSortOpen(false); }}
@@ -210,7 +211,7 @@ export default function NotesPage() {
                                                 }`}
                                         >
                                             <Calendar className="w-3.5 h-3.5" />
-                                            {language === 'es' ? 'Más antiguo primero' : 'Oldest first'}
+                                            {lt(language, 'Más antiguo primero', 'Oldest first')}
                                         </button>
                                         <button
                                             onClick={() => { setSortBy('az'); setIsSortOpen(false); }}
@@ -254,7 +255,7 @@ export default function NotesPage() {
                                 onClick={() => {
                                     const newNote = addNote({ title: "", blocks: [{ id: Math.random().toString(36).substring(7), type: 'text', content: '' }], tags: [] })
                                     setEditingNote(newNote)
-                                    showToast(language === 'es' ? "Nota creada" : "Note created", "success")
+                                    showToast(lt(language, "Nota creada", "Note created"), "success")
                                 }}
                                 className="glass-panel p-6 rounded-2xl border-dashed border-white/20 hover:border-primary/50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 flex flex-col items-center justify-center text-center cursor-pointer min-h-[200px] group relative overflow-hidden"
                             >
@@ -293,11 +294,11 @@ export default function NotesPage() {
                 onConfirm={() => {
                     if (isDeleting) {
                         deleteNote(isDeleting)
-                        showToast(language === 'es' ? "Nota eliminada" : "Note deleted", "info")
+                        showToast(lt(language, "Nota eliminada", "Note deleted"), "info")
                     }
                 }}
                 title={t.confirmDelete || "¿Eliminar esta nota?"}
-                message={language === 'es' ? "Esta nota se eliminará permanentemente." : "This note will be permanently deleted."}
+                message={lt(language, "Esta nota se eliminará permanentemente.", "This note will be permanently deleted.")}
             />
         </div>
     )

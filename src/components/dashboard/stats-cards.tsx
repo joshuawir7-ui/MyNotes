@@ -8,6 +8,7 @@ import { Flame, CheckCircle2, Timer, X, Trophy, Zap, Check, ArrowRight, Play } f
 import { motion, AnimatePresence } from "framer-motion"
 import { FocusTimer } from "./focus-timer"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
+import { lt } from "@/lib/i18n-inline"
 
 export function StatsCards() {
     // Atomic selectors: only subscribes to the specific fields used, not the entire user or tasks array
@@ -119,10 +120,10 @@ export function StatsCards() {
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-lg text-foreground">
-                                            {language === 'es' ? "Tareas Completadas" : "Completed Tasks"}
+                                            {lt(language, "Tareas Completadas", "Completed Tasks")}
                                         </h3>
                                         <p className="text-xs text-muted-foreground">
-                                            {completedCount} {language === 'es' ? "tareas listas" : "tasks done"}
+                                            {completedCount} {lt(language, "tareas listas", "tasks done")}
                                         </p>
                                     </div>
                                 </div>
@@ -137,7 +138,7 @@ export function StatsCards() {
                             <div className="overflow-y-auto py-4 space-y-2 flex-1 pr-1 custom-scrollbar">
                                 {completedTasks.length === 0 ? (
                                     <div className="text-center py-10 text-muted-foreground text-sm">
-                                        {language === 'es' ? "No tienes tareas completadas aún." : "No completed tasks yet."}
+                                        {lt(language, "No tienes tareas completadas aún.", "No completed tasks yet.")}
                                     </div>
                                 ) : (
                                     completedTasks.map((task) => (
@@ -149,7 +150,7 @@ export function StatsCards() {
                                                 <button
                                                     onClick={() => toggleTask(task.id)}
                                                     className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center shrink-0 hover:scale-110 transition-all"
-                                                    title={language === 'es' ? "Desmarcar" : "Uncheck"}
+                                                    title={lt(language, "Desmarcar", "Uncheck")}
                                                 >
                                                     <Check className="w-4 h-4 stroke-[3]" />
                                                 </button>
@@ -216,18 +217,16 @@ export function StatsCards() {
 
                             <div>
                                 <h3 className="text-2xl font-black text-foreground">
-                                    {streak} {language === 'es' ? "Días de Racha" : "Day Streak"}
+                                    {streak} {lt(language, "Días de Racha", "Day Streak")}
                                 </h3>
                                 <p className="text-xs text-muted-foreground mt-1 px-4 leading-relaxed">
-                                    {language === 'es'
-                                        ? "¡Mantén tu racha activa completando al menos una tarea diaria!"
-                                        : "Keep your streak active by completing at least one daily task!"}
+                                    {lt(language, "¡Mantén tu racha activa completando al menos una tarea diaria!", "Keep your streak active by completing at least one daily task!")}
                                 </p>
                             </div>
 
                             <div className="w-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl p-4 flex justify-around items-center">
                                 <div className="flex flex-col items-center">
-                                    <span className="text-xs text-muted-foreground font-semibold uppercase">{language === 'es' ? "Nivel" : "Level"}</span>
+                                    <span className="text-xs text-muted-foreground font-semibold uppercase">{lt(language, "Nivel", "Level")}</span>
                                     <span className="text-xl font-bold text-foreground mt-0.5">{level}</span>
                                 </div>
                                 <div className="h-8 w-px bg-black/10 dark:bg-white/10" />

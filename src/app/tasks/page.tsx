@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation"
 import { useProgressiveCount } from "@/hooks/use-progressive-count"
 import { DeferredSection } from "@/components/ui/deferred-section"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
+import { lt } from "@/lib/i18n-inline"
 
 const TourTooltip = ({
     children,
@@ -368,12 +369,12 @@ export default function TasksPage() {
             itemsByDate[dateStr] = []
 
             if (dateStr === todayStr) {
-                dateLabels[dateStr] = language === 'es' ? 'Hoy' : 'Today'
+                dateLabels[dateStr] = lt(language, 'Hoy', 'Today')
             } else if (dateStr === yesterdayStr) {
-                dateLabels[dateStr] = language === 'es' ? 'Ayer' : 'Yesterday'
+                dateLabels[dateStr] = lt(language, 'Ayer', 'Yesterday')
             } else {
                 const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'short' }
-                let label = d.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', options)
+                let label = d.toLocaleDateString(lt(language, 'es-ES', 'en-US'), options)
                 label = label.charAt(0).toUpperCase() + label.slice(1)
                 dateLabels[dateStr] = label
             }
@@ -499,7 +500,7 @@ export default function TasksPage() {
 
         toggleTask(habit.id)
         const toastMsg = isCompleted
-            ? (language === 'es' ? "Hábito/Tarea pendiente" : "Habit/Task pending")
+            ? (lt(language, "Hábito/Tarea pendiente", "Habit/Task pending"))
             : habit.habitType === 'bad'
                 ? (() => {
                     const badHabitMessagesEs = ["Bien hecho", "Mal hábito evitado", "¡Así se hace!"]
@@ -507,7 +508,7 @@ export default function TasksPage() {
                     const randomIndex = Math.floor(Math.random() * badHabitMessagesEs.length)
                     return language === 'es' ? badHabitMessagesEs[randomIndex] : badHabitMessagesEn[randomIndex]
                 })()
-                : (language === 'es' ? "Hábito/Tarea completado" : "Habit/Task completed")
+                : (lt(language, "Hábito/Tarea completado", "Habit/Task completed"))
         const toastType = isCompleted ? "info" : "success"
         if (typeof window !== 'undefined' && 'requestAnimationFrame' in window) {
             requestAnimationFrame(() => showToast(toastMsg, toastType))
@@ -559,7 +560,7 @@ export default function TasksPage() {
                 countLostDays
             })
             setEditingHabit(null)
-            showToast(language === 'es' ? "Hábito/Tarea actualizado" : "Habit/Task updated", "success")
+            showToast(lt(language, "Hábito/Tarea actualizado", "Habit/Task updated"), "success")
         } else {
             addTask({
                 title,
@@ -574,7 +575,7 @@ export default function TasksPage() {
                 habitType,
                 countLostDays
             } as any)
-            showToast(language === 'es' ? "Hábito/Tarea creado" : "Habit/Task created", "success")
+            showToast(lt(language, "Hábito/Tarea creado", "Habit/Task created"), "success")
         }
         setTitle("")
         setIcon("Activity")
@@ -753,12 +754,10 @@ export default function TasksPage() {
                                     className="absolute top-full right-0 mt-3 z-[100] w-full max-w-sm glass-panel p-5 rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-950 shadow-2xl flex flex-col gap-3 text-center will-change-[transform,opacity,filter]"
                                 >
                                     <p className="text-zinc-800 dark:text-zinc-200 text-sm font-semibold leading-relaxed">
-                                        {language === 'es'
-                                            ? "Empecemos creando un hábito o tarea diaria, puede ser algo que hagas todos los días y no quieras que se olvide, y sepas cuando ya lo has hecho"
-                                            : "Let's start by creating a habit or daily task, it can be something you do every day and don't want to forget, so you know when you've done it"}
+                                        {lt(language, "Empecemos creando un hábito o tarea diaria, puede ser algo que hagas todos los días y no quieras que se olvide, y sepas cuando ya lo has hecho", "Let's start by creating a habit or daily task, it can be something you do every day and don't want to forget, so you know when you've done it")}
                                     </p>
                                     <p className="text-sm font-extrabold text-primary">
-                                        {language === 'es' ? "Verás que te gustará" : "You will love it!"}
+                                        {lt(language, "Verás que te gustará", "You will love it!")}
                                     </p>
                                     <button
                                         onClick={() => {
@@ -776,7 +775,7 @@ export default function TasksPage() {
                                         }}
                                         className="w-full py-2.5 bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-md shadow-primary/20 cursor-pointer"
                                     >
-                                        {language === 'es' ? "Comenzar" : "Start"}
+                                        {lt(language, "Comenzar", "Start")}
                                     </button>
                                 </motion.div>
                             )}
@@ -871,7 +870,7 @@ export default function TasksPage() {
                                                                         title={task.title}
                                                                         onDelete={() => {
                                                                             deleteTaskFromGroup(group.id, task.id);
-                                                                            showToast(language === 'es' ? "Tarea eliminada" : "Task deleted", "info");
+                                                                            showToast(lt(language, "Tarea eliminada", "Task deleted"), "info");
                                                                         }}
                                                                     >
                                                                         <div
@@ -894,7 +893,7 @@ export default function TasksPage() {
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
                                                                                     deleteTaskFromGroup(group.id, task.id);
-                                                                                    showToast(language === 'es' ? "Tarea eliminada" : "Task deleted", "info");
+                                                                                    showToast(lt(language, "Tarea eliminada", "Task deleted"), "info");
                                                                                 }}
                                                                                 className="opacity-0 group-hover/task:opacity-100 p-1 text-red-400 hover:bg-red-400/10 rounded transition-all"
                                                                             >
@@ -922,7 +921,7 @@ export default function TasksPage() {
                                                                 <button
                                                                     onClick={() => {
                                                                         deleteTaskGroup(group.id);
-                                                                        showToast(language === 'es' ? "Grupo de tareas eliminado" : "Task group deleted", "info");
+                                                                        showToast(lt(language, "Grupo de tareas eliminado", "Task group deleted"), "info");
                                                                     }}
                                                                     className="p-2 text-muted-foreground hover:text-red-400 transition-colors"
                                                                     title={t.deleteGroup}
@@ -959,7 +958,7 @@ export default function TasksPage() {
                                         className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 rounded-xl text-xs font-bold flex items-center gap-1.5 text-primary hover:text-primary transition-all active:scale-95 shadow-sm cursor-pointer"
                                     >
                                         <CircleHelp className="w-3.5 h-3.5" />
-                                        {language === 'es' ? 'Guía' : 'Guide'}
+                                        {lt(language, 'Guía', 'Guide')}
                                     </button>
                                 )}
                                 <button
@@ -967,7 +966,7 @@ export default function TasksPage() {
                                     className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-all active:scale-95 shadow-sm"
                                 >
                                     <History className="w-3.5 h-3.5" />
-                                    {language === 'es' ? 'Historial' : 'History'}
+                                    {lt(language, 'Historial', 'History')}
                                 </button>
                             </div>
                         </div>
@@ -992,9 +991,9 @@ export default function TasksPage() {
                                     if (groupedHabits.length === 0) return null
 
                                     const priorityInfo = {
-                                        High: { label: language === 'es' ? 'Prioridad Alta' : 'High Priority', color: 'text-red-400', icon: 'AlertCircle' },
-                                        Medium: { label: language === 'es' ? 'Prioridad Media' : 'Medium Priority', color: 'text-orange-400', icon: 'Activity' },
-                                        Low: { label: language === 'es' ? 'Prioridad Baja' : 'Low Priority', color: 'text-blue-400', icon: 'ArrowDown' }
+                                        High: { label: lt(language, 'Prioridad Alta', 'High Priority'), color: 'text-red-400', icon: 'AlertCircle' },
+                                        Medium: { label: lt(language, 'Prioridad Media', 'Medium Priority'), color: 'text-orange-400', icon: 'Activity' },
+                                        Low: { label: lt(language, 'Prioridad Baja', 'Low Priority'), color: 'text-blue-400', icon: 'ArrowDown' }
                                     }[priority]
 
                                     return (
@@ -1076,7 +1075,7 @@ export default function TasksPage() {
                                 }}>
                                     <div>
                                         <h3 className="font-bold text-lg flex items-center gap-2">
-                                            {language === 'es' ? 'Tareas de Notas' : 'Note Tasks'}
+                                            {lt(language, 'Tareas de Notas', 'Note Tasks')}
                                             <ChevronDown className={`w-4 h-4 transition-transform ${showNoteTasks ? '' : '-rotate-90'}`} />
                                         </h3>
                                         <p className="text-xs text-muted-foreground">
@@ -1118,7 +1117,7 @@ export default function TasksPage() {
                                                             return block;
                                                         });
                                                         updateNote(note.id, note.title, newBlocks);
-                                                        showToast(language === 'es' ? "Tarea de nota actualizada" : "Note task updated", "success");
+                                                        showToast(lt(language, "Tarea de nota actualizada", "Note task updated"), "success");
                                                     }
                                                 }}>
                                                     <div className="flex items-center gap-3">
@@ -1159,11 +1158,11 @@ export default function TasksPage() {
                     onConfirm={() => {
                         if (isDeleting) {
                             deleteTask(isDeleting);
-                            showToast(language === 'es' ? "Hábito/Tarea eliminado" : "Habit/Task deleted", "info");
+                            showToast(lt(language, "Hábito/Tarea eliminado", "Habit/Task deleted"), "info");
                         }
                     }}
                     title={common.confirmDelete || "¿Eliminar esta rutina?"}
-                    message={language === 'es' ? "Esta acción no se puede deshacer y perderás tu progreso." : "This action cannot be undone and you will lose your progress."}
+                    message={lt(language, "Esta acción no se puede deshacer y perderás tu progreso.", "This action cannot be undone and you will lose your progress.")}
                 />
 
                 {/* Lost Days Interactive Popup Modal — portaled to document.body so .gpu-accelerated transform doesn't shift fixed positioning */}
@@ -1255,8 +1254,8 @@ export default function TasksPage() {
                                                 >
                                                     {isCompletedToday ? <Check className="w-4 h-4" /> : null}
                                                     {!isTodayActiveForModal && !isCompletedToday
-                                                        ? (language === 'es' ? 'Inactivo hoy' : 'Inactive today')
-                                                        : (language === 'es' ? 'Cumplir hoy' : 'Complete today')}
+                                                        ? (lt(language, 'Inactivo hoy', 'Inactive today'))
+                                                        : (lt(language, 'Cumplir hoy', 'Complete today'))}
                                                 </button>
                                             );
                                         })()}
@@ -1267,7 +1266,7 @@ export default function TasksPage() {
                                             disabled={(activeLostDaysHabit.missed || 0) <= 0}
                                             onClick={() => {
                                                 decrementLostDays(activeLostDaysHabit.id);
-                                                showToast(language === 'es' ? "Día pasado cumplido (-1 día)" : "Past day completed (-1 day)", "success");
+                                                showToast(lt(language, "Día pasado cumplido (-1 día)", "Past day completed (-1 day)"), "success");
                                             }}
                                             className={`flex-1 h-11 px-3 rounded-xl font-extrabold text-xs transition-all shadow-sm flex items-center justify-center whitespace-nowrap ${
                                                 (activeLostDaysHabit.missed || 0) > 0
@@ -1275,7 +1274,7 @@ export default function TasksPage() {
                                                     : 'bg-zinc-100 text-zinc-400 border border-zinc-200 dark:bg-zinc-800/60 dark:text-zinc-600 dark:border-zinc-700/50 cursor-not-allowed'
                                             }`}
                                         >
-                                            {language === 'es' ? 'Cumplir día pasado' : 'Complete past day'}
+                                            {lt(language, 'Cumplir día pasado', 'Complete past day')}
                                         </button>
 
                                         {/* Button 3: Reset count */}
@@ -1283,10 +1282,10 @@ export default function TasksPage() {
                                             type="button"
                                             onClick={() => {
                                                 resetLostDays(activeLostDaysHabit.id);
-                                                showToast(language === 'es' ? "Conteo de días perdidos reiniciado a 0" : "Lost days count reset to 0", "info");
+                                                showToast(lt(language, "Conteo de días perdidos reiniciado a 0", "Lost days count reset to 0"), "info");
                                             }}
                                             className="w-11 h-11 bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all shadow-sm flex items-center justify-center shrink-0 active:scale-95"
-                                            title={language === 'es' ? "Reiniciar a 0" : "Reset to 0"}
+                                            title={lt(language, "Reiniciar a 0", "Reset to 0")}
                                         >
                                             <RotateCcw className="w-4 h-4" />
                                         </button>
@@ -1294,9 +1293,7 @@ export default function TasksPage() {
 
                                     {/* Subtext */}
                                     <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight mt-1 font-medium">
-                                        {language === 'es'
-                                            ? "También tiene la posibilidad de reiniciar el conteo de días perdidos a 0"
-                                            : "You also have the option to reset the lost days count to 0"}
+                                        {lt(language, "También tiene la posibilidad de reiniciar el conteo de días perdidos a 0", "You also have the option to reset the lost days count to 0")}
                                     </p>
                                 </motion.div>
                             </div>
@@ -1354,7 +1351,7 @@ export default function TasksPage() {
                                         onClick={() => {
                                             if (groupTitle) {
                                                 addTaskGroup(groupTitle, groupColor);
-                                                showToast(language === 'es' ? "Grupo creado" : "Group created", "success");
+                                                showToast(lt(language, "Grupo creado", "Group created"), "success");
                                                 setGroupTitle("");
                                                 setShowGroupCreator(false);
                                             }
@@ -1402,12 +1399,12 @@ export default function TasksPage() {
                                 <div className="flex flex-col">
                                     <h3 className="text-2xl font-black tracking-tight">
                                         {editingHabit
-                                            ? (language === 'es' ? 'Editar Rutina' : 'Edit Routine')
+                                            ? (lt(language, 'Editar Rutina', 'Edit Routine'))
                                             : t.createRoutine}
                                     </h3>
                                     <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold">
                                         {editingHabit
-                                            ? (language === 'es' ? 'Personaliza tu rutina' : 'Customize your routine')
+                                            ? (lt(language, 'Personaliza tu rutina', 'Customize your routine'))
                                             : t.customizeHabit}
                                     </p>
                                 </div>
@@ -1470,14 +1467,14 @@ export default function TasksPage() {
                                                                         type="button"
                                                                         onClick={() => {
                                                                             if (!title.trim()) {
-                                                                                showToast(language === 'es' ? "Por favor, ponle un nombre a tu hábito para continuar" : "Please enter a name for your habit to continue", "warning");
+                                                                                showToast(lt(language, "Por favor, ponle un nombre a tu hábito para continuar", "Please enter a name for your habit to continue"), "warning");
                                                                                 return;
                                                                             }
                                                                             nextTourStep();
                                                                         }}
                                                                         className="px-4 py-2 bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-md shadow-primary/20 cursor-pointer"
                                                                     >
-                                                                        {language === 'es' ? "Siguiente" : "Next"}
+                                                                        {lt(language, "Siguiente", "Next")}
                                                                     </button>
                                                                 </div>
                                                             </TourTooltip>
@@ -1489,7 +1486,7 @@ export default function TasksPage() {
                                             {/* Habit Type (Buen Hábito / Mal Hábito) */}
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                                                    {language === 'es' ? 'Tipo de Hábito' : 'Habit Type'}
+                                                    {lt(language, 'Tipo de Hábito', 'Habit Type')}
                                                 </label>
                                                 <div className="flex gap-4">
                                                     <button
@@ -1501,7 +1498,7 @@ export default function TasksPage() {
                                                             }`}
                                                     >
                                                         <div className={`w-2 h-2 rounded-full ${habitType === 'good' ? 'bg-white' : 'bg-green-500'}`} />
-                                                        {language === 'es' ? 'Buen Hábito' : 'Good Habit'}
+                                                        {lt(language, 'Buen Hábito', 'Good Habit')}
                                                     </button>
                                                     <button
                                                         type="button"
@@ -1512,7 +1509,7 @@ export default function TasksPage() {
                                                             }`}
                                                     >
                                                         <div className={`w-2 h-2 rounded-full ${habitType === 'bad' ? 'bg-white' : 'bg-red-500'}`} />
-                                                        {language === 'es' ? 'Mal Hábito' : 'Bad Habit'}
+                                                        {lt(language, 'Mal Hábito', 'Bad Habit')}
                                                     </button>
                                                 </div>
                                             </div>
@@ -1520,7 +1517,7 @@ export default function TasksPage() {
                                             {/* ¿Contar días perdidos? */}
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                                                    {language === 'es' ? '¿Contar días perdidos?' : 'Count lost days?'}
+                                                    {lt(language, '¿Contar días perdidos?', 'Count lost days?')}
                                                 </label>
                                                 <div className="flex gap-4">
                                                     <button
@@ -1531,7 +1528,7 @@ export default function TasksPage() {
                                                             : 'bg-background/40 text-muted-foreground border-white/5 hover:border-white/20'
                                                             }`}
                                                     >
-                                                        {language === 'es' ? 'Si' : 'Yes'}
+                                                        {lt(language, 'Si', 'Yes')}
                                                     </button>
                                                     <button
                                                         type="button"
@@ -1545,9 +1542,7 @@ export default function TasksPage() {
                                                     </button>
                                                 </div>
                                                 <p className="text-[10px] text-muted-foreground/70 leading-relaxed font-medium mt-1">
-                                                    {language === 'es'
-                                                        ? "Ayuda a que en tareas puntuales en las que no puedes atrasarte, llevar un conteo activo de los días que no los haces, útil para ciertas tareas."
-                                                        : "Helps you maintain an active count of skipped days for time-sensitive tasks where you shouldn't fall behind."}
+                                                    {lt(language, "Ayuda a que en tareas puntuales en las que no puedes atrasarte, llevar un conteo activo de los días que no los haces, útil para ciertas tareas.", "Helps you maintain an active count of skipped days for time-sensitive tasks where you shouldn't fall behind.")}
                                                 </p>
                                             </div>
 
@@ -1573,12 +1568,10 @@ export default function TasksPage() {
                                                                     <path d="M 6 7 L 0 12 L 6 17" stroke="#8b5cf6" strokeWidth="2.5" fill="none" />
                                                                 </svg>
                                                                 <p className="text-zinc-800 dark:text-zinc-200 text-sm font-bold leading-relaxed">
-                                                                    {language === 'es' ? "Opcional" : "Optional"}
+                                                                    {lt(language, "Opcional", "Optional")}
                                                                 </p>
                                                                 <p className="text-zinc-700 dark:text-zinc-300 text-sm font-semibold leading-relaxed">
-                                                                    {language === 'es'
-                                                                        ? "Elije un icono para la identificación rápida de tu habito sin necesidad de leer"
-                                                                        : "Choose an icon for quick identification of your habit without needing to read"}
+                                                                    {lt(language, "Elije un icono para la identificación rápida de tu habito sin necesidad de leer", "Choose an icon for quick identification of your habit without needing to read")}
                                                                 </p>
                                                                 <div className="flex justify-end mt-1">
                                                                     <button
@@ -1586,7 +1579,7 @@ export default function TasksPage() {
                                                                         onClick={() => nextTourStep()}
                                                                         className="px-4 py-2 bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-md shadow-primary/20 cursor-pointer"
                                                                     >
-                                                                        {language === 'es' ? "Siguiente" : "Next"}
+                                                                        {lt(language, "Siguiente", "Next")}
                                                                     </button>
                                                                 </div>
                                                             </TourTooltip>
@@ -1716,12 +1709,10 @@ export default function TasksPage() {
                                                                 </svg>
                                                                 <div className="flex flex-col gap-2">
                                                                     <h4 className="text-lg font-black text-red-600 tracking-tight text-center">
-                                                                        {language === 'es' ? "Orden de prioridades" : "Priority Order"}
+                                                                        {lt(language, "Orden de prioridades", "Priority Order")}
                                                                     </h4>
                                                                     <p className="text-zinc-800 dark:text-zinc-200 text-sm font-semibold leading-relaxed text-center">
-                                                                        {language === 'es'
-                                                                            ? "Todos sabemos que hay tareas mas importantes que otras, asi que dependiendo lo importante que sea seleccióna entre las tres, y se van a dividir dependiendo su proridad"
-                                                                            : "We all know some tasks are more important than others, so depending on how important it is, select among the three, and they will be divided based on their priority"
+                                                                        {lt(language, "Todos sabemos que hay tareas mas importantes que otras, asi que dependiendo lo importante que sea seleccióna entre las tres, y se van a dividir dependiendo su proridad", "We all know some tasks are more important than others, so depending on how important it is, select among the three, and they will be divided based on their priority")
                                                                         }
                                                                     </p>
                                                                     <div className="flex justify-end mt-1">
@@ -1730,7 +1721,7 @@ export default function TasksPage() {
                                                                             onClick={() => nextTourStep()}
                                                                             className="px-4 py-2 bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-md shadow-primary/20 cursor-pointer"
                                                                         >
-                                                                            {language === 'es' ? "Siguiente" : "Next"}
+                                                                            {lt(language, "Siguiente", "Next")}
                                                                         </button>
                                                                     </div>
                                                                 </div>
@@ -1746,12 +1737,10 @@ export default function TasksPage() {
                                                                 </svg>
                                                                 <div className="flex flex-col gap-2">
                                                                     <h4 className="text-lg font-black text-red-600 tracking-tight text-center">
-                                                                        {language === 'es' ? "ATENCION" : "ATTENTION"}
+                                                                        {lt(language, "ATENCION", "ATTENTION")}
                                                                     </h4>
                                                                     <p className="text-zinc-800 dark:text-zinc-200 text-sm font-semibold leading-relaxed text-center">
-                                                                        {language === 'es'
-                                                                            ? "Cuando completes muchas tarea y no haces las de prioridad alta el app te advertirá para que te enfoques en lo importante. Así también enviarte notificaciones cuando ya se esté acabando el día y aun no has completado eso"
-                                                                            : "When you complete many tasks and don't do the high priority ones, the app will warn you to focus on what's important. It will also send you notifications when the day is ending and you haven't completed them yet."
+                                                                        {lt(language, "Cuando completes muchas tarea y no haces las de prioridad alta el app te advertirá para que te enfoques en lo importante. Así también enviarte notificaciones cuando ya se esté acabando el día y aun no has completado eso", "When you complete many tasks and don't do the high priority ones, the app will warn you to focus on what's important. It will also send you notifications when the day is ending and you haven't completed them yet.")
                                                                         }
                                                                     </p>
                                                                     <div className="flex justify-end mt-1">
@@ -1760,7 +1749,7 @@ export default function TasksPage() {
                                                                             onClick={() => nextTourStep()}
                                                                             className="px-4 py-2 bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-md shadow-primary/20 cursor-pointer"
                                                                         >
-                                                                            {language === 'es' ? "Siguiente" : "Next"}
+                                                                            {lt(language, "Siguiente", "Next")}
                                                                         </button>
                                                                     </div>
                                                                 </div>
@@ -1860,7 +1849,7 @@ export default function TasksPage() {
                                                                             onClick={() => nextTourStep()}
                                                                             className="px-4 py-2 bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-md shadow-primary/20 cursor-pointer"
                                                                         >
-                                                                            {language === 'es' ? "Siguiente" : "Next"}
+                                                                            {lt(language, "Siguiente", "Next")}
                                                                         </button>
                                                                     </div>
                                                                 </TourTooltip>
@@ -1933,7 +1922,7 @@ export default function TasksPage() {
                                                         }`}
                                                 >
                                                     {editingHabit
-                                                        ? (language === 'es' ? 'Guardar Cambios' : 'Save Changes')
+                                                        ? (lt(language, 'Guardar Cambios', 'Save Changes'))
                                                         : t.startRoutine}
                                                 </button>
                                             </div>
@@ -1999,10 +1988,10 @@ export default function TasksPage() {
 
                                 <h3 className="text-2xl font-black mb-1 flex items-center gap-2">
                                     <History className="w-6 h-6 text-primary" />
-                                    {language === 'es' ? 'Historial de Hábitos' : 'Habits History'}
+                                    {lt(language, 'Historial de Hábitos', 'Habits History')}
                                 </h3>
                                 <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold mb-6">
-                                    {language === 'es' ? 'Últimos 7 días' : 'Last 7 days'}
+                                    {lt(language, 'Últimos 7 días', 'Last 7 days')}
                                 </p>
 
                                 <div className="flex-1 overflow-y-auto pr-1 space-y-6 custom-scrollbar min-h-[300px]">
@@ -2010,7 +1999,7 @@ export default function TasksPage() {
                                         <div className="py-12 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl opacity-40">
                                             <History className="w-8 h-8 mb-2" />
                                             <p className="text-xs font-bold uppercase tracking-widest">
-                                                {language === 'es' ? 'No hay hábitos completados' : 'No completed habits'}
+                                                {lt(language, 'No hay hábitos completados', 'No completed habits')}
                                             </p>
                                         </div>
                                     ) : (
@@ -2044,7 +2033,7 @@ export default function TasksPage() {
                                     onClick={() => setShowHistoryModal(false)}
                                     className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-foreground font-bold rounded-2xl mt-6 transition-all"
                                 >
-                                    {language === 'es' ? 'Cerrar' : 'Close'}
+                                    {lt(language, 'Cerrar', 'Close')}
                                 </button>
                             </motion.div>
                         </div>
@@ -2258,7 +2247,7 @@ const HabitCard = memo(({
                                     <span className="bg-white/10 px-2 py-0.5 rounded uppercase tracking-wider text-[10px]">{habit.recurrence}</span>
                                     {!isTodayActive && (
                                         <span className="text-[10px] bg-zinc-500/20 text-zinc-400 px-2 py-0.5 rounded uppercase font-black tracking-wider">
-                                            {language === 'es' ? 'Inactivo hoy' : 'Inactive today'}
+                                            {lt(language, 'Inactivo hoy', 'Inactive today')}
                                         </span>
                                     )}
                                     {habit.streak ? <span className={`font-bold flex items-center gap-1 ${habit.habitType === 'bad' && !displayCompleted ? 'text-amber-200' : 'text-orange-400'}`}><Flame className={`w-3.5 h-3.5 ${habit.habitType === 'bad' && !displayCompleted ? 'text-amber-300 fill-amber-300' : 'text-orange-500 fill-orange-500'}`} /> {habit.streak}</span> : null}
@@ -2277,7 +2266,7 @@ const HabitCard = memo(({
                                     className={`flex flex-col items-end cursor-pointer hover:scale-105 transition-transform ${habit.habitType === 'bad' ? 'text-white' : 'text-red-400'}`}
                                 >
                                     <div className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${habit.habitType === 'bad' ? 'opacity-90' : 'opacity-70'}`}>
-                                        {language === 'es' ? 'PERDIDO' : 'LOST'}
+                                        {lt(language, 'PERDIDO', 'LOST')}
                                     </div>
                                     <div className="text-xl font-black leading-none">{missed}</div>
                                 </div>

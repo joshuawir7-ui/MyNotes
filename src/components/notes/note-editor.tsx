@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { getLocalImageSrc } from "@/lib/image-utils"
 import { useLocalUrl } from "@/hooks/use-local-url"
@@ -17,6 +17,7 @@ import { GlassSurface } from "@/components/ui/glass-surface"
 import { getOrCreateBackupFolderStructure, getTargetSubfolderId } from "@/lib/drive-folder-manager"
 import { isNoteEmpty } from "@/lib/note-utils"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
+import { lt } from "@/lib/i18n-inline"
 export { isNoteEmpty }
 
 interface NoteEditorProps {
@@ -63,7 +64,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         });
     }, [storeNote]);
 
-    // ─── Undo / Redo History Stack ───────────────────────────────────────────
+    // â”€â”€â”€ Undo / Redo History Stack â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const historyRef = useRef<{ title: string; blocks: NoteBlock[] }[]>([
         { title: note.title || '', blocks: JSON.parse(JSON.stringify(note.blocks || [])) }
     ])
@@ -432,7 +433,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         if (isNoteEmpty(titleRef.current, blocksRef.current) && !initialHadContent) {
             skipSaveRef.current = true
             deleteNote(note.id)
-            showToast(language === 'es' ? "Nota vacía eliminada" : "Empty note deleted", "info")
+            showToast(lt(language, "Nota vacÃ­a eliminada", "Empty note deleted"), "info")
         }
         onClose()
     }
@@ -486,7 +487,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
             await new Promise(r => setTimeout(r, 500))
             setIsSaving(false)
             setLastSaved(new Date().toLocaleTimeString())
-            showToast(language === 'es' ? "Nota guardada" : "Note saved", "success")
+            showToast(lt(language, "Nota guardada", "Note saved"), "success")
 
             // Clear "Saved" feedback after 3s
             setTimeout(() => setLastSaved(null), 3000)
@@ -608,7 +609,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                         <div className="flex items-center justify-between gap-3 h-10">
                             <div className="flex items-center gap-2 overflow-hidden flex-1">
                                 <StickyNote className="w-5 h-5 text-primary shrink-0" />
-                                <span className="hidden sm:inline text-[10px] md:text-xs font-bold uppercase tracking-widest text-muted-foreground shrink-0">{language === 'es' ? 'Nota:' : 'Note:'}</span>
+                                <span className="hidden sm:inline text-[10px] md:text-xs font-bold uppercase tracking-widest text-muted-foreground shrink-0">{lt(language, 'Nota:', 'Note:')}</span>
                                 <input
                                     ref={titleInputRef}
                                     className="text-base md:text-lg font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground/30 dark:placeholder:text-white/40 flex-1 min-w-[85px] tracking-tight text-foreground"
@@ -625,7 +626,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                     onClick={handleUndo}
                                     disabled={!canUndo}
                                     className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 active:scale-75 active:-rotate-45 active:bg-primary/20 disabled:opacity-30 disabled:pointer-events-none rounded-full transition-all duration-200"
-                                    title={language === 'es' ? "Deshacer" : "Undo"}
+                                    title={lt(language, "Deshacer", "Undo")}
                                 >
                                     <Undo2 className="w-3.5 h-3.5" />
                                 </button>
@@ -634,33 +635,33 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                     onClick={handleRedo}
                                     disabled={!canRedo}
                                     className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 active:scale-75 active:rotate-45 active:bg-primary/20 disabled:opacity-30 disabled:pointer-events-none rounded-full transition-all duration-200"
-                                    title={language === 'es' ? "Rehacer" : "Redo"}
+                                    title={lt(language, "Rehacer", "Redo")}
                                 >
                                     <Redo2 className="w-3.5 h-3.5" />
                                 </button>
                                 <div className="w-[1px] h-3.5 bg-zinc-300 dark:bg-white/10 mx-0.5" />
-                                <button onClick={() => addBlock('text')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Texto" : "Text"}>
+                                <button onClick={() => addBlock('text')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={lt(language, "Texto", "Text")}>
                                     <Type className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => addBlock('task-list')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Lista" : "Task List"}>
+                                <button onClick={() => addBlock('task-list')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={lt(language, "Lista", "Task List")}>
                                     <CheckSquare className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => addBlock('table')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Tabla" : "Table"}>
+                                <button onClick={() => addBlock('table')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={lt(language, "Tabla", "Table")}>
                                     <TableIcon className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => addBlock('image')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Imagen" : "Image"}>
+                                <button onClick={() => addBlock('image')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={lt(language, "Imagen", "Image")}>
                                     <ImageIcon className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => addBlock('video')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Video" : "Video"}>
+                                <button onClick={() => addBlock('video')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={lt(language, "Video", "Video")}>
                                     <Film className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => addBlock('drawing')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Dibujo" : "Drawing"}>
+                                <button onClick={() => addBlock('drawing')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={lt(language, "Dibujo", "Drawing")}>
                                     <PenTool className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => addBlock('file')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Archivo" : "File"}>
+                                <button onClick={() => addBlock('file')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={lt(language, "Archivo", "File")}>
                                     <Paperclip className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => addBlock('separator')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={language === 'es' ? "Separador" : "Separator"}>
+                                <button onClick={() => addBlock('separator')} className="p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all" title={lt(language, "Separador", "Separator")}>
                                     <SeparatorHorizontal className="w-3.5 h-3.5" />
                                 </button>
                             </div>
@@ -674,7 +675,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                         : 'bg-primary text-primary-foreground hover:opacity-90 active:scale-95 shadow-primary/20'
                                         }`}
                                 >
-                                    <span>{isSaving ? '...' : lastSaved ? (language === 'es' ? 'Guardado' : 'Saved') : (language === 'es' ? 'Guardar' : 'Save')}</span>
+                                    <span>{isSaving ? '...' : lastSaved ? (lt(language, 'Guardado', 'Saved')) : (lt(language, 'Guardar', 'Save'))}</span>
                                 </button>
                                 <button className="p-1.5 rounded-full bg-white/5 text-muted-foreground hover:bg-white/10 transition-all border border-white/10 active:scale-95">
                                     <Share2 className="w-3.5 h-3.5" />
@@ -733,17 +734,17 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
                             {/* Mobile Toolbar (Options) moved to the top of standard portrait header */}
                             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-1.5 border-t border-white/5 mt-1">
-                                <ToolbarButton icon={Undo2} label={language === 'es' ? "Deshacer" : "Undo"} onClick={handleUndo} disabled={!canUndo} animDirection="ccw" />
-                                <ToolbarButton icon={Redo2} label={language === 'es' ? "Rehacer" : "Redo"} onClick={handleRedo} disabled={!canRedo} animDirection="cw" />
+                                <ToolbarButton icon={Undo2} label={lt(language, "Deshacer", "Undo")} onClick={handleUndo} disabled={!canUndo} animDirection="ccw" />
+                                <ToolbarButton icon={Redo2} label={lt(language, "Rehacer", "Redo")} onClick={handleRedo} disabled={!canRedo} animDirection="cw" />
                                 <div className="w-[1px] h-4 bg-zinc-200 dark:bg-white/10 mx-0.5 shrink-0" />
-                                <ToolbarButton icon={Type} label={language === 'es' ? "Texto" : "Text"} onClick={() => addBlock('text')} />
-                                <ToolbarButton icon={CheckSquare} label={language === 'es' ? "Lista" : "Task List"} onClick={() => addBlock('task-list')} />
-                                <ToolbarButton icon={TableIcon} label={language === 'es' ? "Tabla" : "Table"} onClick={() => addBlock('table')} />
-                                <ToolbarButton icon={ImageIcon} label={language === 'es' ? "Imagen" : "Image"} onClick={() => addBlock('image')} />
-                                <ToolbarButton icon={Film} label={language === 'es' ? "Video" : "Video"} onClick={() => addBlock('video')} />
-                                <ToolbarButton icon={PenTool} label={language === 'es' ? "Dibujo" : "Drawing"} onClick={() => addBlock('drawing')} />
-                                <ToolbarButton icon={Paperclip} label={language === 'es' ? "Archivo" : "File"} onClick={() => addBlock('file')} />
-                                <ToolbarButton icon={SeparatorHorizontal} label={language === 'es' ? "Separador" : "Separator"} onClick={() => addBlock('separator')} />
+                                <ToolbarButton icon={Type} label={lt(language, "Texto", "Text")} onClick={() => addBlock('text')} />
+                                <ToolbarButton icon={CheckSquare} label={lt(language, "Lista", "Task List")} onClick={() => addBlock('task-list')} />
+                                <ToolbarButton icon={TableIcon} label={lt(language, "Tabla", "Table")} onClick={() => addBlock('table')} />
+                                <ToolbarButton icon={ImageIcon} label={lt(language, "Imagen", "Image")} onClick={() => addBlock('image')} />
+                                <ToolbarButton icon={Film} label={lt(language, "Video", "Video")} onClick={() => addBlock('video')} />
+                                <ToolbarButton icon={PenTool} label={lt(language, "Dibujo", "Drawing")} onClick={() => addBlock('drawing')} />
+                                <ToolbarButton icon={Paperclip} label={lt(language, "Archivo", "File")} onClick={() => addBlock('file')} />
+                                <ToolbarButton icon={SeparatorHorizontal} label={lt(language, "Separador", "Separator")} onClick={() => addBlock('separator')} />
                             </div>
                         </div>
                     )}
@@ -761,7 +762,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
                     {blocks.length === 0 && (
                         <div className="text-center text-muted-foreground mt-20 italic">
-                            {language === 'es' ? "Comienza añadiendo un bloque desde la barra superior." : "Start by adding a block from the toolbar above."}
+                            {lt(language, "Comienza aÃ±adiendo un bloque desde la barra superior.", "Start by adding a block from the toolbar above.")}
                         </div>
                     )}
                     <div className="space-y-2 w-full">
@@ -792,11 +793,11 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                 onConfirm={() => {
                     skipSaveRef.current = true
                     deleteNote(note.id)
-                    showToast(language === 'es' ? "Nota eliminada" : "Note deleted", "info")
+                    showToast(lt(language, "Nota eliminada", "Note deleted"), "info")
                     onClose()
                 }}
-                title={language === 'es' ? '¿Eliminar esta nota?' : 'Delete this note?'}
-                message={language === 'es' ? 'Esta nota se eliminará permanentemente.' : 'This note will be permanently deleted.'}
+                title={lt(language, 'Â¿Eliminar esta nota?', 'Delete this note?')}
+                message={lt(language, 'Esta nota se eliminarÃ¡ permanentemente.', 'This note will be permanently deleted.')}
             />
             <ConfirmationDialog
                 isOpen={blockToDelete !== null}
@@ -807,8 +808,8 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                         setBlockToDelete(null)
                     }
                 }}
-                title={language === 'es' ? '¿Eliminar esta sección?' : 'Delete this section?'}
-                message={language === 'es' ? 'Esta sección se eliminará de la nota.' : 'This section will be removed from the note.'}
+                title={lt(language, 'Â¿Eliminar esta secciÃ³n?', 'Delete this section?')}
+                message={lt(language, 'Esta secciÃ³n se eliminarÃ¡ de la nota.', 'This section will be removed from the note.')}
             />
 
             {/* Keyboard Floating Toolbar */}
@@ -829,7 +830,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                 onClick={handleUndo}
                                 disabled={!canUndo}
                                 className="p-1.5 rounded-md text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10 active:scale-75 active:-rotate-45 active:bg-primary/20 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 shrink-0"
-                                title={language === 'es' ? "Deshacer" : "Undo"}
+                                title={lt(language, "Deshacer", "Undo")}
                             >
                                 <Undo2 className="w-4 h-4" />
                             </button>
@@ -838,7 +839,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                 onClick={handleRedo}
                                 disabled={!canRedo}
                                 className="p-1.5 rounded-md text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10 active:scale-75 active:rotate-45 active:bg-primary/20 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 shrink-0"
-                                title={language === 'es' ? "Rehacer" : "Redo"}
+                                title={lt(language, "Rehacer", "Redo")}
                             >
                                 <Redo2 className="w-4 h-4" />
                             </button>
@@ -855,7 +856,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                         }}
                                         disabled={blocks.findIndex(b => b.id === activeBlockId) === 0}
                                         className="p-1.5 rounded-md text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shrink-0"
-                                        title={language === 'es' ? "Subir Bloque" : "Move Block Up"}
+                                        title={lt(language, "Subir Bloque", "Move Block Up")}
                                     >
                                         <ChevronUp className="w-4 h-4" />
                                     </button>
@@ -867,7 +868,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                         }}
                                         disabled={blocks.findIndex(b => b.id === activeBlockId) === blocks.length - 1}
                                         className="p-1.5 rounded-md text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shrink-0"
-                                        title={language === 'es' ? "Bajar Bloque" : "Move Block Down"}
+                                        title={lt(language, "Bajar Bloque", "Move Block Down")}
                                     >
                                         <ChevronDown className="w-4 h-4" />
                                     </button>
@@ -881,7 +882,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                             }
                                         }}
                                         className="p-1.5 rounded-md text-red-500 hover:bg-red-500/10 transition-all active:scale-95 shrink-0"
-                                        title={language === 'es' ? "Eliminar Bloque" : "Delete Block"}
+                                        title={lt(language, "Eliminar Bloque", "Delete Block")}
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </button>
@@ -949,8 +950,8 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                             <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
 
                             {/* Lists Group */}
-                            <FormatButton icon={List} label="Viñetas" onClick={() => applyFormat('insertUnorderedList')} active={formatStates.insertUnorderedList} />
-                            <FormatButton icon={ListOrdered} label="Numeración" onClick={() => applyFormat('insertOrderedList')} active={formatStates.insertOrderedList} />
+                            <FormatButton icon={List} label="ViÃ±etas" onClick={() => applyFormat('insertUnorderedList')} active={formatStates.insertUnorderedList} />
+                            <FormatButton icon={ListOrdered} label="NumeraciÃ³n" onClick={() => applyFormat('insertOrderedList')} active={formatStates.insertOrderedList} />
 
                             <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
 
@@ -965,13 +966,13 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                             <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
 
                             {/* Highlighters Group */}
-                            <span className="text-[9px] uppercase font-bold text-zinc-500 dark:text-white/40 tracking-wider shrink-0 mr-1">{language === 'es' ? "Resaltar:" : "Highlight:"}</span>
-                            <HighlightButton color="#fef08a" label={language === 'es' ? "Amarillo" : "Yellow"} onClick={() => applyFormat('backColor', '#fef08a')} />
-                            <HighlightButton color="#bbf7d0" label={language === 'es' ? "Verde" : "Green"} onClick={() => applyFormat('backColor', '#bbf7d0')} />
-                            <HighlightButton color="#bfdbfe" label={language === 'es' ? "Azul" : "Blue"} onClick={() => applyFormat('backColor', '#bfdbfe')} />
-                            <HighlightButton color="#fecaca" label={language === 'es' ? "Rojo" : "Red"} onClick={() => applyFormat('backColor', '#fecaca')} />
-                            <HighlightButton color="#e9d5ff" label={language === 'es' ? "Morado" : "Purple"} onClick={() => applyFormat('backColor', '#e9d5ff')} />
-                            <FormatButton icon={Eraser} label={language === 'es' ? "Borrar" : "Clear"} onClick={() => applyFormat('backColor', 'transparent')} />
+                            <span className="text-[9px] uppercase font-bold text-zinc-500 dark:text-white/40 tracking-wider shrink-0 mr-1">{lt(language, "Resaltar:", "Highlight:")}</span>
+                            <HighlightButton color="#fef08a" label={lt(language, "Amarillo", "Yellow")} onClick={() => applyFormat('backColor', '#fef08a')} />
+                            <HighlightButton color="#bbf7d0" label={lt(language, "Verde", "Green")} onClick={() => applyFormat('backColor', '#bbf7d0')} />
+                            <HighlightButton color="#bfdbfe" label={lt(language, "Azul", "Blue")} onClick={() => applyFormat('backColor', '#bfdbfe')} />
+                            <HighlightButton color="#fecaca" label={lt(language, "Rojo", "Red")} onClick={() => applyFormat('backColor', '#fecaca')} />
+                            <HighlightButton color="#e9d5ff" label={lt(language, "Morado", "Purple")} onClick={() => applyFormat('backColor', '#e9d5ff')} />
+                            <FormatButton icon={Eraser} label={lt(language, "Borrar", "Clear")} onClick={() => applyFormat('backColor', 'transparent')} />
                         </div>
 
                         {/* Close Button */}
@@ -1099,7 +1100,7 @@ function ToolbarButton({ icon: Icon, label, onClick, disabled, animDirection }: 
 }
 
 /**
- * InlineImageButton — inserts an image at cursor in a contenteditable text block.
+ * InlineImageButton â€” inserts an image at cursor in a contenteditable text block.
 /**
  * Helper to hide virtual soft keyboard on Web / Mobile Web / WebView
  */
@@ -1151,7 +1152,7 @@ export async function persistAndBuildMediaHtml(file: File, isVideo: boolean): Pr
 }
 
 /**
- * InlineImageButton — inserts an image at cursor in a contenteditable text block.
+ * InlineImageButton â€” inserts an image at cursor in a contenteditable text block.
  * Default styling: inline-block with 48% width so images sit side-by-side natively!
  * Icon: black in light mode, white in dark mode.
  */
@@ -1198,7 +1199,7 @@ function InlineImageButton({ language }: { language: string }) {
                     fileInputRef.current?.click();
                 }}
                 className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10"
-                title={language === 'es' ? 'Insertar imagen en texto' : 'Insert image in text'}
+                title={lt(language, 'Insertar imagen en texto', 'Insert image in text')}
             >
                 <ImageIcon className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
                 <span className="text-[11px] font-bold">Img</span>
@@ -1241,7 +1242,7 @@ export async function resolveInlineImages(container: HTMLElement | null) {
 
         if (!localUri) continue;
 
-        // Already resolved to a usable URL — skip
+        // Already resolved to a usable URL â€” skip
         if (currentSrc.startsWith('blob:') || currentSrc.startsWith('data:') ||
             currentSrc.startsWith('http://') || currentSrc.startsWith('https://') ||
             (currentSrc.startsWith('capacitor://') || currentSrc.startsWith('ionic://'))) {
@@ -1262,7 +1263,7 @@ export async function resolveInlineImages(container: HTMLElement | null) {
         }
     }
     const duration = (performance.now() - t0).toFixed(2);
-    console.log(`[PERF][resolveInlineImages] ${imgElements.length} imágenes procesadas en ${duration} ms`);
+    console.log(`[PERF][resolveInlineImages] ${imgElements.length} imÃ¡genes procesadas en ${duration} ms`);
 }
 
 /**
@@ -1345,7 +1346,7 @@ export async function resolveInlineVideos(container: HTMLElement | null) {
 }
 
 /**
- * InlineVideoButton — inserts a video inside text block.
+ * InlineVideoButton â€” inserts a video inside text block.
  */
 function InlineVideoButton({ language }: { language: string }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1402,7 +1403,7 @@ function InlineVideoButton({ language }: { language: string }) {
                     fileInputRef.current?.click();
                 }}
                 className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10"
-                title={language === 'es' ? 'Insertar video en texto' : 'Insert video in text'}
+                title={lt(language, 'Insertar video en texto', 'Insert video in text')}
             >
                 <Film className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
                 <span className="text-[11px] font-bold">Vid</span>
@@ -1412,7 +1413,7 @@ function InlineVideoButton({ language }: { language: string }) {
 }
 
 /**
- * InlineFileButton — inserts a document or audio file chip inside text block.
+ * InlineFileButton â€” inserts a document or audio file chip inside text block.
  * Supports Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), PDF (.pdf), Audio (.mp3, .wav, etc.).
  */
 function InlineFileButton({ language }: { language: string }) {
@@ -1448,7 +1449,7 @@ function InlineFileButton({ language }: { language: string }) {
             const ext = (file.name.split('.').pop() || 'FILE').toUpperCase();
             const iconInfo = getFileIcon('', file.name);
             const iconSrc = iconInfo.imageSrc || '/icons/pdf.png';
-            const openLabel = language === 'es' ? 'Abrir' : 'Open';
+            const openLabel = lt(language, 'Abrir', 'Open');
 
             const trashSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>`;
             const fileHtml = `<div data-inline-file="1" contenteditable="false" data-file-url="${persistentUri}" data-file-name="${file.name}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:12px 16px;margin:10px 0;border-radius:16px;cursor:pointer;user-select:none;clear:both;"><div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;"><img src="${iconSrc}" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;border-radius:0;" /><div style="display:flex;flex-direction:column;min-width:0;flex:1;"><span data-file-title="1" style="font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;">${file.name}</span><span data-file-ext="1" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">${ext}</span></div></div><div style="display:flex;align-items:center;gap:8px;flex-shrink:0;"><button type="button" data-file-action="open" style="padding:6px 16px;border-radius:9999px;font-size:12px;font-weight:700;cursor:pointer;">${openLabel}</button><button type="button" data-file-action="delete" style="padding:6px;background:transparent;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Eliminar">${trashSvg}</button></div></div><p><br></p>`;
@@ -1475,17 +1476,17 @@ function InlineFileButton({ language }: { language: string }) {
                     fileInputRef.current?.click();
                 }}
                 className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10"
-                title={language === 'es' ? 'Insertar archivo en texto' : 'Insert file in text'}
+                title={lt(language, 'Insertar archivo en texto', 'Insert file in text')}
             >
                 <Paperclip className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
-                <span className="text-[11px] font-bold">{language === 'es' ? 'Archivo' : 'File'}</span>
+                <span className="text-[11px] font-bold">{lt(language, 'Archivo', 'File')}</span>
             </button>
         </div>
     );
 }
 
 /**
- * InlineTableButton — inserts a table inside active text block.
+ * InlineTableButton â€” inserts a table inside active text block.
  */
 function InlineTableButton({ language, onInsertBlock }: { language: string; onInsertBlock?: () => void }) {
     return (
@@ -1500,16 +1501,16 @@ function InlineTableButton({ language, onInsertBlock }: { language: string; onIn
                 }
             }}
             className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10 shrink-0"
-            title={language === 'es' ? 'Insertar Tabla' : 'Insert Table'}
+            title={lt(language, 'Insertar Tabla', 'Insert Table')}
         >
             <TableIcon className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
-            <span className="text-[11px] font-bold">{language === 'es' ? 'Tabla' : 'Table'}</span>
+            <span className="text-[11px] font-bold">{lt(language, 'Tabla', 'Table')}</span>
         </button>
     );
 }
 
 /**
- * InlineTaskButton — inserts an interactive checkbox task item inside text block.
+ * InlineTaskButton â€” inserts an interactive checkbox task item inside text block.
  */
 function InlineTaskButton({ language }: { language: string }) {
     const savedRangeRef = useRef<Range | null>(null);
@@ -1563,16 +1564,16 @@ function InlineTaskButton({ language }: { language: string }) {
                 handleInsertTask();
             }}
             className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10 shrink-0"
-            title={language === 'es' ? 'Insertar Tarea con Checkmark' : 'Insert Checkmark Task'}
+            title={lt(language, 'Insertar Tarea con Checkmark', 'Insert Checkmark Task')}
         >
             <CheckSquare className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
-            <span className="text-[11px] font-bold">{language === 'es' ? 'Tarea' : 'Task'}</span>
+            <span className="text-[11px] font-bold">{lt(language, 'Tarea', 'Task')}</span>
         </button>
     );
 }
 
 /**
- * InlineSeparatorButton — inserts a horizontal line separator inside text block.
+ * InlineSeparatorButton â€” inserts a horizontal line separator inside text block.
  */
 function InlineSeparatorButton({ language }: { language: string }) {
     const savedRangeRef = useRef<Range | null>(null);
@@ -1605,20 +1606,20 @@ function InlineSeparatorButton({ language }: { language: string }) {
                 handleInsertSeparator();
             }}
             className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all active:scale-95 cursor-pointer text-zinc-700 dark:text-white/80 hover:bg-zinc-100 dark:hover:bg-white/10 shrink-0"
-            title={language === 'es' ? 'Insertar Separador' : 'Insert Separator'}
+            title={lt(language, 'Insertar Separador', 'Insert Separator')}
         >
             <SeparatorHorizontal className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
-            <span className="text-[11px] font-bold">{language === 'es' ? 'Separador' : 'Separator'}</span>
+            <span className="text-[11px] font-bold">{lt(language, 'Separador', 'Separator')}</span>
         </button>
     );
 }
 
 /**
- * InlineMediaOverlay — floating overlay for selected inline image or video element.
+ * InlineMediaOverlay â€” floating overlay for selected inline image or video element.
  * Features:
  * - Sleek small gray handles (14px diameter) & gray border outline (NO black/purple)
  * - Alignment toolbar (Align Left, Center, Align Right, Side-by-side)
- * - Prominent Delete button 🗑️
+ * - Prominent Delete button ðŸ—‘ï¸
  * - 2D free relative offset drag positioning & corner/side resizing for both images and videos!
  */
 function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTriggerSave, initialPointer }: {
@@ -1946,7 +1947,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTrigg
                     if (src && onImageClick) onImageClick(src);
                 }}
             >
-                {/* Selection border — sleek medium gray */}
+                {/* Selection border â€” sleek medium gray */}
                 <div style={{
                     position: 'absolute', inset: 0,
                     border: `1.5px solid ${borderCol}`,
@@ -1955,7 +1956,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTrigg
                     boxShadow: '0 0 0 1px rgba(113,113,122,0.2)',
                 }} />
 
-                {/* Corner bracket indicators (matching user's sketch: ┌ ┐ └ ┘) */}
+                {/* Corner bracket indicators (matching user's sketch: â”Œ â” â”” â”˜) */}
                 <div style={{
                     position: 'absolute', top: -2, left: -2, width: 22, height: 22,
                     borderTop: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
@@ -2030,7 +2031,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTrigg
                         style={{ padding: '2px 6px', borderRadius: 6, fontSize: 11, fontWeight: 700, color: isDark ? '#e4e4e7' : '#27272a' }}
                         title="Lado a lado (Inline)"
                     >
-                        ⇄
+                        â‡„
                     </button>
 
                     {onImageClick && (
@@ -2069,7 +2070,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTrigg
                     </button>
                 </div>
 
-                {/* Move badge — center indicator */}
+                {/* Move badge â€” center indicator */}
                 <div
                     onPointerDown={handleMoveStart}
                     style={{
@@ -2201,7 +2202,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
     };
 
     const standardFonts = [
-        { name: language === 'es' ? "Predeterminada" : "Default", fontName: "inherit", previewFamily: "inherit" },
+        { name: lt(language, "Predeterminada", "Default"), fontName: "inherit", previewFamily: "inherit" },
         { name: "Arial", fontName: "Arial", previewFamily: "Arial, sans-serif" },
         { name: "Calibri", fontName: "Calibri", previewFamily: "Calibri, Carlito, sans-serif" },
         { name: "Georgia", fontName: "Georgia", previewFamily: "Georgia, serif" },
@@ -2228,10 +2229,10 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                         ? "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 font-bold"
                         : "text-zinc-700 dark:text-white/70 hover:bg-zinc-100 dark:hover:bg-white/10"
                 }`}
-                title={language === 'es' ? "Fuente de Letra" : "Font Family"}
+                title={lt(language, "Fuente de Letra", "Font Family")}
             >
                 <Type className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
-                <span className="text-[11px] font-bold">{language === 'es' ? "Fuente" : "Font"}</span>
+                <span className="text-[11px] font-bold">{lt(language, "Fuente", "Font")}</span>
                 <ChevronDown className="w-3 h-3 opacity-60" />
             </button>
 
@@ -2243,7 +2244,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                             <div className="flex items-center gap-2">
                                 <Type className="w-4 h-4 text-zinc-800 dark:text-zinc-200" />
                                 <span className="font-bold text-sm text-foreground">
-                                    {language === 'es' ? "Seleccionar Fuente" : "Select Font"}
+                                    {lt(language, "Seleccionar Fuente", "Select Font")}
                                 </span>
                             </div>
                             <button
@@ -2256,7 +2257,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
 
                         <div className="flex-1 overflow-y-auto p-2 space-y-1">
                             <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                                {language === 'es' ? "Fuentes del Sistema" : "System Fonts"}
+                                {lt(language, "Fuentes del Sistema", "System Fonts")}
                             </div>
                             <div className="grid grid-cols-1 gap-1">
                                 {standardFonts.map((font) => (
@@ -2278,7 +2279,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                             {customFonts.length > 0 && (
                                 <>
                                     <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-t border-zinc-100 dark:border-white/10 pt-2 mt-2">
-                                        {language === 'es' ? "Fuentes Personalizadas" : "Custom Fonts"}
+                                        {lt(language, "Fuentes Personalizadas", "Custom Fonts")}
                                     </div>
                                     <div className="grid grid-cols-1 gap-1">
                                         {customFonts.map((font) => (
@@ -2301,7 +2302,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                         </div>
 
                         <div className="p-3 border-t border-zinc-100 dark:border-white/10 bg-zinc-50/50 dark:bg-zinc-800/50">
-                            {/* Hidden file input — use onClick (not onMouseDown+preventDefault) so Android WebView opens the native file picker */}
+                            {/* Hidden file input â€” use onClick (not onMouseDown+preventDefault) so Android WebView opens the native file picker */}
                             <input
                                 type="file"
                                 ref={fontInputRef}
@@ -2317,10 +2318,10 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                                 className="w-full flex items-center justify-center gap-2 p-2.5 bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black rounded-xl font-bold transition-all text-xs cursor-pointer shadow-md shadow-zinc-900/10 dark:shadow-black/40 active:scale-95"
                             >
                                 <Plus className="w-4 h-4" />
-                                <span>{language === 'es' ? "Añadir fuente desde almacenamiento" : "Add font from storage"}</span>
+                                <span>{lt(language, "AÃ±adir fuente desde almacenamiento", "Add font from storage")}</span>
                             </button>
                             <p className="text-center text-[10px] text-muted-foreground mt-1.5 opacity-70">
-                                {language === 'es' ? "Formatos admitidos: TTF, OTF, WOFF, WOFF2" : "Supported formats: TTF, OTF, WOFF, WOFF2"}
+                                {lt(language, "Formatos admitidos: TTF, OTF, WOFF, WOFF2", "Supported formats: TTF, OTF, WOFF, WOFF2")}
                             </p>
                         </div>
                     </div>
@@ -2410,7 +2411,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
         void runDownload(true);
     }, [runDownload]);
 
-    // Auto-intentar descarga 1 sola vez por bloque y sesión al abrir la nota si falta copia local o da error de carga
+    // Auto-intentar descarga 1 sola vez por bloque y sesiÃ³n al abrir la nota si falta copia local o da error de carga
     useEffect(() => {
         if (!block.driveFileId || isDownloading || downloadedUri) return;
         if (!isNeedsRemoteFetch && !imageError) return;
@@ -2572,10 +2573,10 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                             <div className="flex flex-col items-center justify-center p-6 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-center w-full min-h-[160px]">
                                 <AlertCircle className="w-10 h-10 text-amber-500 mb-2" />
                                 <span className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-1">
-                                    {failMessage?.title || (language === 'es' ? 'Imagen no disponible localmente' : 'Image unavailable locally')}
+                                    {failMessage?.title || (lt(language, 'Imagen no disponible localmente', 'Image unavailable locally'))}
                                 </span>
                                 <span className="text-xs text-muted-foreground max-w-xs mb-3">
-                                    {failMessage?.subtitle || (block.driveFileId ? (language === 'es' ? 'Guardada en Drive. Toca para descargar.' : 'Saved in Drive. Tap to download.') : (language === 'es' ? 'Sincroniza tu cuenta para respaldar.' : 'Sync your account to back up.'))}
+                                    {failMessage?.subtitle || (block.driveFileId ? (lt(language, 'Guardada en Drive. Toca para descargar.', 'Saved in Drive. Tap to download.')) : (lt(language, 'Sincroniza tu cuenta para respaldar.', 'Sync your account to back up.')))}
                                 </span>
                                 {block.driveFileId && (
                                     <button
@@ -2584,7 +2585,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                                         className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 disabled:opacity-50 text-amber-600 dark:text-amber-300 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                                     >
                                         {isRetryingDownload ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                                        {isRetryingDownload ? (language === 'es' ? 'Descargando...' : 'Downloading...') : (language === 'es' ? 'Reintentar descarga' : 'Retry download')}
+                                        {isRetryingDownload ? (lt(language, 'Descargando...', 'Downloading...')) : (lt(language, 'Reintentar descarga', 'Retry download'))}
                                     </button>
                                 )}
                             </div>
@@ -2592,7 +2593,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                             <div className="flex flex-col items-center justify-center w-full min-h-[180px] bg-black/10 dark:bg-white/5 rounded-2xl animate-pulse">
                                 <ImageIcon className="w-10 h-10 text-muted-foreground/30 mb-2" />
                                 <span className="text-muted-foreground/50 text-xs font-medium">
-                                    {language === 'es' ? 'Cargando imagen...' : 'Loading image...'}
+                                    {lt(language, 'Cargando imagen...', 'Loading image...')}
                                 </span>
                             </div>
                         ) : (
@@ -2627,7 +2628,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                                 {/* Sleek selection outline */}
                                 <div className="absolute inset-0 rounded-2xl border-2 border-zinc-400 dark:border-zinc-300 pointer-events-none z-10" />
 
-                                {/* Corner brackets (┌ ┐ └ ┘) */}
+                                {/* Corner brackets (â”Œ â” â”” â”˜) */}
                                 <div className="absolute -top-0.5 -left-0.5 w-5 h-5 border-t-[3.5px] border-l-[3.5px] border-zinc-900 dark:border-white rounded-tl-lg pointer-events-none z-20" />
                                 <div className="absolute -top-0.5 -right-0.5 w-5 h-5 border-t-[3.5px] border-r-[3.5px] border-zinc-900 dark:border-white rounded-tr-lg pointer-events-none z-20" />
                                 <div className="absolute -bottom-0.5 -left-0.5 w-5 h-5 border-b-[3.5px] border-l-[3.5px] border-zinc-900 dark:border-white rounded-bl-lg pointer-events-none z-20" />
@@ -2664,7 +2665,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                 ) : (
                     <div className="text-center">
                         <ImageIcon className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground mb-4">{block.language === 'es' ? 'Subir imagen' : 'Upload an image'}</p>
+                        <p className="text-sm text-muted-foreground mb-4">{block.lt(language, 'Subir imagen', 'Upload an image')}</p>
                         <input
                             type="file"
                             accept="image/*"
@@ -2751,9 +2752,9 @@ async function uploadAttachmentToDrive(
         metadata.parents = [targetFolderId];
     }
 
-    // ──────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // SMALL FILES (<4 MB): fast multipart upload
-    // ──────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (fileSizeMB < 4) {
         const boundary = 'mynotes_upload_boundary';
         const multipartBody =
@@ -2785,10 +2786,10 @@ async function uploadAttachmentToDrive(
         return result.id;
     }
 
-    // ──────────────────────────────────────────────────────
-    // LARGE FILES (≥4 MB): resumable upload (bypasses 5MB limit)
-    // Step 1 – Initiate session, get upload URL
-    // ──────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // LARGE FILES (â‰¥4 MB): resumable upload (bypasses 5MB limit)
+    // Step 1 â€“ Initiate session, get upload URL
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     console.log(`[Upload] Archivo grande (${fileSizeMB.toFixed(1)} MB), usando Resumable Upload...`);
 
     const initiateRes = await fetch(
@@ -2815,7 +2816,7 @@ async function uploadAttachmentToDrive(
         throw new Error('Drive resumable: no Location header returned from initiation.');
     }
 
-    // Step 2 – Upload the binary content
+    // Step 2 â€“ Upload the binary content
     const uploadRes = await fetch(uploadUrl, {
         method: 'PUT',
         headers: {
@@ -2886,7 +2887,7 @@ export async function openFileHelper(fileUrl: string, fileName: string, driveFil
         return;
     }
     if (!fileUrl) {
-        useStore.getState().showToast("El archivo no contiene un enlace válido", "error");
+        useStore.getState().showToast("El archivo no contiene un enlace vÃ¡lido", "error");
         return;
     }
 
@@ -3002,7 +3003,7 @@ export async function openFileHelper(fileUrl: string, fileName: string, driveFil
         if (driveFileId) {
             window.open(`https://drive.google.com/file/d/${driveFileId}/view`, '_blank');
         } else {
-            useStore.getState().showToast("Este archivo se guardó localmente en la app móvil.", "info");
+            useStore.getState().showToast("Este archivo se guardÃ³ localmente en la app mÃ³vil.", "info");
         }
         return;
     }
@@ -3054,9 +3055,7 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
                 });
                 if (!res.ok && res.reason === 'too-large') {
                     const confirmDownload = typeof window !== 'undefined' && window.confirm(
-                        language === 'es'
-                            ? 'Este archivo supera los 50 MB. ¿Deseas descargarlo en este dispositivo?'
-                            : 'This file is over 50 MB. Download it to this device?'
+                        lt(language, 'Este archivo supera los 50 MB. Â¿Deseas descargarlo en este dispositivo?', 'This file is over 50 MB. Download it to this device?')
                     );
                     if (confirmDownload) {
                         res = await ensureAttachment({
@@ -3168,7 +3167,7 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
                             type="button"
                             className="px-4 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 text-xs font-bold rounded-full transition-all border border-zinc-200/80 dark:border-zinc-700/80 shadow-sm shrink-0 cursor-pointer"
                         >
-                            {language === 'es' ? 'Abrir' : 'Open'}
+                            {lt(language, 'Abrir', 'Open')}
                         </button>
                         <button
                             type="button"
@@ -3274,9 +3273,7 @@ function VideoPlaceholder({ name, noteId, blockId, driveFileId }: {
             });
             if (!res.ok && res.reason === 'too-large') {
                 const confirmDownload = typeof window !== 'undefined' && window.confirm(
-                    useStore.getState().language === 'es'
-                        ? 'Este video supera los 50 MB. ¿Deseas descargarlo en este dispositivo?'
-                        : 'This video is over 50 MB. Download it to this device?'
+                    lt(useStore.getState().language, 'Este video supera los 50 MB. Â¿Deseas descargarlo en este dispositivo?', 'This video is over 50 MB. Download it to this device?')
                 );
                 if (confirmDownload) {
                     res = await ensureAttachment({
@@ -3319,7 +3316,7 @@ function VideoPlaceholder({ name, noteId, blockId, driveFileId }: {
                 </button>
             )}
             {!canDownload && !isDownloading && (
-                <span className="text-[10px] mt-1 opacity-40">Toca ▶ para reproducir</span>
+                <span className="text-[10px] mt-1 opacity-40">Toca â–¶ para reproducir</span>
             )}
             {isDownloading && (
                 <span className="text-[10px] opacity-60">Descargando...</span>
@@ -3332,7 +3329,7 @@ function VideoThumbnailWeb({ src, name, noteId, blockId, driveFileId }: { src: s
     const thumbVideoRef = useRef<HTMLVideoElement>(null);
     const [hasError, setHasError] = useState(false);
 
-    // Skip the video element entirely for non-playable URLs to avoid "Error de previsualización"
+    // Skip the video element entirely for non-playable URLs to avoid "Error de previsualizaciÃ³n"
     if (!isPlayableVideoUrl(src)) {
         return <VideoPlaceholder name={name} noteId={noteId} blockId={blockId} driveFileId={driveFileId} />;
     }
@@ -3363,9 +3360,9 @@ function VideoThumbnailWeb({ src, name, noteId, blockId, driveFileId }: { src: s
         video.addEventListener('seeked', handleSeeked);
         video.addEventListener('error', handleError);
 
-        // 8s timeout – if metadata doesn't arrive, show placeholder instead of spinner forever
+        // 8s timeout â€“ if metadata doesn't arrive, show placeholder instead of spinner forever
         timeoutId = setTimeout(() => {
-            console.warn('[VIDEO] Timeout loadedmetadata — switching to placeholder:', src);
+            console.warn('[VIDEO] Timeout loadedmetadata â€” switching to placeholder:', src);
             setHasError(true);
         }, 8000);
 
@@ -3461,13 +3458,13 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
             }
         }
 
-        console.log('[VIDEO] ¿Archivo local existe?', localExists);
+        console.log('[VIDEO] Â¿Archivo local existe?', localExists);
 
         if (needsDownload) {
             if (!block.driveFileId) {
-                console.error('[VIDEO] No hay localPath válido NI driveFileId — video sin fuente');
+                console.error('[VIDEO] No hay localPath vÃ¡lido NI driveFileId â€” video sin fuente');
                 import('@/lib/store').then(({ useStore }) => {
-                    useStore.getState().showToast('Este video no está disponible.', 'error');
+                    useStore.getState().showToast('Este video no estÃ¡ disponible.', 'error');
                 });
                 return;
             }
@@ -3489,9 +3486,7 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                 });
                 if (!res.ok && res.reason === 'too-large') {
                     const confirmDownload = typeof window !== 'undefined' && window.confirm(
-                        useStore.getState().language === 'es'
-                            ? 'Este video supera los 50 MB. ¿Deseas descargarlo en este dispositivo?'
-                            : 'This video is over 50 MB. Download it to this device?'
+                        lt(useStore.getState().language, 'Este video supera los 50 MB. Â¿Deseas descargarlo en este dispositivo?', 'This video is over 50 MB. Download it to this device?')
                     );
                     if (confirmDownload) {
                         res = await ensureAttachment({
@@ -3517,7 +3512,7 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                 }
             } catch (err) {
                 setIsDownloadingState(false);
-                console.error('[VIDEO] FALLÓ la descarga:', err);
+                console.error('[VIDEO] FALLÃ“ la descarga:', err);
                 const { useStore } = await import('@/lib/store');
                 useStore.getState().showToast('No se pudo descargar el video.', 'error');
                 return;
@@ -3535,7 +3530,7 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
         // 100MB limit
         if (file.size > 100 * 1024 * 1024) {
             import('@/lib/store').then(({ useStore }) => {
-                useStore.getState().showToast("El video es demasiado grande. El límite es 100MB.", "error");
+                useStore.getState().showToast("El video es demasiado grande. El lÃ­mite es 100MB.", "error");
             });
             return;
         }
@@ -3553,7 +3548,7 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                 let thumbUri = null;
                 console.log('[VIDEO] Generando miniatura...');
                 thumbUri = await generateVideoThumbnail(uri, file).catch((err) => {
-                    console.error('[VIDEO] FALLÓ la generación de miniatura:', err);
+                    console.error('[VIDEO] FALLÃ“ la generaciÃ³n de miniatura:', err);
                     return null;
                 });
                 console.log('[VIDEO] Resultado de miniatura:', thumbUri);
@@ -3812,7 +3807,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                     <RichTaskTitle
                         content={title}
                         onChange={updateTitle}
-                        placeholder={language === 'es' ? "Título de la lista (opcional)..." : "List title (optional)..."}
+                        placeholder={lt(language, "TÃ­tulo de la lista (opcional)...", "List title (optional)...")}
                         onFocus={onFocus}
                         onBlur={onBlur}
                     />
@@ -3831,12 +3826,12 @@ const BlockRenderer = React.memo(function BlockRenderer({
                                     content={typeof item.text === 'string' ? item.text : ''}
                                     onChange={(newText) => updateText(item.id, newText)}
                                     onEnter={(currentContent) => insertItemAfter(item.id, currentContent)}
-                                    placeholder={language === 'es' ? "Elemento de tarea..." : "To-do item..."}
+                                    placeholder={lt(language, "Elemento de tarea...", "To-do item...")}
                                     checked={item.checked}
                                     onFocus={onFocus}
                                     onBlur={onBlur}
                                 />
-                                <button onClick={() => insertItemAfter(item.id)} className="text-primary hover:text-primary/70 transition-colors mr-1" title={language === 'es' ? "Añadir debajo" : "Add item below"}>
+                                <button onClick={() => insertItemAfter(item.id)} className="text-primary hover:text-primary/70 transition-colors mr-1" title={lt(language, "AÃ±adir debajo", "Add item below")}>
                                     <Plus className="w-5 h-5" />
                                 </button>
                                 <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-red-500">
@@ -3846,7 +3841,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                         );
                     })}
                     <button onClick={addItem} className="text-sm text-primary hover:underline pl-8">
-                        {language === 'es' ? "+ Añadir elemento" : "+ Add Item"}
+                        {lt(language, "+ AÃ±adir elemento", "+ Add Item")}
                     </button>
                 </div>
             )
@@ -3932,7 +3927,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-all active:scale-95 cursor-pointer"
                         >
                             <Plus className="w-3.5 h-3.5" />
-                            <span>{language === 'es' ? "Añadir Fila" : "Add Row"}</span>
+                            <span>{lt(language, "AÃ±adir Fila", "Add Row")}</span>
                         </button>
                         <button
                             type="button"
@@ -3940,7 +3935,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-all active:scale-95 cursor-pointer"
                         >
                             <Plus className="w-3.5 h-3.5" />
-                            <span>{language === 'es' ? "Añadir Columna" : "Add Column"}</span>
+                            <span>{lt(language, "AÃ±adir Columna", "Add Column")}</span>
                         </button>
                         {rows.length > 1 && (
                             <button
@@ -3949,7 +3944,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold transition-all active:scale-95 cursor-pointer sm:ml-auto"
                             >
                                 <Minus className="w-3.5 h-3.5" />
-                                <span>{language === 'es' ? "Quitar Fila" : "Remove Row"}</span>
+                                <span>{lt(language, "Quitar Fila", "Remove Row")}</span>
                             </button>
                         )}
                         {headers.length > 1 && (
@@ -3959,7 +3954,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold transition-all active:scale-95 cursor-pointer"
                             >
                                 <Minus className="w-3.5 h-3.5" />
-                                <span>{language === 'es' ? "Quitar Columna" : "Remove Col"}</span>
+                                <span>{lt(language, "Quitar Columna", "Remove Col")}</span>
                             </button>
                         )}
                     </div>
@@ -3986,7 +3981,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
         if (block.type === 'drawing') {
     return (
                 <div className="relative w-full">
-                    <p className="text-xs font-semibold text-muted-foreground/60 mb-2">{language === 'es' ? "Lienzo de dibujo" : "Drawing Canvas"}</p>
+                    <p className="text-xs font-semibold text-muted-foreground/60 mb-2">{lt(language, "Lienzo de dibujo", "Drawing Canvas")}</p>
                     <div className="h-64 w-full bg-black/30 border border-white/10 rounded-xl relative overflow-hidden">
                         <DrawingCanvas initialData={typeof block.content === 'string' ? block.content : ''} onSave={onChange} />
                     </div>
@@ -4096,7 +4091,7 @@ const BlockWrapper = React.memo(({
                             onClick={() => moveBlock(idx, 'up')}
                             disabled={isFirst}
                             className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors active:scale-90"
-                            title={language === 'es' ? "Subir bloque" : "Move block up"}
+                            title={lt(language, "Subir bloque", "Move block up")}
                         >
                             <ChevronUp className="w-3.5 h-3.5" />
                         </button>
@@ -4104,14 +4099,14 @@ const BlockWrapper = React.memo(({
                             onClick={() => moveBlock(idx, 'down')}
                             disabled={isLast}
                             className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors active:scale-90"
-                            title={language === 'es' ? "Bajar bloque" : "Move block down"}
+                            title={lt(language, "Bajar bloque", "Move block down")}
                         >
                             <ChevronDown className="w-3.5 h-3.5" />
                         </button>
                         <button
                             onClick={() => removeBlock(block.id)}
                             className="p-1 text-muted-foreground hover:text-red-400 transition-colors active:scale-90 ml-1"
-                            title={language === 'es' ? "Eliminar bloque" : "Delete block"}
+                            title={lt(language, "Eliminar bloque", "Delete block")}
                         >
                             <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -4419,7 +4414,7 @@ const RichTaskTitle = React.memo(function RichTaskTitle({ content, onChange, onF
                 }
                 if (onBlur) onBlur();
             }}
-            {...({ placeholder: placeholder || "Título..." } as any)}
+            {...({ placeholder: placeholder || "TÃ­tulo..." } as any)}
             className="w-full bg-transparent border-none outline-none font-bold text-lg mb-2 text-foreground min-h-[1.75rem] empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 empty:before:block empty:before:pointer-events-none rich-text-editor rich-task-title"
         />
     );
@@ -4460,7 +4455,7 @@ const RichTaskItem = React.memo(function RichTaskItem({ content, onChange, onEnt
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            // Cancel debounce – we handle everything synchronously here
+            // Cancel debounce â€“ we handle everything synchronously here
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             const currentHTML = editorRef.current ? editorRef.current.innerHTML : '';
             // Pass current HTML to onEnter so it can be saved atomically with the insertion
@@ -4606,7 +4601,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             const newContent = editorRef.current.innerHTML;
             const durationInner = (performance.now() - tInner0).toFixed(2);
 
-            console.log(`[PERF][handleInput] Tecla pulsada — resolveInline: ${durationResolvers} ms | innerHTML read: ${durationInner} ms (${(newContent.length / 1024).toFixed(2)} KB)`);
+            console.log(`[PERF][handleInput] Tecla pulsada â€” resolveInline: ${durationResolvers} ms | innerHTML read: ${durationInner} ms (${(newContent.length / 1024).toFixed(2)} KB)`);
 
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             timeoutRef.current = setTimeout(() => {
@@ -4725,7 +4720,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             return;
         }
 
-        // Click elsewhere — deselect overlay only if click wasn't on the overlay itself and wasn't part of the same tap that selected the media
+        // Click elsewhere â€” deselect overlay only if click wasn't on the overlay itself and wasn't part of the same tap that selected the media
         if (
             Date.now() - lastMediaSelectTimeRef.current > 350 &&
             !target.closest('.note-image-overlay-box') &&
@@ -4831,7 +4826,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                         setSelectedMedia(media);
                     }
                 }}
-                {...({ placeholder: "Escribe algo aquí..." } as any)}
+                {...({ placeholder: "Escribe algo aquÃ­..." } as any)}
                 className="rich-text-editor w-full min-h-[30px] bg-transparent border-none outline-none text-base text-foreground relative empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 before:absolute before:pointer-events-none"
             />
             {selectedMedia && typeof document !== 'undefined' && (

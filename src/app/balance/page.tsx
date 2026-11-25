@@ -19,6 +19,7 @@ import { ResetBalanceModal } from "@/components/balance/reset-balance-modal"
 import { CalculatorModal } from "@/components/balance/calculator-modal"
 import { DeferredSection } from "@/components/ui/deferred-section"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
+import { lt } from "@/lib/i18n-inline"
 
 // Custom Calendar component matching the user's mockup design
 interface CustomCalendarProps {
@@ -176,14 +177,14 @@ function CustomCalendar({ selectedDate, onSelectDate, onClear, language, minDate
                     onClick={onClear}
                     className="text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200 transition-colors"
                 >
-                    {language === 'es' ? "Borrar" : "Clear"}
+                    {lt(language, "Borrar", "Clear")}
                 </button>
                 <button
                     type="button"
                     onClick={() => onSelectDate(new Date().toISOString().split('T')[0])}
                     className="text-blue-500 hover:text-blue-650 transition-colors"
                 >
-                    {language === 'es' ? "Hoy" : "Today"}
+                    {lt(language, "Hoy", "Today")}
                 </button>
             </div>
         </div>
@@ -209,7 +210,7 @@ const WalletHistoryList = ({
         return (
             <div className="flex flex-col items-center justify-center p-8 bg-white/5 border border-dashed border-black/10 dark:border-white/10 rounded-3xl text-center w-full">
                 <p className="text-xs text-muted-foreground">
-                    {language === 'es' ? "Aún no hay ingresos o gastos registrados." : "No income or expenses registered yet."}
+                    {lt(language, "Aún no hay ingresos o gastos registrados.", "No income or expenses registered yet.")}
                 </p>
             </div>
         );
@@ -495,7 +496,7 @@ export default function BalancePage() {
             balance: runningBalance,
             delta: 0,
             isUp: true,
-            desc: language === 'es' ? 'Balance inicial' : 'Initial balance'
+            desc: lt(language, 'Balance inicial', 'Initial balance')
         })
 
         // Process each transaction as an explicit step
@@ -515,7 +516,7 @@ export default function BalancePage() {
                 balance: runningBalance,
                 delta,
                 isUp,
-                desc: tx.description || (tx.type === 'income' ? (language === 'es' ? 'Ingreso' : 'Income') : (language === 'es' ? 'Gasto' : 'Expense'))
+                desc: tx.description || (tx.type === 'income' ? (lt(language, 'Ingreso', 'Income')) : (lt(language, 'Gasto', 'Expense')))
             })
         })
 
@@ -528,11 +529,11 @@ export default function BalancePage() {
         e.preventDefault()
         const parsed = parseFloat(tempGoalValue)
         if (isNaN(parsed) || parsed <= 0) {
-            showToast(language === 'es' ? "Por favor ingresa una meta válida mayor a 0" : "Please enter a valid goal greater than 0", "error")
+            showToast(lt(language, "Por favor ingresa una meta válida mayor a 0", "Please enter a valid goal greater than 0"), "error")
             return
         }
         setSavingsGoal(parsed)
-        showToast(language === 'es' ? "Meta actualizada" : "Savings goal updated", "success")
+        showToast(lt(language, "Meta actualizada", "Savings goal updated"), "success")
         setIsEditingGoal(false)
     }
 
@@ -566,8 +567,8 @@ export default function BalancePage() {
         const absVal = Math.abs(val)
 
         const fallbackDesc = effectiveType === 'income'
-            ? (language === 'es' ? 'Ingreso' : 'Income')
-            : (language === 'es' ? 'Gasto' : 'Expense')
+            ? (lt(language, 'Ingreso', 'Income'))
+            : (lt(language, 'Gasto', 'Expense'))
 
         addTransaction({
             amount: absVal,
@@ -585,7 +586,7 @@ export default function BalancePage() {
         e.preventDefault()
         const amountNum = parseFloat(txAmount)
         if (isNaN(amountNum) || amountNum === 0) { // Allows negative values!
-            showToast(language === 'es' ? "Por favor ingresa un monto válido" : "Please enter a valid amount", "error")
+            showToast(lt(language, "Por favor ingresa un monto válido", "Please enter a valid amount"), "error")
             return
         }
 
@@ -594,8 +595,8 @@ export default function BalancePage() {
         const absAmountNum = Math.abs(amountNum)
 
         const fallbackDesc = effectiveTxType === 'income'
-            ? (language === 'es' ? 'Ingreso' : 'Income')
-            : (language === 'es' ? 'Gasto' : 'Expense')
+            ? (lt(language, 'Ingreso', 'Income'))
+            : (lt(language, 'Gasto', 'Expense'))
 
         const txPayload: any = {
             amount: absAmountNum,
@@ -637,7 +638,7 @@ export default function BalancePage() {
 
     const confirmResetBalance = () => {
         if (balance === 0) {
-            showToast(language === 'es' ? 'El balance ya es 0' : 'Balance is already 0', 'success')
+            showToast(lt(language, 'El balance ya es 0', 'Balance is already 0'), 'success')
             setIsResetConfirmOpen(false)
             return
         }
@@ -646,11 +647,11 @@ export default function BalancePage() {
         addTransaction({
             amount: Math.abs(adjustment),
             type: balance > 0 ? 'expense' : 'income',
-            description: language === 'es' ? 'Ajuste: Balance reiniciado a $0' : 'Adjustment: Balance reset to $0',
+            description: lt(language, 'Ajuste: Balance reiniciado a $0', 'Adjustment: Balance reset to $0'),
             date: todayStr,
             currency: '$'
         })
-        showToast(language === 'es' ? 'Balance reiniciado a $0' : 'Balance reset to $0', 'success')
+        showToast(lt(language, 'Balance reiniciado a $0', 'Balance reset to $0'), 'success')
         setIsResetConfirmOpen(false)
     }
 
@@ -673,7 +674,7 @@ export default function BalancePage() {
                 })
             }
         }
-        showToast(language === 'es' ? "Capital marcado como recuperado" : "Capital marked as recovered", "success")
+        showToast(lt(language, "Capital marcado como recuperado", "Capital marked as recovered"), "success")
     }
 
     const formatTransactionDate = (dateStr: string) => {
@@ -774,7 +775,7 @@ export default function BalancePage() {
                                 : "text-muted-foreground hover:text-foreground"
                             }`}
                     >
-                        {language === 'es' ? '7 Días' : '7 Days'}
+                        {lt(language, '7 Días', '7 Days')}
                     </button>
                     <button
                         type="button"
@@ -784,7 +785,7 @@ export default function BalancePage() {
                                 : "text-muted-foreground hover:text-foreground"
                             }`}
                     >
-                        {language === 'es' ? '30 Días' : '30 Days'}
+                        {lt(language, '30 Días', '30 Days')}
                     </button>
                     <button
                         type="button"
@@ -794,7 +795,7 @@ export default function BalancePage() {
                                 : "text-muted-foreground hover:text-foreground"
                             }`}
                     >
-                        {language === 'es' ? 'Todo' : 'All'}
+                        {lt(language, 'Todo', 'All')}
                     </button>
                 </div>
 
@@ -1111,7 +1112,7 @@ export default function BalancePage() {
                 {/* Center Content: "Balance" text + Money amount */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
                     <span className="text-zinc-400 dark:text-zinc-500 font-bold text-[9px] sm:text-[10px] tracking-widest uppercase">
-                        {language === 'es' ? 'Balance' : 'Balance'}
+                        {lt(language, 'Balance', 'Balance')}
                     </span>
                     <span className={`font-extrabold text-xl sm:text-2xl tracking-tight mt-0.5 ${isNegative ? 'text-red-600 dark:text-red-500' : 'text-zinc-950 dark:text-white'}`}>
                         ${balance.toLocaleString()}
@@ -1149,7 +1150,7 @@ export default function BalancePage() {
                                 onClick={() => handleResolveReminder(appt.id)}
                                 className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs py-1.5 px-3 rounded-xl shadow transition-all shrink-0 active:scale-95"
                             >
-                                {language === 'es' ? "Recuperado" : "Recovered"}
+                                {lt(language, "Recuperado", "Recovered")}
                             </button>
                             <button
                                 onClick={() => {
@@ -1161,7 +1162,7 @@ export default function BalancePage() {
                                     }
                                 }}
                                 className="text-rose-500 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-500/10 transition-colors"
-                                title={language === 'es' ? "Quitar" : "Dismiss"}
+                                title={lt(language, "Quitar", "Dismiss")}
                             >
                                 <X className="w-4 h-4" />
                             </button>
@@ -1189,14 +1190,14 @@ export default function BalancePage() {
                                     <button
                                         onClick={() => setShowOnboarding(true)}
                                         className="p-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all text-muted-foreground hover:text-foreground active:scale-95 shrink-0"
-                                        title={language === 'es' ? "Ayuda" : "Help"}
+                                        title={lt(language, "Ayuda", "Help")}
                                     >
                                         <div className="w-4 h-4 rounded-full border-2 border-current flex items-center justify-center text-[10px] font-bold text-current">?</div>
                                     </button>
                                     <button
                                         onClick={() => setChartType(prev => prev === 'donut' ? 'line' : 'donut')}
                                         className="p-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all text-muted-foreground hover:text-foreground active:scale-95 shrink-0"
-                                        title={chartType === 'donut' ? (language === 'es' ? "Ver gráfico de líneas" : "Show line chart") : (language === 'es' ? "Ver gráfico circular" : "Show circular chart")}
+                                        title={chartType === 'donut' ? (lt(language, "Ver gráfico de líneas", "Show line chart")) : (lt(language, "Ver gráfico circular", "Show circular chart"))}
                                     >
                                         {chartType === 'donut' ? <TrendingUp className="w-5 h-5" /> : <PieChart className="w-5 h-5" />}
                                     </button>
@@ -1214,13 +1215,13 @@ export default function BalancePage() {
                                 <div className="flex items-center justify-center gap-4 w-full relative">
                                     <div className="h-[1.5px] bg-black/10 dark:bg-white/10 flex-1" />
                                     <span className="text-base sm:text-lg font-black tracking-wider uppercase text-foreground shrink-0 whitespace-nowrap">
-                                        {language === 'es' ? 'Tienes' : 'You have'}: {balance.toLocaleString()}$
+                                        {lt(language, 'Tienes', 'You have')}: {balance.toLocaleString()}$
                                     </span>
                                     <div className="h-[1.5px] bg-black/10 dark:bg-white/10 flex-1" />
                                     <button
                                         onClick={() => setShowExpenseNoteModal(true)}
                                         className="absolute right-0 text-zinc-500 dark:text-zinc-400 hover:text-foreground transition-all active:scale-95 p-1"
-                                        title={language === 'es' ? "Nueva Nota de Gasto" : "New Expense Note"}
+                                        title={lt(language, "Nueva Nota de Gasto", "New Expense Note")}
                                     >
                                         <FileText className="w-6 h-6" />
                                     </button>
@@ -1278,7 +1279,7 @@ export default function BalancePage() {
                                                 setIsEditingGoal(true)
                                             }}
                                             className="p-1.5 text-muted-foreground hover:text-purple-400 transition-colors shrink-0"
-                                            title={language === 'es' ? 'Editar meta' : 'Edit goal'}
+                                            title={lt(language, 'Editar meta', 'Edit goal')}
                                         >
                                             <Edit2 className="w-3.5 h-3.5" />
                                         </button>
@@ -1292,7 +1293,7 @@ export default function BalancePage() {
                                 <button
                                     onClick={() => setShowCalculatorModal(true)}
                                     className="p-3 text-zinc-950 dark:text-white hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-all hover:scale-110 active:scale-95 shrink-0 flex items-center justify-center"
-                                    title={language === 'es' ? "Calculadora" : "Calculator"}
+                                    title={lt(language, "Calculadora", "Calculator")}
                                 >
                                     <Calculator className="w-5 h-5 text-zinc-950 dark:text-white" />
                                 </button>
@@ -1300,18 +1301,18 @@ export default function BalancePage() {
                                     onClick={() => handleQuickAction("income")}
                                     className="px-6 py-3 bg-[#5c5c5c] hover:bg-[#4d4d4d] text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow"
                                 >
-                                    {language === 'es' ? "Agregar" : "Agregar"}
+                                    {lt(language, "Agregar", "Agregar")}
                                 </button>
                                 <button
                                     onClick={() => handleQuickAction("expense")}
                                     className="px-6 py-3 bg-[#242424] hover:bg-[#1a1a1a] text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow"
                                 >
-                                    {language === 'es' ? "Gaste" : "Gaste"}
+                                    {lt(language, "Gaste", "Gaste")}
                                 </button>
                                 <button
                                     onClick={handleResetBalance}
                                     className="p-3 text-zinc-950 dark:text-white hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-all hover:scale-110 active:scale-95 shrink-0 flex items-center justify-center"
-                                    title={language === 'es' ? 'Reiniciar balance a $0' : 'Reset balance to $0'}
+                                    title={lt(language, 'Reiniciar balance a $0', 'Reset balance to $0')}
                                 >
                                     <RotateCcw className="w-5 h-5" />
                                 </button>
@@ -1332,13 +1333,13 @@ export default function BalancePage() {
                             {/* Wallet History Header + Clear History Action */}
                             <div className="flex justify-between items-center px-1 pb-1">
                                 <h2 className="text-lg font-black tracking-tight text-foreground uppercase">
-                                    {language === 'es' ? "Historial De billetera" : "Wallet History"}
+                                    {lt(language, "Historial De billetera", "Wallet History")}
                                 </h2>
                                 {transactions.length > 0 && (
                                     <button
                                         onClick={handleClearHistory}
                                         className="p-2 text-rose-500 hover:text-rose-650 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer shrink-0"
-                                        title={language === 'es' ? "Eliminar Historial" : "Clear History"}
+                                        title={lt(language, "Eliminar Historial", "Clear History")}
                                     >
                                         <Trash2 className="w-5 h-5" />
                                     </button>
@@ -1361,7 +1362,7 @@ export default function BalancePage() {
                         <div className="bg-transparent rounded-[32px] p-2 mt-4 relative w-full overflow-hidden max-h-[300px] flex flex-col border border-white/5">
                             <div className="flex justify-between items-center px-2 pb-2">
                                 <h2 className="text-lg font-black tracking-tight text-foreground uppercase">
-                                    {language === 'es' ? "Notas de Gastos" : "Expense Notes"}
+                                    {lt(language, "Notas de Gastos", "Expense Notes")}
                                 </h2>
                             </div>
                             <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-2">
@@ -1369,7 +1370,7 @@ export default function BalancePage() {
                                     <div className="flex flex-col items-center justify-center text-center p-6 bg-white/5 border border-white/10 rounded-[24px]">
                                         <FileText className="w-8 h-8 text-white/20 mb-3" />
                                         <p className="text-white/40 text-sm font-medium">
-                                            {language === 'es' ? "No hay notas de gastos" : "No expense notes yet"}
+                                            {lt(language, "No hay notas de gastos", "No expense notes yet")}
                                         </p>
                                     </div>
                                 ) : (
@@ -1473,8 +1474,8 @@ export default function BalancePage() {
                                         value={txDescription}
                                         onChange={(e) => setTxDescription(e.target.value)}
                                         placeholder={txType === 'income'
-                                            ? (language === 'es' ? "¿Quieres especificar en que ganaste ese capital?" : "Want to specify what you earned this capital from?")
-                                            : (language === 'es' ? "¿En que gastaste?" : "What did you spend on?")}
+                                            ? (lt(language, "¿Quieres especificar en que ganaste ese capital?", "Want to specify what you earned this capital from?"))
+                                            : (lt(language, "¿En que gastaste?", "What did you spend on?"))}
                                         rows={3}
                                         className="w-full glass-field rounded-2xl px-4 py-3 focus:outline-none focus:border-zinc-400 focus:ring-0 text-sm text-foreground placeholder:text-zinc-400"
                                     />
@@ -1488,8 +1489,8 @@ export default function BalancePage() {
                                     >
                                         <span>
                                             {txType === 'expense'
-                                                ? (txReminderDate ? `${language === 'es' ? 'Recuperar el: ' : 'Recover: '}${txReminderDate}` : (language === 'es' ? "Fecha que esperas recuperarlo" : "Expected Capital Recovery Date"))
-                                                : (txReminderDate ? `${language === 'es' ? 'Conservar hasta: ' : 'Conserve: '}${txReminderDate}` : (language === 'es' ? "META DE CONSERVACION C." : "Capital Conservation Goal"))
+                                                ? (txReminderDate ? `${lt(language, 'Recuperar el: ', 'Recover: ')}${txReminderDate}` : (lt(language, "Fecha que esperas recuperarlo", "Expected Capital Recovery Date")))
+                                                : (txReminderDate ? `${lt(language, 'Conservar hasta: ', 'Conserve: ')}${txReminderDate}` : (lt(language, "META DE CONSERVACION C.", "Capital Conservation Goal")))
                                             }
                                         </span>
                                         <Calendar className="w-4 h-4" />
@@ -1537,14 +1538,14 @@ export default function BalancePage() {
                                             type="submit"
                                             className="w-full py-3.5 bg-[#242424] hover:bg-[#1a1a1a] text-white font-black text-sm uppercase tracking-wider rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-md"
                                         >
-                                            {language === 'es' ? "Gaste" : "Confirm Spend"}
+                                            {lt(language, "Gaste", "Confirm Spend")}
                                         </button>
                                     ) : (
                                         <button
                                             type="submit"
                                             className="w-full py-3.5 bg-[#5c5c5c] hover:bg-[#4d4d4d] text-white font-black text-sm uppercase tracking-wider rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-md"
                                         >
-                                            {language === 'es' ? "Gane" : "Confirm Income"}
+                                            {lt(language, "Gane", "Confirm Income")}
                                         </button>
                                     )}
                                 </div>
@@ -1552,12 +1553,8 @@ export default function BalancePage() {
                                 <div className="text-center pt-2">
                                     <p className="text-[10px] text-zinc-500 leading-relaxed dark:text-zinc-400">
                                         {txType === 'expense'
-                                            ? (language === 'es'
-                                                ? "ATENCION: para tener un mejor control y gestión de tu capital prestado o gastado, apunta en lo que gastaste o quien se lo prestaste ¿ESPECIFICAMENTE a quién? y cuando, para que si en caso que haya sido prestado, para cuando lo cobres no tengas sorpresas sepas a quien y cuanto,"
-                                                : "ATTENTION: to have better control and management of your lent or spent capital, note what you spent on or who you lent it to SPECIFICALLY to whom? and when, so in case it was lent, you won't have surprises when you collect it, knowing who and how much,")
-                                            : (language === 'es'
-                                                ? "Felicidades, que sigas así!!"
-                                                : "Congratulations, keep it up!!")
+                                            ? (lt(language, "ATENCION: para tener un mejor control y gestión de tu capital prestado o gastado, apunta en lo que gastaste o quien se lo prestaste ¿ESPECIFICAMENTE a quién? y cuando, para que si en caso que haya sido prestado, para cuando lo cobres no tengas sorpresas sepas a quien y cuanto,", "ATTENTION: to have better control and management of your lent or spent capital, note what you spent on or who you lent it to SPECIFICALLY to whom? and when, so in case it was lent, you won't have surprises when you collect it, knowing who and how much,"))
+                                            : (lt(language, "Felicidades, que sigas así!!", "Congratulations, keep it up!!"))
                                         }
                                     </p>
                                 </div>
@@ -1597,15 +1594,13 @@ export default function BalancePage() {
                                     <Trash2 className="w-7 h-7 text-white" />
                                 </div>
                                 <h3 className="text-white font-black text-lg tracking-tight text-center">
-                                    {language === 'es' ? '¿Eliminar todo el historial?' : 'Clear all history?'}
+                                    {lt(language, '¿Eliminar todo el historial?', 'Clear all history?')}
                                 </h3>
                             </div>
                             {/* Body */}
                             <div className="bg-white dark:bg-zinc-900 px-6 py-5 flex flex-col gap-4">
                                 <p className="text-zinc-600 dark:text-zinc-400 text-sm text-center leading-relaxed">
-                                    {language === 'es'
-                                        ? 'Esta acción eliminará todas tus transacciones, reiniciará tu saldo a $0 y quitará los recordatorios de cobro y metas activas. Esta acción no se puede deshacer.'
-                                        : 'This will delete all your transactions, reset your balance to $0 and remove any active reminders and conservation goals. This cannot be undone.'}
+                                    {lt(language, 'Esta acción eliminará todas tus transacciones, reiniciará tu saldo a $0 y quitará los recordatorios de cobro y metas activas. Esta acción no se puede deshacer.', 'This will delete all your transactions, reset your balance to $0 and remove any active reminders and conservation goals. This cannot be undone.')}
                                 </p>
                                 <div className="flex gap-3">
                                     <button
@@ -1613,18 +1608,18 @@ export default function BalancePage() {
                                         onClick={() => setIsClearConfirmOpen(false)}
                                         className="flex-1 py-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
                                     >
-                                        {language === 'es' ? 'Cancelar' : 'Cancel'}
+                                        {lt(language, 'Cancelar', 'Cancel')}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => {
                                             clearAllTransactions()
                                             setIsClearConfirmOpen(false)
-                                            showToast(language === 'es' ? 'Historial eliminado exitosamente' : 'Wallet history cleared successfully', 'success')
+                                            showToast(lt(language, 'Historial eliminado exitosamente', 'Wallet history cleared successfully'), 'success')
                                         }}
                                         className="flex-1 py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-sm transition-all hover:scale-[1.02] active:scale-95"
                                     >
-                                        {language === 'es' ? 'Sí, eliminar todo' : 'Yes, clear all'}
+                                        {lt(language, 'Sí, eliminar todo', 'Yes, clear all')}
                                     </button>
                                 </div>
                             </div>
@@ -1666,10 +1661,10 @@ export default function BalancePage() {
                                     <Trash2 className="w-6 h-6 text-zinc-300" />
                                 </div>
                                 <h3 className="text-white font-black text-base tracking-tight text-center">
-                                    {language === 'es' ? '¿Eliminar transacción?' : 'Delete transaction?'}
+                                    {lt(language, '¿Eliminar transacción?', 'Delete transaction?')}
                                 </h3>
                                 <p className="text-zinc-400 text-xs text-center">
-                                    {language === 'es' ? 'El saldo se ajustará automáticamente.' : 'Your balance will be adjusted automatically.'}
+                                    {lt(language, 'El saldo se ajustará automáticamente.', 'Your balance will be adjusted automatically.')}
                                 </p>
                             </div>
                             <div className="bg-white dark:bg-zinc-900 px-6 py-4 flex gap-3">
@@ -1678,18 +1673,18 @@ export default function BalancePage() {
                                     onClick={() => setTransactionToDeleteId(null)}
                                     className="flex-1 py-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
                                 >
-                                    {language === 'es' ? 'Cancelar' : 'Cancel'}
+                                    {lt(language, 'Cancelar', 'Cancel')}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => {
                                         deleteTransaction(transactionToDeleteId)
                                         setTransactionToDeleteId(null)
-                                        showToast(language === 'es' ? 'Transacción eliminada' : 'Transaction deleted', 'success')
+                                        showToast(lt(language, 'Transacción eliminada', 'Transaction deleted'), 'success')
                                     }}
                                     className="flex-1 py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-900 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-white font-black text-sm transition-all hover:scale-[1.02] active:scale-95"
                                 >
-                                    {language === 'es' ? 'Eliminar' : 'Delete'}
+                                    {lt(language, 'Eliminar', 'Delete')}
                                 </button>
                             </div>
                         </motion.div>
@@ -1736,8 +1731,8 @@ export default function BalancePage() {
                         >
                             <div className="text-[28px] sm:text-[32px] font-normal text-black mb-0.5 capitalize" style={{ fontFamily: 'var(--font-dancing-script), cursive' }}>
                                 {selectedTxDetails.type === 'income' 
-                                    ? (language === 'es' ? 'Ingreso' : 'Income')
-                                    : (language === 'es' ? 'Egreso' : 'Expense')
+                                    ? (lt(language, 'Ingreso', 'Income'))
+                                    : (lt(language, 'Egreso', 'Expense'))
                                 }
                             </div>
                             
@@ -1759,7 +1754,7 @@ export default function BalancePage() {
 
                             <div className="border border-black/10 rounded-[30px] p-6 text-left min-h-[170px] flex flex-col justify-between bg-white">
                                 <p className="text-[15px] font-medium text-black/80 break-words mb-4 leading-relaxed">
-                                    {selectedTxDetails.description || (language === 'es' ? 'Sin descripción' : 'No description')}
+                                    {selectedTxDetails.description || (lt(language, 'Sin descripción', 'No description'))}
                                 </p>
 
                                 {selectedTxDetails.type === 'expense' && (
@@ -1794,7 +1789,7 @@ export default function BalancePage() {
                                                 setSelectedTxDetails(prev => prev ? { ...prev, isRecovered: true } : null);
 
                                                 showToast(
-                                                    language === 'es' ? "Capital recuperado y devuelto a la cuenta" : "Capital recovered and returned to account",
+                                                    lt(language, "Capital recuperado y devuelto a la cuenta", "Capital recovered and returned to account"),
                                                     "success"
                                                 );
                                             }}
@@ -1802,7 +1797,7 @@ export default function BalancePage() {
                                             onTouchStart={(e) => e.stopPropagation()}
                                             className="w-full py-3 bg-[#7029b1] hover:bg-[#602099] active:scale-95 text-white font-bold text-sm rounded-xl transition-all shadow text-center mt-auto cursor-pointer"
                                         >
-                                            {language === 'es' ? "Recuperado" : "Recovered"}
+                                            {lt(language, "Recuperado", "Recovered")}
                                         </button>
                                     ) : (
                                         <button
@@ -1812,7 +1807,7 @@ export default function BalancePage() {
                                             onTouchStart={(e) => e.stopPropagation()}
                                             className="w-full py-3 bg-[#222222] text-white font-bold text-sm rounded-xl text-center mt-auto cursor-default"
                                         >
-                                            {language === 'es' ? "Capital recuperado" : "Capital recovered"}
+                                            {lt(language, "Capital recuperado", "Capital recovered")}
                                         </button>
                                     )
                                 )}

@@ -18,6 +18,7 @@ import { GlassSurface } from "@/components/ui/glass-surface"
 import { useRouter } from "next/navigation"
 import { timerEngine } from '@/lib/timer-engine'
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
+import { lt } from "@/lib/i18n-inline"
 
 function SettingsCloudSyncControls({
     googleUser,
@@ -412,7 +413,7 @@ export function SettingsDialog() {
                             isDemo: false
                         });
                         showNotif(
-                            language === 'es' ? "Sesión Iniciada" : "Logged In",
+                            lt(language, "Sesión Iniciada", "Logged In"),
                             language === 'es' ? `Bienvenido, ${profile.name}` : `Welcome, ${profile.name}`,
                             "success"
                         );
@@ -460,7 +461,7 @@ export function SettingsDialog() {
                 }
             }
             showNotif(
-                language === 'es' ? "Sesión Iniciada" : "Logged In",
+                lt(language, "Sesión Iniciada", "Logged In"),
                 language === 'es' ? `Bienvenido, ${(result as any).name || (result as any).displayName}` : `Welcome, ${(result as any).name || (result as any).displayName}`,
                 "success"
             );
@@ -483,8 +484,8 @@ export function SettingsDialog() {
         } catch (err: any) {
             console.error("Google login failed", err);
             showNotif(
-                language === 'es' ? "Error de Login" : "Login Error",
-                language === 'es' ? "No se pudo iniciar sesión con Google." : "Could not sign in with Google.",
+                lt(language, "Error de Login", "Login Error"),
+                lt(language, "No se pudo iniciar sesión con Google.", "Could not sign in with Google."),
                 "error"
             );
         }
@@ -499,8 +500,8 @@ export function SettingsDialog() {
             isDemo: true
         });
         showNotif(
-            language === 'es' ? "Sesión Demo" : "Demo Session",
-            language === 'es' ? "Iniciaste sesión con un perfil de prueba." : "Logged in with a test profile.",
+            lt(language, "Sesión Demo", "Demo Session"),
+            lt(language, "Iniciaste sesión con un perfil de prueba.", "Logged in with a test profile."),
             "success"
         );
         setTimeout(() => {
@@ -518,8 +519,8 @@ export function SettingsDialog() {
         // 3. Clear only the Google account from state (data stays in local storage)
         setGoogleUser(null);
         showNotif(
-            language === 'es' ? "Sesión Cerrada" : "Logged Out",
-            language === 'es' ? "Sesión de Google cerrada. Tus datos se conservan localmente." : "Google session closed. Your data is kept locally.",
+            lt(language, "Sesión Cerrada", "Logged Out"),
+            lt(language, "Sesión de Google cerrada. Tus datos se conservan localmente.", "Google session closed. Your data is kept locally."),
             "info"
         );
     };
@@ -529,15 +530,15 @@ export function SettingsDialog() {
         try {
             const success = await syncWithGoogleDrive();
             if (success) {
-                showToast(language === 'es' ? "Sincronización completada ✓" : "Sync completed ✓", "success");
+                showToast(lt(language, "Sincronización completada ✓", "Sync completed ✓"), "success");
             } else {
                 const errorMsg = useStore.getState().syncError;
                 if (!errorMsg) {
-                    showToast(language === 'es' ? "Sincronización completada ✓" : "Sync completed ✓", "success");
+                    showToast(lt(language, "Sincronización completada ✓", "Sync completed ✓"), "success");
                     return;
                 }
                 showNotif(
-                    language === 'es' ? "Error" : "Error",
+                    lt(language, "Error", "Error"),
                     language === 'es' 
                         ? `Error al sincronizar con Google Drive: ${errorMsg}` 
                         : `Error syncing with Google Drive: ${errorMsg}`,
@@ -556,15 +557,15 @@ export function SettingsDialog() {
         try {
             const success = await restoreFromGoogleDrive();
             if (success) {
-                showToast(language === 'es' ? "Elementos de la nube restaurados con éxito ✓" : "Cloud elements restored successfully ✓", "success");
+                showToast(lt(language, "Elementos de la nube restaurados con éxito ✓", "Cloud elements restored successfully ✓"), "success");
             } else {
                 const errorMsg = useStore.getState().syncError;
                 if (!errorMsg) {
-                    showToast(language === 'es' ? "Restauración completada ✓" : "Restore completed ✓", "info");
+                    showToast(lt(language, "Restauración completada ✓", "Restore completed ✓"), "info");
                     return;
                 }
                 showNotif(
-                    language === 'es' ? "Error" : "Error",
+                    lt(language, "Error", "Error"),
                     language === 'es' 
                         ? `No se encontró respaldo o hubo un error al restaurar: ${errorMsg}` 
                         : `No backup found or error restoring: ${errorMsg}`,
@@ -594,7 +595,7 @@ export function SettingsDialog() {
                 );
             } else {
                 showNotif(
-                    language === 'es' ? 'Recuperación de imágenes' : 'Image Recovery',
+                    lt(language, 'Recuperación de imágenes', 'Image Recovery'),
                     result.message,
                     result.recovered === 0 && result.failed === 0 ? 'info' : 'warning'
                 );
@@ -614,8 +615,8 @@ export function SettingsDialog() {
         const ext = file.name.split('.').pop()?.toLowerCase();
         if (!['ttf', 'otf', 'woff', 'woff2'].includes(ext || '')) {
             showNotif(
-                language === 'es' ? 'Archivo de fuente inválido' : 'Invalid font file',
-                language === 'es' ? 'Por favor selecciona un archivo .ttf, .otf, .woff o .woff2' : 'Please select a .ttf, .otf, .woff, or .woff2 file',
+                lt(language, 'Archivo de fuente inválido', 'Invalid font file'),
+                lt(language, 'Por favor selecciona un archivo .ttf, .otf, .woff o .woff2', 'Please select a .ttf, .otf, .woff, or .woff2 file'),
                 'error'
             );
             return;
@@ -681,16 +682,16 @@ export function SettingsDialog() {
                 });
 
                 await Share.share({
-                    title: language === 'es' ? "Exportar copia de seguridad" : "Export backup",
+                    title: lt(language, "Exportar copia de seguridad", "Export backup"),
                     url: fileResult.uri,
-                    dialogTitle: language === 'es' ? "Compartir o guardar copia de seguridad" : "Share or save backup"
+                    dialogTitle: lt(language, "Compartir o guardar copia de seguridad", "Share or save backup")
                 });
                 return;
             } catch (e) {
                 console.error("Capacitor export failed", e);
                 showNotif(
-                    language === 'es' ? "Error" : "Error",
-                    language === 'es' ? "Error al exportar localmente." : "Error exporting locally.",
+                    lt(language, "Error", "Error"),
+                    lt(language, "Error al exportar localmente.", "Error exporting locally."),
                     "error"
                 );
             }
@@ -751,7 +752,7 @@ export function SettingsDialog() {
                 });
 
                 showNotif(
-                    language === 'es' ? "Respaldo Guardado" : "Backup Saved",
+                    lt(language, "Respaldo Guardado", "Backup Saved"),
                     language === 'es'
                         ? `Copia de seguridad manual guardada directamente en Documentos/MyNotesData/${fileName}`
                         : `Manual backup saved directly to Documents/MyNotesData/${fileName}`,
@@ -761,8 +762,8 @@ export function SettingsDialog() {
             } catch (e) {
                 console.error("Capacitor save to Documents failed", e);
                 showNotif(
-                    language === 'es' ? "Error" : "Error",
-                    language === 'es' ? "Error al descargar en la carpeta Documentos." : "Error downloading to Documents folder.",
+                    lt(language, "Error", "Error"),
+                    lt(language, "Error al descargar en la carpeta Documentos.", "Error downloading to Documents folder."),
                     "error"
                 );
             }
@@ -779,8 +780,8 @@ export function SettingsDialog() {
             URL.revokeObjectURL(url);
 
             showNotif(
-                language === 'es' ? "Descarga Iniciada" : "Download Started",
-                language === 'es' ? "Copia de seguridad manual descargada correctamente." : "Manual backup downloaded successfully.",
+                lt(language, "Descarga Iniciada", "Download Started"),
+                lt(language, "Copia de seguridad manual descargada correctamente.", "Manual backup downloaded successfully."),
                 "success"
             );
         }
@@ -797,7 +798,7 @@ export function SettingsDialog() {
                     await applyBackupDataToStore(data);
                     setIsSmartImportModalOpen(false);
                     showToast(
-                        language === 'es' ? "Datos locales cargados" : "Local data loaded",
+                        lt(language, "Datos locales cargados", "Local data loaded"),
                         "success"
                     );
 
@@ -810,8 +811,8 @@ export function SettingsDialog() {
             } catch (err) {
                 console.error("Failed to parse import data", err);
                 showNotif(
-                    language === 'es' ? "Error" : "Error",
-                    language === 'es' ? "Error al importar datos" : "Error importing data",
+                    lt(language, "Error", "Error"),
+                    lt(language, "Error al importar datos", "Error importing data"),
                     "error"
                 );
             }
@@ -831,7 +832,7 @@ export function SettingsDialog() {
             const data = await readAutoBackup2DaysFromDisk();
             if (!data || typeof data !== 'object') {
                 showNotif(
-                    language === 'es' ? "Sin Copia Automática" : "No Automatic Backup",
+                    lt(language, "Sin Copia Automática", "No Automatic Backup"),
                     language === 'es'
                         ? `No se encontró el archivo ${AUTO_BACKUP_2DAYS_FILENAME.replace('.json', '')}. La aplicación lo creará automáticamente cada 2 días.`
                         : `Automatic backup (${AUTO_BACKUP_2DAYS_FILENAME.replace('.json', '')}) not found yet. The app creates it automatically every 2 days.`,
@@ -842,7 +843,7 @@ export function SettingsDialog() {
 
             await applyBackupDataToStore(data);
             showToast(
-                language === 'es' ? "Copia local automática restaurada ✓" : "Automatic local backup restored ✓",
+                lt(language, "Copia local automática restaurada ✓", "Automatic local backup restored ✓"),
                 "success"
             );
 
@@ -853,10 +854,8 @@ export function SettingsDialog() {
         } catch (err) {
             console.error("Auto backup restore failed", err);
             showNotif(
-                language === 'es' ? "Error" : "Error",
-                language === 'es'
-                    ? "Error al restaurar la copia automática."
-                    : "Error restoring automatic backup.",
+                lt(language, "Error", "Error"),
+                lt(language, "Error al restaurar la copia automática.", "Error restoring automatic backup."),
                 "error"
             );
         }
@@ -914,10 +913,8 @@ export function SettingsDialog() {
 
             if (jsonFiles.length === 0) {
                 showNotif(
-                    language === 'es' ? "Sin Copias Manuales" : "No Manual Backups Found",
-                    language === 'es'
-                        ? "No se encontraron copias de seguridad manuales (.json) en Documentos o MyNotesData. Usa 'Descargar datos de respaldo' para crear una."
-                        : "No manual backup files (.json) found in Documents or MyNotesData.",
+                    lt(language, "Sin Copias Manuales", "No Manual Backups Found"),
+                    lt(language, "No se encontraron copias de seguridad manuales (.json) en Documentos o MyNotesData. Usa 'Descargar datos de respaldo' para crear una.", "No manual backup files (.json) found in Documents or MyNotesData."),
                     "warning"
                 );
                 return;
@@ -938,7 +935,7 @@ export function SettingsDialog() {
             if (data && typeof data === 'object') {
                 await applyBackupDataToStore(data);
                 showToast(
-                    language === 'es' ? "Copia manual restaurada ✓" : "Manual backup restored ✓",
+                    lt(language, "Copia manual restaurada ✓", "Manual backup restored ✓"),
                     "success"
                 );
 
@@ -952,10 +949,8 @@ export function SettingsDialog() {
         } catch (err) {
             console.error("Manual smart import failed", err);
             showNotif(
-                language === 'es' ? "Error" : "Error",
-                language === 'es'
-                    ? "Error al restaurar copia manual. Asegúrate de tener copias descargadas en Documentos/MyNotesData."
-                    : "Manual restore failed. Make sure you have backup files in Documents/MyNotesData.",
+                lt(language, "Error", "Error"),
+                lt(language, "Error al restaurar copia manual. Asegúrate de tener copias descargadas en Documentos/MyNotesData.", "Manual restore failed. Make sure you have backup files in Documents/MyNotesData."),
                 "error"
             );
         }
@@ -1060,16 +1055,16 @@ export function SettingsDialog() {
                                                     </div>
                                                     <div className="min-w-0">
                                                         <h4 className="font-semibold text-xs truncate">
-                                                            {language === 'es' ? 'Estado y aviso de notificaciones' : 'Notification status & prompt'}
+                                                            {lt(language, 'Estado y aviso de notificaciones', 'Notification status & prompt')}
                                                         </h4>
                                                         <p className="text-[11px] text-muted-foreground">
-                                                            {language === 'es' ? 'Permiso del sistema: ' : 'System permission: '}
+                                                            {lt(language, 'Permiso del sistema: ', 'System permission: ')}
                                                             <span className={`font-semibold ${osNotifPermission === 'granted' ? 'text-emerald-500' : osNotifPermission === 'denied' ? 'text-rose-500' : 'text-amber-500'}`}>
                                                                 {osNotifPermission === 'granted'
-                                                                    ? (language === 'es' ? 'Permitidas' : 'Granted')
+                                                                    ? (lt(language, 'Permitidas', 'Granted'))
                                                                     : osNotifPermission === 'denied'
-                                                                        ? (language === 'es' ? 'Denegadas' : 'Denied')
-                                                                        : (language === 'es' ? 'Pendiente' : 'Pending')}
+                                                                        ? (lt(language, 'Denegadas', 'Denied'))
+                                                                        : (lt(language, 'Pendiente', 'Pending'))}
                                                             </span>
                                                         </p>
                                                     </div>
@@ -1086,14 +1081,14 @@ export function SettingsDialog() {
                                                     }}
                                                     className="flex-1 py-2 px-3 rounded-xl bg-black text-white dark:bg-white dark:text-black text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
                                                 >
-                                                    {language === 'es' ? 'Activar / Probar aviso' : 'Show notification prompt'}
+                                                    {lt(language, 'Activar / Probar aviso', 'Show notification prompt')}
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={refreshOsNotifPermission}
                                                     className="py-2 px-3 rounded-xl bg-black/5 dark:bg-white/10 text-xs font-medium hover:bg-black/10 dark:hover:bg-white/15 active:scale-[0.98] transition-all"
                                                 >
-                                                    {language === 'es' ? 'Verificar' : 'Verify'}
+                                                    {lt(language, 'Verificar', 'Verify')}
                                                 </button>
                                             </div>
                                         </div>
@@ -1114,7 +1109,7 @@ export function SettingsDialog() {
                                                 <div className="min-w-0">
                                                     <div className="flex items-center gap-2">
                                                         <h3 className="font-semibold text-sm truncate">
-                                                            {language === 'es' ? 'Frases de disciplina' : 'Discipline quotes'}
+                                                            {lt(language, 'Frases de disciplina', 'Discipline quotes')}
                                                         </h3>
                                                         <button
                                                             type="button"
@@ -1124,13 +1119,11 @@ export function SettingsDialog() {
                                                             }}
                                                             className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/15 hover:opacity-80"
                                                         >
-                                                            {language === 'es' ? 'Ver frase' : 'Preview'}
+                                                            {lt(language, 'Ver frase', 'Preview')}
                                                         </button>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        {language === 'es'
-                                                            ? 'Frases filosóficas ocasionales (solo ciertos días)'
-                                                            : 'Occasional philosophical quotes (only certain days)'}
+                                                        {lt(language, 'Frases filosóficas ocasionales (solo ciertos días)', 'Occasional philosophical quotes (only certain days)')}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1169,8 +1162,8 @@ export function SettingsDialog() {
                                                     <Zap className="w-5 h-5" />
                                                 </motion.div>
                                                 <div>
-                                                    <p className="font-bold text-sm">{language === 'es' ? "Efecto de Enfoque" : "Focus Effect"}</p>
-                                                    <p className="text-xs text-muted-foreground">{language === 'es' ? "Efecto visual al completar tareas" : "Visual effect on completing tasks"}</p>
+                                                    <p className="font-bold text-sm">{lt(language, "Efecto de Enfoque", "Focus Effect")}</p>
+                                                    <p className="text-xs text-muted-foreground">{lt(language, "Efecto visual al completar tareas", "Visual effect on completing tasks")}</p>
                                                 </div>
                                             </div>
 
@@ -1205,8 +1198,8 @@ export function SettingsDialog() {
                                                     <Gauge className="w-5 h-5" />
                                                 </motion.div>
                                                 <div>
-                                                    <p className="font-bold text-sm">{language === 'es' ? "Modo Rendimiento" : "Performance Mode"}</p>
-                                                    <p className="text-xs text-muted-foreground">{language === 'es' ? "Desactiva animaciones pesadas" : "Disable heavy animations"}</p>
+                                                    <p className="font-bold text-sm">{lt(language, "Modo Rendimiento", "Performance Mode")}</p>
+                                                    <p className="text-xs text-muted-foreground">{lt(language, "Desactiva animaciones pesadas", "Disable heavy animations")}</p>
                                                 </div>
                                             </div>
 
@@ -1244,8 +1237,8 @@ export function SettingsDialog() {
                                                     <Code className="w-5 h-5" />
                                                 </motion.div>
                                                 <div>
-                                                    <p className="font-bold text-sm">{language === 'es' ? "Modo Desarrollador" : "Developer Mode"}</p>
-                                                    <p className="text-xs text-muted-foreground">{language === 'es' ? "Muestra el contador de navegación en tiempo real" : "Show real-time navigation counter"}</p>
+                                                    <p className="font-bold text-sm">{lt(language, "Modo Desarrollador", "Developer Mode")}</p>
+                                                    <p className="text-xs text-muted-foreground">{lt(language, "Muestra el contador de navegación en tiempo real", "Show real-time navigation counter")}</p>
                                                 </div>
                                             </div>
 
@@ -1270,10 +1263,10 @@ export function SettingsDialog() {
                                                     </div>
                                                     <div>
                                                         <p className="font-bold text-sm">
-                                                            {language === 'es' ? "Temporizador Flotante (Burbuja)" : "Floating Timer Bubble"}
+                                                            {lt(language, "Temporizador Flotante (Burbuja)", "Floating Timer Bubble")}
                                                         </p>
                                                         <p className="text-xs text-muted-foreground">
-                                                            {language === 'es' ? "Muestra la cuenta atrás fuera de la app mientras usas el móvil" : "Show countdown outside app across other applications"}
+                                                            {lt(language, "Muestra la cuenta atrás fuera de la app mientras usas el móvil", "Show countdown outside app across other applications")}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -1281,12 +1274,12 @@ export function SettingsDialog() {
                                                 {bubbleSettings.hasPermission ? (
                                                     <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full shrink-0">
                                                         <ShieldCheck className="w-3.5 h-3.5" />
-                                                        {language === 'es' ? "Activo" : "Active"}
+                                                        {lt(language, "Activo", "Active")}
                                                     </span>
                                                 ) : (
                                                     <span className="flex items-center gap-1 text-[11px] font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-full shrink-0">
                                                         <ShieldAlert className="w-3.5 h-3.5" />
-                                                        {language === 'es' ? "Sin permiso" : "Needs permission"}
+                                                        {lt(language, "Sin permiso", "Needs permission")}
                                                     </span>
                                                 )}
                                             </div>
@@ -1295,16 +1288,14 @@ export function SettingsDialog() {
                                             {!bubbleSettings.hasPermission && (
                                                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
                                                     <span className="text-amber-700 dark:text-amber-300 font-medium leading-relaxed">
-                                                        {language === 'es'
-                                                            ? "Para mostrar la burbuja sobre otras apps, concede el permiso de 'Aparecer encima'."
-                                                            : "Grant 'Display over other apps' to allow floating bubble countdown."}
+                                                        {lt(language, "Para mostrar la burbuja sobre otras apps, concede el permiso de 'Aparecer encima'.", "Grant 'Display over other apps' to allow floating bubble countdown.")}
                                                     </span>
                                                     <button
                                                         type="button"
                                                         onClick={handleRequestOverlay}
                                                         className="px-3 py-1.5 rounded-lg bg-amber-500 text-white font-bold text-xs hover:bg-amber-600 active:scale-95 transition-all shrink-0 cursor-pointer shadow-sm"
                                                     >
-                                                        {language === 'es' ? "Conceder permiso" : "Grant permission"}
+                                                        {lt(language, "Conceder permiso", "Grant permission")}
                                                     </button>
                                                 </div>
                                             )}
@@ -1312,7 +1303,7 @@ export function SettingsDialog() {
                                             {/* Mode Selector */}
                                             <div className="flex flex-col gap-1.5 mt-1">
                                                 <span className="text-xs font-semibold text-muted-foreground">
-                                                    {language === 'es' ? "Modo de visualización:" : "Display Mode:"}
+                                                    {lt(language, "Modo de visualización:", "Display Mode:")}
                                                 </span>
                                                 <div className="grid grid-cols-3 gap-2 bg-black/5 dark:bg-white/5 p-1 rounded-xl">
                                                     <button
@@ -1324,7 +1315,7 @@ export function SettingsDialog() {
                                                                 : 'text-muted-foreground hover:text-foreground'
                                                         }`}
                                                     >
-                                                        {language === 'es' ? "Solo fuera" : "Outside only"}
+                                                        {lt(language, "Solo fuera", "Outside only")}
                                                     </button>
                                                     <button
                                                         type="button"
@@ -1335,7 +1326,7 @@ export function SettingsDialog() {
                                                                 : 'text-muted-foreground hover:text-foreground'
                                                         }`}
                                                     >
-                                                        {language === 'es' ? "Siempre" : "Always"}
+                                                        {lt(language, "Siempre", "Always")}
                                                     </button>
                                                     <button
                                                         type="button"
@@ -1346,7 +1337,7 @@ export function SettingsDialog() {
                                                                 : 'text-muted-foreground hover:text-foreground'
                                                         }`}
                                                     >
-                                                        {language === 'es' ? "Nunca" : "Never"}
+                                                        {lt(language, "Nunca", "Never")}
                                                     </button>
                                                 </div>
                                             </div>
@@ -1360,7 +1351,7 @@ export function SettingsDialog() {
                                                 >
                                                     <span className="flex items-center gap-1.5">
                                                         <Smartphone className="w-3.5 h-3.5 text-primary" />
-                                                        {language === 'es' ? "¿Tienes Xiaomi, Redmi o POCO (HyperOS / MIUI)?" : "Using Xiaomi, Redmi or POCO (HyperOS)?"}
+                                                        {lt(language, "¿Tienes Xiaomi, Redmi o POCO (HyperOS / MIUI)?", "Using Xiaomi, Redmi or POCO (HyperOS)?")}
                                                     </span>
                                                     {showXiaomiGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                                                 </button>
@@ -1374,13 +1365,11 @@ export function SettingsDialog() {
                                                             className="overflow-hidden text-[11px] text-muted-foreground mt-2 flex flex-col gap-2 bg-black/5 dark:bg-white/5 p-3 rounded-xl"
                                                         >
                                                             <p className="leading-relaxed">
-                                                                {language === 'es'
-                                                                    ? "En MIUI/HyperOS, debes habilitar además el permiso especial 'Mostrar ventanas emergentes en segundo plano':"
-                                                                    : "In MIUI/HyperOS, please make sure to allow 'Display pop-up windows while running in the background':"}
+                                                                {lt(language, "En MIUI/HyperOS, debes habilitar además el permiso especial 'Mostrar ventanas emergentes en segundo plano':", "In MIUI/HyperOS, please make sure to allow 'Display pop-up windows while running in the background':")}
                                                             </p>
                                                             <ol className="list-decimal list-inside space-y-1 font-medium text-foreground">
-                                                                <li>{language === 'es' ? "Ajustes de la App > Otros permisos > Ventanas emergentes en segundo plano." : "App Settings > Other Permissions > Pop-up windows."}</li>
-                                                                <li>{language === 'es' ? "Batería > Ahorro de batería > Sin restricciones." : "Battery > Battery saver > No restrictions."}</li>
+                                                                <li>{lt(language, "Ajustes de la App > Otros permisos > Ventanas emergentes en segundo plano.", "App Settings > Other Permissions > Pop-up windows.")}</li>
+                                                                <li>{lt(language, "Batería > Ahorro de batería > Sin restricciones.", "Battery > Battery saver > No restrictions.")}</li>
                                                             </ol>
                                                             <div className="flex gap-2 mt-1">
                                                                 <button
@@ -1388,14 +1377,14 @@ export function SettingsDialog() {
                                                                     onClick={() => timerEngine.openAppSettings()}
                                                                     className="px-2.5 py-1.5 rounded-lg bg-black/10 dark:bg-white/15 text-foreground font-bold hover:bg-black/20 text-[11px] transition-all cursor-pointer"
                                                                 >
-                                                                    {language === 'es' ? "Abrir Ajustes de MyNotes" : "Open App Settings"}
+                                                                    {lt(language, "Abrir Ajustes de MyNotes", "Open App Settings")}
                                                                 </button>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => timerEngine.openBatteryOptimizationSettings()}
                                                                     className="px-2.5 py-1.5 rounded-lg bg-black/10 dark:bg-white/15 text-foreground font-bold hover:bg-black/20 text-[11px] transition-all cursor-pointer"
                                                                 >
-                                                                    {language === 'es' ? "Ajustes de Batería" : "Battery Settings"}
+                                                                    {lt(language, "Ajustes de Batería", "Battery Settings")}
                                                                 </button>
                                                             </div>
                                                         </motion.div>
@@ -1447,12 +1436,12 @@ export function SettingsDialog() {
                                         <div className="flex flex-col gap-3 p-4 glass-card rounded-2xl">
                                             <div className="flex items-center justify-between">
                                                 <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
-                                                    {language === 'es' ? "Colores de la App" : "App Colors"}
+                                                    {lt(language, "Colores de la App", "App Colors")}
                                                 </p>
                                                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                                                     {appColor === 'black' 
-                                                        ? (language === 'es' ? "Negro" : "Black")
-                                                        : (language === 'es' ? "Morado" : "Purple")}
+                                                        ? (lt(language, "Negro", "Black"))
+                                                        : (lt(language, "Morado", "Purple"))}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-3">
@@ -1467,7 +1456,7 @@ export function SettingsDialog() {
                                                     }`}
                                                 >
                                                     <span className="w-4 h-4 rounded-full bg-[#7f0df2] border border-white/20 shadow-sm shrink-0" />
-                                                    <span>{language === 'es' ? "Morado" : "Purple"}</span>
+                                                    <span>{lt(language, "Morado", "Purple")}</span>
                                                 </button>
 
                                                 {/* Negro Button */}
@@ -1481,7 +1470,7 @@ export function SettingsDialog() {
                                                     }`}
                                                 >
                                                     <span className="w-4 h-4 rounded-full bg-black dark:bg-white border border-white/20 shadow-sm shrink-0" />
-                                                    <span>{language === 'es' ? "Negro" : "Black"}</span>
+                                                    <span>{lt(language, "Negro", "Black")}</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -1492,12 +1481,12 @@ export function SettingsDialog() {
                                                 <div className="flex items-center gap-2">
                                                     <Type className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                                                     <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
-                                                        {language === 'es' ? "Fuentes de letras en Notas" : "Note Font Family"}
+                                                        {lt(language, "Fuentes de letras en Notas", "Note Font Family")}
                                                     </p>
                                                 </div>
                                                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                                                     {noteFontFamily === 'default'
-                                                        ? (language === 'es' ? "Sistema" : "System")
+                                                        ? (lt(language, "Sistema", "System"))
                                                         : noteFontFamily}
                                                 </span>
                                             </div>
@@ -1514,7 +1503,7 @@ export function SettingsDialog() {
                                                     }`}
                                                 >
                                                     <span className="font-sans text-sm font-bold">Aa</span>
-                                                    <span>{language === 'es' ? "Sistema" : "System"}</span>
+                                                    <span>{lt(language, "Sistema", "System")}</span>
                                                 </button>
 
                                                 <button
@@ -1540,7 +1529,7 @@ export function SettingsDialog() {
                                                     }`}
                                                 >
                                                     <span className="font-mono text-sm font-bold">Aa</span>
-                                                    <span>{language === 'es' ? "Mononavegador" : "Monospace"}</span>
+                                                    <span>{lt(language, "Mononavegador", "Monospace")}</span>
                                                 </button>
 
                                                 <button
@@ -1553,7 +1542,7 @@ export function SettingsDialog() {
                                                     }`}
                                                 >
                                                     <span className="font-serif italic text-sm font-bold">Aa</span>
-                                                    <span>{language === 'es' ? "Cursiva" : "Cursive"}</span>
+                                                    <span>{lt(language, "Cursiva", "Cursive")}</span>
                                                 </button>
                                             </div>
 
@@ -1561,7 +1550,7 @@ export function SettingsDialog() {
                                             {customFonts.length > 0 && (
                                                 <div className="flex flex-col gap-1.5 mt-1">
                                                     <p className="text-[11px] text-muted-foreground font-semibold">
-                                                        {language === 'es' ? "Fuentes personalizadas:" : "Custom fonts:"}
+                                                        {lt(language, "Fuentes personalizadas:", "Custom fonts:")}
                                                     </p>
                                                     <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto pr-1">
                                                         {customFonts.map((font) => (
@@ -1590,7 +1579,7 @@ export function SettingsDialog() {
                                                                         }
                                                                     }}
                                                                     className="p-1 text-red-500 hover:text-red-700 hover:bg-red-500/10 rounded-lg transition-all ml-2"
-                                                                    title={language === 'es' ? "Eliminar fuente" : "Remove font"}
+                                                                    title={lt(language, "Eliminar fuente", "Remove font")}
                                                                 >
                                                                     <Trash2 className="w-3.5 h-3.5" />
                                                                 </button>
@@ -1614,14 +1603,14 @@ export function SettingsDialog() {
                                                 className="w-full flex items-center justify-center gap-2 p-2.5 bg-black/10 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/15 text-black dark:text-white rounded-xl font-bold transition-all text-xs cursor-pointer mt-1"
                                             >
                                                 <Plus className="w-3.5 h-3.5" />
-                                                <span>{language === 'es' ? "Añadir fuente desde almacenamiento" : "Add font from storage"}</span>
+                                                <span>{lt(language, "Añadir fuente desde almacenamiento", "Add font from storage")}</span>
                                             </button>
                                         </div>
 
                                         {/* Guided Onboarding Replay */}
                                         <div className="flex flex-col gap-2 p-4 glass-card rounded-2xl">
                                             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">
-                                                {language === 'es' ? "Guía de bienvenida" : "Welcome Guide"}
+                                                {lt(language, "Guía de bienvenida", "Welcome Guide")}
                                             </p>
                                             <button
                                                 onClick={() => {
@@ -1632,14 +1621,14 @@ export function SettingsDialog() {
                                                 className="w-full flex items-center justify-center gap-2 p-3 bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black rounded-xl font-bold transition-all text-sm hover:scale-105 active:scale-95 shadow-lg shadow-black/20 dark:shadow-white/10 cursor-pointer"
                                             >
                                                 <CircleHelp className="w-4 h-4 text-white dark:text-black animate-pulse" />
-                                                {language === 'es' ? "Iniciar guía interactiva" : "Start interactive guide"}
+                                                {lt(language, "Iniciar guía interactiva", "Start interactive guide")}
                                             </button>
                                         </div>
 
                                         {/* Data Management */}
                                         <div className="flex flex-col gap-2 p-4 glass-card rounded-2xl">
                                             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-2">
-                                                {language === 'es' ? "Gestión de Datos" : "Data Management"}
+                                                {lt(language, "Gestión de Datos", "Data Management")}
                                             </p>
                                             <div className="flex flex-col gap-2 w-full">
                                                 <div className="flex gap-3 w-full">
@@ -1660,7 +1649,7 @@ export function SettingsDialog() {
                                                         >
                                                             <Download className="w-4 h-4" />
                                                         </motion.div>
-                                                        {language === 'es' ? "Exportar" : "Export"}
+                                                        {lt(language, "Exportar", "Export")}
                                                     </motion.button>
                                                     <input 
                                                         type="file" 
@@ -1686,7 +1675,7 @@ export function SettingsDialog() {
                                                         >
                                                             <Upload className="w-4 h-4" />
                                                         </motion.div>
-                                                        {language === 'es' ? "Importar" : "Import"}
+                                                        {lt(language, "Importar", "Import")}
                                                     </motion.button>
                                                 </div>
                                                 <motion.button
@@ -1706,7 +1695,7 @@ export function SettingsDialog() {
                                                     >
                                                         <Download className="w-4 h-4 text-emerald-500" />
                                                     </motion.div>
-                                                    {language === 'es' ? "Descargar datos de respaldo" : "Download Backup Data"}
+                                                    {lt(language, "Descargar datos de respaldo", "Download Backup Data")}
                                                 </motion.button>
                                                 <motion.button
                                                     onClick={() => {
@@ -1725,13 +1714,11 @@ export function SettingsDialog() {
                                                     >
                                                         <Zap className="w-4 h-4 text-black dark:text-white" />
                                                     </motion.div>
-                                                    {language === 'es' ? "Importe Inteligente" : "Smart Import"}
+                                                    {lt(language, "Importe Inteligente", "Smart Import")}
                                                 </motion.button>
                                             </div>
                                             <p className="text-[10px] text-muted-foreground/70 text-center mt-2 leading-tight">
-                                                {language === 'es'
-                                                    ? "Exporta tus notas, hábitos y metas para tener un respaldo y recupéralos importando el archivo generado de forma manual o inteligente."
-                                                    : "Export your notes, habits and goals for a backup and restore them by importing the generated file manually or smartly."}
+                                                {lt(language, "Exporta tus notas, hábitos y metas para tener un respaldo y recupéralos importando el archivo generado de forma manual o inteligente.", "Export your notes, habits and goals for a backup and restore them by importing the generated file manually or smartly.")}
                                             </p>
                                         </div>
                                     </div>
@@ -1805,14 +1792,10 @@ export function SettingsDialog() {
                                                         <div className="flex flex-col gap-2">
                                                             <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
                                                                 <p className="text-xs font-semibold text-red-600 dark:text-red-400">
-                                                                    {language === 'es' 
-                                                                        ? "Sesión de Google expirada" 
-                                                                        : "Google session expired"}
+                                                                    {lt(language, "Sesión de Google expirada", "Google session expired")}
                                                                 </p>
                                                                 <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
-                                                                    {language === 'es'
-                                                                        ? "Por favor, re-conéctate para reanudar la sincronización en la nube."
-                                                                        : "Please re-connect to resume cloud synchronization."}
+                                                                    {lt(language, "Por favor, re-conéctate para reanudar la sincronización en la nube.", "Please re-connect to resume cloud synchronization.")}
                                                                 </p>
                                                             </div>
                                                             <motion.button
@@ -1822,7 +1805,7 @@ export function SettingsDialog() {
                                                                 className="w-full flex items-center justify-center gap-2 p-3 bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black rounded-xl font-bold transition-all text-xs shadow-lg shadow-black/20 dark:shadow-white/10"
                                                             >
                                                                 <RefreshCw className="w-3.5 h-3.5" />
-                                                                {language === 'es' ? "Re-conectar cuenta" : "Re-connect account"}
+                                                                {lt(language, "Re-conectar cuenta", "Re-connect account")}
                                                             </motion.button>
                                                         </div>
                                                     ) : (
@@ -1899,7 +1882,7 @@ export function SettingsDialog() {
                                     type="button"
                                     onClick={() => setIsSmartImportModalOpen(false)}
                                     className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-                                    title={language === 'es' ? "Cerrar" : "Close"}
+                                    title={lt(language, "Cerrar", "Close")}
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
@@ -1908,7 +1891,7 @@ export function SettingsDialog() {
                                     className="text-2xl md:text-[26px] font-serif italic text-zinc-900 dark:text-white mb-6 select-none"
                                     style={{ fontFamily: 'var(--font-dancing-script), Georgia, serif' }}
                                 >
-                                    {language === 'es' ? "Importe inteligente" : "Smart Import"}
+                                    {lt(language, "Importe inteligente", "Smart Import")}
                                 </h3>
 
                                 <div className="w-full flex flex-col gap-3.5">
@@ -1917,9 +1900,7 @@ export function SettingsDialog() {
                                         onClick={handleAutoBackupRestore}
                                         className="w-full py-3.5 px-4 rounded-xl bg-[#009e49] hover:bg-[#00873e] active:scale-[0.98] text-white font-extrabold text-sm shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
                                     >
-                                        {language === 'es'
-                                            ? "Restauración de copia automática"
-                                            : "Restore automatic backup"}
+                                        {lt(language, "Restauración de copia automática", "Restore automatic backup")}
                                     </button>
 
                                     <button
@@ -1927,16 +1908,12 @@ export function SettingsDialog() {
                                         onClick={handleManualBackupRestore}
                                         className="w-full py-3.5 px-4 rounded-xl bg-[#a8a8a8] hover:bg-[#969696] dark:bg-zinc-700 dark:hover:bg-zinc-600 active:scale-[0.98] text-black dark:text-white font-extrabold text-sm shadow-sm transition-all cursor-pointer"
                                     >
-                                        {language === 'es'
-                                            ? "Restauración de copia manual"
-                                            : "Restore manual backup"}
+                                        {lt(language, "Restauración de copia manual", "Restore manual backup")}
                                     </button>
                                 </div>
 
                                 <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-6 font-medium">
-                                    {language === 'es'
-                                        ? "La copia automática se hace cada 2 días en local"
-                                        : "Automatic backup is created every 2 days locally"}
+                                    {lt(language, "La copia automática se hace cada 2 días en local", "Automatic backup is created every 2 days locally")}
                                 </p>
                             </motion.div>
                         </div>
@@ -1951,7 +1928,7 @@ export function SettingsDialog() {
                 title={notifState.title}
                 message={notifState.message}
                 type={notifState.type}
-                confirmLabel={language === 'es' ? "Aceptar" : "OK"}
+                confirmLabel={lt(language, "Aceptar", "OK")}
             />
 
             <PerfDebugModal
