@@ -376,236 +376,246 @@ export function GoalCard({ goal }: { goal: Goal }) {
                 message={lt(language, "Esta acción es irreversible.", "This action is irreversible.")}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                {/* Progress Tracking (Left in landscape, 1st in portrait) */}
-                <div className="space-y-4 md:col-start-1 md:row-start-1">
-                    <div className="flex justify-between items-center text-sm">
-                        <span className="font-medium">{pick(language, { es: 'Progreso', en: 'Progress', zh: '进度' })}</span>
-                        <span className="text-primary font-bold">{effectiveProgress}%</span>
-                    </div>
-                    <div className="h-3 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
-                        <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${effectiveProgress}%` }}
-                            className={`h-full ${appColor === 'black' ? 'bg-black dark:bg-white' : 'bg-gradient-to-r from-primary to-purple-500 neon-glow'}`}
-                        />
-                    </div>
+            {(() => {
+                const hasChecklist = goal.type === 'checklist'
+                const hasBudgetSection = goal.targetValue !== undefined && goal.targetValue > 0
+                const landscapeRowsClass = hasChecklist
+                    ? (hasBudgetSection ? "sm:landscape:grid-rows-[auto_1fr_auto]" : "sm:landscape:grid-rows-[auto_1fr]")
+                    : ""
 
-                    {/* Manual slider (only when not checklist and no budget) */}
-                    {goal.type !== 'checklist' && (goal.targetValue === undefined || goal.targetValue === 0) && (
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={localProgress}
-                            onChange={(e) => setLocalProgress(parseInt(e.target.value))}
-                            onMouseUp={handleProgressUpdate}
-                            onTouchEnd={handleProgressUpdate}
-                            className="w-full accent-primary bg-white/5 h-2 rounded-full cursor-pointer mt-4"
-                        />
-                    )}
-                </div>
-
-                {/* Photos Section (Right in landscape, 2nd in portrait; clean without label/camera icon) */}
-                {goal.photos.length > 0 && (
-                    <div className="md:col-start-2 md:row-start-1 md:row-span-3 flex flex-col gap-4 items-center md:items-end justify-start">
-                        {goal.photos.map((photo, i) => (
-                            <div
-                                key={i}
-                                onClick={() => setActiveOverlayImage(photo)}
-                                className="relative group w-full max-w-md rounded-2xl overflow-hidden cursor-zoom-in"
-                            >
-                                <LocalImage src={photo} alt="" className="w-full h-auto max-h-72 object-contain transition-transform group-hover:scale-[1.02]" />
+                return (
+                    <div className={`grid grid-cols-1 sm:landscape:grid-cols-2 ${landscapeRowsClass} gap-x-6 gap-y-5 items-start`}>
+                        {/* Progress Tracking (Top-Left in landscape, 1st in portrait) */}
+                        <div className="space-y-4 sm:landscape:col-start-1 sm:landscape:row-start-1">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="font-medium">{pick(language, { es: 'Progreso', en: 'Progress', zh: '进度' })}</span>
+                                <span className="text-primary font-bold">{effectiveProgress}%</span>
                             </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Budget section (Left in landscape below progress, 3rd in portrait) */}
-                {goal.targetValue !== undefined && goal.targetValue > 0 && (
-                    <div className="space-y-2 bg-transparent py-1 text-left w-full md:col-start-1">
-                        <div className="flex justify-between items-center px-1 gap-2">
-                            <div className="flex flex-col">
-                                <span className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
-                                    {lt(language, "Presupuesto", "Budget")}
-                                </span>
-                                {goal.syncWithBalance && (
-                                    <span className="text-[10px] font-semibold text-primary/80 mt-0.5">
-                                        {lt(language, "Sincronizado con Balance", "Synced with Balance")}
-                                    </span>
-                                )}
+                            <div className="h-3 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${effectiveProgress}%` }}
+                                    className={`h-full ${appColor === 'black' ? 'bg-black dark:bg-white' : 'bg-gradient-to-r from-primary to-purple-500 neon-glow'}`}
+                                />
                             </div>
-                            <span className="text-base font-bold text-foreground font-mono whitespace-nowrap flex items-center gap-1.5">
-                                <span>{currency} {Number(effectiveMoney).toFixed(2).replace(/\.00$/, '')} / {goal.targetValue}</span>
-                                {!goal.syncWithBalance && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsResetConfirmOpen(true)}
-                                        className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-muted-foreground hover:text-primary transition-all active:scale-95 flex items-center justify-center"
-                                        title={lt(language, "Reiniciar presupuesto", "Reset budget")}
-                                    >
-                                        <RotateCcw className="w-3.5 h-3.5" />
-                                    </button>
-                                )}
-                            </span>
+
+                            {/* Manual slider (only when not checklist and no budget) */}
+                            {goal.type !== 'checklist' && !hasBudgetSection && (
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={localProgress}
+                                    onChange={(e) => setLocalProgress(parseInt(e.target.value))}
+                                    onMouseUp={handleProgressUpdate}
+                                    onTouchEnd={handleProgressUpdate}
+                                    className="w-full accent-primary bg-white/5 h-2 rounded-full cursor-pointer mt-4"
+                                />
+                            )}
                         </div>
 
-                        {/* Add / Subtract savings input (only for reserved money, hidden when synced with Balance) */}
-                        {!goal.syncWithBalance && (
-                            <div className="flex flex-col items-center gap-1.5 mt-1 max-w-xs mx-auto w-full">
-                                <span className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 text-center">
-                                    {lt(language, "Monto", "Amount")}
-                                </span>
+                        {/* Photos Section (Right in landscape alongside progress & objectives, 2nd in portrait) */}
+                        {goal.photos.length > 0 && (
+                            <div className={`sm:landscape:col-start-2 sm:landscape:row-start-1 ${hasChecklist ? 'sm:landscape:row-span-2' : ''} flex flex-col gap-4 items-center sm:landscape:items-end justify-start`}>
+                                {goal.photos.map((photo, i) => (
+                                    <div
+                                        key={i}
+                                        onClick={() => setActiveOverlayImage(photo)}
+                                        className="relative group w-full max-w-md rounded-2xl overflow-hidden cursor-zoom-in"
+                                    >
+                                        <LocalImage src={photo} alt="" className="w-full h-auto max-h-72 object-contain transition-transform group-hover:scale-[1.02]" />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Budget section (Bottom-Centered in landscape, 3rd in portrait) */}
+                        {hasBudgetSection && (
+                            <div className={`space-y-2 bg-transparent py-1 text-left w-full sm:landscape:col-span-2 ${hasChecklist ? 'sm:landscape:row-start-3' : 'sm:landscape:row-start-2'} sm:landscape:max-w-md sm:landscape:mx-auto sm:landscape:pt-2`}>
+                                <div className="flex justify-between items-center px-1 gap-2">
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
+                                            {lt(language, "Presupuesto", "Budget")}
+                                        </span>
+                                        {goal.syncWithBalance && (
+                                            <span className="text-[10px] font-semibold text-primary/80 mt-0.5">
+                                                {lt(language, "Sincronizado con Balance", "Synced with Balance")}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <span className="text-base font-bold text-foreground font-mono whitespace-nowrap flex items-center gap-1.5">
+                                        <span>{currency} {Number(effectiveMoney).toFixed(2).replace(/\.00$/, '')} / {goal.targetValue}</span>
+                                        {!goal.syncWithBalance && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsResetConfirmOpen(true)}
+                                                className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-muted-foreground hover:text-primary transition-all active:scale-95 flex items-center justify-center"
+                                                title={lt(language, "Reiniciar presupuesto", "Reset budget")}
+                                            >
+                                                <RotateCcw className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
+                                    </span>
+                                </div>
+
+                                {/* Add / Subtract savings input (only for reserved money, hidden when synced with Balance) */}
+                                {!goal.syncWithBalance && (
+                                    <div className="flex flex-col items-center gap-1.5 mt-1 max-w-xs sm:landscape:max-w-md mx-auto w-full">
+                                        <span className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 text-center">
+                                            {lt(language, "Monto", "Amount")}
+                                        </span>
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            pattern="[0-9]*[.,]?[0-9]*"
+                                            value={amountToAdd}
+                                            onChange={(e) => setAmountToAdd(e.target.value)}
+                                            placeholder={`0.00 ${currency}`}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault()
+                                                    handleUpdateMoney('add')
+                                                }
+                                            }}
+                                            className="w-full bg-black/[0.02] dark:bg-white/5 border border-black/20 dark:border-white/20 rounded-xl px-3 py-1.5 text-xs text-center focus:outline-none focus:border-primary/50 transition-colors font-medium"
+                                        />
+                                        <div className="flex gap-2 w-full mt-0.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleUpdateMoney('add')}
+                                                className="flex-1 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 font-bold text-xs rounded-xl transition-all active:scale-[0.98] text-center"
+                                            >
+                                                {lt(language, "Añadir", "Add")}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleUpdateMoney('subtract')}
+                                                className="flex-1 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 dark:text-red-400 font-bold text-xs rounded-xl transition-all active:scale-[0.98] text-center"
+                                            >
+                                                {lt(language, "Restar", "Subtract")}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Checklist section (Top-Left below progress in landscape, 4th in portrait) */}
+                        {hasChecklist && (
+                            <div className="space-y-3 text-left w-full sm:landscape:col-start-1 sm:landscape:row-start-2">
+                            {goal.objectives && goal.objectives.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:landscape:grid-cols-2 gap-2.5">
+                                    {goal.objectives.map((obj) => (
+                                        <div
+                                            key={obj.id}
+                                            className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all duration-200 select-none
+                                                ${obj.completed
+                                                    ? "bg-primary/5 border-primary/20 hover:bg-primary/10"
+                                                    : "bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10"
+                                                }
+                                            `}
+                                        >
+                                            <button
+                                                onClick={() => handleToggleObjective(obj.id)}
+                                                className="flex items-center gap-2.5 flex-1 cursor-pointer text-left"
+                                            >
+                                                <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border-2 transition-all duration-200
+                                                    ${obj.completed
+                                                        ? "bg-primary border-primary text-white"
+                                                        : "border-muted-foreground/40 bg-transparent"
+                                                    }
+                                                `}>
+                                                    {obj.completed && <Check className="w-3.5 h-3.5 stroke-[3.5]" />}
+                                                </div>
+
+                                                {/* Objective Photo Thumbnail */}
+                                                {obj.image && (
+                                                    <div
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setActiveOverlayImage(obj.image || null);
+                                                        }}
+                                                        className="w-8 h-8 rounded overflow-hidden border border-white/10 shrink-0 cursor-zoom-in hover:scale-105 transition-all"
+                                                    >
+                                                        <LocalImage src={obj.image} alt="" className="w-full h-full object-cover" />
+                                                    </div>
+                                                )}
+
+                                                <span className={`text-sm leading-normal transition-all duration-200 font-medium break-words max-w-[70%]
+                                                    ${obj.completed
+                                                        ? "line-through text-muted-foreground opacity-60"
+                                                        : "text-foreground opacity-90"
+                                                    }
+                                                `}>
+                                                    {obj.title}
+                                                </span>
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleDeleteObjectiveCard(obj.id)}
+                                                className="text-muted-foreground/40 hover:text-red-400 hover:bg-red-400/10 p-1.5 rounded-lg transition-all shrink-0"
+                                            >
+                                                <X className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-muted-foreground/60 italic text-left">
+                                    {lt(language, "No hay objetivos creados.", "No objectives created.")}
+                                </p>
+                            )}
+
+                            {/* Preview of attached photo for card objective */}
+                            {newObjectivePhoto && (
+                                <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-black/5 dark:border-white/10 flex-shrink-0 mt-2">
+                                    <LocalImage src={newObjectivePhoto} alt="" className="w-full h-full object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={() => setNewObjectivePhoto(null)}
+                                        className="absolute top-0.5 right-0.5 p-0.5 bg-black/50 rounded-full text-white hover:bg-red-500 transition-colors"
+                                    >
+                                        <X className="w-2.5 h-2.5" />
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Mini Input to add objective directly on the card */}
+                            <div className="flex flex-col gap-2 mt-2 max-w-xs mx-auto w-full">
                                 <input
                                     type="text"
-                                    inputMode="decimal"
-                                    pattern="[0-9]*[.,]?[0-9]*"
-                                    value={amountToAdd}
-                                    onChange={(e) => setAmountToAdd(e.target.value)}
-                                    placeholder={`0.00 ${currency}`}
+                                    value={newObjective}
+                                    onChange={(e) => setNewObjective(e.target.value)}
+                                    placeholder={t.addStepPlaceholder || "Agrega un paso..."}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
                                             e.preventDefault()
-                                            handleUpdateMoney('add')
+                                            handleAddObjectiveCard()
                                         }
                                     }}
-                                    className="w-full bg-black/[0.02] dark:bg-white/5 border border-black/20 dark:border-white/20 rounded-xl px-3 py-1.5 text-xs text-center focus:outline-none focus:border-primary/50 transition-colors font-medium"
+                                    className="w-full bg-white/5 border border-black/20 dark:border-white/20 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-primary/50 transition-colors text-center font-medium"
                                 />
-                                <div className="flex gap-2 w-full mt-0.5">
+                                <div className="flex gap-2 w-full">
+                                    {/* Card inline objective photo upload button */}
+                                    <label className="flex-1 flex justify-center items-center py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 cursor-pointer transition-all shrink-0">
+                                        <Camera className="w-4 h-4" />
+                                        <input type="file" className="hidden" accept="image/*" onChange={handleCardObjectiveFileChange} />
+                                    </label>
+
                                     <button
                                         type="button"
-                                        onClick={() => handleUpdateMoney('add')}
-                                        className="flex-1 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 font-bold text-xs rounded-xl transition-all active:scale-[0.98] text-center"
+                                        onClick={handleAddObjectiveCard}
+                                        className="flex-1 py-2 bg-primary/20 text-primary font-bold text-xs rounded-xl hover:bg-primary/30 transition-all active:scale-[0.98] text-center"
                                     >
                                         {lt(language, "Añadir", "Add")}
                                     </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleUpdateMoney('subtract')}
-                                        className="flex-1 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 dark:text-red-400 font-bold text-xs rounded-xl transition-all active:scale-[0.98] text-center"
-                                    >
-                                        {lt(language, "Restar", "Subtract")}
-                                    </button>
                                 </div>
                             </div>
+                        </div>
                         )}
                     </div>
-                )}
-
-                {/* Checklist section (Left in landscape below progress/budget, 4th in portrait) */}
-                {goal.type === 'checklist' && (
-                    <div className="space-y-3 text-left w-full md:col-start-1">
-                    {goal.objectives && goal.objectives.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                            {goal.objectives.map((obj) => (
-                                <div
-                                    key={obj.id}
-                                    className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all duration-200 select-none
-                                        ${obj.completed
-                                            ? "bg-primary/5 border-primary/20 hover:bg-primary/10"
-                                            : "bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10"
-                                        }
-                                    `}
-                                >
-                                    <button
-                                        onClick={() => handleToggleObjective(obj.id)}
-                                        className="flex items-center gap-2.5 flex-1 cursor-pointer text-left"
-                                    >
-                                        <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border-2 transition-all duration-200
-                                            ${obj.completed
-                                                ? "bg-primary border-primary text-white"
-                                                : "border-muted-foreground/40 bg-transparent"
-                                            }
-                                        `}>
-                                            {obj.completed && <Check className="w-3.5 h-3.5 stroke-[3.5]" />}
-                                        </div>
-
-                                        {/* Objective Photo Thumbnail */}
-                                        {obj.image && (
-                                            <div
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setActiveOverlayImage(obj.image || null);
-                                                }}
-                                                className="w-8 h-8 rounded overflow-hidden border border-white/10 shrink-0 cursor-zoom-in hover:scale-105 transition-all"
-                                            >
-                                                <LocalImage src={obj.image} alt="" className="w-full h-full object-cover" />
-                                            </div>
-                                        )}
-
-                                        <span className={`text-sm leading-normal transition-all duration-200 font-medium break-words max-w-[70%]
-                                            ${obj.completed
-                                                ? "line-through text-muted-foreground opacity-60"
-                                                : "text-foreground opacity-90"
-                                            }
-                                        `}>
-                                            {obj.title}
-                                        </span>
-                                    </button>
-
-                                    <button
-                                        onClick={() => handleDeleteObjectiveCard(obj.id)}
-                                        className="text-muted-foreground/40 hover:text-red-400 hover:bg-red-400/10 p-1.5 rounded-lg transition-all shrink-0"
-                                    >
-                                        <X className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-xs text-muted-foreground/60 italic text-left">
-                            {lt(language, "No hay objetivos creados.", "No objectives created.")}
-                        </p>
-                    )}
-
-                    {/* Preview of attached photo for card objective */}
-                    {newObjectivePhoto && (
-                        <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-black/5 dark:border-white/10 flex-shrink-0 mt-2">
-                            <LocalImage src={newObjectivePhoto} alt="" className="w-full h-full object-cover" />
-                            <button
-                                type="button"
-                                onClick={() => setNewObjectivePhoto(null)}
-                                className="absolute top-0.5 right-0.5 p-0.5 bg-black/50 rounded-full text-white hover:bg-red-500 transition-colors"
-                            >
-                                <X className="w-2.5 h-2.5" />
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Mini Input to add objective directly on the card */}
-                    <div className="flex flex-col gap-2 mt-2 max-w-xs mx-auto w-full">
-                        <input
-                            type="text"
-                            value={newObjective}
-                            onChange={(e) => setNewObjective(e.target.value)}
-                            placeholder={t.addStepPlaceholder || "Agrega un paso..."}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault()
-                                    handleAddObjectiveCard()
-                                }
-                            }}
-                            className="w-full bg-white/5 border border-black/20 dark:border-white/20 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-primary/50 transition-colors text-center font-medium"
-                        />
-                        <div className="flex gap-2 w-full">
-                            {/* Card inline objective photo upload button */}
-                            <label className="flex-1 flex justify-center items-center py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 cursor-pointer transition-all shrink-0">
-                                <Camera className="w-4 h-4" />
-                                <input type="file" className="hidden" accept="image/*" onChange={handleCardObjectiveFileChange} />
-                            </label>
-
-                            <button
-                                type="button"
-                                onClick={handleAddObjectiveCard}
-                                className="flex-1 py-2 bg-primary/20 text-primary font-bold text-xs rounded-xl hover:bg-primary/30 transition-all active:scale-[0.98] text-center"
-                            >
-                                {lt(language, "Añadir", "Add")}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                )}
-            </div>
+                )
+            })()}
 
             {/* Progress Reports Timeline Section */}
             <div className="mt-8 border-t border-black/5 dark:border-white/10 pt-6">
