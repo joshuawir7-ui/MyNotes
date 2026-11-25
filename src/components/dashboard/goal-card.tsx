@@ -612,82 +612,84 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                         {/* Checklist section (Top-Left below progress in landscape, 4th in portrait) */}
                         {hasChecklist && (
                             <div className="space-y-3 text-left w-full sm:landscape:col-start-1 sm:landscape:row-start-2">
-                            {goal.objectives && goal.objectives.length > 0 ? (
-                                <div className="grid grid-cols-1 sm:landscape:grid-cols-2 gap-2.5">
-                                    {goal.objectives.map((obj) => (
-                                        <div
-                                            key={obj.id}
-                                            className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all duration-200 select-none
-                                                ${obj.completed
-                                                    ? "bg-transparent border-transparent hover:bg-black/[0.03] dark:hover:bg-white/5"
-                                                    : "bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10"
-                                                }
-                                            `}
-                                        >
-                                            <button
-                                                onClick={() => handleToggleObjective(obj.id)}
-                                                className="flex items-center gap-2.5 flex-1 cursor-pointer text-left"
-                                            >
-                                                <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border-2 transition-all duration-200
-                                                    ${obj.completed
-                                                        ? "bg-primary border-primary text-white"
-                                                        : "border-muted-foreground/40 bg-transparent"
-                                                    }
-                                                `}>
-                                                    {obj.completed && <Check className="w-3.5 h-3.5 stroke-[3.5]" />}
-                                                </div>
-
-                                                {/* Objective Photo Thumbnail */}
-                                                {obj.image && (
-                                                    <div
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setActiveOverlayImage(obj.image || null);
-                                                        }}
-                                                        className="w-8 h-8 rounded overflow-hidden border border-white/10 shrink-0 cursor-zoom-in hover:scale-105 transition-all"
-                                                    >
-                                                        <LocalImage src={obj.image} alt="" className="w-full h-full object-cover" />
-                                                    </div>
-                                                )}
-
-                                                <span className={`text-sm leading-normal transition-all duration-200 font-medium break-words max-w-[70%]
-                                                    ${obj.completed
-                                                        ? "line-through text-muted-foreground opacity-60"
-                                                        : "text-foreground opacity-90"
-                                                    }
-                                                `}>
-                                                    {obj.title}
-                                                </span>
-                                            </button>
-
-                                            <button
-                                                onClick={() => handleDeleteObjectiveCard(obj.id)}
-                                                className="text-muted-foreground/40 hover:text-red-400 hover:bg-red-400/10 p-1.5 rounded-lg transition-all shrink-0"
-                                            >
-                                                <X className="w-3.5 h-3.5" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
+                            {(!goal.objectives || goal.objectives.length === 0) && (
                                 <p className="text-xs text-muted-foreground/60 italic text-left">
                                     {lt(language, "No hay objetivos creados.", "No objectives created.")}
                                 </p>
                             )}
-
-                            {/* Collapsible + button to add objective directly on the card */}
-                            {!isAddStepOpen ? (
-                                <div className="flex justify-center pt-1">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsAddStepOpen(true)}
-                                        className="w-9 h-9 rounded-full bg-primary/15 hover:bg-primary/25 text-primary flex items-center justify-center transition-all active:scale-95"
-                                        title={t.addStepPlaceholder || pick(language, { es: "Agregar paso", en: "Add step", zh: "添加步骤" })}
+                            <div className="grid grid-cols-1 sm:landscape:grid-cols-2 gap-2.5">
+                                {(goal.objectives || []).map((obj) => (
+                                    <div
+                                        key={obj.id}
+                                        className={`flex items-center justify-between p-3 rounded-xl border text-left transition-colors duration-200 select-none
+                                            ${obj.completed
+                                                ? "bg-transparent border-transparent hover:bg-black/[0.03] dark:hover:bg-white/5"
+                                                : "bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10"
+                                            }
+                                        `}
                                     >
-                                        <Plus className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            ) : (
+                                        <button
+                                            onClick={() => handleToggleObjective(obj.id)}
+                                            className="flex items-center gap-2.5 flex-1 cursor-pointer text-left"
+                                        >
+                                            <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border-2 transition-all duration-200
+                                                ${obj.completed
+                                                    ? "bg-primary border-primary text-white"
+                                                    : "border-muted-foreground/40 bg-transparent"
+                                                }
+                                            `}>
+                                                {obj.completed && <Check className="w-3.5 h-3.5 stroke-[3.5]" />}
+                                            </div>
+
+                                            {/* Objective Photo Thumbnail */}
+                                            {obj.image && (
+                                                <div
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActiveOverlayImage(obj.image || null);
+                                                    }}
+                                                    className="w-8 h-8 rounded overflow-hidden border border-white/10 shrink-0 cursor-zoom-in hover:scale-105 transition-all"
+                                                >
+                                                    <LocalImage src={obj.image} alt="" className="w-full h-full object-cover" />
+                                                </div>
+                                            )}
+
+                                            <span className={`text-sm leading-normal transition-all duration-200 font-medium break-words max-w-[70%]
+                                                ${obj.completed
+                                                    ? "line-through text-muted-foreground opacity-60"
+                                                    : "text-foreground opacity-90"
+                                                }
+                                            `}>
+                                                {obj.title}
+                                            </span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => handleDeleteObjectiveCard(obj.id)}
+                                            className="text-muted-foreground/40 hover:text-red-400 hover:bg-red-400/10 p-1.5 rounded-lg transition-all shrink-0"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                ))}
+
+                                {/* Collapsible + button inside the same objectives grid */}
+                                {!isAddStepOpen && (
+                                    <div className="flex items-center p-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsAddStepOpen(true)}
+                                            className="w-8 h-8 rounded-full bg-primary/15 hover:bg-primary/25 text-primary flex items-center justify-center transition-all active:scale-95"
+                                            title={t.addStepPlaceholder || pick(language, { es: "Agregar paso", en: "Add step", zh: "添加步骤" })}
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Expanded step creation panel */}
+                            {isAddStepOpen && (
                                 <div className="flex flex-col gap-2 mt-2 max-w-xs mx-auto w-full animate-in fade-in slide-in-from-top-1 duration-200">
                                     {/* Preview of attached photo for card objective */}
                                     {newObjectivePhoto && (
