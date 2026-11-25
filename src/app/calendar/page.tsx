@@ -77,9 +77,11 @@ export default function CalendarPage() {
     // Sunday start (0)
     const startingDay = firstDayOfMonth
 
-    const monthNames = ["January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-    ]
+    const monthNames = language === 'es'
+        ? ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+        : language === 'zh'
+            ? ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"]
+            : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
     const prevMonth = () => {
         setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
@@ -450,17 +452,27 @@ export default function CalendarPage() {
                                             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
                                             const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
                                             const isEs = language === 'es'
+                                            const isZh = language === 'zh'
 
                                             if (diffDays === 0) {
                                                 return (
                                                     <span className="ml-1 text-sm sm:text-base font-medium text-zinc-500 dark:text-white select-none">
-                                                        {isEs ? 'Hoy' : 'Today'}
+                                                        {isEs ? 'Hoy' : isZh ? '今天' : 'Today'}
                                                     </span>
                                                 )
                                             }
 
                                             const isFuture = diffDays > 0
                                             const absDays = Math.abs(diffDays)
+
+                                            if (isZh) {
+                                                return (
+                                                    <span className="ml-1 text-sm sm:text-base font-medium select-none flex items-baseline gap-1">
+                                                        <span className="font-bold text-zinc-900 dark:text-white">{absDays}</span>
+                                                        <span className="text-zinc-500 dark:text-white">{isFuture ? '天后' : '天前'}</span>
+                                                    </span>
+                                                )
+                                            }
 
                                             if (isEs) {
                                                 const prefix = isFuture ? 'En' : 'Hace'

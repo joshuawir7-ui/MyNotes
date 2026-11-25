@@ -334,7 +334,13 @@ public class EventsReminderReceiver extends BroadcastReceiver {
         PendingIntent completePendingIntent = PendingIntent.getBroadcast(
                 context, notificationId * 2, completeIntent, completeFlags);
 
-        SpannableString completeButtonText = new SpannableString("Completado");
+        SharedPreferences langPrefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
+        String lang = langPrefs.getString("language", "es");
+        String completeLabel = "es".equals(lang) ? "Completado" : "zh".equals(lang) ? "已完成" : "Completed";
+        String dismissLabel = "es".equals(lang) ? "Aún no" : "zh".equals(lang) ? "稍后" : "Not yet";
+        String eventNotifTitle = "es".equals(lang) ? "Recordatorio de Evento" : "zh".equals(lang) ? "事件提醒" : "Event Reminder";
+
+        SpannableString completeButtonText = new SpannableString(completeLabel);
         completeButtonText.setSpan(new ForegroundColorSpan(Color.parseColor("#7f0df2")), 0, completeButtonText.length(), 0);
 
         Intent dismissIntent = new Intent(context, EventsReminderReceiver.class);
@@ -350,13 +356,13 @@ public class EventsReminderReceiver extends BroadcastReceiver {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification_small)
-                .setContentTitle("Recordatorio de Evento")
+                .setContentTitle(eventNotifTitle)
                 .setContentText(contentText)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(contentText))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setColor(Color.parseColor("#7f0df2"))
                 .addAction(R.drawable.ic_check_box_outline, completeButtonText, completePendingIntent)
-                .addAction(0, "Aún no", dismissPendingIntent)
+                .addAction(0, dismissLabel, dismissPendingIntent)
                 .setAutoCancel(true);
 
         Intent openAppIntent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
@@ -376,7 +382,14 @@ public class EventsReminderReceiver extends BroadcastReceiver {
     private static void showTomorrowNotification(Context context, String title, String color, int notificationId) {
         createNotificationChannel(context);
 
-        String textHtml = "Mañana tienes <font color=\"" + color + "\"><b>" + title + "</b></font> no te olvides";
+        SharedPreferences langPrefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
+        String lang = langPrefs.getString("language", "es");
+        String eventNotifTitle = "es".equals(lang) ? "Recordatorio de Evento" : "zh".equals(lang) ? "事件提醒" : "Event Reminder";
+        String textHtml = "es".equals(lang)
+            ? "Mañana tienes <font color=\"" + color + "\"><b>" + title + "</b></font> no te olvides"
+            : "zh".equals(lang)
+                ? "明天有 <font color=\"" + color + "\"><b>" + title + "</b></font>，别忘了"
+                : "Tomorrow you have <font color=\"" + color + "\"><b>" + title + "</b></font>, don't forget";
         CharSequence contentText;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             contentText = Html.fromHtml(textHtml, Html.FROM_HTML_MODE_LEGACY);
@@ -386,7 +399,7 @@ public class EventsReminderReceiver extends BroadcastReceiver {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification_small)
-                .setContentTitle("Recordatorio de Evento")
+                .setContentTitle(eventNotifTitle)
                 .setContentText(contentText)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(contentText))
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)

@@ -8,7 +8,7 @@ import { translations } from "@/lib/translations";
 import { Calendar, StickyNote, Plus, Clock, History, Target, Check } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
 import { useDeferredBlur } from "@/hooks/use-deferred-blur";
-import { lt } from "@/lib/i18n-inline"
+import { lt, pick } from "@/lib/i18n-inline"
 
 // Read-only block renderer for dashboard
 function NotePreviewRenderer({ note, isPinned = false }: { note: Note; isPinned?: boolean }) {
@@ -415,7 +415,12 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
                     </h3>
                 </div>
                 <div className="grid grid-cols-7 w-full gap-1 md:gap-2 mb-2">
-                    {['DO', 'LU', 'MA', 'MI', 'JU', 'VI', 'SA'].map(day => (
+                    {(language === 'es'
+                        ? ['DO', 'LU', 'MA', 'MI', 'JU', 'VI', 'SA']
+                        : language === 'zh'
+                            ? ['日', '一', '二', '三', '四', '五', '六']
+                            : ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']
+                    ).map(day => (
                         <div key={day} className="text-center text-[10px] md:text-xs font-bold text-muted-foreground">{day}</div>
                     ))}
                 </div>
@@ -438,11 +443,15 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
             {isSelectModalOpen && (
                 <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 ${selectModalBlur ? "backdrop-blur-sm" : ""} animate-in fade-in duration-200`}>
                     <div className="glass-panel w-full max-w-md p-6 rounded-3xl shadow-2xl border border-white/10 flex flex-col max-h-[80vh]">
-                        <h2 className="text-xl font-bold mb-4">Seleccionar Nota para Fijar</h2>
+                        <h2 className="text-xl font-bold mb-4">
+                            {pick(language, { es: 'Seleccionar Nota para Fijar', en: 'Select Note to Pin', zh: '选择要置顶的笔记' })}
+                        </h2>
                         
                         <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-2 mb-4">
                             {notes.length === 0 ? (
-                                <p className="text-center text-muted-foreground py-8">No tienes notas creadas.</p>
+                                <p className="text-center text-muted-foreground py-8">
+                                    {pick(language, { es: 'No tienes notas creadas.', en: 'No notes created yet.', zh: '尚未创建任何笔记。' })}
+                                </p>
                             ) : (
                                 notes.map(note => (
                                     <button
@@ -464,7 +473,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
                             onClick={() => setIsSelectModalOpen(false)}
                             className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-bold transition-colors"
                         >
-                            Cancelar
+                            {pick(language, { es: 'Cancelar', en: 'Cancel', zh: '取消' })}
                         </button>
                     </div>
                 </div>

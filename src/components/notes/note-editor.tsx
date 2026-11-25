@@ -4849,6 +4849,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
 
 function getBlockIconAndLabel(type: BlockType, language: string) {
     const isEs = language === 'es';
+    const isZh = language === 'zh';
     const isBlackTheme = typeof document !== 'undefined' && document.documentElement.classList.contains('theme-black');
     const iconClass = (colorClass: string) => `w-3.5 h-3.5 ${isBlackTheme ? 'text-zinc-900 dark:text-zinc-100' : colorClass}`;
     switch (type) {
@@ -4856,49 +4857,49 @@ function getBlockIconAndLabel(type: BlockType, language: string) {
     return (
                 <>
                     <Type className={iconClass("text-blue-400")} />
-                    <span>{isEs ? "Texto" : "Text"}</span>
+                    <span>{isEs ? "Texto" : isZh ? "文本" : "Text"}</span>
                 </>
             );
         case 'task-list':
     return (
                 <>
                     <CheckSquare className={iconClass("text-green-400")} />
-                    <span>{isEs ? "Lista de tareas" : "Task List"}</span>
+                    <span>{isEs ? "Lista de tareas" : isZh ? "任务列表" : "Task List"}</span>
                 </>
             );
         case 'table':
     return (
                 <>
                     <TableIcon className={iconClass("text-purple-400")} />
-                    <span>{isEs ? "Tabla" : "Table"}</span>
+                    <span>{isEs ? "Tabla" : isZh ? "表格" : "Table"}</span>
                 </>
             );
         case 'image':
     return (
                 <>
                     <ImageIcon className={iconClass("text-yellow-400")} />
-                    <span>{isEs ? "Imagen" : "Image"}</span>
+                    <span>{isEs ? "Imagen" : isZh ? "图片" : "Image"}</span>
                 </>
             );
         case 'drawing':
     return (
                 <>
                     <PenTool className={iconClass("text-orange-400")} />
-                    <span>{isEs ? "Dibujo" : "Drawing"}</span>
+                    <span>{isEs ? "Dibujo" : isZh ? "绘图" : "Drawing"}</span>
                 </>
             );
         case 'file':
     return (
                 <>
                     <Paperclip className={iconClass("text-sky-400")} />
-                    <span>{isEs ? "Archivo" : "File"}</span>
+                    <span>{isEs ? "Archivo" : isZh ? "文件" : "File"}</span>
                 </>
             );
         case 'video':
     return (
                 <>
                     <Film className={iconClass("text-purple-400")} />
-                    <span>{isEs ? "Video" : "Video"}</span>
+                    <span>{isEs ? "Video" : isZh ? "视频" : "Video"}</span>
                 </>
             );
         default:

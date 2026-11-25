@@ -118,22 +118,33 @@ public class TimerForegroundService extends Service {
                 .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
 
+        android.content.SharedPreferences prefs = getSharedPreferences("WidgetData", MODE_PRIVATE);
+        String lang = prefs.getString("language", "es");
+
         if (isRunning && endAt > System.currentTimeMillis()) {
-            builder.setContentTitle("MyNotes - Enfoque Activo")
-                    .setContentText("Temporizador en cuenta atrás")
+            String activeTitle = "es".equals(lang) ? "MyNotes - Enfoque Activo" : "zh".equals(lang) ? "MyNotes - 专注进行中" : "MyNotes - Focus Active";
+            String activeText  = "es".equals(lang) ? "Temporizador en cuenta atrás" : "zh".equals(lang) ? "倒计时进行中" : "Timer counting down";
+            String pauseLbl    = "es".equals(lang) ? "Pausar" : "zh".equals(lang) ? "暂停" : "Pause";
+            String resetLbl    = "es".equals(lang) ? "Reiniciar" : "zh".equals(lang) ? "重置" : "Reset";
+            builder.setContentTitle(activeTitle)
+                    .setContentText(activeText)
                     .setUsesChronometer(true)
                     .setChronometerCountDown(true)
                     .setWhen(endAt)
-                    .addAction(android.R.drawable.ic_media_pause, "Pausar", pauseIntent)
-                    .addAction(android.R.drawable.ic_menu_rotate, "Reiniciar", resetIntent);
+                    .addAction(android.R.drawable.ic_media_pause, pauseLbl, pauseIntent)
+                    .addAction(android.R.drawable.ic_menu_rotate, resetLbl, resetIntent);
         } else {
             // Paused or static
             String formattedTime = formatRemainingTime(remainingMs);
-            builder.setContentTitle("MyNotes - Enfoque Pausado")
-                    .setContentText("Tiempo restante: " + formattedTime)
+            String pausedTitle = "es".equals(lang) ? "MyNotes - Enfoque Pausado" : "zh".equals(lang) ? "MyNotes - 专注已暂停" : "MyNotes - Focus Paused";
+            String pausedText  = ("es".equals(lang) ? "Tiempo restante: " : "zh".equals(lang) ? "剩余时间：" : "Time remaining: ") + formattedTime;
+            String resumeLbl   = "es".equals(lang) ? "Reanudar" : "zh".equals(lang) ? "继续" : "Resume";
+            String resetLbl    = "es".equals(lang) ? "Reiniciar" : "zh".equals(lang) ? "重置" : "Reset";
+            builder.setContentTitle(pausedTitle)
+                    .setContentText(pausedText)
                     .setUsesChronometer(false)
-                    .addAction(android.R.drawable.ic_media_play, "Reanudar", resumeIntent)
-                    .addAction(android.R.drawable.ic_menu_rotate, "Reiniciar", resetIntent);
+                    .addAction(android.R.drawable.ic_media_play, resumeLbl, resumeIntent)
+                    .addAction(android.R.drawable.ic_menu_rotate, resetLbl, resetIntent);
         }
 
         return builder.build();

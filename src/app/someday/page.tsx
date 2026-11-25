@@ -211,7 +211,9 @@ export default function SomedayPage() {
                                                             <Repeat className="w-2.5 h-2.5" />
                                                             {language === 'es'
                                                                 ? (t.recurrence === 'Daily' ? 'Diario' : t.recurrence === 'Weekly' ? 'Semanal' : t.recurrence === 'Monthly' ? 'Mensual' : t.recurrence)
-                                                                : t.recurrence
+                                                                : language === 'zh'
+                                                                    ? (t.recurrence === 'Daily' ? '每天' : t.recurrence === 'Weekly' ? '每周' : t.recurrence === 'Monthly' ? '每月' : t.recurrence)
+                                                                    : t.recurrence
                                                             }
                                                         </span>
                                                     )}

@@ -53,6 +53,11 @@ public class BalanceWidgetInputActivity extends Activity {
             subtitleView.setText("Ingresa el monto de la transacción");
             btnIncome.setText("+ GANÉ");
             btnExpense.setText("- GASTÉ");
+        } else if ("zh".equals(lang)) {
+            titleView.setText("记录收支");
+            subtitleView.setText("请输入交易金额");
+            btnIncome.setText("+ 收入");
+            btnExpense.setText("- 花费");
         } else {
             titleView.setText("Record Transaction");
             subtitleView.setText("Enter transaction amount");
@@ -85,14 +90,18 @@ public class BalanceWidgetInputActivity extends Activity {
     }
 
     private void submitTx(String txType, String rawAmount, int appWidgetId) {
+        SharedPreferences prefs = getSharedPreferences("WidgetData", MODE_PRIVATE);
+        String lang = prefs.getString("language", "es");
         if (rawAmount.isEmpty()) {
-            Toast.makeText(this, "Por favor ingresa un monto", Toast.LENGTH_SHORT).show();
+            String emptyMsg = "es".equals(lang) ? "Por favor ingresa un monto" : "zh".equals(lang) ? "请输入金额" : "Please enter an amount";
+            Toast.makeText(this, emptyMsg, Toast.LENGTH_SHORT).show();
             return;
         }
         try {
             double amount = Double.parseDouble(rawAmount.replace(",", "."));
             if (amount <= 0) {
-                Toast.makeText(this, "Ingresa un monto mayor a 0", Toast.LENGTH_SHORT).show();
+                String zeroMsg = "es".equals(lang) ? "Ingresa un monto mayor a 0" : "zh".equals(lang) ? "请输入大于0的金额" : "Enter an amount greater than 0";
+                Toast.makeText(this, zeroMsg, Toast.LENGTH_SHORT).show();
                 return;
             }
             BalanceActionReceiver.commitTransaction(this, txType, amount, appWidgetId);

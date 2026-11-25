@@ -3,7 +3,7 @@ import { translations } from "@/lib/translations"
 import { CheckCircle2, Circle, Repeat, Battery, BatteryMedium, BatteryLow, Calendar, Edit2, Trash2 } from "lucide-react"
 import { useState, useEffect, useRef, useMemo } from "react"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
-import { lt } from "@/lib/i18n-inline"
+import { lt, pick } from "@/lib/i18n-inline"
 
 export function EnhancedTaskList() {
     const tasks = useStore(state => state.tasks)
@@ -114,7 +114,11 @@ export function EnhancedTaskList() {
                                         if (isTodayActive) {
                                             toggleTask(task.id);
                                             const isComp = !completed;
-                                            showToast(language === 'es' ? (isComp ? "Tarea completada" : "Tarea pendiente") : (isComp ? "Task completed" : "Task pending"), isComp ? "success" : "info");
+                                            showToast(pick(language, {
+                                                es: isComp ? "Tarea completada" : "Tarea pendiente",
+                                                en: isComp ? "Task completed" : "Task pending",
+                                                zh: isComp ? "任务已完成" : "任务待办"
+                                            }), isComp ? "success" : "info");
                                         }
                                     }}
                                 >

@@ -79,7 +79,8 @@ export function PulseChart() {
             // Week data (Mon-Sun)
             const dayNamesEs = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
             const dayNamesEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            const days = language === 'es' ? dayNamesEs : dayNamesEn;
+            const dayNamesZh = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+            const days = language === 'es' ? dayNamesEs : language === 'zh' ? dayNamesZh : dayNamesEn;
 
             const weekCompletionsCount = Array(7).fill(0);
             

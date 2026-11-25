@@ -23,11 +23,12 @@ import { DailyFocusWidget } from "@/components/dashboard/daily-focus";
 import { EnhancedTaskList } from "@/components/dashboard/enhanced-task-list";
 import { WeeklyProgressChart } from "@/components/dashboard/weekly-progress-chart";
 import { DashboardWidgets } from "@/components/dashboard/dashboard-widgets";
-import { lt } from "@/lib/i18n-inline"
+import { lt, pick } from "@/lib/i18n-inline"
 
 export default function Home() {
   const router = useRouter();
   const language = useStore(state => state.language);
+  const currency = useStore(state => state.currency) || (language === 'zh' ? '¥' : '$');
   const appColor = useStore(state => state.appColor ?? 'purple');
   const addNote = useStore(state => state.addNote);
   // Atomic selectors: tasks and goals use shallow to prevent re-render cascades
@@ -222,6 +223,10 @@ export default function Home() {
                         <>
                           <strong>El desglose semanal</strong> te demostrara tu rendimiento a lo largo de los dias, y lo comparar con la <strong>semana pasada</strong>
                         </>
+                      ) : language === 'zh' ? (
+                        <>
+                          <strong>每周概览</strong>会展示你每天的表现，并与<strong>上周</strong>进行对比
+                        </>
                       ) : (
                         <>
                           <strong>The weekly breakdown</strong> will show your performance over the days and compare it to <strong>last week</strong>
@@ -244,9 +249,11 @@ export default function Home() {
                       {lt(language, "Meta de Conservación de Capital", "Capital Conservation Goal")}
                     </h3>
                     <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-                      {language === 'es'
-                        ? `Conserva tu saldo inicial de $${Number(activeConservationGoal.conservationStartBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} hasta el ${activeConservationGoal.conservationGoalDate}`
-                        : `Conserve your starting balance of $${Number(activeConservationGoal.conservationStartBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} until ${activeConservationGoal.conservationGoalDate}`}
+                      {pick(language, {
+                        es: `Conserva tu saldo inicial de ${currency}${Number(activeConservationGoal.conservationStartBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} hasta el ${activeConservationGoal.conservationGoalDate}`,
+                        en: `Conserve your starting balance of ${currency}${Number(activeConservationGoal.conservationStartBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} until ${activeConservationGoal.conservationGoalDate}`,
+                        zh: `在 ${activeConservationGoal.conservationGoalDate} 之前保持初始余额 ${currency}${Number(activeConservationGoal.conservationStartBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+                      })}
                     </p>
                   </div>
                   <div className="p-1.5 bg-primary/10 text-primary rounded-xl shrink-0">
@@ -450,6 +457,10 @@ export default function Home() {
                           <>
                             <strong>El desglose semanal</strong> te demostrara tu rendimiento a lo largo de los dias, y lo comparar con la <strong>semana pasada</strong>
                           </>
+                        ) : language === 'zh' ? (
+                          <>
+                            <strong>每周概览</strong>会展示你每天的表现，并与<strong>上周</strong>进行对比
+                          </>
                         ) : (
                           <>
                             <strong>The weekly breakdown</strong> will show your performance over the days and compare it to <strong>last week</strong>
@@ -472,9 +483,11 @@ export default function Home() {
                         {lt(language, "Meta de Conservación de Capital", "Capital Conservation Goal")}
                       </h3>
                       <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-                        {language === 'es'
-                          ? `Conserva tu saldo inicial de $${Number(activeConservationGoal.conservationStartBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} hasta el ${activeConservationGoal.conservationGoalDate}`
-                          : `Conserve your starting balance of $${Number(activeConservationGoal.conservationStartBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} until ${activeConservationGoal.conservationGoalDate}`}
+                        {pick(language, {
+                          es: `Conserva tu saldo inicial de ${currency}${Number(activeConservationGoal.conservationStartBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} hasta el ${activeConservationGoal.conservationGoalDate}`,
+                          en: `Conserve your starting balance of ${currency}${Number(activeConservationGoal.conservationStartBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} until ${activeConservationGoal.conservationGoalDate}`,
+                          zh: `在 ${activeConservationGoal.conservationGoalDate} 之前保持初始余额 ${currency}${Number(activeConservationGoal.conservationStartBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+                        })}
                       </p>
                     </div>
                     <div className="p-1.5 bg-primary/10 text-primary rounded-xl shrink-0">

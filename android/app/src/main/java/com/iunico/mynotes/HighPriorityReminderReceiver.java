@@ -138,6 +138,15 @@ public class HighPriorityReminderReceiver extends BroadcastReceiver {
                     }
                 }
             }
+        } else if ("zh".equals(language)) {
+            title = "待完成的高优先级任务";
+            message.append("您仍需完成：");
+            for (int i = 0; i < taskTitles.size(); i++) {
+                message.append(taskTitles.get(i));
+                if (i < taskTitles.size() - 1) {
+                    message.append("、");
+                }
+            }
         } else {
             title = "Pending high-priority tasks";
             if (taskTitles.size() == 1) {

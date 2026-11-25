@@ -81,8 +81,9 @@ public class BalanceActionReceiver extends BroadcastReceiver {
         }
 
         String description = "income".equals(txType)
-            ? ("es".equals(lang) ? "Ingreso (widget)" : "Income (widget)")
-            : ("es".equals(lang) ? "Gasto (widget)"   : "Expense (widget)");
+            ? ("es".equals(lang) ? "Ingreso (widget)" : "zh".equals(lang) ? "收入（小组件）" : "Income (widget)")
+            : ("es".equals(lang) ? "Gasto (widget)"   : "zh".equals(lang) ? "支出（小组件）" : "Expense (widget)");
+        String currency = prefs.getString("currency", "zh".equals(lang) ? "¥" : "$");
 
         try {
             // Build new transaction object
@@ -92,7 +93,7 @@ public class BalanceActionReceiver extends BroadcastReceiver {
             tx.put("type",        txType);
             tx.put("description", description);
             tx.put("date",        todayStr);
-            tx.put("currency",    "$");
+            tx.put("currency",    currency);
             tx.put("lastUpdated", System.currentTimeMillis());
 
             // Append to stored array
@@ -121,8 +122,8 @@ public class BalanceActionReceiver extends BroadcastReceiver {
         SharedPreferences p = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
         String l = p.getString("language", "es");
         String msg = "income".equals(txType)
-            ? ("es".equals(l) ? "Ingreso registrado ✓" : "Income recorded ✓")
-            : ("es".equals(l) ? "Gasto registrado ✓"   : "Expense recorded ✓");
+            ? ("es".equals(l) ? "Ingreso registrado ✓" : "zh".equals(l) ? "收入已记录 ✓" : "Income recorded ✓")
+            : ("es".equals(l) ? "Gasto registrado ✓"   : "zh".equals(l) ? "支出已记录 ✓" : "Expense recorded ✓");
         Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
     }
 }

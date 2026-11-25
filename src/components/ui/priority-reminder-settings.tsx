@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Bell, Clock, RotateCcw, ChevronUp, ChevronDown, Check } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
+import { pick } from "@/lib/i18n-inline"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types & helpers
@@ -216,7 +217,7 @@ function TimePickerModal({
                         <div className="w-10 h-1.5 bg-black/15 dark:bg-white/20 rounded-full mx-auto mb-4" />
 
                         <p className="text-center font-bold text-sm mb-3">
-                            {language === "es" ? "Elige un horario" : "Choose a time"}
+                            {pick(language, { es: "Elige un horario", en: "Choose a time", zh: "选择时间" })}
                         </p>
 
                         {/* Tabs */}
@@ -232,8 +233,8 @@ function TimePickerModal({
                                     }`}
                                 >
                                     {t === "quick"
-                                        ? (language === "es" ? "Rápido" : "Quick")
-                                        : (language === "es" ? "Personalizado" : "Custom")
+                                        ? pick(language, { es: "Rápido", en: "Quick", zh: "快捷" })
+                                        : pick(language, { es: "Personalizado", en: "Custom", zh: "自定义" })
                                     }
                                 </button>
                             ))}
@@ -248,9 +249,11 @@ function TimePickerModal({
                                     exit={{ opacity: 0 }}
                                     className="text-xs text-amber-500 dark:text-amber-400 text-center mb-3"
                                 >
-                                    {language === "es"
-                                        ? "⚠️ Ese horario ya está asignado a otro recordatorio"
-                                        : "⚠️ That time is already used by another reminder"}
+                                    {pick(language, {
+                                        es: "⚠️ Ese horario ya está asignado a otro recordatorio",
+                                        en: "⚠️ That time is already used by another reminder",
+                                        zh: "⚠️ 该时间已用于另一个提醒"
+                                    })}
                                 </motion.p>
                             )}
                         </AnimatePresence>
@@ -287,14 +290,14 @@ function TimePickerModal({
                                         values={hours12}
                                         selected={wheelHour}
                                         onChange={setWheelHour}
-                                        label={language === "es" ? "Hora" : "Hour"}
+                                        label={pick(language, { es: "Hora", en: "Hour", zh: "时" })}
                                     />
                                     <span className="text-2xl font-black text-zinc-900 dark:text-white pb-1">:</span>
                                     <WheelColumn
                                         values={minutes}
                                         selected={wheelMin}
                                         onChange={setWheelMin}
-                                        label={language === "es" ? "Min" : "Min"}
+                                        label={pick(language, { es: "Min", en: "Min", zh: "分" })}
                                     />
                                     <WheelColumn
                                         values={periods}
@@ -309,7 +312,7 @@ function TimePickerModal({
                                     className="w-full flex items-center justify-center gap-2 py-3 bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black rounded-xl font-bold text-sm shadow-md shadow-black/20 dark:shadow-white/10"
                                 >
                                     <Check className="w-4 h-4" />
-                                    {language === "es" ? "Confirmar" : "Confirm"}
+                                    {pick(language, { es: "Confirmar", en: "Confirm", zh: "确认" })}
                                 </motion.button>
                             </div>
                         )}
@@ -341,7 +344,7 @@ export function PriorityReminderSettings() {
         setPriorityReminderSlot(index, time)
         setPickerOpen(null)
         showToast(
-            language === "es" ? "Recordatorio actualizado" : "Reminder updated",
+            pick(language, { es: "Recordatorio actualizado", en: "Reminder updated", zh: "提醒已更新" }),
             "success"
         )
 
@@ -349,7 +352,7 @@ export function PriorityReminderSettings() {
         import("@/lib/notifications").then(({ NotificationManager }) => {
             const state = useStore.getState()
             if ("schedulePriorityReminders" in NotificationManager) {
-                (NotificationManager as any).schedulePriorityReminders(state.priorityReminderSettings)
+                (NotificationManager as any).schedulePriorityReminders(state.priorityReminderSettings, state.language)
             }
         }).catch(() => {})
     }
@@ -357,20 +360,22 @@ export function PriorityReminderSettings() {
     const handleReset = () => {
         resetPriorityReminderDefaults()
         showToast(
-            language === "es" ? "Horarios restablecidos" : "Times reset to defaults",
+            pick(language, { es: "Horarios restablecidos", en: "Times reset to defaults", zh: "已恢复默认时间" }),
             "info"
         )
         import("@/lib/notifications").then(({ NotificationManager }) => {
             const state = useStore.getState()
             if ("schedulePriorityReminders" in NotificationManager) {
-                (NotificationManager as any).schedulePriorityReminders(state.priorityReminderSettings)
+                (NotificationManager as any).schedulePriorityReminders(state.priorityReminderSettings, state.language)
             }
         }).catch(() => {})
     }
 
     const labels = language === "es"
         ? ["Recordatorio 1", "Recordatorio 2", "Recordatorio 3"]
-        : ["Reminder 1", "Reminder 2", "Reminder 3"]
+        : language === "zh"
+            ? ["提醒 1", "提醒 2", "提醒 3"]
+            : ["Reminder 1", "Reminder 2", "Reminder 3"]
 
     return (
         <>
@@ -393,10 +398,10 @@ export function PriorityReminderSettings() {
                         </div>
                         <div>
                             <p className="font-bold text-sm">
-                                {language === "es" ? "Tareas prioritarias" : "Priority tasks"}
+                                {pick(language, { es: "Tareas prioritarias", en: "Priority tasks", zh: "高优先级任务" })}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                                {language === "es" ? "Hasta 3 recordatorios diarios" : "Up to 3 daily reminders"}
+                                {pick(language, { es: "Hasta 3 recordatorios diarios", en: "Up to 3 daily reminders", zh: "每天最多3次提醒" })}
                             </p>
                         </div>
                     </div>
@@ -445,7 +450,7 @@ export function PriorityReminderSettings() {
                                 className="flex items-center justify-center gap-1.5 w-full py-1.5 text-[11px] text-muted-foreground hover:text-black dark:hover:text-white transition-colors"
                             >
                                 <RotateCcw className="w-3 h-3" />
-                                {language === "es" ? "Restaurar valores por defecto" : "Restore defaults"}
+                                {pick(language, { es: "Restaurar valores por defecto", en: "Restore defaults", zh: "恢复默认值" })}
                             </motion.button>
                         </motion.div>
                     )}

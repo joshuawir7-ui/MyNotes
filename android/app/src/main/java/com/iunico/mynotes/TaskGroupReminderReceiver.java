@@ -70,15 +70,20 @@ public class TaskGroupReminderReceiver extends BroadcastReceiver {
     private void showReminderNotification(Context context, int count, String title) {
         createNotificationChannel(context);
 
-        String message = count == 1 
-            ? "Aún tienes tareas pendientes en: " + title
-            : "Tienes " + count + " grupos de tareas pendientes por completar.";
+        android.content.SharedPreferences prefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
+        String lang = prefs.getString("language", "es");
+        String notifTitle = "es".equals(lang) ? "Recordatorio de Tareas" : "zh".equals(lang) ? "任务提醒" : "Task Reminder";
+        String message = "es".equals(lang)
+            ? (count == 1 ? "Aún tienes tareas pendientes en: " + title : "Tienes " + count + " grupos de tareas pendientes por completar.")
+            : "zh".equals(lang)
+                ? (count == 1 ? "您仍有未完成的任务组：" + title : "您有 " + count + " 个任务组待完成。")
+                : (count == 1 ? "You still have pending tasks in: " + title : "You have " + count + " task groups pending completion.");
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 // ic_notification_small: silueta monócroma de la "n" en Dancing Script.
                 // Android aplana a blanco; NO usar ic_launcher aquí.
                 .setSmallIcon(R.drawable.ic_notification_small)
-                .setContentTitle("Recordatorio de Tareas")
+                .setContentTitle(notifTitle)
                 .setContentText(message)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true);

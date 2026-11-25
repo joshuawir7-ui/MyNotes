@@ -46,17 +46,19 @@ public class BalanceWidgetProvider extends AppWidgetProvider {
         try {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_balance);
 
-            // ── Read language preference ──────────────────────────────────────
+            // ── Read language & currency preferences ──────────────────────────
             SharedPreferences prefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
             String lang = prefs.getString("language", "es");
+            String currency = prefs.getString("currency", "zh".equals(lang) ? "¥" : "$");
 
             // ── Compute current balance from stored transactions JSON ─────────
             double balance = computeBalance(prefs);
             boolean isNegative = balance < 0;
 
-            String formattedBalance = formatBalance(balance);
+            String formattedBalance = formatBalance(balance, currency);
             views.setTextViewText(R.id.widget_balance_amount, formattedBalance);
             views.setTextColor(R.id.widget_balance_amount, isNegative ? Color.parseColor("#DC2626") : Color.parseColor("#111827"));
+            views.setTextViewText(R.id.widget_balance_input_pill, "0.00 " + currency);
 
             // ── Render Donut Chart Bitmap ────────────────────────────────────
             Bitmap chartBitmap = createDonutChartBitmap(balance);
@@ -64,16 +66,16 @@ public class BalanceWidgetProvider extends AppWidgetProvider {
                 views.setImageViewBitmap(R.id.widget_balance_chart, chartBitmap);
             }
 
-            // ── Render Title "Balance" in Dancing Script font ───────────────
-            String titleText = "es".equals(lang) ? "Balance" : "Balance";
+            // ── Render Title in Dancing Script / system font ──────────────────
+            String titleText = "es".equals(lang) ? "Balance" : "zh".equals(lang) ? "收支平衡" : "Balance";
             Bitmap titleBitmap = renderTitleToBitmap(context, titleText);
             if (titleBitmap != null) {
                 views.setImageViewBitmap(R.id.widget_balance_title_image, titleBitmap);
             }
 
             // ── Localised button labels ──────────────────────────────────────
-            String btnIncome  = "es".equals(lang) ? "AGREGAR" : "ADD";
-            String btnExpense = "es".equals(lang) ? "GASTÉ"   : "SPENT";
+            String btnIncome  = "es".equals(lang) ? "AGREGAR" : "zh".equals(lang) ? "增加" : "ADD";
+            String btnExpense = "es".equals(lang) ? "GASTÉ"   : "zh".equals(lang) ? "花费" : "SPENT";
 
             views.setTextViewText(R.id.widget_balance_btn_income,  btnIncome);
             views.setTextViewText(R.id.widget_balance_btn_expense, btnExpense);
@@ -239,11 +241,11 @@ public class BalanceWidgetProvider extends AppWidgetProvider {
         return total;
     }
 
-    private static String formatBalance(double balance) {
+    private static String formatBalance(double balance, String currency) {
         if (balance == (long) balance) {
-            return "$" + String.format(Locale.US, "%d", (long) balance);
+            return currency + String.format(Locale.US, "%d", (long) balance);
         } else {
-            return "$" + String.format(Locale.US, "%.2f", balance);
+            return currency + String.format(Locale.US, "%.2f", balance);
         }
     }
 }

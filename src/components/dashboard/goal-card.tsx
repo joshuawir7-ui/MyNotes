@@ -12,7 +12,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { translations } from "@/lib/translations"
 import { DatePicker } from "@/components/ui/date-picker"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
-import { lt } from "@/lib/i18n-inline"
+import { lt, pick } from "@/lib/i18n-inline"
 
 export function GoalCard({ goal }: { goal: Goal }) {
     const updateGoal = useStore(state => state.updateGoal)
@@ -21,6 +21,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
     const rawTransactions = useStore(useShallow(state => state.transactions ?? []))
     const transactions = Array.isArray(rawTransactions) ? rawTransactions : []
     const language = useStore(state => state.language)
+    const currency = useStore(state => state.currency) || (language === 'zh' ? '¥' : '$')
     const appColor = useStore(state => state.appColor ?? 'purple')
     const showToast = useStore(state => state.showToast)
     const [isDeleting, setIsDeleting] = useState(false)
@@ -117,9 +118,11 @@ export function GoalCard({ goal }: { goal: Goal }) {
             const autoReport = {
                 id: Math.random().toString(36).substring(7),
                 date: formattedDate,
-                note: language === 'es'
-                    ? `${toggledObj.completed ? "Paso desmarcado" : "Paso completado"}: "${toggledObj.title}"`
-                    : `${toggledObj.completed ? "Step unchecked" : "Step completed"}: "${toggledObj.title}"`
+                note: pick(language, {
+                    es: `${toggledObj.completed ? "Paso desmarcado" : "Paso completado"}: "${toggledObj.title}"`,
+                    en: `${toggledObj.completed ? "Step unchecked" : "Step completed"}: "${toggledObj.title}"`,
+                    zh: `${toggledObj.completed ? "已取消步骤" : "已完成步骤"}: "${toggledObj.title}"`
+                })
             }
             updateGoal(goal.id, {
                 objectives: updatedObjectives,
@@ -149,9 +152,11 @@ export function GoalCard({ goal }: { goal: Goal }) {
         const autoReport = {
             id: Math.random().toString(36).substring(7),
             date: formattedDate,
-            note: language === 'es'
-                ? `Paso agregado: "${newObjective.trim()}"`
-                : `Step added: "${newObjective.trim()}"`
+            note: pick(language, {
+                es: `Paso agregado: "${newObjective.trim()}"`,
+                en: `Step added: "${newObjective.trim()}"`,
+                zh: `已添加步骤: "${newObjective.trim()}"`
+            })
         }
 
         updateGoal(goal.id, {
@@ -180,9 +185,11 @@ export function GoalCard({ goal }: { goal: Goal }) {
             const autoReport = {
                 id: Math.random().toString(36).substring(7),
                 date: formattedDate,
-                note: language === 'es'
-                    ? `Paso eliminado: "${deletedObj.title}"`
-                    : `Step deleted: "${deletedObj.title}"`
+                note: pick(language, {
+                    es: `Paso eliminado: "${deletedObj.title}"`,
+                    en: `Step deleted: "${deletedObj.title}"`,
+                    zh: `已删除步骤: "${deletedObj.title}"`
+                })
             }
             updateGoal(goal.id, {
                 objectives: updatedObjectives,
@@ -216,9 +223,11 @@ export function GoalCard({ goal }: { goal: Goal }) {
         const autoReport = {
             id: Math.random().toString(36).substring(7),
             date: formattedDate,
-            note: language === 'es'
-                ? `${operation === 'add' ? "Ahorro añadido" : "Ahorro retirado"}: ${operation === 'add' ? '+' : '-'}$${val} (Total: $${nextValue} / $${target})`
-                : `${operation === 'add' ? "Savings added" : "Savings removed"}: ${operation === 'add' ? '+' : '-'}$${val} (Total: $${nextValue} / $${target})`
+            note: pick(language, {
+                es: `${operation === 'add' ? "Ahorro añadido" : "Ahorro retirado"}: ${operation === 'add' ? '+' : '-'}${currency}${val} (Total: ${currency}${nextValue} / ${currency}${target})`,
+                en: `${operation === 'add' ? "Savings added" : "Savings removed"}: ${operation === 'add' ? '+' : '-'}${currency}${val} (Total: ${currency}${nextValue} / ${currency}${target})`,
+                zh: `${operation === 'add' ? "已增加储蓄" : "已取出储蓄"}: ${operation === 'add' ? '+' : '-'}${currency}${val} (总计: ${currency}${nextValue} / ${currency}${target})`
+            })
         }
 
         updateGoal(goal.id, {
@@ -228,9 +237,11 @@ export function GoalCard({ goal }: { goal: Goal }) {
         })
         setAmountToAdd("")
         showToast(
-            language === 'es'
-                ? (operation === 'add' ? "Ahorro registrado con éxito" : "Retiro registrado con éxito")
-                : (operation === 'add' ? "Savings recorded successfully" : "Withdrawal recorded successfully"),
+            pick(language, {
+                es: operation === 'add' ? "Ahorro registrado con éxito" : "Retiro registrado con éxito",
+                en: operation === 'add' ? "Savings recorded successfully" : "Withdrawal recorded successfully",
+                zh: operation === 'add' ? "储蓄记录成功" : "取出记录成功"
+            }),
             "success"
         )
     }
@@ -240,9 +251,11 @@ export function GoalCard({ goal }: { goal: Goal }) {
         const autoReport = {
             id: Math.random().toString(36).substring(7),
             date: formattedDate,
-            note: language === 'es'
-                ? `Presupuesto reiniciado a $0`
-                : `Budget reset to $0`
+            note: pick(language, {
+                es: `Presupuesto reiniciado a ${currency}0`,
+                en: `Budget reset to ${currency}0`,
+                zh: `预算已重置为 ${currency}0`
+            })
         }
         const nextProgressVal = computeGoalProgress({
             type: goal.type,
@@ -317,9 +330,11 @@ export function GoalCard({ goal }: { goal: Goal }) {
                             const nextPinned = !goal.pinned
                             updateGoal(goal.id, { pinned: nextPinned })
                             showToast(
-                                language === 'es'
-                                    ? (nextPinned ? "Meta fijada en Hoy" : "Meta desfijada")
-                                    : (nextPinned ? "Goal pinned to Today" : "Goal unpinned"),
+                                pick(language, {
+                                    es: nextPinned ? "Meta fijada en Hoy" : "Meta desfijada",
+                                    en: nextPinned ? "Goal pinned to Today" : "Goal unpinned",
+                                    zh: nextPinned ? "目标已固定到今天" : "已取消固定目标"
+                                }),
                                 "success"
                             )
                         }}
@@ -328,9 +343,11 @@ export function GoalCard({ goal }: { goal: Goal }) {
                                 : "text-muted-foreground hover:text-primary hover:bg-primary/10"
                             }`}
                         title={
-                            language === 'es'
-                                ? (goal.pinned ? "Desfijar meta" : "Fijar meta en Hoy")
-                                : (goal.pinned ? "Unpin goal" : "Pin goal to Today")
+                            pick(language, {
+                                es: goal.pinned ? "Desfijar meta" : "Fijar meta en Hoy",
+                                en: goal.pinned ? "Unpin goal" : "Pin goal to Today",
+                                zh: goal.pinned ? "取消固定目标" : "固定目标到今天"
+                            })
                         }
                     >
                         <Pin className={`w-4 h-4 ${goal.pinned ? "fill-primary" : ""}`} />
@@ -363,7 +380,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                 {/* Progress Tracking (Left in landscape, 1st in portrait) */}
                 <div className="space-y-4 md:col-start-1 md:row-start-1">
                     <div className="flex justify-between items-center text-sm">
-                        <span className="font-medium">Progreso</span>
+                        <span className="font-medium">{pick(language, { es: 'Progreso', en: 'Progress', zh: '进度' })}</span>
                         <span className="text-primary font-bold">{effectiveProgress}%</span>
                     </div>
                     <div className="h-3 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
@@ -419,7 +436,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                                 )}
                             </div>
                             <span className="text-base font-bold text-foreground font-mono whitespace-nowrap flex items-center gap-1.5">
-                                <span>$ {Number(effectiveMoney).toFixed(2).replace(/\.00$/, '')} / {goal.targetValue}</span>
+                                <span>{currency} {Number(effectiveMoney).toFixed(2).replace(/\.00$/, '')} / {goal.targetValue}</span>
                                 {!goal.syncWithBalance && (
                                     <button
                                         type="button"
@@ -445,7 +462,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
                                     pattern="[0-9]*[.,]?[0-9]*"
                                     value={amountToAdd}
                                     onChange={(e) => setAmountToAdd(e.target.value)}
-                                    placeholder="0.00 $"
+                                    placeholder={`0.00 ${currency}`}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
                                             e.preventDefault()

@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { X, RefreshCw, WifiOff, Unplug } from "lucide-react"
 import { useStore } from "@/lib/store"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
+import { pick } from "@/lib/i18n-inline"
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -194,14 +195,16 @@ function ConnectToCloudModal({ onClose, onLogin, language }: {
 
             {/* title */}
             <h2 className="text-[32px] leading-none font-bold text-zinc-900 dark:text-white mb-3 font-dancing">
-                {language === "es" ? "¡Conéctese a la nube!" : "Connect to the Cloud!"}
+                {pick(language, { es: "¡Conéctese a la nube!", en: "Connect to the Cloud!", zh: "连接到云端！" })}
             </h2>
 
             {/* subtitle */}
             <p className="text-[13px] font-bold text-zinc-600 dark:text-zinc-400 leading-relaxed mb-6 max-w-[280px]">
-                {language === "es"
-                    ? "tus datos tendrán un respaldo en la nube, dentro de tu Drive, solo inicia con tu cuenta de Google."
-                    : "your data will be backed up in the cloud inside your Drive — just sign in with your Google account."}
+                {pick(language, {
+                    es: "tus datos tendrán un respaldo en la nube, dentro de tu Drive, solo inicia con tu cuenta de Google.",
+                    en: "your data will be backed up in the cloud inside your Drive — just sign in with your Google account.",
+                    zh: "您的数据将备份到 Google 云端硬盘中，只需使用您的 Google 账号登录即可。"
+                })}
             </p>
 
             {/* CTA button */}
@@ -209,7 +212,7 @@ function ConnectToCloudModal({ onClose, onLogin, language }: {
                 onClick={onLogin}
                 className="w-[220px] py-2.5 rounded-md bg-black dark:bg-white text-white dark:text-black font-semibold text-[15px] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md"
             >
-                {language === "es" ? "Iniciar sesión" : "Sign in"}
+                {pick(language, { es: "Iniciar sesión", en: "Sign in", zh: "登录" })}
             </button>
         </motion.div>
     )
@@ -261,14 +264,16 @@ function ReconnectModal({ onClose, onLogin, language }: {
 
             {/* title */}
             <h2 className="text-xl font-black text-zinc-900 dark:text-white mb-2">
-                {language === "es" ? "Reconecte su cuenta" : "Reconnect your account"}
+                {pick(language, { es: "Reconecte su cuenta", en: "Reconnect your account", zh: "重新连接您的账号" })}
             </h2>
 
             {/* description */}
             <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed mb-6 max-w-[260px]">
-                {language === "es"
-                    ? "Lleva ya un tiempo sin hacer un respaldo en la nube, recomendamos que conecte su cuenta Google para hacer un Backup de sus datos en su drive"
-                    : "It has been a while since your last cloud backup. We recommend reconnecting your Google account to back up your data to Drive."}
+                {pick(language, {
+                    es: "Lleva ya un tiempo sin hacer un respaldo en la nube, recomendamos que conecte su cuenta Google para hacer un Backup de sus datos en su drive",
+                    en: "It has been a while since your last cloud backup. We recommend reconnecting your Google account to back up your data to Drive.",
+                    zh: "距离您上次云端备份已经有一段时间了。建议您重新连接 Google 账号，将数据备份到云端硬盘。"
+                })}
             </p>
 
             {/* CTA button */}
@@ -277,7 +282,7 @@ function ReconnectModal({ onClose, onLogin, language }: {
                 className="w-full py-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm tracking-wide flex items-center justify-center gap-2 hover:scale-[1.03] active:scale-[0.97] transition-all shadow-lg shadow-violet-500/30"
             >
                 <RefreshCw className="w-4 h-4" />
-                {language === "es" ? "Re-conectar cuenta" : "Reconnect account"}
+                {pick(language, { es: "Re-conectar cuenta", en: "Reconnect account", zh: "重新连接账号" })}
             </button>
         </motion.div>
     )
@@ -324,7 +329,7 @@ function LiquidGlassBanner({ onClose, onDismissForever, onLogin, language }: {
 
                 {/* text */}
                 <p className="flex-1 text-xs font-semibold text-zinc-800 dark:text-zinc-100 leading-snug">
-                    {language === "es" ? "Debe reconectar su cuenta." : "You need to reconnect your account."}
+                    {pick(language, { es: "Debe reconectar su cuenta.", en: "You need to reconnect your account.", zh: "您需要重新连接您的账号。" })}
                 </p>
 
                 {/* reconnect */}
@@ -332,7 +337,7 @@ function LiquidGlassBanner({ onClose, onDismissForever, onLogin, language }: {
                     onClick={onLogin}
                     className="shrink-0 px-3 py-1.5 rounded-xl bg-violet-600/90 hover:bg-violet-500 text-white text-xs font-bold transition-all hover:scale-105 active:scale-95 shadow-sm"
                 >
-                    {language === "es" ? "Reconectar" : "Reconnect"}
+                    {pick(language, { es: "Reconectar", en: "Reconnect", zh: "重新连接" })}
                 </button>
 
                 {/* dismiss menu trigger */}
@@ -340,7 +345,7 @@ function LiquidGlassBanner({ onClose, onDismissForever, onLogin, language }: {
                     <button
                         onClick={() => setShowDismissMenu(v => !v)}
                         className="p-1 rounded-full text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
-                        title={language === "es" ? "Opciones" : "Options"}
+                        title={pick(language, { es: "Opciones", en: "Options", zh: "选项" })}
                     >
                         <X className="w-3.5 h-3.5" />
                     </button>
@@ -358,13 +363,13 @@ function LiquidGlassBanner({ onClose, onDismissForever, onLogin, language }: {
                                     onClick={onClose}
                                     className="w-full px-4 py-2.5 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                                 >
-                                    {language === "es" ? "Ocultar" : "Hide"}
+                                    {pick(language, { es: "Ocultar", en: "Hide", zh: "隐藏" })}
                                 </button>
                                 <button
                                     onClick={onDismissForever}
                                     className="w-full px-4 py-2.5 text-left text-xs font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
                                 >
-                                    {language === "es" ? "No mostrar más" : "Don't show again"}
+                                    {pick(language, { es: "No mostrar más", en: "Don't show again", zh: "不再显示" })}
                                 </button>
                             </motion.div>
                         )}

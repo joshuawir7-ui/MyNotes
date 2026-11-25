@@ -432,7 +432,7 @@ export function AppSidebar() {
                     title={t.today}
                 >
                     <RotatingLogo />
-                    <h1 className="text-2xl font-bold tracking-tight font-dancing">MyNotes</h1>
+                    <h1 translate="no" className="text-2xl font-bold tracking-tight font-dancing">MyNotes</h1>
                 </Link>
 
                 {/* Desktop-only Navigation */}

@@ -9,6 +9,7 @@ import { Capacitor } from "@capacitor/core"
 import {
     getPhilosophicalQuoteForDate,
     getRandomPhilosophicalQuote,
+    getLocalizedPhilosophicalQuoteText,
     shouldSendPhilosophicalQuoteToday,
     type PhilosophicalQuote
 } from "@/lib/philosophical-quotes"
@@ -263,10 +264,10 @@ export function HabitNotificationToast() {
                     >
                         <div className="bg-white dark:bg-[#161618] px-6 py-5 rounded-[28px] shadow-[0_10px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.55)] border border-black/10 dark:border-white/15">
                             <p className="font-dancing-n text-[22px] leading-snug text-black dark:text-white text-center">
-                                &ldquo;{isEs ? activeQuote.es : activeQuote.en}&rdquo;
+                                &ldquo;{getLocalizedPhilosophicalQuoteText(activeQuote, language).text}&rdquo;
                             </p>
                             <p className="text-[11px] font-semibold uppercase tracking-widest text-black/50 dark:text-white/50 text-center mt-2">
-                                — {activeQuote.author}
+                                — {getLocalizedPhilosophicalQuoteText(activeQuote, language).author}
                             </p>
                         </div>
                     </motion.div>

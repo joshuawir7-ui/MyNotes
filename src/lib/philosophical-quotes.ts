@@ -204,3 +204,50 @@ export function getRandomPhilosophicalQuote(): PhilosophicalQuote {
     const idx = Math.floor(Math.random() * PHILOSOPHICAL_QUOTES.length);
     return PHILOSOPHICAL_QUOTES[idx];
 }
+
+const ZH_PHILOSOPHICAL_POOL: Array<{ text: string; author: string }> = [
+    { text: "自律是连接目标与成就的桥梁。", author: "吉姆·罗恩" },
+    { text: "人生苦短，并非时间太少，而是我们浪费太多。", author: "塞涅卡" },
+    { text: "移山之人，始于搬运小石。", author: "孔子" },
+    { text: "征服你的内心，便能征服世界。", author: "马可·奥勒留" },
+    { text: "卓越不是一种行为，而是一种习惯。", author: "亚里士多德" },
+    { text: "不能主宰自己的人，便不是自由的人。", author: "爱比克泰德" },
+    { text: "挡在路上的阻碍，终将成为路本身。", author: "马可·奥勒留" },
+    { text: "知道为什么而活的人，便能承受几乎任何考验。", author: "尼采" },
+    { text: "最伟大的胜利，是战胜自己。", author: "柏拉图" },
+    { text: "不管走得多慢，只要不停下脚步就好。", author: "孔子" },
+    { text: "跌倒是允许的，但重新站起来是必须的。", author: "谚语" },
+    { text: "自律之痛轻如毫厘，悔恨之重却如千钧。", author: "吉姆·罗恩" },
+    { text: "今天做别人不愿做的事，明天才能过别人过不上的生活。", author: "杰里·赖斯" },
+    { text: "胜人者有力，自胜者强。", author: "老子" },
+    { text: "不要等有动力才行动；先行动，动力自然随之而来。", author: "亚里士多德" },
+    { text: "每天清晨我们都重获新生，今天所做的事才最重要。", author: "佛陀" },
+    { text: "累了就学会休息，而不是放弃。", author: "谚语" },
+    { text: "一次跌倒不是失败；重新开始才是真正的力量。", author: "爱比克泰德" },
+    { text: "困难能磨砺心智，正如劳动能强健体魄。", author: "塞涅卡" },
+    { text: "你每天坚持做的事，比偶尔做一次的事重要得多。", author: "格言" },
+    { text: "回到正轨永远不晚，哪怕昨天一片混乱。", author: "马可·奥勒留" },
+    { text: "水滴石穿，靠的不是力量，而是持之以恒。", author: "古训" },
+    { text: "不能听命于自己者，就要受命于他人。", author: "尼采" },
+    { text: "不积跬步，无以至千里；不积小流，无以成江海。", author: "荀子" },
+    { text: "千里之行，始于足下。", author: "老子" },
+    { text: "失去了一天，别再用懊悔失去第二天。", author: "塞涅卡" },
+    { text: "跌倒七次，站起八次。", author: "谚语" },
+    { text: "自律不是剥夺你的自由，而是把自由还给你。", author: "乔科·威林克" },
+    { text: "成功是日复一日微小努力的总和。", author: "罗伯特·科利尔" },
+    { text: "即便失败了千次，今天你依然可以选择重新自律。", author: "爱比克泰德" },
+];
+
+export function getLocalizedPhilosophicalQuoteText(
+    quote: PhilosophicalQuote,
+    language: string = 'es'
+): { text: string; author: string } {
+    if (language === 'es' || language.startsWith('es')) {
+        return { text: quote.es, author: quote.author };
+    }
+    if (language === 'zh' || language.startsWith('zh')) {
+        const idx = Math.max(0, PHILOSOPHICAL_QUOTES.indexOf(quote));
+        return ZH_PHILOSOPHICAL_POOL[idx % ZH_PHILOSOPHICAL_POOL.length];
+    }
+    return { text: quote.en, author: quote.author };
+}

@@ -38,10 +38,10 @@ export function DashboardHero() {
     // Top 4 tasks for preview (integrated in hero)
     const taskPreview = todaysTasks.slice(0, 4)
 
-    const formattedDate = language === 'es'
-        ? `${common.days.thursdayFull}, 19 de Feb`
-        : `Thursday, Feb 19`
-    const greeting = language === 'es' ? t.goodMorning : 'Good Morning'
+    const nowDate = new Date()
+    const localeCode = language === 'es' ? 'es-ES' : language === 'zh' ? 'zh-CN' : 'en-US'
+    const formattedDate = nowDate.toLocaleDateString(localeCode, { weekday: 'long', month: 'short', day: 'numeric' })
+    const greeting = t.goodMorning || 'Good Morning'
 
     return (
         <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-black/[0.03] to-transparent dark:from-white/[0.08] dark:to-white/[0.02] border border-black/5 dark:border-white/10 p-8 sm:p-10 mb-8 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/5 group">

@@ -69,14 +69,23 @@ export function ResetBalanceModal({
                                 <>
                                     Tu balance actual volverá a 0$, ¿seguro?
                                     <br />
-                                    Siguieras conservando el historial, esta{" "}
+                                    Seguirás conservando el historial, esta{" "}
                                     <span className="font-bold">
                                         acción es recomendable para volver a contar tu cantidad total de dinero.
                                     </span>
                                 </>
+                            ) : language === 'zh' ? (
+                                <>
+                                    您当前的余额将归零，确定吗？
+                                    <br />
+                                    历史记录仍会保留，{" "}
+                                    <span className="font-bold">
+                                        建议在重新清点总资金时使用此操作。
+                                    </span>
+                                </>
                             ) : (
                                 <>
-                                    Your current balance will return to $0, are you sure?
+                                    Your current balance will return to 0, are you sure?
                                     <br />
                                     You will still keep the history, this{" "}
                                     <span className="font-bold">

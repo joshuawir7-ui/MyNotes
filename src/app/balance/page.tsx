@@ -19,7 +19,7 @@ import { ResetBalanceModal } from "@/components/balance/reset-balance-modal"
 import { CalculatorModal } from "@/components/balance/calculator-modal"
 import { DeferredSection } from "@/components/ui/deferred-section"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
-import { lt } from "@/lib/i18n-inline"
+import { lt, pick } from "@/lib/i18n-inline"
 
 // Custom Calendar component matching the user's mockup design
 interface CustomCalendarProps {
@@ -37,11 +37,13 @@ function CustomCalendar({ selectedDate, onSelectDate, onClear, language, minDate
 
     const monthsEs = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
     const monthsEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    const months = language === 'es' ? monthsEs : monthsEn;
+    const monthsZh = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+    const months = language === 'es' ? monthsEs : language === 'zh' ? monthsZh : monthsEn;
 
     const weekdaysEs = ["DO", "LU", "MA", "MI", "JU", "VI", "SA"];
     const weekdaysEn = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
-    const weekdays = language === 'es' ? weekdaysEs : weekdaysEn;
+    const weekdaysZh = ["日", "一", "二", "三", "四", "五", "六"];
+    const weekdays = language === 'es' ? weekdaysEs : language === 'zh' ? weekdaysZh : weekdaysEn;
 
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const startWeekday = new Date(currentYear, currentMonth, 1).getDay();
@@ -244,16 +246,15 @@ const WalletHistoryList = ({
                                     </div>
                                     <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                                         <span className="font-extrabold text-sm tracking-tight sm:text-base leading-tight">
-                                            {tx.type === 'income'
-                                                ? (tx.amount < 0
-                                                    ? (language === 'es' ? `Gane ${tx.amount}${tx.currency || '$'}` : `Earned ${tx.amount}${tx.currency || '$'}`)
-                                                    : (language === 'es' ? `Gane +${tx.amount}${tx.currency || '$'}` : `Earned +${tx.amount}${tx.currency || '$'}`)
-                                                )
-                                                : (tx.amount < 0
-                                                    ? (language === 'es' ? `Gaste ${tx.amount}${tx.currency || '$'}` : `Spent ${tx.amount}${tx.currency || '$'}`)
-                                                    : (language === 'es' ? `Gaste -${tx.amount}${tx.currency || '$'}` : `Spent -${tx.amount}${tx.currency || '$'}`)
-                                                )
-                                            }
+                                            {(() => {
+                                                const sym = tx.currency || '$';
+                                                if (tx.type === 'income') {
+                                                    const amtStr = tx.amount < 0 ? `${tx.amount}${sym}` : `+${tx.amount}${sym}`;
+                                                    return `${pick(language, { es: 'Gane', en: 'Earned', zh: '收入' })} ${amtStr}`;
+                                                }
+                                                const amtStr = tx.amount < 0 ? `${tx.amount}${sym}` : `-${tx.amount}${sym}`;
+                                                return `${pick(language, { es: 'Gaste', en: 'Spent', zh: '支出' })} ${amtStr}`;
+                                            })()}
                                         </span>
                                         {tx.description && (
                                             <span className="text-xs text-white/80 truncate font-medium leading-tight">
@@ -286,6 +287,8 @@ const WalletHistoryList = ({
 
 export default function BalancePage() {
     const language = useStore(state => state.language) || 'en'
+    const currency = useStore(state => state.currency) || (language === 'zh' ? '¥' : '$')
+    const setCurrency = useStore(state => state.setCurrency)
     const rawTransactions = useStore(useShallow(state => state.transactions ?? []))
     const transactions = Array.isArray(rawTransactions) ? rawTransactions : []
     const balance = useMemo(() => {
@@ -356,9 +359,13 @@ export default function BalancePage() {
     const [txType, setTxType] = useState<"income" | "expense">("expense")
 
     const [txAmount, setTxAmount] = useState("")
-    const [txCurrency, setTxCurrency] = useState("$")
+    const [txCurrency, setTxCurrency] = useState(currency)
     const [txDescription, setTxDescription] = useState("")
     const [txDate, setTxDate] = useState("")
+
+    useEffect(() => {
+        setTxCurrency(currency)
+    }, [currency])
 
     const [txReminderDate, setTxReminderDate] = useState("")
     const [showDatePicker, setShowDatePicker] = useState(false)
@@ -555,7 +562,7 @@ export default function BalancePage() {
             setTxType(type)
             setTxAmount("")
             setTxReminderDate("")
-            setTxCurrency("$")
+            setTxCurrency(currency)
             setTxDescription("")
             setShowDatePicker(false)
             setIsModalOpen(true)
@@ -575,7 +582,7 @@ export default function BalancePage() {
             type: effectiveType,
             description: fallbackDesc,
             date: todayStr,
-            currency: "$"
+            currency
         })
 
         triggerFeedback(effectiveType, absVal)
@@ -647,11 +654,11 @@ export default function BalancePage() {
         addTransaction({
             amount: Math.abs(adjustment),
             type: balance > 0 ? 'expense' : 'income',
-            description: lt(language, 'Ajuste: Balance reiniciado a $0', 'Adjustment: Balance reset to $0'),
+            description: pick(language, { es: `Ajuste: Balance reiniciado a ${currency}0`, en: `Adjustment: Balance reset to ${currency}0`, zh: `调整：余额已重置为 ${currency}0` }),
             date: todayStr,
-            currency: '$'
+            currency
         })
-        showToast(lt(language, 'Balance reiniciado a $0', 'Balance reset to $0'), 'success')
+        showToast(pick(language, { es: `Balance reiniciado a ${currency}0`, en: `Balance reset to ${currency}0`, zh: `余额已重置为 ${currency}0` }), 'success')
         setIsResetConfirmOpen(false)
     }
 
@@ -666,11 +673,9 @@ export default function BalancePage() {
                 addTransaction({
                     amount: Math.abs(tx.amount),
                     type: 'income',
-                    description: language === 'es'
-                        ? `Capital recuperado: ${tx.description}`
-                        : `Capital recovered: ${tx.description}`,
+                    description: `${pick(language, { es: 'Capital recuperado', en: 'Capital recovered', zh: '已收回资金' })}: ${tx.description}`,
                     date: todayStr,
-                    currency: tx.currency || '$'
+                    currency: tx.currency || currency
                 })
             }
         }
@@ -689,7 +694,8 @@ export default function BalancePage() {
 
             const daysEs = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
             const daysEn = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-            const days = language === 'es' ? daysEs : daysEn;
+            const daysZh = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+            const days = language === 'es' ? daysEs : language === 'zh' ? daysZh : daysEn;
 
             const dayName = days[d.getDay()];
             const dd = String(day).padStart(2, '0');
@@ -1092,7 +1098,7 @@ export default function BalancePage() {
                             transition={{ duration: 0.35, ease: "easeOut" }}
                             className="absolute top-4 right-3 sm:top-5 sm:right-4 bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 shadow-md rounded-full px-3 py-1 text-xs sm:text-sm font-bold text-emerald-500 flex items-center gap-1 z-30 pointer-events-none"
                         >
-                            + ${recentFeedback.amount.toLocaleString()}
+                            + {currency}{recentFeedback.amount.toLocaleString()}
                         </motion.div>
                     )}
                     {recentFeedback && recentFeedback.type === 'expense' && (
@@ -1104,7 +1110,7 @@ export default function BalancePage() {
                             transition={{ duration: 0.35, ease: "easeOut" }}
                             className="absolute bottom-4 left-3 sm:bottom-5 sm:left-4 bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 shadow-md rounded-full px-3 py-1 text-xs sm:text-sm font-bold text-rose-500 flex items-center gap-1 z-30 pointer-events-none"
                         >
-                            - ${recentFeedback.amount.toLocaleString()}
+                            - {currency}{recentFeedback.amount.toLocaleString()}
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -1115,7 +1121,7 @@ export default function BalancePage() {
                         {lt(language, 'Balance', 'Balance')}
                     </span>
                     <span className={`font-extrabold text-xl sm:text-2xl tracking-tight mt-0.5 ${isNegative ? 'text-red-600 dark:text-red-500' : 'text-zinc-950 dark:text-white'}`}>
-                        ${balance.toLocaleString()}
+                        {currency}{balance.toLocaleString()}
                     </span>
                 </div>
             </div>
@@ -1140,9 +1146,11 @@ export default function BalancePage() {
                         <div className="flex items-center gap-2.5 flex-1 text-xs sm:text-sm font-semibold">
                             <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />
                             <span>
-                                {language === 'es'
-                                    ? `Recordatorio de recuperación: Debes cobrar ${appt.title.replace('Recuperar capital: ', '')} programado para hoy o días pasados.`
-                                    : `Recovery reminder: You need to recover ${appt.title.replace('Recover capital: ', '')} scheduled for today or past days.`}
+                                {pick(language, {
+                                    es: `Recordatorio de recuperación: Debes cobrar ${appt.title.replace('Recuperar capital: ', '')} programado para hoy o días pasados.`,
+                                    en: `Recovery reminder: You need to recover ${appt.title.replace('Recover capital: ', '')} scheduled for today or past days.`,
+                                    zh: `收回提醒：您需要收回计划于今天或过去日期的 ${appt.title.replace('Recuperar capital: ', '').replace('Recover capital: ', '')}。`
+                                })}
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1184,7 +1192,7 @@ export default function BalancePage() {
                             <div className="flex items-center justify-between w-full mb-2 px-2 max-w-[320px]">
                                 <div className="w-8 h-8" />
                                 <h1 className="text-3xl font-normal tracking-tight text-foreground font-dancing text-center flex-1">
-                                    Balance
+                                    {pick(language, { es: 'Balance', en: 'Balance', zh: '收支平衡' })}
                                 </h1>
                                 <div className="flex gap-2">
                                     <button
@@ -1215,7 +1223,7 @@ export default function BalancePage() {
                                 <div className="flex items-center justify-center gap-4 w-full relative">
                                     <div className="h-[1.5px] bg-black/10 dark:bg-white/10 flex-1" />
                                     <span className="text-base sm:text-lg font-black tracking-wider uppercase text-foreground shrink-0 whitespace-nowrap">
-                                        {lt(language, 'Tienes', 'You have')}: {balance.toLocaleString()}$
+                                        {pick(language, { es: 'Tienes', en: 'You have', zh: '当前拥有' })}: {balance.toLocaleString()}{currency}
                                     </span>
                                     <div className="h-[1.5px] bg-black/10 dark:bg-white/10 flex-1" />
                                     <button
@@ -1257,7 +1265,7 @@ export default function BalancePage() {
                                     <>
                                         {/* col 1: etiqueta Meta */}
                                         <span className="text-sm font-black text-purple-650 dark:text-purple-400 shrink-0 whitespace-nowrap">
-                                            Meta: {savingsGoal}$
+                                            {pick(language, { es: 'Meta', en: 'Goal', zh: '目标' })}: {savingsGoal}{currency}
                                         </span>
 
                                         {/* col 2: input centrado */}
@@ -1267,7 +1275,7 @@ export default function BalancePage() {
                                                 step="0.01"
                                                 value={quickAmount}
                                                 onChange={(e) => setQuickAmount(e.target.value)}
-                                                placeholder="0.00 $"
+                                                placeholder={`0.00 ${currency}`}
                                                 className="w-full max-w-[100px] bg-black/5 dark:bg-white/5 border border-zinc-300 dark:border-zinc-700 rounded-2xl py-2 px-3 focus:outline-none focus:border-zinc-400 text-center font-bold text-sm text-foreground placeholder:font-normal placeholder:text-muted-foreground/45"
                                             />
                                         </div>
@@ -1301,18 +1309,18 @@ export default function BalancePage() {
                                     onClick={() => handleQuickAction("income")}
                                     className="px-6 py-3 bg-[#5c5c5c] hover:bg-[#4d4d4d] text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow"
                                 >
-                                    {lt(language, "Agregar", "Agregar")}
+                                    {pick(language, { es: "Agregar", en: "Add", zh: "增加" })}
                                 </button>
                                 <button
                                     onClick={() => handleQuickAction("expense")}
                                     className="px-6 py-3 bg-[#242424] hover:bg-[#1a1a1a] text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow"
                                 >
-                                    {lt(language, "Gaste", "Gaste")}
+                                    {pick(language, { es: "Gaste", en: "Spent", zh: "花费" })}
                                 </button>
                                 <button
                                     onClick={handleResetBalance}
                                     className="p-3 text-zinc-950 dark:text-white hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-all hover:scale-110 active:scale-95 shrink-0 flex items-center justify-center"
-                                    title={lt(language, 'Reiniciar balance a $0', 'Reset balance to $0')}
+                                    title={pick(language, { es: `Reiniciar balance a ${currency}0`, en: `Reset balance to ${currency}0`, zh: `将余额重置为 ${currency}0` })}
                                 >
                                     <RotateCcw className="w-5 h-5" />
                                 </button>
@@ -1375,7 +1383,7 @@ export default function BalancePage() {
                                     </div>
                                 ) : (
                                     [...expenseNotes].sort((a, b) => b.createdAt - a.createdAt).map(note => (
-                                        <ExpenseNoteCard key={note.id} note={note} currencySymbol="$" />
+                                        <ExpenseNoteCard key={note.id} note={note} currencySymbol={currency} />
                                     ))
                                 )}
                             </div>
@@ -1420,7 +1428,9 @@ export default function BalancePage() {
 
                             <div className="text-center mt-6 mb-6">
                                 <h2 className="text-2xl font-black tracking-widest text-foreground uppercase">
-                                    {txType === 'expense' ? 'GASTE' : 'GANE'}
+                                    {txType === 'expense'
+                                        ? pick(language, { es: 'GASTE', en: 'SPENT', zh: '花费' })
+                                        : pick(language, { es: 'GANE', en: 'EARNED', zh: '收入' })}
                                 </h2>
                             </div>
 
@@ -1434,7 +1444,7 @@ export default function BalancePage() {
                                             step="0.01"
                                             value={txAmount}
                                             onChange={(e) => setTxAmount(e.target.value)}
-                                            placeholder={txType === 'expense' ? "Monto (ej: -12)" : "Monto (ej: -12)"}
+                                            placeholder={pick(language, { es: 'Monto (ej: -12)', en: 'Amount (e.g. -12)', zh: '金额（如：-12）' })}
                                             className="w-full glass-field rounded-2xl px-4 py-3 focus:outline-none focus:border-zinc-400 focus:ring-0 text-center font-bold text-sm text-foreground placeholder:text-zinc-400"
                                         />
                                     </div>
@@ -1442,12 +1452,13 @@ export default function BalancePage() {
                                     <div className="relative flex items-center">
                                         {showCurrencyPicker ? (
                                             <div className="flex gap-1 justify-center items-center w-full h-full bg-zinc-100 dark:bg-zinc-850 p-1 rounded-2xl border border-zinc-200 dark:border-zinc-800 z-10">
-                                                {["$", "€", "¥", "Pesos"].map(curr => (
+                                                {["$", "¥", "€", "Pesos"].map(curr => (
                                                     <button
                                                         key={curr}
                                                         type="button"
                                                         onClick={() => {
                                                             setTxCurrency(curr)
+                                                            setCurrency(curr, true)
                                                             setShowCurrencyPicker(false)
                                                         }}
                                                         className={`w-10 py-1.5 rounded-lg text-xs font-bold transition-all ${txCurrency === curr ? 'bg-primary text-white' : 'hover:bg-black/10 dark:hover:bg-white/10 text-muted-foreground'}`}
@@ -1463,7 +1474,7 @@ export default function BalancePage() {
                                                 className="w-full py-3.5 bg-zinc-500 hover:bg-zinc-650 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all flex items-center justify-center gap-1.5"
                                             >
                                                 <Coins className="w-3.5 h-3.5" />
-                                                {txCurrency === '$' ? 'MONEDA' : `MONEDA: ${txCurrency}`}
+                                                {`${pick(language, { es: 'MONEDA', en: 'CURRENCY', zh: '货币' })}: ${txCurrency}`}
                                             </button>
                                         )}
                                     </div>
@@ -1772,11 +1783,9 @@ export default function BalancePage() {
                                                 addTransaction({
                                                     amount: Math.abs(selectedTxDetails.amount),
                                                     type: 'income',
-                                                    description: language === 'es'
-                                                        ? `Capital recuperado: ${selectedTxDetails.description}`
-                                                        : `Capital recovered: ${selectedTxDetails.description}`,
+                                                    description: `${pick(language, { es: 'Capital recuperado', en: 'Capital recovered', zh: '已收回资金' })}: ${selectedTxDetails.description}`,
                                                     date: todayStr,
-                                                    currency: selectedTxDetails.currency || '$'
+                                                    currency: selectedTxDetails.currency || currency
                                                 });
 
                                                 // Complete associated reminder appointment if exists
@@ -1827,7 +1836,11 @@ export default function BalancePage() {
                 onApplyAmount={(amount) => {
                     setQuickAmount(amount)
                     showToast(
-                        language === 'es' ? `¡Monto ${amount}$ aplicado al balance!` : `Amount ${amount}$ applied to balance!`,
+                        pick(language, {
+                            es: `¡Monto ${amount}${currency} aplicado al balance!`,
+                            en: `Amount ${amount}${currency} applied to balance!`,
+                            zh: `金额 ${amount}${currency} 已应用到余额！`
+                        }),
                         "success"
                     )
                 }}

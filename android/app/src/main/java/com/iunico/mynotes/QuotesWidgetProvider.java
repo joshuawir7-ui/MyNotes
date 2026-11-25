@@ -100,6 +100,21 @@ public class QuotesWidgetProvider extends AppWidgetProvider {
         new Quote("Don't walk in front of me, I may not follow. Don't walk behind me, I may not lead. Walk beside me and be my friend.", "Albert Camus")
     };
 
+    private static final Quote[] CHINESE_QUOTES = new Quote[]{
+        new Quote("千里之行，始于足下。", "老子"),
+        new Quote("胜人者有力，自胜者强。", "老子"),
+        new Quote("不积跬步，无以至千里；不积小流，无以成江海。", "荀子"),
+        new Quote("自律是连接目标与成就的桥梁。", "吉姆·罗恩"),
+        new Quote("卓越不是一种行为，而是一种习惯。", "亚里士多德"),
+        new Quote("不管走得多慢，只要不停下脚步就好。", "孔子"),
+        new Quote("最伟大的胜利，是战胜自己。", "柏拉图"),
+        new Quote("人生苦短，并非时间太少，而是我们浪费太多。", "塞涅卡"),
+        new Quote("知道为什么而活的人，便能承受几乎任何考验。", "尼采"),
+        new Quote("每天清晨我们都重获新生，今天所做的事才最重要。", "佛陀"),
+        new Quote("成功是日复一日点滴努力的积累。", "罗伯特·科利尔"),
+        new Quote("水滴穿石，非力使然，恒也。", "古训")
+    };
+
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) {
@@ -126,7 +141,7 @@ public class QuotesWidgetProvider extends AppWidgetProvider {
         // Determine language
         SharedPreferences prefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
         String lang = prefs.getString("language", "es");
-        Quote[] quotesList = "es".equals(lang) ? SPANISH_QUOTES : ENGLISH_QUOTES;
+        Quote[] quotesList = "es".equals(lang) ? SPANISH_QUOTES : "zh".equals(lang) ? CHINESE_QUOTES : ENGLISH_QUOTES;
 
         // Get index based on current hour since epoch to shift deterministically every hour
         long hourEpoch = System.currentTimeMillis() / 3600000;

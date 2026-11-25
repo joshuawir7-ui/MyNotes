@@ -19,6 +19,7 @@ import { lt } from "@/lib/i18n-inline"
 
 export default function GoalsPage() {
     const language = useStore(state => state.language)
+    const currency = useStore(state => state.currency) || (language === 'zh' ? '¥' : '$')
     const appColor = useStore(state => state.appColor ?? 'purple')
     const goals = useStore(state => state.goals)
     const addGoal = useStore(state => state.addGoal)
@@ -80,7 +81,7 @@ export default function GoalsPage() {
             objectives: goalObjectives,
             targetValue: finalTargetValue,
             currentValue: finalCurrentValue,
-            unit: hasBudget ? '$' : undefined,
+            unit: hasBudget ? currency : undefined,
             syncWithBalance: hasBudget ? syncWithBalance : false
         })
 
@@ -232,7 +233,7 @@ export default function GoalsPage() {
                                                 <div className="space-y-4 glass-card p-4 rounded-2xl animate-in fade-in slide-in-from-top-1 duration-250">
                                                     <div>
                                                         <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground/60 mb-2">
-                                                            {lt(language, "Presupuesto Objetivo ($)", "Target Budget ($)")}
+                                                            {`${lt(language, "Presupuesto Objetivo ($)", "Target Budget ($)").replace(/\(\$\)/g, `(${currency})`)}`}
                                                         </label>
                                                         <input
                                                             required

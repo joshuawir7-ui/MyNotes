@@ -63,6 +63,21 @@ export function MIUIOnboardingDialog() {
             btnSettings: "Open Settings",
             gotIt: "Got it, I configured it",
             skip: "Skip"
+        },
+        zh: {
+            title: "通知设置（小米 / Android）",
+            desc: "为确保 MyNotes 的闹钟和提醒在预定时间准时响起（即使应用已关闭），请进行以下设置：",
+            autostart: "1. 自启动",
+            autostartDesc: "允许 MyNotes 在手机重启后重新安排通知。",
+            battery: "2. 省电策略",
+            batteryDesc: "设置为“无限制”，防止系统关闭后台提醒。",
+            appSettings: "3. 应用设置",
+            appSettingsDesc: "关闭“暂停未使用应用的活动”，防止权限被自动撤销。",
+            btnAutostart: "打开自启动设置",
+            btnBattery: "打开电池设置",
+            btnSettings: "打开应用设置",
+            gotIt: "明白了，我已设置好",
+            skip: "跳过"
         }
     }
 

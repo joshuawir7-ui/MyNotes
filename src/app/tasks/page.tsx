@@ -24,7 +24,7 @@ import { useRouter } from "next/navigation"
 import { useProgressiveCount } from "@/hooks/use-progressive-count"
 import { DeferredSection } from "@/components/ui/deferred-section"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
-import { lt } from "@/lib/i18n-inline"
+import { lt, pick } from "@/lib/i18n-inline"
 
 const TourTooltip = ({
     children,
@@ -189,6 +189,15 @@ export default function TasksPage() {
                 "Reflexionar",
                 "Orar con Dios",
                 "Saludar a la Familia"
+            ]
+        } else if (language === 'zh') {
+            return [
+                "每天阅读 30 分钟",
+                "锻炼身体",
+                "多喝水",
+                "自我反思",
+                "冥想静心",
+                "问候家人"
             ]
         } else {
             return [
@@ -505,8 +514,9 @@ export default function TasksPage() {
                 ? (() => {
                     const badHabitMessagesEs = ["Bien hecho", "Mal hábito evitado", "¡Así se hace!"]
                     const badHabitMessagesEn = ["Well done!", "Bad habit avoided!", "That's the way!"]
+                    const badHabitMessagesZh = ["干得好！", "成功克制坏习惯！", "继续保持！"]
                     const randomIndex = Math.floor(Math.random() * badHabitMessagesEs.length)
-                    return language === 'es' ? badHabitMessagesEs[randomIndex] : badHabitMessagesEn[randomIndex]
+                    return language === 'es' ? badHabitMessagesEs[randomIndex] : language === 'zh' ? badHabitMessagesZh[randomIndex] : badHabitMessagesEn[randomIndex]
                 })()
                 : (lt(language, "Hábito/Tarea completado", "Habit/Task completed"))
         const toastType = isCompleted ? "info" : "success"
@@ -878,7 +888,11 @@ export default function TasksPage() {
                                                                             onClick={() => {
                                                                                 toggleTaskInGroup(group.id, task.id);
                                                                                 const nextVal = !task.completed;
-                                                                                showToast(language === 'es' ? (nextVal ? "Tarea completada" : "Tarea pendiente") : (nextVal ? "Task completed" : "Task pending"), nextVal ? "success" : "info");
+                                                                                showToast(pick(language, {
+                                                                                    es: nextVal ? "Tarea completada" : "Tarea pendiente",
+                                                                                    en: nextVal ? "Task completed" : "Task pending",
+                                                                                    zh: nextVal ? "任务已完成" : "任务待办"
+                                                                                }), nextVal ? "success" : "info");
                                                                             }}
                                                                         >
                                                                             <div className="flex items-center gap-3">
@@ -1215,6 +1229,8 @@ export default function TasksPage() {
                                     <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 leading-snug">
                                         {language === 'es' ? (
                                             <>Perdiste <span className="text-red-500 font-extrabold text-base">{activeLostDaysHabit.missed || 0}</span> veces este hábito, póngase al día</>
+                                        ) : language === 'zh' ? (
+                                            <>你已错过该习惯 <span className="text-red-500 font-extrabold text-base">{activeLostDaysHabit.missed || 0}</span> 次，快补上吧</>
                                         ) : (
                                             <>You missed <span className="text-red-500 font-extrabold text-base">{activeLostDaysHabit.missed || 0}</span> times this habit, catch up</>
                                         )}
@@ -1456,6 +1472,10 @@ export default function TasksPage() {
                                                                         <>
                                                                             <span className="font-bold text-black dark:text-white">Ponle el nombre tu habito;</span> ejemplo <span className="font-bold text-black dark:text-white">Estudiar 30 minutos de ingles</span> preferiblemente algo que tu ya hagas o quieras comenzar a hacer
                                                                         </>
+                                                                    ) : language === 'zh' ? (
+                                                                        <>
+                                                                            <span className="font-bold text-black dark:text-white">为习惯命名；</span>例如：<span className="font-bold text-black dark:text-white">学习英语 30 分钟</span>，最好是你已经在做或打算开始做的事情
+                                                                        </>
                                                                     ) : (
                                                                         <>
                                                                             <span className="font-bold text-black dark:text-white">Name your habit;</span> e.g., <span className="font-bold text-black dark:text-white">Study English for 30 minutes</span>, preferably something you already do or want to start doing
@@ -1651,6 +1671,11 @@ export default function TasksPage() {
                                                                             <span className="font-bold text-black dark:text-white">Diario</span> todos los días<br />
                                                                             <span className="font-bold text-black dark:text-white">Una vez</span> una sola vez luego se <span className="text-red-500 font-extrabold">elimina el habito</span>
                                                                         </>
+                                                                    ) : language === 'zh' ? (
+                                                                        <>
+                                                                            <span className="font-bold text-black dark:text-white">每天</span> 每天重复<br />
+                                                                            <span className="font-bold text-black dark:text-white">仅一次</span> 完成后将自动<span className="text-red-500 font-extrabold">移除该习惯</span>
+                                                                        </>
                                                                     ) : (
                                                                         <>
                                                                             <span className="font-bold text-black dark:text-white">Daily</span> every day<br />
@@ -1836,6 +1861,10 @@ export default function TasksPage() {
                                                                         {language === 'es' ? (
                                                                             <>
                                                                                 <span className="font-bold text-black dark:text-white">Elige la frecuencia</span> con la que quieres hacer esa <span className="font-bold text-black dark:text-white">tarea o hábito</span>: todos los días, una vez a la semana o ciertos días de la semana (los días morados representan cuándo estará activo tu hábito).
+                                                                            </>
+                                                                        ) : language === 'zh' ? (
+                                                                            <>
+                                                                                <span className="font-bold text-black dark:text-white">选择执行频率</span>，决定何时进行该<span className="font-bold text-black dark:text-white">任务或习惯</span>：每天、每周一次或每周特定几天（紫色日期代表习惯生效日）。
                                                                             </>
                                                                         ) : (
                                                                             <>
@@ -2064,17 +2093,23 @@ export default function TasksPage() {
                             {tourStep === 8 && (
                                 language === 'es'
                                     ? <>Puedes marcar tu nuevo hábito como <span className="font-extrabold text-white underline decoration-white/50">completado para que ¡lo pruebes!</span></>
-                                    : <>You can mark your new habit as <span className="font-extrabold text-white underline decoration-white/50">completed to test it out!</span></>
+                                    : language === 'zh'
+                                        ? <>你可以将新习惯标记为<span className="font-extrabold text-white underline decoration-white/50">已完成，快来试试吧！</span></>
+                                        : <>You can mark your new habit as <span className="font-extrabold text-white underline decoration-white/50">completed to test it out!</span></>
                             )}
                             {tourStep === 9 && (
                                 language === 'es'
                                     ? <>Recuerda que dependiendo de la frecuencia se reiniciará, <span className="font-extrabold text-white underline decoration-white/50">¡no olvides volver mañana!</span></>
-                                    : <>Remember that depending on the frequency it will reset, <span className="font-extrabold text-white underline decoration-white/50">don't forget to return tomorrow!</span></>
+                                    : language === 'zh'
+                                        ? <>习惯会根据设定的频率自动重置，<span className="font-extrabold text-white underline decoration-white/50">别忘了明天再来！</span></>
+                                        : <>Remember that depending on the frequency it will reset, <span className="font-extrabold text-white underline decoration-white/50">don't forget to return tomorrow!</span></>
                             )}
                             {tourStep === 10 && (
                                 language === 'es'
                                     ? <>Te recomendamos probar las <span className="font-extrabold text-white underline decoration-white/50">Notas</span>; ¡aparecen incluso como <span className="font-extrabold text-white underline decoration-white/50">widgets!</span></>
-                                    : <>We recommend you <span className="font-extrabold text-white underline decoration-white/50">try Notes</span>; they even appear as <span className="font-extrabold text-white underline decoration-white/50">widgets!</span></>
+                                    : language === 'zh'
+                                        ? <>推荐你试试<span className="font-extrabold text-white underline decoration-white/50">笔记功能</span>；它们甚至可以作为<span className="font-extrabold text-white underline decoration-white/50">桌面小组件</span>显示！</>
+                                        : <>We recommend you <span className="font-extrabold text-white underline decoration-white/50">try Notes</span>; they even appear as <span className="font-extrabold text-white underline decoration-white/50">widgets!</span></>
                             )}
                         </p>
                     </motion.div>

@@ -2,7 +2,8 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 import { Task } from './store';
 import { assignSlot, buildTriggerDate, getNotificationSlots } from './notification-slots';
-import { getPhilosophicalQuoteForDate, shouldSendPhilosophicalQuoteToday } from './philosophical-quotes';
+import { getPhilosophicalQuoteForDate, getLocalizedPhilosophicalQuoteText, shouldSendPhilosophicalQuoteToday } from './philosophical-quotes';
+import { pick } from './i18n-inline';
 
 const CHANNEL_ID = 'reminders';
 const PRIORITY_CHANNEL_ID = 'priority_reminders';
@@ -104,7 +105,7 @@ export const NotificationManager = {
 
                 notificationsToSchedule.push({
                     id: hashStringToInt(task.id),
-                    title: 'Recordatorio de Hábito',
+                    title: pick((await import('./store')).useStore.getState().language, { es: 'Recordatorio de Hábito', en: 'Habit Reminder', zh: '习惯提醒' }),
                     body: task.title,
                     channelId: CHANNEL_ID,
                     schedule: {
@@ -171,10 +172,12 @@ export const NotificationManager = {
                     fireAt.setDate(fireAt.getDate() + 1);
                 }
 
-                const title = language === 'es' ? '🎯 Tareas prioritarias' : '🎯 Priority tasks';
-                const body = language === 'es'
-                    ? 'Revisa tus tareas de alta prioridad pendientes'
-                    : 'Check your pending high-priority tasks';
+                const title = pick(language, { es: '🎯 Tareas prioritarias', en: '🎯 Priority tasks', zh: '🎯 高优先级任务' });
+                const body = pick(language, {
+                    es: 'Revisa tus tareas de alta prioridad pendientes',
+                    en: 'Check your pending high-priority tasks',
+                    zh: '查看您待完成的高优先级任务'
+                });
 
                 notificationsToSchedule.push({
                     id: PRIORITY_NOTIF_IDS[i],
@@ -235,14 +238,14 @@ export const NotificationManager = {
             if (!targetDate) return;
 
             const quote = getPhilosophicalQuoteForDate(targetDate);
-            const isEs = language === 'es' || language === 'es-419';
-            const quoteText = isEs ? quote.es : quote.en;
+            const localized = getLocalizedPhilosophicalQuoteText(quote, language);
+            const quoteText = localized.text;
 
             await LocalNotifications.schedule({
                 notifications: [{
                     id: PHILOSOPHY_NOTIF_ID,
-                    title: isEs ? '✦ Disciplina & Filosofía' : '✦ Discipline & Philosophy',
-                    body: `"${quoteText}" — ${quote.author}`,
+                    title: pick(language, { es: '✦ Disciplina & Filosofía', en: '✦ Discipline & Philosophy', zh: '✦ 自律与哲理' }),
+                    body: `"${quoteText}" — ${localized.author}`,
                     channelId: PHILOSOPHY_CHANNEL_ID,
                     schedule: {
                         at: targetDate,
@@ -252,7 +255,7 @@ export const NotificationManager = {
                         channelId: PHILOSOPHY_CHANNEL_ID,
                         type: 'philosophical_quote',
                         quote: quoteText,
-                        author: quote.author,
+                        author: localized.author,
                     }
                 }]
             });

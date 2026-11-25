@@ -1,7 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { useState, useEffect, useRef } from "react"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
+import { useStore } from "@/lib/store"
+import { pick } from "@/lib/i18n-inline"
 export function WelcomeNotesModal() {
+    const language = useStore(state => state.language) || 'en';
     const [isOpen, setIsOpen] = useState(false);
     const scrimBlur = useDeferredBlur(isOpen);
     const wrapperRef = useRef<HTMLDivElement>(null);
@@ -80,7 +83,12 @@ export function WelcomeNotesModal() {
                             <div className="h-[1.5px] bg-black/90 dark:bg-white/60 w-full max-w-[95%] mb-4 mt-2" /> 
                             
                             <p className="text-[18px] font-normal text-zinc-800 dark:text-zinc-200 leading-[1.4] max-w-[380px] tracking-tight">
-                                Ten tus notas a la mano, en cualquier momento, con <span className="font-bold text-black dark:text-white">MyNotes!</span>
+                                {pick(language, {
+                                    es: "Ten tus notas a la mano, en cualquier momento, con ",
+                                    en: "Keep your notes at hand, anytime, with ",
+                                    zh: "随时随地轻松管理您的笔记，尽在 "
+                                })}
+                                <span translate="no" className="font-bold text-black dark:text-white">MyNotes!</span>
                             </p>
                         </div>
 
@@ -103,10 +111,18 @@ export function WelcomeNotesModal() {
                                     </svg>
                                 </div>
                                 
-                                <div className="font-handwriting text-[32px] font-bold text-black dark:text-white leading-none">Saturn!</div>
+                                <div className="font-handwriting text-[32px] font-bold text-black dark:text-white leading-none">
+                                    {pick(language, { es: "¡Saturno!", en: "Saturn!", zh: "土星！" })}
+                                </div>
                                 <div className="font-handwriting text-[18px] text-black dark:text-white max-w-[220px] leading-[1.4] relative pl-3">
                                     <div className="absolute left-0 top-1 bottom-1 w-[1.5px] bg-black/80 dark:bg-white/60"></div>
-                                    <span>It's the hugest planet in the solar system</span>
+                                    <span>
+                                        {pick(language, {
+                                            es: "Uno de los planetas más fascinantes del sistema solar",
+                                            en: "It's one of the most fascinating planets in the solar system",
+                                            zh: "太阳系中最迷人的行星之一"
+                                        })}
+                                    </span>
                                 </div>
                                 
                                 {/* Curly scribble */}

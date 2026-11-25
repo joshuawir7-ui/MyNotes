@@ -13,7 +13,8 @@
 import { Capacitor } from '@capacitor/core';
 import type { Task, Appointment } from './store';
 import { assignSlot, DEFAULT_SLOTS } from './notification-slots';
-import { getPhilosophicalQuoteForDate, shouldSendPhilosophicalQuoteToday } from './philosophical-quotes';
+import { getPhilosophicalQuoteForDate, getLocalizedPhilosophicalQuoteText, shouldSendPhilosophicalQuoteToday } from './philosophical-quotes';
+import { pick } from './i18n-inline';
 
 const SW_PATH = '/sw.js';
 let swRegistration: ServiceWorkerRegistration | null = null;
@@ -88,7 +89,7 @@ function checkTaskReminders(tasks: Task[], language: string) {
         if (task.dueDate === todayStr) {
             const completedToday = task.completedDates?.includes(todayStr);
             if (!completedToday) {
-                const title = language === 'es' ? '📋 Tarea pendiente' : '📋 Pending task';
+                const title = pick(language, { es: '📋 Tarea pendiente', en: '📋 Pending task', zh: '📋 待办任务' });
                 const body = task.title;
                 sendNotification(title, body, key);
                 notifiedIds.add(key);
@@ -99,10 +100,12 @@ function checkTaskReminders(tasks: Task[], language: string) {
         if (task.dueDate < todayStr && !task.completed) {
             const overdueKey = `task-overdue-${task.id}`;
             if (!notifiedIds.has(overdueKey)) {
-                const title = language === 'es' ? '⚠️ Tarea vencida' : '⚠️ Overdue task';
-                const body = language === 'es'
-                    ? `${task.title} — venció el ${task.dueDate}`
-                    : `${task.title} — was due on ${task.dueDate}`;
+                const title = pick(language, { es: '⚠️ Tarea vencida', en: '⚠️ Overdue task', zh: '⚠️ 逾期任务' });
+                const body = pick(language, {
+                    es: `${task.title} — venció el ${task.dueDate}`,
+                    en: `${task.title} — was due on ${task.dueDate}`,
+                    zh: `${task.title} — 已于 ${task.dueDate} 到期`
+                });
                 sendNotification(title, body, overdueKey);
                 notifiedIds.add(overdueKey);
             }
@@ -152,7 +155,7 @@ function checkHabitReminders(tasks: Task[], language: string) {
         const slotKey = `habit-${task.id}-${todayStr}-slot${slot.hour}`;
         if (notifiedIds.has(slotKey)) continue;
 
-        const title = language === 'es' ? '🔁 Recordatorio de hábito' : '🔁 Habit reminder';
+        const title = pick(language, { es: '🔁 Recordatorio de hábito', en: '🔁 Habit reminder', zh: '🔁 习惯提醒' });
         sendNotification(title, task.title, slotKey);
         notifiedIds.add(slotKey);
     }
@@ -214,20 +217,24 @@ export function checkAppointmentReminders(appointments: Appointment[], language:
         if (apt.date === todayStr) {
             const key = `apt-today-${apt.id}-${todayStr}`;
             if (!hasWebEventBeenNotified(key)) {
-                const title = language === 'es' ? '📅 Recordatorio de Evento' : '📅 Event Reminder';
-                const body = language === 'es'
-                    ? `Hoy tienes "${apt.title}" ¿ya lo has completado?`
-                    : `Today you have "${apt.title}". Have you completed it?`;
+                const title = pick(language, { es: '📅 Recordatorio de Evento', en: '📅 Event Reminder', zh: '📅 事件提醒' });
+                const body = pick(language, {
+                    es: `Hoy tienes "${apt.title}" ¿ya lo has completado?`,
+                    en: `Today you have "${apt.title}". Have you completed it?`,
+                    zh: `今天有“${apt.title}”，您完成了吗？`
+                });
                 sendNotification(title, body, key);
                 markWebEventNotified(key, todayStr);
             }
         } else if (apt.date === tomorrowStr) {
             const key = `apt-tomorrow-${apt.id}-${todayStr}`;
             if (!hasWebEventBeenNotified(key)) {
-                const title = language === 'es' ? '🗓️ Recordatorio de Evento' : '🗓️ Event Reminder';
-                const body = language === 'es'
-                    ? `Mañana tienes "${apt.title}", no te olvides`
-                    : `Tomorrow you have "${apt.title}", don't forget`;
+                const title = pick(language, { es: '🗓️ Recordatorio de Evento', en: '🗓️ Event Reminder', zh: '🗓️ 事件提醒' });
+                const body = pick(language, {
+                    es: `Mañana tienes "${apt.title}", no te olvides`,
+                    en: `Tomorrow you have "${apt.title}", don't forget`,
+                    zh: `明天有“${apt.title}”，别忘了`
+                });
                 sendNotification(title, body, key);
                 markWebEventNotified(key, todayStr);
             }
@@ -292,12 +299,14 @@ function checkPriorityTaskReminders(
         if (diff >= -2 && diff <= 2) {
             const key = `priority-slot-${h}-${m}-${todayStr}`;
             if (!notifiedIds.has(key)) {
-                const title = language === 'es' ? '🎯 Tareas prioritarias pendientes' : '🎯 Priority tasks pending';
+                const title = pick(language, { es: '🎯 Tareas prioritarias pendientes', en: '🎯 Priority tasks pending', zh: '🎯 待完成的高优先级任务' });
                 const body = pendingHighPriority.length === 1
                     ? pendingHighPriority[0].title
-                    : language === 'es'
-                        ? `${pendingHighPriority.length} tareas de alta prioridad pendientes`
-                        : `${pendingHighPriority.length} high-priority tasks pending`;
+                    : pick(language, {
+                        es: `${pendingHighPriority.length} tareas de alta prioridad pendientes`,
+                        en: `${pendingHighPriority.length} high-priority tasks pending`,
+                        zh: `${pendingHighPriority.length} 项高优先级任务待完成`
+                    });
                 sendNotification(title, body, key);
                 notifiedIds.add(key);
             }
@@ -320,9 +329,9 @@ function checkPhilosophicalQuoteReminder(enabled: boolean, language: string) {
     }
 
     const quote = getPhilosophicalQuoteForDate(now);
-    const isEs = language === 'es' || language === 'es-419';
-    const title = isEs ? '✦ Disciplina & Filosofía' : '✦ Discipline & Philosophy';
-    const body = `"${isEs ? quote.es : quote.en}" — ${quote.author}`;
+    const localized = getLocalizedPhilosophicalQuoteText(quote, language);
+    const title = pick(language, { es: '✦ Disciplina & Filosofía', en: '✦ Discipline & Philosophy', zh: '✦ 自律与哲理' });
+    const body = `"${localized.text}" — ${localized.author}`;
 
     sendNotification(title, body, key);
     notifiedIds.add(key);

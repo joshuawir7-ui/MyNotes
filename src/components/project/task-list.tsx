@@ -1,6 +1,7 @@
 "use client"
 
 import { useStore, Task, EnergyLevel } from "@/lib/store"
+import { pick } from "@/lib/i18n-inline"
 import { CheckCircle2, Circle, Calendar, Battery, BatteryMedium, BatteryLow } from "lucide-react"
 
 interface TaskListProps {
@@ -30,7 +31,11 @@ export function TaskList({ projectId }: TaskListProps) {
                     onClick={() => {
                         toggleTask(task.id)
                         const isComp = !task.completed
-                        showToast(language === 'es' ? (isComp ? "Tarea completada" : "Tarea pendiente") : (isComp ? "Task completed" : "Task pending"), isComp ? "success" : "info")
+                        showToast(pick(language, {
+                            es: isComp ? "Tarea completada" : "Tarea pendiente",
+                            en: isComp ? "Task completed" : "Task pending",
+                            zh: isComp ? "任务已完成" : "任务待办"
+                        }), isComp ? "success" : "info")
                     }}
                     className={`group p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between
             ${task.completed

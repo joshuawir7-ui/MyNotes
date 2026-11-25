@@ -304,7 +304,8 @@ export function WeeklyProgressChart() {
 
             const monthNamesEs = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
             const monthNamesEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-            const monthNames = (language === 'es' || (language as string) === 'es-419') ? monthNamesEs : monthNamesEn
+            const monthNamesZh = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]
+            const monthNames = (language === 'es' || (language as string) === 'es-419') ? monthNamesEs : language === 'zh' ? monthNamesZh : monthNamesEn
 
             const yearlyData = []
             for (let m = 0; m < 12; m++) {

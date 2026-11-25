@@ -542,42 +542,43 @@ export async function ensureAttachment(params: EnsureAttachmentParams): Promise<
 
 export function getFailureMessage(reason: AttachmentFailReason, language: string = 'es'): { title: string; subtitle: string } {
     const es = language === 'es';
+    const zh = language === 'zh';
     switch (reason) {
         case 'no-session':
             return {
-                title: es ? 'Sin sesión de Google' : 'Not signed in to Google',
-                subtitle: es ? 'Inicia sesión con tu cuenta de Google en Ajustes para descargar este archivo.' : 'Sign in with your Google account in Settings to download this file.'
+                title: es ? 'Sin sesión de Google' : zh ? '未登录 Google' : 'Not signed in to Google',
+                subtitle: es ? 'Inicia sesión con tu cuenta de Google en Ajustes para descargar este archivo.' : zh ? '请在设置中登录您的 Google 账号以下载此文件。' : 'Sign in with your Google account in Settings to download this file.'
             };
         case 'session-expired':
             return {
-                title: es ? 'Sesión de Google expirada' : 'Google session expired',
-                subtitle: es ? 'Tu sesión caducó. Reconecta tu cuenta de Google en Ajustes y vuelve a intentarlo.' : 'Your session expired. Reconnect your Google account in Settings and try again.'
+                title: es ? 'Sesión de Google expirada' : zh ? 'Google 会话已过期' : 'Google session expired',
+                subtitle: es ? 'Tu sesión caducó. Reconecta tu cuenta de Google en Ajustes y vuelve a intentarlo.' : zh ? '您的会话已过期。请在设置中重新连接 Google 账号后重试。' : 'Your session expired. Reconnect your Google account in Settings and try again.'
             };
         case 'no-access':
             return {
-                title: es ? 'Sin permiso para acceder al archivo (403)' : 'No permission to access file (403)',
-                subtitle: es ? 'Google Drive rechazó el acceso con la cuenta actual.' : 'Google Drive denied access for the current account.'
+                title: es ? 'Sin permiso para acceder al archivo (403)' : zh ? '无权访问此文件 (403)' : 'No permission to access file (403)',
+                subtitle: es ? 'Google Drive rechazó el acceso con la cuenta actual.' : zh ? 'Google 云端硬盘拒绝了当前账号的访问。' : 'Google Drive denied access for the current account.'
             };
         case 'not-found':
             return {
-                title: es ? 'Archivo no encontrado en Drive (404)' : 'File not found in Drive (404)',
-                subtitle: es ? 'El archivo ya no existe en tu Google Drive o fue eliminado.' : 'The file no longer exists in your Google Drive or was deleted.'
+                title: es ? 'Archivo no encontrado en Drive (404)' : zh ? '云端硬盘中未找到文件 (404)' : 'File not found in Drive (404)',
+                subtitle: es ? 'El archivo ya no existe en tu Google Drive o fue eliminado.' : zh ? '该文件在您的 Google 云端硬盘中已不存在或已被删除。' : 'The file no longer exists in your Google Drive or was deleted.'
             };
         case 'too-large':
             return {
-                title: es ? 'Archivo mayor a 50 MB' : 'File larger than 50 MB',
-                subtitle: es ? 'Toca "Descargar de todos modos" para confirmar la descarga en este dispositivo.' : 'Tap "Download anyway" to confirm downloading on this device.'
+                title: es ? 'Archivo mayor a 50 MB' : zh ? '文件大于 50 MB' : 'File larger than 50 MB',
+                subtitle: es ? 'Toca "Descargar de todos modos" para confirmar la descarga en este dispositivo.' : zh ? '点击“仍然下载”以确认在此设备上下载。' : 'Tap "Download anyway" to confirm downloading on this device.'
             };
         case 'invalid':
             return {
-                title: es ? 'Archivo vacío o incompleto' : 'Empty or incomplete file',
-                subtitle: es ? 'La descarga no devolvió un archivo válido. Toca para reintentar.' : 'The download did not return a valid file. Tap to retry.'
+                title: es ? 'Archivo vacío o incompleto' : zh ? '文件为空或不完整' : 'Empty or incomplete file',
+                subtitle: es ? 'La descarga no devolvió un archivo válido. Toca para reintentar.' : zh ? '下载未返回有效文件。点击重试。' : 'The download did not return a valid file. Tap to retry.'
             };
         case 'network':
         default:
             return {
-                title: es ? 'Error de red al descargar' : 'Network error while downloading',
-                subtitle: es ? 'Verifica tu conexión a Internet y toca para reintentar.' : 'Check your internet connection and tap to retry.'
+                title: es ? 'Error de red al descargar' : zh ? '下载时网络错误' : 'Network error while downloading',
+                subtitle: es ? 'Verifica tu conexión a Internet y toca para reintentar.' : zh ? '请检查您的网络连接并点击重试。' : 'Check your internet connection and tap to retry.'
             };
     }
 }

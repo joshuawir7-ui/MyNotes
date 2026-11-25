@@ -125,6 +125,7 @@ public class WidgetSyncPlugin extends Plugin {
         String tasksJson = call.getString("tasks");
         String snapshotsJson = call.getString("dailySnapshots");
         String language = call.getString("language");
+        String currency = call.getString("currency");
         String notificationsEnabled = call.getString("notificationsEnabled");
         String isDarkMode = call.getString("isDarkMode");
         String pinnedNoteId = call.getString("pinnedNoteId");
@@ -142,6 +143,7 @@ public class WidgetSyncPlugin extends Plugin {
         if (tasksJson != null) editor.putString("tasks", tasksJson);
         if (snapshotsJson != null) editor.putString("dailySnapshots", snapshotsJson);
         if (language != null) editor.putString("language", language);
+        if (currency != null) editor.putString("currency", currency);
         if (notificationsEnabled != null) editor.putString("notificationsEnabled", notificationsEnabled);
         if (isDarkMode != null) editor.putString("isDarkMode", isDarkMode);
         if (pinnedNoteId != null) editor.putString("pinnedNoteId", pinnedNoteId);
@@ -224,6 +226,14 @@ public class WidgetSyncPlugin extends Plugin {
                     intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
                     intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, quotesIds);
                     context.sendBroadcast(intent);
+                }
+
+                // Notify Goals widget
+                int[] goalsIds = appWidgetManager.getAppWidgetIds(new ComponentName(context, GoalsWidget.class));
+                if (goalsIds != null && goalsIds.length > 0) {
+                    for (int id : goalsIds) {
+                        GoalsWidget.updateAppWidget(context, appWidgetManager, id);
+                    }
                 }
 
                 // Notify Weekly widget

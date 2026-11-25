@@ -293,10 +293,15 @@ public class NativeTimerManager {
 
         long[] vibratePattern = new long[]{0, 800, 300, 800, 300, 800, 300, 800, 300, 800};
 
+        android.content.SharedPreferences wPrefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
+        String lang = wPrefs.getString("language", "es");
+        String doneTitle = "es".equals(lang) ? "MyNotes - Enfoque Finalizado" : "zh".equals(lang) ? "MyNotes - 专注已完成" : "MyNotes - Focus Completed";
+        String doneBody  = "es".equals(lang) ? "⏰ ¡Tu sesión de enfoque ha terminado!" : "zh".equals(lang) ? "⏰ 您的专注时间已结束！" : "⏰ Your focus session has finished!";
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("MyNotes - Enfoque Finalizado")
-            .setContentText("⏰ ¡Tu sesión de enfoque ha terminado!")
+            .setContentTitle(doneTitle)
+            .setContentText(doneBody)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)

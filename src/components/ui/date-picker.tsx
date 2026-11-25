@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from "lucide-react"
+import { useStore } from "@/lib/store"
+import { pick } from "@/lib/i18n-inline"
 
 interface DatePickerProps {
     value: string
@@ -11,6 +13,7 @@ interface DatePickerProps {
 }
 
 export function DatePicker({ value, onChange, label }: DatePickerProps) {
+    const language = useStore(state => state.language) || 'en'
     const [isOpen, setIsOpen] = useState(false)
     const [viewDate, setViewDate] = useState(value ? new Date(value + 'T12:00:00') : new Date())
     const containerRef = useRef<HTMLDivElement>(null)
@@ -28,12 +31,15 @@ export function DatePicker({ value, onChange, label }: DatePickerProps) {
     const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate()
     const firstDayOfMonth = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay()
 
-    const monthNames = [
-        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-    ]
+    const monthNamesEs = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    const monthNamesEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    const monthNamesZh = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"]
+    const monthNames = language === 'es' ? monthNamesEs : language === 'zh' ? monthNamesZh : monthNamesEn
 
-    const days = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
+    const daysEs = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
+    const daysEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    const daysZh = ["日", "一", "二", "三", "四", "五", "六"]
+    const days = language === 'es' ? daysEs : language === 'zh' ? daysZh : daysEn
 
     const handlePrevMonth = () => {
         setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))
@@ -76,7 +82,7 @@ export function DatePicker({ value, onChange, label }: DatePickerProps) {
             >
                 <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-hover:text-primary transition-colors" />
                 <span className={value ? "text-foreground font-bold" : "text-zinc-500 dark:text-zinc-400 font-medium"}>
-                    {value ? value : "Seleccionar fecha..."}
+                    {value ? value : pick(language, { es: "Seleccionar fecha...", en: "Select date...", zh: "选择日期..." })}
                 </span>
                 {value && (
                     <X
@@ -150,14 +156,14 @@ export function DatePicker({ value, onChange, label }: DatePickerProps) {
                                 }}
                                 className="flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 rounded-lg transition-colors"
                             >
-                                Hoy
+                                {pick(language, { es: "Hoy", en: "Today", zh: "今天" })}
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setIsOpen(false)}
                                 className="flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:bg-black/5 rounded-lg transition-colors"
                             >
-                                Cerrar
+                                {pick(language, { es: "Cerrar", en: "Close", zh: "关闭" })}
                             </button>
                         </div>
                     </motion.div>

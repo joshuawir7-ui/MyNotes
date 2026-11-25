@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, History, Trash2, Check, ArrowRight, Delete } from "lucide-react"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
+import { pick } from "@/lib/i18n-inline"
 
 interface CalculatorModalProps {
     isOpen: boolean
@@ -278,7 +279,7 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                             type="button"
                             onClick={() => setShowHistory(!showHistory)}
                             className="calc-header-pill px-3 py-1 text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                            title={language === "es" ? "Historial de operaciones" : "History"}
+                            title={pick(language, { es: "Historial de operaciones", en: "History", zh: "计算历史" })}
                         >
                             <History className="w-3.5 h-3.5" />
                             {history.length > 0 && (
@@ -317,7 +318,7 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                                 {/* Display Footer: RESULTADO label + Black pill button */}
                                 <div className="calc-screen-footer">
                                     <span className="calc-result-label">
-                                        {language === "es" ? "Resultado" : "Result"}
+                                        {pick(language, { es: "Resultado", en: "Result", zh: "结果" })}
                                     </span>
 
                                     {onApplyAmount && (
@@ -329,11 +330,11 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                                             {copied ? (
                                                 <>
                                                     <Check className="w-3.5 h-3.5" />
-                                                    {language === "es" ? "¡Aplicado!" : "Applied!"}
+                                                    {pick(language, { es: "¡Aplicado!", en: "Applied!", zh: "已应用！" })}
                                                 </>
                                             ) : (
                                                 <>
-                                                    {language === "es" ? "Usar en Balance" : "Use in Balance"}
+                                                    {pick(language, { es: "Usar en Balance", en: "Use in Balance", zh: "应用到余额" })}
                                                     <ArrowRight className="w-3.5 h-3.5" />
                                                 </>
                                             )}
@@ -353,17 +354,17 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                                     >
                                         <div className="flex items-center justify-between pb-2 mb-1 border-b border-black/5 dark:border-white/10 px-1">
                                             <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-                                                {language === "es" ? "Historial de operaciones" : "Calculation History"}
+                                                {pick(language, { es: "Historial de operaciones", en: "Calculation History", zh: "计算历史" })}
                                             </span>
                                             {history.length > 0 && (
                                                 <button
                                                     type="button"
                                                     onClick={clearHistory}
                                                     className="text-rose-500 hover:text-rose-600 p-1 hover:bg-rose-500/10 rounded-lg transition-colors text-xs flex items-center gap-1 font-bold"
-                                                    title={language === "es" ? "Borrar historial" : "Clear history"}
+                                                    title={pick(language, { es: "Borrar historial", en: "Clear history", zh: "清除历史" })}
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" />
-                                                    {language === "es" ? "Borrar" : "Clear"}
+                                                    {pick(language, { es: "Borrar", en: "Clear", zh: "清除" })}
                                                 </button>
                                             )}
                                         </div>
@@ -371,7 +372,7 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                                         <div className="overflow-y-auto space-y-1.5 pr-1 custom-scrollbar max-h-[140px]">
                                             {history.length === 0 ? (
                                                 <div className="py-6 text-center text-xs text-muted-foreground">
-                                                    {language === "es" ? "Aún no hay cálculos guardados" : "No calculation history yet"}
+                                                    {pick(language, { es: "Aún no hay cálculos guardados", en: "No calculation history yet", zh: "暂无计算记录" })}
                                                 </div>
                                             ) : (
                                                 history.map((item) => (

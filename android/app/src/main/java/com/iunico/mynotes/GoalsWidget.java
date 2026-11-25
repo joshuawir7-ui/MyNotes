@@ -18,6 +18,7 @@ public class GoalsWidget extends AppWidgetProvider {
 
         SharedPreferences prefs = context.getSharedPreferences("WidgetData", Context.MODE_PRIVATE);
         String goalsJson = prefs.getString("goals", "[]");
+        String lang = prefs.getString("language", "es");
 
         StringBuilder content = new StringBuilder();
         try {
@@ -27,12 +28,12 @@ public class GoalsWidget extends AppWidgetProvider {
                 content.append("• ").append(goal.getString("title")).append("\n");
             }
             if (goals.length() == 0) {
-                content.append("No goals yet.");
+                content.append("es".equals(lang) ? "Aún no hay metas." : "zh".equals(lang) ? "暂无目标。" : "No goals yet.");
             } else if (goals.length() > 3) {
                 content.append("...");
             }
         } catch (Exception e) {
-            content.append("Error loading goals.");
+            content.append("es".equals(lang) ? "Error al cargar metas." : "zh".equals(lang) ? "加载目标失败。" : "Error loading goals.");
         }
 
         // Construct the RemoteViews object

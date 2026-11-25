@@ -18,7 +18,7 @@ import { GlassSurface } from "@/components/ui/glass-surface"
 import { useRouter } from "next/navigation"
 import { timerEngine } from '@/lib/timer-engine'
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
-import { lt } from "@/lib/i18n-inline"
+import { lt, pick } from "@/lib/i18n-inline"
 
 function SettingsCloudSyncControls({
     googleUser,
@@ -107,9 +107,11 @@ function SettingsCloudSyncControls({
                 ) : (
                     <RefreshCw className="w-3.5 h-3.5" />
                 )}
-                {language === 'es'
-                    ? (isRecovering ? 'Buscando en historial...' : 'Recuperar imágenes de Drive')
-                    : (isRecovering ? 'Scanning history...' : 'Recover images from Drive')}
+                {pick(language, {
+                    es: isRecovering ? 'Buscando en historial...' : 'Recuperar imágenes de Drive',
+                    en: isRecovering ? 'Scanning history...' : 'Recover images from Drive',
+                    zh: isRecovering ? '正在扫描历史记录...' : '从云端硬盘恢复图片'
+                })}
             </motion.button>
             {recoveryMessage && (
                 <p className="text-[10px] text-muted-foreground text-center mt-1 leading-tight px-1">
@@ -414,7 +416,7 @@ export function SettingsDialog() {
                         });
                         showNotif(
                             lt(language, "Sesión Iniciada", "Logged In"),
-                            language === 'es' ? `Bienvenido, ${profile.name}` : `Welcome, ${profile.name}`,
+                            pick(language, { es: `Bienvenido, ${profile.name}`, en: `Welcome, ${profile.name}`, zh: `欢迎，${profile.name}` }),
                             "success"
                         );
                         setTimeout(() => {
@@ -462,7 +464,11 @@ export function SettingsDialog() {
             }
             showNotif(
                 lt(language, "Sesión Iniciada", "Logged In"),
-                language === 'es' ? `Bienvenido, ${(result as any).name || (result as any).displayName}` : `Welcome, ${(result as any).name || (result as any).displayName}`,
+                pick(language, {
+                    es: `Bienvenido, ${(result as any).name || (result as any).displayName}`,
+                    en: `Welcome, ${(result as any).name || (result as any).displayName}`,
+                    zh: `欢迎，${(result as any).name || (result as any).displayName}`
+                }),
                 "success"
             );
             setTimeout(() => {
@@ -539,9 +545,11 @@ export function SettingsDialog() {
                 }
                 showNotif(
                     lt(language, "Error", "Error"),
-                    language === 'es' 
-                        ? `Error al sincronizar con Google Drive: ${errorMsg}` 
-                        : `Error syncing with Google Drive: ${errorMsg}`,
+                    pick(language, {
+                        es: `Error al sincronizar con Google Drive: ${errorMsg}`,
+                        en: `Error syncing with Google Drive: ${errorMsg}`,
+                        zh: `与 Google 云端硬盘同步失败: ${errorMsg}`
+                    }),
                     "error"
                 );
             }
@@ -566,9 +574,11 @@ export function SettingsDialog() {
                 }
                 showNotif(
                     lt(language, "Error", "Error"),
-                    language === 'es' 
-                        ? `No se encontró respaldo o hubo un error al restaurar: ${errorMsg}` 
-                        : `No backup found or error restoring: ${errorMsg}`,
+                    pick(language, {
+                        es: `No se encontró respaldo o hubo un error al restaurar: ${errorMsg}`,
+                        en: `No backup found or error restoring: ${errorMsg}`,
+                        zh: `未找到备份或恢复出错: ${errorMsg}`
+                    }),
                     "error"
                 );
             }
@@ -588,9 +598,11 @@ export function SettingsDialog() {
             setRecoveryMessage(result.message);
             if (result.recovered > 0) {
                 showToast(
-                    language === 'es'
-                        ? `${result.recovered} imagen(es) recuperadas`
-                        : `${result.recovered} image(s) recovered`,
+                    pick(language, {
+                        es: `${result.recovered} imagen(es) recuperadas`,
+                        en: `${result.recovered} image(s) recovered`,
+                        zh: `已恢复 ${result.recovered} 张图片`
+                    }),
                     'success'
                 );
             } else {
@@ -637,7 +649,11 @@ export function SettingsDialog() {
                 addCustomFont(newFont);
                 setNoteFontFamily(newFont.name);
                 showToast(
-                    language === 'es' ? `Fuente "${fontName}" añadida` : `Font "${fontName}" added`,
+                    pick(language, {
+                        es: `Fuente "${fontName}" añadida`,
+                        en: `Font "${fontName}" added`,
+                        zh: `已添加字体 "${fontName}"`
+                    }),
                     'success'
                 );
             }
@@ -753,9 +769,11 @@ export function SettingsDialog() {
 
                 showNotif(
                     lt(language, "Respaldo Guardado", "Backup Saved"),
-                    language === 'es'
-                        ? `Copia de seguridad manual guardada directamente en Documentos/MyNotesData/${fileName}`
-                        : `Manual backup saved directly to Documents/MyNotesData/${fileName}`,
+                    pick(language, {
+                        es: `Copia de seguridad manual guardada directamente en Documentos/MyNotesData/${fileName}`,
+                        en: `Manual backup saved directly to Documents/MyNotesData/${fileName}`,
+                        zh: `手动备份已直接保存至 Documents/MyNotesData/${fileName}`
+                    }),
                     "success"
                 );
                 return;
@@ -833,9 +851,11 @@ export function SettingsDialog() {
             if (!data || typeof data !== 'object') {
                 showNotif(
                     lt(language, "Sin Copia Automática", "No Automatic Backup"),
-                    language === 'es'
-                        ? `No se encontró el archivo ${AUTO_BACKUP_2DAYS_FILENAME.replace('.json', '')}. La aplicación lo creará automáticamente cada 2 días.`
-                        : `Automatic backup (${AUTO_BACKUP_2DAYS_FILENAME.replace('.json', '')}) not found yet. The app creates it automatically every 2 days.`,
+                    pick(language, {
+                        es: `No se encontró el archivo ${AUTO_BACKUP_2DAYS_FILENAME.replace('.json', '')}. La aplicación lo creará automáticamente cada 2 días.`,
+                        en: `Automatic backup (${AUTO_BACKUP_2DAYS_FILENAME.replace('.json', '')}) not found yet. The app creates it automatically every 2 days.`,
+                        zh: `尚未找到自动备份文件（${AUTO_BACKUP_2DAYS_FILENAME.replace('.json', '')}）。应用会每 2 天自动创建一次。`
+                    }),
                     "warning"
                 );
                 return;

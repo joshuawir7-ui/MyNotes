@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react"
 import { useStore } from "@/lib/store"
+import { pick } from "@/lib/i18n-inline"
 import { useShallow } from "zustand/react/shallow"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
@@ -11,6 +12,7 @@ export function BalanceMiniChart() {
     const rawTransactions = useStore(useShallow((s) => s.transactions ?? []))
     const transactions = useMemo(() => Array.isArray(rawTransactions) ? rawTransactions : [], [rawTransactions])
     const language = useStore((s) => s.language) || "es"
+    const currency = useStore((s) => s.currency) || (language === "zh" ? "¥" : "$")
     const router = useRouter()
 
     const [mounted, setMounted] = useState(false)
@@ -27,7 +29,7 @@ export function BalanceMiniChart() {
             const todayStr = new Date().toISOString().split("T")[0]
             const parts = todayStr.split("-")
             const label = parts.length === 3 ? `${parts[2]}/${parts[1]}` : todayStr
-            return [{ id: "empty", date: todayStr, label, balance: 0, delta: 0, isUp: true, desc: language === "es" ? "Sin datos" : "No data" }]
+            return [{ id: "empty", date: todayStr, label, balance: 0, delta: 0, isUp: true, desc: pick(language, { es: "Sin datos", en: "No data", zh: "暂无数据" }) }]
         }
 
         // Sort all transactions chronologically ascending
@@ -72,7 +74,7 @@ export function BalanceMiniChart() {
             balance: runningBalance,
             delta: 0,
             isUp: true,
-            desc: language === "es" ? "Balance inicial" : "Initial balance",
+            desc: pick(language, { es: "Balance inicial", en: "Initial balance", zh: "初始余额" }),
         })
 
         activeTxList.forEach((tx, idx) => {
@@ -90,7 +92,9 @@ export function BalanceMiniChart() {
                 balance: runningBalance,
                 delta,
                 isUp,
-                desc: tx.description || (tx.type === "income" ? (language === "es" ? "Ingreso" : "Income") : (language === "es" ? "Gasto" : "Expense")),
+                desc: tx.description || (tx.type === "income"
+                    ? pick(language, { es: "Ingreso", en: "Income", zh: "收入" })
+                    : pick(language, { es: "Gasto", en: "Expense", zh: "支出" })),
             })
         })
 
@@ -120,7 +124,11 @@ export function BalanceMiniChart() {
             >
                 <BarChart3 className="w-9 h-9 stroke-[2.2] text-primary bg-transparent group-hover:scale-105 transition-transform" />
                 <span className="text-xs text-muted-foreground font-medium group-hover:text-foreground transition-colors">
-                    {language === "es" ? "Sin movimientos aún — Toca para ir a Balance" : "No transactions yet — Tap to open Balance"}
+                    {pick(language, {
+                        es: "Sin movimientos aún — Toca para ir a Balance",
+                        en: "No transactions yet — Tap to open Balance",
+                        zh: "暂无收支记录 — 点击前往收支平衡"
+                    })}
                 </span>
             </div>
         )
@@ -179,7 +187,7 @@ export function BalanceMiniChart() {
                                 : "text-muted-foreground hover:text-foreground"
                         }`}
                     >
-                        {language === "es" ? "7 Días" : "7 Days"}
+                        {pick(language, { es: "7 Días", en: "7 Days", zh: "7 天" })}
                     </button>
                     <button
                         type="button"
@@ -193,7 +201,7 @@ export function BalanceMiniChart() {
                                 : "text-muted-foreground hover:text-foreground"
                         }`}
                     >
-                        {language === "es" ? "30 Días" : "30 Days"}
+                        {pick(language, { es: "30 Días", en: "30 Days", zh: "30 天" })}
                     </button>
                     <button
                         type="button"
@@ -207,7 +215,7 @@ export function BalanceMiniChart() {
                                 : "text-muted-foreground hover:text-foreground"
                         }`}
                     >
-                        {language === "es" ? "Todo" : "All"}
+                        {pick(language, { es: "Todo", en: "All", zh: "全部" })}
                     </button>
                 </div>
 
@@ -216,7 +224,7 @@ export function BalanceMiniChart() {
                     onClick={() => router.push("/balance")}
                     className="text-[11px] font-bold text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline"
                 >
-                    {language === "es" ? "Detalles ➔" : "Details ➔"}
+                    {pick(language, { es: "Detalles ➔", en: "Details ➔", zh: "详情 ➔" })}
                 </button>
             </div>
 
@@ -359,7 +367,7 @@ export function BalanceMiniChart() {
                                             fontWeight="800"
                                             fill={badgeText}
                                         >
-                                            {valStr}$
+                                            {valStr}{currency}
                                         </text>
                                     </g>
                                 )}
@@ -392,10 +400,10 @@ export function BalanceMiniChart() {
                         >
                             <span className="opacity-70">{activeHoverPoint.desc} ({activeHoverPoint.date}):</span>
                             <span className={`font-black ${activeHoverPoint.isUp ? "text-emerald-400 dark:text-emerald-600" : "text-rose-400 dark:text-rose-600"}`}>
-                                {activeHoverPoint.delta >= 0 ? `+${activeHoverPoint.delta}$` : `${activeHoverPoint.delta}$`}
+                                {activeHoverPoint.delta >= 0 ? `+${activeHoverPoint.delta}${currency}` : `${activeHoverPoint.delta}${currency}`}
                             </span>
                             <span className="opacity-50">|</span>
-                            <span className="opacity-80">Bal: ${activeHoverPoint.val.toLocaleString()}</span>
+                            <span className="opacity-80">{pick(language, { es: "Bal", en: "Bal", zh: "余额" })}: {currency}{activeHoverPoint.val.toLocaleString()}</span>
                         </motion.div>
                     )}
                 </AnimatePresence>

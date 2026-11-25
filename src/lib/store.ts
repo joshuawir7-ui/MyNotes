@@ -16,7 +16,7 @@ import { isIdle, whenIdle } from './interaction-gate';
 import { recordSyncMetric, getPerfFlags, perfStamp, hudRecordSet, hudRecordPersistSend, hudRecordSerialized, hudRecordHydration, hudRecordNotesDiskWrite } from './perf-debug';
 
 export const WidgetSync = registerPlugin<{
-    updateWidgetData: (data: { goals?: string, appointments?: string, notes?: string, tasks?: string, dailySnapshots?: string, notificationsEnabled?: string, isDarkMode?: string, pinnedNoteId?: string, priorityRemindersEnabled?: boolean, priorityReminderSlots?: string, noteFontFamily?: string }) => Promise<void>;
+    updateWidgetData: (data: { goals?: string, appointments?: string, notes?: string, tasks?: string, dailySnapshots?: string, language?: string, currency?: string, notificationsEnabled?: string, isDarkMode?: string, pinnedNoteId?: string, priorityRemindersEnabled?: boolean, priorityReminderSlots?: string, noteFontFamily?: string }) => Promise<void>;
     showHabitNotification: (data: { tasks: string }) => Promise<void>;
     getTasks: () => Promise<{ tasks: string }>;
     getNotes: () => Promise<{ notes: string }>;
@@ -860,6 +860,8 @@ let lastSyncedPinnedNoteId: string | null = null;
 let lastSyncedPriorityRemindersEnabled: boolean | null = null;
 let lastSyncedPriorityReminderSlots: string | null = null;
 let lastSyncedNoteFontFamily: string | null = null;
+let lastSyncedLanguage: string | null = null;
+let lastSyncedCurrency: string | null = null;
 
 // Dedicated worker for widget payload building (separate from the persist worker).
 let widgetWorker: Worker | null = null;
@@ -959,6 +961,18 @@ export const syncWidgetData = async (goals?: any[], appointments?: any[], notes?
             if (currentNoteFontFamily !== lastSyncedNoteFontFamily) {
                 updatePayload.noteFontFamily = currentNoteFontFamily;
                 lastSyncedNoteFontFamily = currentNoteFontFamily;
+            }
+
+            const currentLanguage = state.language || "es";
+            if (currentLanguage !== lastSyncedLanguage) {
+                updatePayload.language = currentLanguage;
+                lastSyncedLanguage = currentLanguage;
+            }
+
+            const currentCurrency = state.currency || (currentLanguage === "zh" ? "¥" : "$");
+            if (currentCurrency !== lastSyncedCurrency) {
+                updatePayload.currency = currentCurrency;
+                lastSyncedCurrency = currentCurrency;
             }
 
             if (state.priorityReminderSettings) {
@@ -1218,6 +1232,8 @@ interface AppState {
     expenseNotes: ExpenseNote[]
     user: UserState
     language: Language
+    currency: string
+    currencyManualOverride?: boolean
     pinnedNoteId: string | null
     lastPinnedGoalId: string | null
     appOpenCount: number
@@ -1313,6 +1329,7 @@ interface AppState {
 
     // Actions
     setLanguage: (lang: Language) => void
+    setCurrency: (currency: string, manual?: boolean) => void
     setPinnedNoteId: (id: string | null) => void
     setTimer: (timer: Partial<{
         timeLeft: number,
@@ -2399,6 +2416,8 @@ export const useStore = create<AppState>()(
                     dailyGoal: 5
                 },
                 language: getInitialLanguage(),
+                currency: getInitialLanguage() === 'zh' ? '¥' : '$',
+                currencyManualOverride: false,
                 pinnedNoteId: null,
                 lastPinnedGoalId: null,
                 appOpenCount: 0,
@@ -2612,12 +2631,33 @@ export const useStore = create<AppState>()(
                 setPinnedNoteId: (id) => set({ pinnedNoteId: id }),
 
                 setLanguage: (lang) => set((state) => {
-                    const newState = { language: lang };
+                    const nextCurrency = lang === 'zh'
+                        ? '¥'
+                        : (!state.currencyManualOverride && state.currency === '¥' ? '$' : (state.currency || '$'));
+                    const nextManual = lang === 'zh' ? false : Boolean(state.currencyManualOverride);
+                    if (typeof document !== 'undefined') {
+                        document.documentElement.lang = lang;
+                    }
+                    const newState = {
+                        language: lang,
+                        currency: nextCurrency,
+                        currencyManualOverride: nextManual,
+                    };
                     setTimeout(() => {
                         const latestState = useStore.getState();
-                        syncWidgetData(latestState.goals, latestState.appointments, latestState.notes, latestState.tasks).catch(console.error);
+                        syncWidgetData(latestState.goals, latestState.appointments, latestState.notes, latestState.tasks, true).catch(console.error);
+                        NotificationManager.schedulePriorityReminders(latestState.priorityReminderSettings, lang).catch(console.error);
+                        NotificationManager.schedulePhilosophicalQuote(latestState.notificationsEnabled && latestState.philosophicalQuotesEnabled, lang).catch(console.error);
                     }, 0);
                     return newState;
+                }),
+
+                setCurrency: (curr, manual = true) => set(() => {
+                    setTimeout(() => {
+                        const latestState = useStore.getState();
+                        syncWidgetData(latestState.goals, latestState.appointments, latestState.notes, latestState.tasks, true).catch(console.error);
+                    }, 0);
+                    return { currency: curr, currencyManualOverride: manual };
                 }),
 
                 setTimer: (timerUpdate) => {
@@ -3394,12 +3434,15 @@ export const useStore = create<AppState>()(
                         }
 
                         const newAppointments = [...state.appointments];
+                        const defaultCurr = state.currency || (state.language === 'zh' ? '¥' : '$');
                         if (tx.recoveryDate) {
                             newAppointments.push({
                                 id: Math.random().toString(36).substring(7),
                                 title: state.language === 'es'
-                                    ? `Recuperar capital: ${tx.amount}${tx.currency || '$'} (${tx.description})`
-                                    : `Recover capital: ${tx.amount}${tx.currency || '$'} (${tx.description})`,
+                                    ? `Recuperar capital: ${tx.amount}${tx.currency || defaultCurr} (${tx.description})`
+                                    : state.language === 'zh'
+                                        ? `收回资金: ${tx.amount}${tx.currency || defaultCurr} (${tx.description})`
+                                        : `Recover capital: ${tx.amount}${tx.currency || defaultCurr} (${tx.description})`,
                                 date: tx.recoveryDate,
                                 notes: `recovery_reminder:${newTx.id}`,
                                 description: tx.description,
@@ -3412,8 +3455,10 @@ export const useStore = create<AppState>()(
                             newAppointments.push({
                                 id: Math.random().toString(36).substring(7),
                                 title: state.language === 'es'
-                                    ? `Meta de conservación: ${tx.amount}${tx.currency || '$'} (${tx.description})`
-                                    : `Conservation Goal: ${tx.amount}${tx.currency || '$'} (${tx.description})`,
+                                    ? `Meta de conservación: ${tx.amount}${tx.currency || defaultCurr} (${tx.description})`
+                                    : state.language === 'zh'
+                                        ? `资金保留目标: ${tx.amount}${tx.currency || defaultCurr} (${tx.description})`
+                                        : `Conservation Goal: ${tx.amount}${tx.currency || defaultCurr} (${tx.description})`,
                                 date: tx.conservationGoalDate,
                                 notes: `conservation_goal:${newTx.id}`,
                                 description: tx.description,
@@ -3929,7 +3974,11 @@ export const useStore = create<AppState>()(
                         }, 0);
 
                         get().showToast(
-                            get().language === 'es' ? 'Conflicto resuelto con éxito ✓' : 'Conflict resolved successfully ✓',
+                            get().language === 'es'
+                                ? 'Conflicto resuelto con éxito ✓'
+                                : get().language === 'zh'
+                                    ? '冲突已成功解决 ✓'
+                                    : 'Conflict resolved successfully ✓',
                             'success'
                         );
                     } catch (err: any) {
@@ -3969,7 +4018,13 @@ export const useStore = create<AppState>()(
 
                     const user = get().googleUser;
                     if (!user) {
-                        set({ syncError: get().language === 'es' ? "No hay cuenta de Google conectada" : "No Google account connected" });
+                        set({
+                            syncError: get().language === 'es'
+                                ? "No hay cuenta de Google conectada"
+                                : get().language === 'zh'
+                                    ? "未连接 Google 账号"
+                                    : "No Google account connected"
+                        });
                         return false;
                     }
 
@@ -3995,7 +4050,9 @@ export const useStore = create<AppState>()(
                         if (!existingFile) {
                             const msg = get().language === 'es' 
                                 ? "No se encontró ningún archivo de respaldo en Google Drive" 
-                                : "No backup file found in Google Drive";
+                                : get().language === 'zh'
+                                    ? "在 Google 云端硬盘中未找到备份文件"
+                                    : "No backup file found in Google Drive";
                             set({ isSyncingCloud: false, syncError: msg });
                             return false;
                         }
@@ -4499,9 +4556,18 @@ export const useStore = create<AppState>()(
                             }
                             const errMsg = get().language === 'es'
                                 ? "Sesión de Google expirada. Por favor, inicia sesión nuevamente."
-                                : "Google session expired. Please sign in again.";
+                                : get().language === 'zh'
+                                    ? "Google 会话已过期，请重新登录。"
+                                    : "Google session expired. Please sign in again.";
                             set({ googleSessionExpired: true, isSyncingCloud: false, syncError: errMsg });
-                            get().showToast(get().language === 'es' ? "Debe reconectar su cuenta" : "Please reconnect your account", "error");
+                            get().showToast(
+                                get().language === 'es'
+                                    ? "Debe reconectar su cuenta"
+                                    : get().language === 'zh'
+                                        ? "请重新连接您的账号"
+                                        : "Please reconnect your account",
+                                "error"
+                            );
                         } else {
                             set({ isSyncingCloud: false, syncError: err?.message || String(err) });
                         }
@@ -4595,6 +4661,18 @@ export const useStore = create<AppState>()(
                             migrateLegacyTimerState((rehydratedState as any).timer);
                         } catch (e) {
                             console.error("[Migration] Legacy timer migration failed:", e);
+                        }
+                    }
+
+                    // Ensure currency matches language when hydrating older persisted states without currency
+                    if (rehydratedState) {
+                        if (typeof document !== 'undefined' && rehydratedState.language) {
+                            document.documentElement.lang = rehydratedState.language;
+                        }
+                        if (rehydratedState.language === 'zh' && !rehydratedState.currencyManualOverride && (!rehydratedState.currency || rehydratedState.currency === '$')) {
+                            useStore.setState({ currency: '¥' });
+                        } else if (!rehydratedState.currency) {
+                            useStore.setState({ currency: '$' });
                         }
                     }
 
@@ -4961,7 +5039,15 @@ export const recoverImagesFromDriveRevisions = async (): Promise<{ recovered: nu
     let token = state.googleUser?.accessToken;
 
     if (!token) {
-        return { recovered: 0, failed: 0, message: state.language === 'es' ? 'No hay sesión de Google activa. Por favor, inicia sesión.' : 'No Google session active. Please sign in first.' };
+        return {
+            recovered: 0,
+            failed: 0,
+            message: state.language === 'es'
+                ? 'No hay sesión de Google activa. Por favor, inicia sesión.'
+                : state.language === 'zh'
+                    ? '当前没有登录 Google 账号，请先登录。'
+                    : 'No Google session active. Please sign in first.'
+        };
     }
 
     const fetchWithTokenRetry = async (url: string, options: RequestInit = {}, timeoutMs?: number) => {
@@ -4986,7 +5072,9 @@ export const recoverImagesFromDriveRevisions = async (): Promise<{ recovered: nu
                 useStore.setState({ googleSessionExpired: true });
                 throw new Error(useStore.getState().language === 'es'
                     ? "Sesión de Google expirada. Por favor, re-conecta tu cuenta de Google."
-                    : "Google session expired. Please re-connect your Google account.");
+                    : useStore.getState().language === 'zh'
+                        ? "Google 会话已过期，请重新连接您的 Google 账号。"
+                        : "Google session expired. Please re-connect your Google account.");
             }
         }
         return res;

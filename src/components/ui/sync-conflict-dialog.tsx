@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, Cloud, Smartphone, Check } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useDeferredBlur } from "@/hooks/use-deferred-blur";
+import { pick } from "@/lib/i18n-inline";
 
 export function SyncConflictDialog() {
     const language = useStore((state) => state.language);
@@ -28,8 +29,9 @@ export function SyncConflictDialog() {
     };
 
     const formatDate = (timestamp: number) => {
-        if (!timestamp) return language === "es" ? "Desconocida" : "Unknown";
-        return new Date(timestamp).toLocaleString(language === "es" ? "es-ES" : "en-US", {
+        if (!timestamp) return pick(language, { es: "Desconocida", en: "Unknown", zh: "未知" });
+        const loc = language === "es" ? "es-ES" : language === "zh" ? "zh-CN" : "en-US";
+        return new Date(timestamp).toLocaleString(loc, {
             dateStyle: "medium",
             timeStyle: "short",
         });
@@ -65,14 +67,16 @@ export function SyncConflictDialog() {
                             <AlertCircle className="w-5 h-5" />
                         </div>
                         <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-tight">
-                            {language === "es" ? "Conflicto de sincronización" : "Sync Conflict"}
+                            {pick(language, { es: "Conflicto de sincronización", en: "Sync Conflict", zh: "同步冲突" })}
                         </h2>
                     </div>
 
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6 mt-2 leading-relaxed">
-                        {language === "es"
-                            ? "Ambas versiones tienen cambios recientes. ¿Cuál versión deseas conservar?"
-                            : "Both versions have recent changes. Which version do you want to keep?"}
+                        {pick(language, {
+                            es: "Ambas versiones tienen cambios recientes. ¿Cuál versión deseas conservar?",
+                            en: "Both versions have recent changes. Which version do you want to keep?",
+                            zh: "两个版本都有最近的更改。您想保留哪个版本？"
+                        })}
                     </p>
 
                     <div className="flex flex-col gap-3">
@@ -88,20 +92,20 @@ export function SyncConflictDialog() {
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="font-semibold text-zinc-900 dark:text-white group-hover:text-violet-700 dark:group-hover:text-violet-300 transition-colors">
-                                        {language === "es" ? "Este dispositivo (Local)" : "This device (Local)"}
+                                        {pick(language, { es: "Este dispositivo (Local)", en: "This device (Local)", zh: "此设备（本地）" })}
                                     </h3>
                                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                        {language === "es" ? "Modificado: " : "Modified: "} 
+                                        {pick(language, { es: "Modificado: ", en: "Modified: ", zh: "修改时间：" })} 
                                         <span className="font-medium text-zinc-700 dark:text-zinc-300">
                                             {formatDate(syncConflict.localTimestamp)}
                                         </span>
                                     </p>
                                     <div className="flex gap-3 mt-2 text-xs font-medium">
                                         <span className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400">
-                                            {localNotesCount} {language === "es" ? "notas" : "notes"}
+                                            {localNotesCount} {pick(language, { es: "notas", en: "notes", zh: "笔记" })}
                                         </span>
                                         <span className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400">
-                                            {localTasksCount} {language === "es" ? "tareas" : "tasks"}
+                                            {localTasksCount} {pick(language, { es: "tareas", en: "tasks", zh: "任务" })}
                                         </span>
                                     </div>
                                 </div>
@@ -120,20 +124,20 @@ export function SyncConflictDialog() {
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="font-semibold text-zinc-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
-                                        {language === "es" ? "Google Drive (Nube)" : "Google Drive (Cloud)"}
+                                        {pick(language, { es: "Google Drive (Nube)", en: "Google Drive (Cloud)", zh: "Google 云端硬盘（云端）" })}
                                     </h3>
                                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                        {language === "es" ? "Modificado: " : "Modified: "}
+                                        {pick(language, { es: "Modificado: ", en: "Modified: ", zh: "修改时间：" })}
                                         <span className="font-medium text-zinc-700 dark:text-zinc-300">
                                             {formatDate(syncConflict.remoteTimestamp)}
                                         </span>
                                     </p>
                                     <div className="flex gap-3 mt-2 text-xs font-medium">
                                         <span className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400">
-                                            {remoteNotesCount} {language === "es" ? "notas" : "notes"}
+                                            {remoteNotesCount} {pick(language, { es: "notas", en: "notes", zh: "笔记" })}
                                         </span>
                                         <span className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400">
-                                            {remoteTasksCount} {language === "es" ? "tareas" : "tasks"}
+                                            {remoteTasksCount} {pick(language, { es: "tareas", en: "tasks", zh: "任务" })}
                                         </span>
                                     </div>
                                 </div>
@@ -143,9 +147,11 @@ export function SyncConflictDialog() {
 
                     <div className="mt-5 text-center px-4">
                         <p className="text-[11px] text-zinc-500 dark:text-zinc-500 uppercase tracking-wider font-bold">
-                            {language === "es" 
-                                ? "Advertencia: La versión no seleccionada se perderá." 
-                                : "Warning: The unselected version will be lost."}
+                            {pick(language, {
+                                es: "Advertencia: La versión no seleccionada se perderá.",
+                                en: "Warning: The unselected version will be lost.",
+                                zh: "警告：未选择的版本将会丢失。"
+                            })}
                         </p>
                     </div>
                 </motion.div>

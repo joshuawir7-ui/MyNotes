@@ -5,8 +5,10 @@ import { useStore, WidgetSync } from "@/lib/store"
 import { useEffect, useState } from "react"
 import { Bell } from "lucide-react"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
+import { pick } from "@/lib/i18n-inline"
 
 export function HabitNotificationPrompt() {
+    const language = useStore(state => state.language) || 'en'
     const tasks = useStore(state => state.tasks)
     const appOpenCount = useStore(state => state.appOpenCount)
     const notificationPromptStatus = useStore(state => state.notificationPromptStatus)
@@ -88,11 +90,19 @@ export function HabitNotificationPrompt() {
                         </div>
 
                         <h2 className="text-[22px] font-bold text-gray-900 dark:text-white leading-tight mb-3">
-                            ¿Le gustaría completar sus habitos sin la necesidad de abrir la aplicación?
+                            {pick(language, {
+                                es: "¿Le gustaría completar sus hábitos sin la necesidad de abrir la aplicación?",
+                                en: "Would you like to complete your habits without opening the app?",
+                                zh: "您想在不打开应用的情况下完成习惯吗？"
+                            })}
                         </h2>
                         
                         <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed mb-8 px-2">
-                            Permítanos enviarle notificaciones interactivas para que con solo un clic, pueda completar sus habitos y recordar siempre lo que debe hacer
+                            {pick(language, {
+                                es: "Permítanos enviarle notificaciones interactivas para que con solo un clic, pueda completar sus hábitos y recordar siempre lo que debe hacer",
+                                en: "Allow interactive notifications so with a single tap you can complete your habits and always remember what to do",
+                                zh: "允许发送交互式通知，只需轻轻一点即可完成习惯，随时记住待办事项"
+                            })}
                         </p>
 
                         <div className="flex gap-3 w-full">
@@ -100,13 +110,13 @@ export function HabitNotificationPrompt() {
                                 onClick={handleReject}
                                 className="flex-1 py-3.5 px-4 rounded-xl border-2 border-gray-100 dark:border-white/10 text-gray-500 dark:text-gray-300 font-bold active:scale-95 transition-all text-sm"
                             >
-                                No estoy segur@
+                                {pick(language, { es: "No estoy segur@", en: "Not now", zh: "暂不" })}
                             </button>
                             <button
                                 onClick={handleAllow}
                                 className="flex-1 py-3.5 px-4 rounded-xl bg-[#00C853] text-white font-bold active:scale-95 transition-all shadow-lg shadow-green-500/20 text-sm"
                             >
-                                Permitir
+                                {pick(language, { es: "Permitir", en: "Allow", zh: "允许" })}
                             </button>
                         </div>
                     </motion.div>

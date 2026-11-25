@@ -11,7 +11,7 @@ import { MobileContextMenu } from "@/components/ui/mobile-context-menu"
 
 import { useState, useEffect, useMemo } from "react"
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
-import { lt } from "@/lib/i18n-inline"
+import { lt, pick } from "@/lib/i18n-inline"
 
 export default function AnytimePage() {
     const language = useStore(state => state.language)
@@ -458,24 +458,30 @@ export default function AnytimePage() {
                                             onClick={() => {
                                                 const nextVal = habit.enabled === false;
                                                 setHabitEnabled(habit.id, nextVal);
-                                                showToast(language === 'es' ? (nextVal ? "Hábito habilitado" : "Hábito deshabilitado") : (nextVal ? "Habit enabled" : "Habit disabled"), "info");
+                                                showToast(pick(language, {
+                                                    es: nextVal ? "Hábito habilitado" : "Hábito deshabilitado",
+                                                    en: nextVal ? "Habit enabled" : "Habit disabled",
+                                                    zh: nextVal ? "习惯已启用" : "习惯已停用"
+                                                }), "info");
                                             }}
                                             className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20"
                                         >
-                                            {habit.enabled === false ? 'Habilitar' : 'Deshabilitar'}
+                                            {habit.enabled === false
+                                                ? pick(language, { es: 'Habilitar', en: 'Enable', zh: '启用' })
+                                                : pick(language, { es: 'Deshabilitar', en: 'Disable', zh: '停用' })}
                                         </button>
                                     </div>
 
                                     <div className="flex gap-4 mb-6">
                                         <div className="flex-1 p-3 bg-primary/10 rounded-xl flex flex-col items-center justify-center">
-                                            <p className="text-[10px] uppercase tracking-wider text-primary font-bold">Racha</p>
+                                            <p className="text-[10px] uppercase tracking-wider text-primary font-bold">{pick(language, { es: 'Racha', en: 'Streak', zh: '连续打卡' })}</p>
                                             <p className="text-2xl font-bold flex items-center gap-1">
                                                 {habit.streak || 0}
                                                 <Flame className="w-5 h-5 text-orange-500 fill-orange-500" />
                                             </p>
                                         </div>
                                         <div className="flex-1 p-3 bg-red-500/10 rounded-xl flex flex-col items-center justify-center">
-                                            <p className="text-[10px] uppercase tracking-wider text-red-500 font-bold">Perdidos</p>
+                                            <p className="text-[10px] uppercase tracking-wider text-red-500 font-bold">{pick(language, { es: 'Perdidos', en: 'Missed', zh: '错过天数' })}</p>
                                             <p className="text-2xl font-bold flex items-center gap-1">
                                                 {habit.missed || 0}
                                                 <X className="w-5 h-5 text-red-500" />
@@ -489,11 +495,17 @@ export default function AnytimePage() {
                                             onClick={() => {
                                                 toggleTask(habit.id);
                                                 const isComp = !habit.completed;
-                                                showToast(language === 'es' ? (isComp ? "Hábito completado" : "Hábito pendiente") : (isComp ? "Habit completed" : "Habit pending"), isComp ? "success" : "info");
+                                                showToast(pick(language, {
+                                                    es: isComp ? "Hábito completado" : "Hábito pendiente",
+                                                    en: isComp ? "Habit completed" : "Habit pending",
+                                                    zh: isComp ? "习惯已完成" : "习惯待办"
+                                                }), isComp ? "success" : "info");
                                             }}
                                             className={`flex-1 py-2 rounded-xl font-medium transition-all ${habit.completed ? 'bg-green-500/20 text-green-500' : 'bg-primary text-primary-foreground'}`}
                                         >
-                                            {habit.completed ? 'Completado hoy' : 'Marcar hoy'}
+                                            {habit.completed
+                                                ? pick(language, { es: 'Completado hoy', en: 'Completed today', zh: '今日已完成' })
+                                                : pick(language, { es: 'Marcar hoy', en: 'Mark today', zh: '今日打卡' })}
                                         </button>
                                         <button
                                             onClick={() => {
@@ -501,7 +513,7 @@ export default function AnytimePage() {
                                                 showToast(lt(language, "Estadísticas reiniciadas", "Stats reset"), "success");
                                             }}
                                             className="p-2 aspect-square rounded-xl bg-white/5 hover:bg-red-500/20 text-muted-foreground hover:text-red-500 transition-colors flex items-center justify-center"
-                                            title="Reiniciar estadísticas"
+                                            title={pick(language, { es: "Reiniciar estadísticas", en: "Reset stats", zh: "重置统计数据" })}
                                         >
                                             <RotateCw className="w-4 h-4" />
                                         </button>
@@ -556,16 +568,28 @@ export default function AnytimePage() {
                                                                     e.stopPropagation();
                                                                     toggleTaskGroupPin(group.id);
                                                                     const nextPin = !group.isPinned;
-                                                                    showToast(language === 'es' ? (nextPin ? "Grupo fijado" : "Grupo desfijado") : (nextPin ? "Group pinned" : "Group unpinned"), "success");
+                                                                    showToast(pick(language, {
+                                                                        es: nextPin ? "Grupo fijado" : "Grupo desfijado",
+                                                                        en: nextPin ? "Group pinned" : "Group unpinned",
+                                                                        zh: nextPin ? "分组已置顶" : "已取消置顶分组"
+                                                                    }), "success");
                                                                 }}
                                                                 className={`p-1.5 rounded-lg transition-all shrink-0 ${group.isPinned ? 'text-indigo-400 bg-indigo-500/10 scale-105' : 'text-muted-foreground/60 hover:text-indigo-400 hover:bg-white/5 hover:scale-105 active:scale-95'}`}
-                                                                title={group.isPinned ? "Desfijar grupo" : "Fijar grupo"}
+                                                                title={pick(language, {
+                                                                    es: group.isPinned ? "Desfijar grupo" : "Fijar grupo",
+                                                                    en: group.isPinned ? "Unpin group" : "Pin group",
+                                                                    zh: group.isPinned ? "取消置顶分组" : "置顶分组"
+                                                                })}
                                                             >
                                                                 <Pin className={`w-4 h-4 transition-all ${group.isPinned ? 'fill-indigo-400 rotate-45' : 'rotate-0'}`} />
                                                             </button>
                                                         </div>
                                                         <p className="text-sm text-muted-foreground">
-                                                            {language === 'es' ? `${completed} de ${total} tareas completadas` : `${completed} of ${total} tasks completed`}
+                                                            {pick(language, {
+                                                                es: `${completed} de ${total} tareas completadas`,
+                                                                en: `${completed} of ${total} tasks completed`,
+                                                                zh: `已完成 ${completed} / ${total} 项任务`
+                                                            })}
                                                         </p>
                                                     </div>
                                                     <div className="relative w-16 h-16 shrink-0">
@@ -609,7 +633,11 @@ export default function AnytimePage() {
                                                                         onClick={() => {
                                                                             toggleTaskInGroup(group.id, task.id);
                                                                             const nextComp = !task.completed;
-                                                                            showToast(language === 'es' ? (nextComp ? "Tarea completada" : "Tarea pendiente") : (nextComp ? "Task completed" : "Task pending"), nextComp ? "success" : "info");
+                                                                            showToast(pick(language, {
+                                                                                es: nextComp ? "Tarea completada" : "Tarea pendiente",
+                                                                                en: nextComp ? "Task completed" : "Task pending",
+                                                                                zh: nextComp ? "任务已完成" : "任务待办"
+                                                                            }), nextComp ? "success" : "info");
                                                                         }}
                                                                     >
                                                                         <div className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center shadow-lg transition-all ${task.completed ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white/5 border-white/20 group-hover/item:border-indigo-500 group-hover/item:scale-110'}`}>
