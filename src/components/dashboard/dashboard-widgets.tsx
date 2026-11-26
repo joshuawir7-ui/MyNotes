@@ -6,7 +6,7 @@ import { useStore, Note } from "@/lib/store";
 import { useShallow } from 'zustand/react/shallow';
 import { translations } from "@/lib/translations";
 import { Calendar, StickyNote, Plus, Clock, History, Target, Check } from "lucide-react";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useDeferredBlur } from "@/hooks/use-deferred-blur";
 import { lt, pick } from "@/lib/i18n-inline"
 
@@ -124,6 +124,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
     const lastPinnedGoalId = useStore(state => state.lastPinnedGoalId);
     const goals = useStore(useShallow((state) => state.goals || []));
     const setPinnedNoteId = useStore(state => state.setPinnedNoteId);
+    const showToast = useStore(state => state.showToast);
     const t = (translations[language]?.dashboard || translations['en'].dashboard) as any;
     const noteTranslations = (translations[language]?.pages?.notes || translations['en'].pages.notes) as any;
     const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
@@ -132,6 +133,36 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
 
     const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
     const isLongPressActive = useRef(false);
+    const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+        };
+    }, []);
+
+    const handleSingleTapHint = () => {
+        if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = setTimeout(() => {
+            singleTapTimerRef.current = null;
+            showToast(
+                pick(language, {
+                    es: "Pulsa 2 veces para abrir",
+                    en: "Tap twice to open",
+                    zh: "双击即可打开",
+                }),
+                "info"
+            );
+        }, 260);
+    };
+
+    const handleNoteDoubleOpen = (note: Note) => {
+        if (singleTapTimerRef.current) {
+            clearTimeout(singleTapTimerRef.current);
+            singleTapTimerRef.current = null;
+        }
+        onOpenNote(note);
+    };
 
     const startLongPress = (e: React.MouseEvent | React.TouchEvent) => {
         // Only run for left click or touch
@@ -251,7 +282,7 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
                 
                 {/* Pinned Note Module - Takes 3 columns */}
                 <div 
-                    className="col-span-3 glass-panel p-3 md:p-5 rounded-3xl flex flex-col h-[150px] md:h-[180px] relative overflow-hidden border border-white/5 select-none"
+                    className="col-span-3 glass-panel p-3 md:p-5 rounded-3xl flex flex-col h-[150px] md:h-[180px] relative overflow-hidden border border-white/5 select-none active:scale-[0.98] transition-transform duration-150"
                     onMouseDown={startLongPress}
                     onMouseUp={endLongPress}
                     onMouseLeave={endLongPress}
@@ -294,13 +325,17 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
                     
                     <div 
                         className="flex-1 overflow-y-auto custom-scrollbar pr-1 cursor-pointer group" 
+                        onClick={() => {
+                            if (isLongPressActive.current || !pinnedNote) return;
+                            handleSingleTapHint();
+                        }}
                         onDoubleClick={(e) => {
                             if (isLongPressActive.current) {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 return;
                             }
-                            if (pinnedNote) onOpenNote(pinnedNote);
+                            if (pinnedNote) handleNoteDoubleOpen(pinnedNote);
                         }}
                     >
                         {!pinnedNote ? (
@@ -387,13 +422,17 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
 
             {/* ROW 2: Recent Note (Full width) */}
             {recentNote && recentNote.id !== pinnedNoteId && (
-                <div className="glass-panel p-3 md:p-4 rounded-3xl flex flex-col h-[140px] relative overflow-hidden border border-white/5">
+                <div className="glass-panel p-3 md:p-4 rounded-3xl flex flex-col h-[140px] relative overflow-hidden border border-white/5 select-none active:scale-[0.98] transition-transform duration-150">
                     <div className="flex items-center gap-2 mb-2 shrink-0">
                         <div className={`w-8 h-8 rounded-full ${appColor === 'black' ? 'bg-transparent text-foreground' : 'bg-purple-500/20 text-purple-500'} flex items-center justify-center`}>
                             <History className="w-4 h-4" />
                         </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 cursor-pointer group" onClick={() => onOpenNote(recentNote)}>
+                    <div
+                        className="flex-1 overflow-y-auto custom-scrollbar pr-2 cursor-pointer group"
+                        onClick={handleSingleTapHint}
+                        onDoubleClick={() => handleNoteDoubleOpen(recentNote)}
+                    >
                         <div className="flex flex-col gap-1.5 pb-2">
                             <h3 className="font-bold text-base md:text-lg line-clamp-1 group-hover:text-primary transition-colors note-font-container">{recentNote.title || noteTranslations.untitled}</h3>
                             <NotePreviewRenderer note={recentNote} />

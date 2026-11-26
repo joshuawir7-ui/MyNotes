@@ -228,6 +228,7 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
         setDisplayValue(item.result)
         setEquationStr(item.expression)
         setWaitingForOperand(true)
+        setShowHistory(false)
     }
 
     // Keyboard support
@@ -307,9 +308,9 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                     </div>
 
                     {/* Main Layout Area: Vertical Stack on Mobile (<640px), 2-Column Landscape Grid on Desktop (>=640px) */}
-                    <div className="flex flex-col sm:grid sm:grid-cols-2 gap-3 sm:gap-4 items-stretch">
+                    <div className="relative flex flex-col sm:grid sm:grid-cols-2 gap-3 sm:gap-4 items-stretch">
                         
-                        {/* Left Column (Desktop): Display Screen & History Drawer */}
+                        {/* Left Column (Desktop): Display Screen */}
                         <div className="flex flex-col justify-between space-y-2 h-full">
                             {/* Display Screen */}
                             <div className="calc-screen flex flex-col justify-between min-h-[110px] sm:min-h-[220px] sm:h-full sm:mb-0 relative overflow-hidden">
@@ -350,64 +351,66 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
                                     )}
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Collapsible History Drawer */}
-                            <AnimatePresence>
-                                {showHistory && (
-                                    <motion.div
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: "auto" }}
-                                        exit={{ opacity: 0, height: 0 }}
-                                        className="bg-black/5 dark:bg-white/5 rounded-3xl p-3 border border-black/5 dark:border-white/10 overflow-hidden flex flex-col max-h-[200px]"
-                                    >
-                                        <div className="flex items-center justify-between pb-2 mb-1 border-b border-black/5 dark:border-white/10 px-1">
-                                            <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-                                                {pick(language, { es: "Historial de operaciones", en: "Calculation History", zh: "计算历史" })}
-                                            </span>
-                                            {history.length > 0 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={clearHistory}
-                                                    className="text-rose-500 hover:text-rose-600 p-1 hover:bg-rose-500/10 rounded-lg transition-colors text-xs flex items-center gap-1 font-bold"
-                                                    title={pick(language, { es: "Borrar historial", en: "Clear history", zh: "清除历史" })}
+                        {/* GPU-composited History Overlay (avoids resizing .calculator-modal backdrop-filter/noise) */}
+                        <AnimatePresence>
+                            {showHistory && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                                    transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+                                    style={{ willChange: "transform, opacity" }}
+                                    className="absolute inset-0 z-20 bg-white/95 dark:bg-zinc-900/95 rounded-3xl p-3.5 border border-black/10 dark:border-white/10 shadow-xl flex flex-col"
+                                >
+                                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-black/5 dark:border-white/10 px-1 shrink-0">
+                                        <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                                            {pick(language, { es: "Historial de operaciones", en: "Calculation History", zh: "计算历史" })}
+                                        </span>
+                                        {history.length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={clearHistory}
+                                                className="text-rose-500 hover:text-rose-600 p-1 hover:bg-rose-500/10 rounded-lg transition-colors text-xs flex items-center gap-1 font-bold"
+                                                title={pick(language, { es: "Borrar historial", en: "Clear history", zh: "清除历史" })}
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                                {pick(language, { es: "Borrar", en: "Clear", zh: "清除" })}
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                                        {history.length === 0 ? (
+                                            <div className="h-full flex items-center justify-center py-6 text-center text-xs text-muted-foreground">
+                                                {pick(language, { es: "Aún no hay cálculos guardados", en: "No calculation history yet", zh: "暂无计算记录" })}
+                                            </div>
+                                        ) : (
+                                            history.map((item) => (
+                                                <div
+                                                    key={item.id}
+                                                    onClick={() => handleSelectHistoryItem(item)}
+                                                    className="p-2.5 rounded-2xl bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.1] border border-black/5 dark:border-white/5 cursor-pointer transition-transform flex justify-between items-center active:scale-[0.98]"
                                                 >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                    {pick(language, { es: "Borrar", en: "Clear", zh: "清除" })}
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        <div className="overflow-y-auto space-y-1.5 pr-1 custom-scrollbar max-h-[140px]">
-                                            {history.length === 0 ? (
-                                                <div className="py-6 text-center text-xs text-muted-foreground">
-                                                    {pick(language, { es: "Aún no hay cálculos guardados", en: "No calculation history yet", zh: "暂无计算记录" })}
-                                                </div>
-                                            ) : (
-                                                history.map((item) => (
-                                                    <div
-                                                        key={item.id}
-                                                        onClick={() => handleSelectHistoryItem(item)}
-                                                        className="p-2.5 rounded-2xl bg-white/70 dark:bg-zinc-800/70 hover:bg-white dark:hover:bg-zinc-800 border border-black/5 dark:border-white/5 cursor-pointer transition-all flex justify-between items-center group active:scale-[0.98]"
-                                                    >
-                                                        <div className="flex flex-col min-w-0 pr-2">
-                                                            <span className="text-[10px] font-medium text-muted-foreground truncate">
-                                                                {item.expression}
-                                                            </span>
-                                                            <span className="text-sm font-extrabold text-foreground tracking-tight">
-                                                                = {formatNumber(item.result)}
-                                                            </span>
-                                                        </div>
-                                                        <span className="text-[9px] text-muted-foreground/60 shrink-0 font-medium">
-                                                            {item.timestamp}
+                                                    <div className="flex flex-col min-w-0 pr-2">
+                                                        <span className="text-[10px] font-medium text-muted-foreground truncate">
+                                                            {item.expression}
+                                                        </span>
+                                                        <span className="text-sm font-extrabold text-foreground tracking-tight">
+                                                            = {formatNumber(item.result)}
                                                         </span>
                                                     </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
+                                                    <span className="text-[9px] text-muted-foreground/60 shrink-0 font-medium">
+                                                        {item.timestamp}
+                                                    </span>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         {/* Right Column (Desktop): Keypad Grid (4 Columns x 5 Rows) */}
                         <div className="calc-keypad">

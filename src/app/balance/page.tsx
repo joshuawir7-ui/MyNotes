@@ -219,12 +219,16 @@ const WalletHistoryList = ({
     }
 
     return (
-        <div className="relative w-full py-1">
-            <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-background/80 via-background/30 to-transparent pointer-events-none z-20" />
-            <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-background via-background/70 to-transparent pointer-events-none z-20" />
-            <div className="w-full max-h-[380px] md:max-h-[540px] px-1 py-3">
+        <div className="relative w-full">
+            <div
+                className="w-full h-[380px] md:h-[540px] px-1 overflow-hidden"
+                style={{
+                    maskImage: 'linear-gradient(to bottom, transparent 0%, black 20px, black calc(100% - 36px), transparent 100%)',
+                    WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 20px, black calc(100% - 36px), transparent 100%)',
+                }}
+            >
                 <Virtuoso
-                    style={{ height: '380px', maxHeight: '540px' }}
+                    style={{ height: '100%' }}
                     data={transactions}
                     itemContent={(index, tx) => (
                         <div className="px-3.5 py-1.5 w-full">
