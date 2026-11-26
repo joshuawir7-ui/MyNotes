@@ -554,12 +554,12 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                         </div>
 
                         {/* Photos Section (Right in landscape alongside progress & objectives/budget, 2nd in portrait) */}
-                        {goal.photos.length > 0 && (
+                        {(goal.photos || []).length > 0 && (
                             <div
                                 ref={photosContainerRef}
                                 className={`sm:landscape:col-start-2 sm:landscape:row-start-1 ${(hasChecklist || hasBudgetSection) ? 'sm:landscape:row-span-2' : ''} flex flex-col gap-4 items-center sm:landscape:items-end justify-start`}
                             >
-                                {goal.photos.map((photo, i) => (
+                                {(goal.photos || []).map((photo, i) => (
                                     <div
                                         key={i}
                                         onClick={() => setActiveOverlayImage(photo)}
