@@ -278,6 +278,10 @@ html.perf-no-backdrop *:not(.nav-shell):not(.nav-glass):not(.bl)::after {
   animation: goal-image-shake 0.36s ease-out both;
 }
 
+.modal-hide-nav .nav-shell {
+  display: none !important;
+}
+
 html.perf-no-orbs [class*="blur-[120px]"],
 html.perf-no-orbs [class*="bg-purple-900"],
 html.perf-no-orbs [class*="bg-blue-900"] {
@@ -1577,4 +1581,8 @@ html.mobile-landscape .nav-shell {
 
 .animate-goal-image-shake {
   animation: goal-image-shake 0.36s ease-out both;
+}
+
+.modal-hide-nav .nav-shell {
+  display: none !important;
 }

@@ -175,8 +175,21 @@ export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => v
 
     const pinnedNote = notes.find(n => n.id === pinnedNoteId);
     
-    // Sort notes by last modified / created
-    const recentNote = [...notes].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    // Pick the most recently modified/created note, excluding the already-pinned note
+    const recentNote = useMemo(() => {
+        let best: Note | undefined;
+        let bestTime = -1;
+        for (const n of notes) {
+            if (pinnedNote && n.id === pinnedNote.id) continue;
+            const createdMs = n.createdAt ? new Date(n.createdAt).getTime() || 0 : 0;
+            const t = Math.max(n.lastUpdated || 0, createdMs);
+            if (t > bestTime) {
+                bestTime = t;
+                best = n;
+            }
+        }
+        return best;
+    }, [notes, pinnedNote]);
 
     const { todayEvents, upcomingEvents } = useMemo(() => {
         const todayStr = new Date().toISOString().split('T')[0];

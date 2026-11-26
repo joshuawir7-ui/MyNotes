@@ -31,6 +31,14 @@ export function CalculatorModal({ isOpen, onClose, onApplyAmount, language = "es
     const [copied, setCopied] = useState<boolean>(false)
     const [history, setHistory] = useState<HistoryItem[]>([])
 
+    useEffect(() => {
+        if (typeof document === "undefined") return
+        document.documentElement.classList.toggle("modal-hide-nav", isOpen)
+        return () => {
+            document.documentElement.classList.remove("modal-hide-nav")
+        }
+    }, [isOpen])
+
     // Load history from localStorage on mount
     useEffect(() => {
         try {

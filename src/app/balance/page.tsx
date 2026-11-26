@@ -1225,14 +1225,16 @@ export default function BalancePage() {
                                     <span className="text-base sm:text-lg font-black tracking-wider uppercase text-foreground shrink-0 whitespace-nowrap">
                                         {pick(language, { es: 'Tienes', en: 'You have', zh: '当前拥有' })}: {balance.toLocaleString()}{currency}
                                     </span>
-                                    <div className="h-[1.5px] bg-black/10 dark:bg-white/10 flex-1" />
-                                    <button
-                                        onClick={() => setShowExpenseNoteModal(true)}
-                                        className="absolute right-0 text-zinc-500 dark:text-zinc-400 hover:text-foreground transition-all active:scale-95 p-1"
-                                        title={lt(language, "Nueva Nota de Gasto", "New Expense Note")}
-                                    >
-                                        <FileText className="w-6 h-6" />
-                                    </button>
+                                    <div className="flex items-center gap-2 flex-1">
+                                        <div className="h-[1.5px] bg-black/10 dark:bg-white/10 flex-1" />
+                                        <button
+                                            onClick={() => setShowExpenseNoteModal(true)}
+                                            className="text-zinc-500 dark:text-zinc-400 hover:text-foreground transition-all active:scale-95 p-1 shrink-0"
+                                            title={lt(language, "Nueva Nota de Gasto", "New Expense Note")}
+                                        >
+                                            <FileText className="w-6 h-6" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
