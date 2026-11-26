@@ -521,7 +521,7 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                 const hasBudgetSection = goal.targetValue !== undefined && goal.targetValue > 0
                 const landscapeRowsClass = hasChecklist
                     ? (hasBudgetSection ? "sm:landscape:grid-rows-[auto_1fr_auto]" : "sm:landscape:grid-rows-[auto_1fr]")
-                    : ""
+                    : (hasBudgetSection ? "sm:landscape:grid-rows-[auto_1fr]" : "")
 
                 return (
                     <div className={`grid grid-cols-1 sm:landscape:grid-cols-2 ${landscapeRowsClass} gap-x-6 gap-y-5 items-start`}>
@@ -553,11 +553,11 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                             )}
                         </div>
 
-                        {/* Photos Section (Right in landscape alongside progress & objectives, 2nd in portrait) */}
+                        {/* Photos Section (Right in landscape alongside progress & objectives/budget, 2nd in portrait) */}
                         {goal.photos.length > 0 && (
                             <div
                                 ref={photosContainerRef}
-                                className={`sm:landscape:col-start-2 sm:landscape:row-start-1 ${hasChecklist ? 'sm:landscape:row-span-2' : ''} flex flex-col gap-4 items-center sm:landscape:items-end justify-start`}
+                                className={`sm:landscape:col-start-2 sm:landscape:row-start-1 ${(hasChecklist || hasBudgetSection) ? 'sm:landscape:row-span-2' : ''} flex flex-col gap-4 items-center sm:landscape:items-end justify-start`}
                             >
                                 {goal.photos.map((photo, i) => (
                                     <div
@@ -571,9 +571,23 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                             </div>
                         )}
 
-                        {/* Budget section (Bottom-Centered in landscape, 3rd in portrait) */}
-                        {hasBudgetSection && (
-                            <div className={`space-y-2 bg-transparent py-1 text-left w-full sm:landscape:col-span-2 ${hasChecklist ? 'sm:landscape:row-start-3' : 'sm:landscape:row-start-2'} sm:landscape:max-w-md sm:landscape:mx-auto sm:landscape:pt-2`}>
+                        {/* Budget section (Left column below progress when no checklist; bottom-centered when checklist is present) */}
+                        {hasBudgetSection && (() => {
+                            const budgetTarget = goal.targetValue || 1
+                            const budgetRatio = Math.max(0, Math.min(1, effectiveMoney / budgetTarget))
+                            const budgetPercent = Math.round(budgetRatio * 100)
+                            const remainingMoney = Math.max(0, Number((budgetTarget - effectiveMoney).toFixed(2)))
+                            const radius = 42
+                            const circumference = 2 * Math.PI * radius
+                            const dashOffset = circumference * (1 - budgetRatio)
+                            const isBlackTheme = appColor === 'black'
+
+                            return (
+                            <div className={`space-y-3 bg-transparent py-1 text-left w-full ${
+                                hasChecklist
+                                    ? 'sm:landscape:col-span-2 sm:landscape:row-start-3 sm:landscape:max-w-md sm:landscape:mx-auto sm:landscape:pt-2'
+                                    : 'sm:landscape:col-start-1 sm:landscape:row-start-2'
+                            }`}>
                                 <div className="flex justify-between items-center px-1 gap-2">
                                     <div className="flex flex-col">
                                         <span className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">
@@ -598,6 +612,57 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                                             </button>
                                         )}
                                     </span>
+                                </div>
+
+                                {/* Circular Donut Chart (saved vs remaining) */}
+                                <div className={`flex items-center gap-4 py-1 ${hasChecklist ? 'justify-center' : 'justify-center sm:landscape:justify-start'}`}>
+                                    <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
+                                        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                                            <circle
+                                                cx="50"
+                                                cy="50"
+                                                r={radius}
+                                                fill="transparent"
+                                                strokeWidth="10"
+                                                className={isBlackTheme ? "stroke-black/15 dark:stroke-white/15" : "stroke-primary/15 dark:stroke-white/10"}
+                                            />
+                                            <circle
+                                                cx="50"
+                                                cy="50"
+                                                r={radius}
+                                                fill="transparent"
+                                                strokeWidth="10"
+                                                strokeLinecap="round"
+                                                strokeDasharray={circumference}
+                                                strokeDashoffset={dashOffset}
+                                                className={`transition-[stroke-dashoffset] duration-300 ease-out ${isBlackTheme ? "stroke-black dark:stroke-white" : "stroke-primary"}`}
+                                            />
+                                        </svg>
+                                        <span className="absolute text-sm font-black text-foreground">
+                                            {budgetPercent}%
+                                        </span>
+                                    </div>
+
+                                    <div className="flex flex-col gap-1.5 text-xs">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isBlackTheme ? "bg-black dark:bg-white" : "bg-primary"}`} />
+                                            <span className="text-muted-foreground">
+                                                {pick(language, { es: "Tienes:", en: "Saved:", zh: "已有:" })}
+                                            </span>
+                                            <span className="font-bold font-mono text-foreground">
+                                                {currency} {Number(effectiveMoney).toFixed(2).replace(/\.00$/, '')}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isBlackTheme ? "bg-black/20 dark:bg-white/25" : "bg-primary/20 dark:bg-white/15"}`} />
+                                            <span className="text-muted-foreground">
+                                                {pick(language, { es: "Falta:", en: "Remaining:", zh: "还差:" })}
+                                            </span>
+                                            <span className="font-bold font-mono text-foreground">
+                                                {currency} {remainingMoney.toFixed(2).replace(/\.00$/, '')}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Add / Subtract savings input (only for reserved money, hidden when synced with Balance) */}
@@ -640,7 +705,8 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                                     </div>
                                 )}
                             </div>
-                        )}
+                            )
+                        })()}
 
                         {/* Checklist section (Top-Left below progress in landscape, 4th in portrait) */}
                         {hasChecklist && (
