@@ -401,68 +401,72 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
             style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 380px' }}
             className="glass-panel p-6 rounded-2xl border border-white/10 hover:border-primary/30 transition-colors duration-200"
         >
-            <div className="flex justify-between items-start mb-6">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <Target className="w-4 h-4 text-primary" />
-                        <h3 className="text-xl font-bold text-foreground">{goal.title}</h3>
+            <div className="mb-6">
+                <div className="flex justify-between items-start gap-3">
+                    <div className="flex items-center gap-2 min-w-0 flex-1 pt-1">
+                        <Target className="w-4 h-4 text-primary shrink-0" />
+                        <h3 className="text-xl font-bold text-foreground break-words">{goal.title}</h3>
                     </div>
-                    <p className="text-muted-foreground text-sm">{goal.description}</p>
-                    <p className="text-[10px] text-primary uppercase font-black tracking-widest mt-2">
-                        {t.targetDateLabel}: {goal.targetDate}
-                    </p>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                    <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => {
-                            const nextPinned = !goal.pinned
-                            updateGoal(goal.id, { pinned: nextPinned })
-                            showToast(
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => {
+                                const nextPinned = !goal.pinned
+                                updateGoal(goal.id, { pinned: nextPinned })
+                                showToast(
+                                    pick(language, {
+                                        es: nextPinned ? "Meta fijada en Hoy" : "Meta desfijada",
+                                        en: nextPinned ? "Goal pinned to Today" : "Goal unpinned",
+                                        zh: nextPinned ? "目标已固定到今天" : "已取消固定目标"
+                                    }),
+                                    "success"
+                                )
+                            }}
+                            className={`p-2 rounded-full transition-all ${goal.pinned
+                                    ? "text-primary bg-primary/10 hover:bg-primary/20"
+                                    : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                }`}
+                            title={
                                 pick(language, {
-                                    es: nextPinned ? "Meta fijada en Hoy" : "Meta desfijada",
-                                    en: nextPinned ? "Goal pinned to Today" : "Goal unpinned",
-                                    zh: nextPinned ? "目标已固定到今天" : "已取消固定目标"
-                                }),
-                                "success"
-                            )
-                        }}
-                        className={`p-2 rounded-full transition-all ${goal.pinned
-                                ? "text-primary bg-primary/10 hover:bg-primary/20"
-                                : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-                            }`}
-                        title={
-                            pick(language, {
-                                es: goal.pinned ? "Desfijar meta" : "Fijar meta en Hoy",
-                                en: goal.pinned ? "Unpin goal" : "Pin goal to Today",
-                                zh: goal.pinned ? "取消固定目标" : "固定目标到今天"
-                            })
-                        }
-                    >
-                        <Pin className={`w-4 h-4 ${goal.pinned ? "fill-primary" : ""}`} />
-                    </motion.button>
+                                    es: goal.pinned ? "Desfijar meta" : "Fijar meta en Hoy",
+                                    en: goal.pinned ? "Unpin goal" : "Pin goal to Today",
+                                    zh: goal.pinned ? "取消固定目标" : "固定目标到今天"
+                                })
+                            }
+                        >
+                            <Pin className={`w-4 h-4 ${goal.pinned ? "fill-primary" : ""}`} />
+                        </motion.button>
 
-                    <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={openEditModal}
-                        className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all"
-                        title={pick(language, { es: "Editar meta", en: "Edit goal", zh: "编辑目标" })}
-                    >
-                        <Pencil className="w-4 h-4" />
-                    </motion.button>
+                        <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={openEditModal}
+                            className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all"
+                            title={pick(language, { es: "Editar meta", en: "Edit goal", zh: "编辑目标" })}
+                        >
+                            <Pencil className="w-4 h-4" />
+                        </motion.button>
 
-                    <motion.button
-                        whileHover={{ scale: 1.1, rotate: 5 }}
-                        whileTap={{ scale: 0.9, rotate: -3 }}
-                        onClick={() => setIsDeleting(true)}
-                        className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded-full transition-all"
-                        title={lt(language, "Eliminar meta", "Delete goal")}
-                    >
-                        <Trash2 className="w-4 h-4" />
-                    </motion.button>
+                        <motion.button
+                            whileHover={{ scale: 1.1, rotate: 5 }}
+                            whileTap={{ scale: 0.9, rotate: -3 }}
+                            onClick={() => setIsDeleting(true)}
+                            className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded-full transition-all"
+                            title={lt(language, "Eliminar meta", "Delete goal")}
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </motion.button>
+                    </div>
                 </div>
+                {goal.description && (
+                    <p className="w-full text-center text-muted-foreground text-sm mt-2 break-words whitespace-pre-line">
+                        {goal.description}
+                    </p>
+                )}
+                <p className="w-full text-center text-[10px] text-primary uppercase font-black tracking-widest mt-2">
+                    {t.targetDateLabel}: {goal.targetDate}
+                </p>
             </div>
 
             <ConfirmationDialog

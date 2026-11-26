@@ -333,8 +333,8 @@ export function AppSidebar() {
     const navItems = [
         { href: "/goals", label: t.goals, icon: AnimatedTarget },
         { href: "/balance", label: t.balance, icon: AnimatedWallet },
-        { href: "/", label: t.today, icon: AnimatedSun },
         { href: "/tasks", label: t.tasks, icon: AnimatedTasks },
+        { href: "/", label: t.today, icon: AnimatedSun },
         { href: "/calendar", label: t.calendar, icon: AnimatedCalendar },
         { href: "/notes", label: t.notes, icon: AnimatedNotes },
     ]
