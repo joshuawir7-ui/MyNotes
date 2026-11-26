@@ -1364,6 +1364,8 @@ interface AppState {
     updateGoal: (id: string, updates: Partial<Goal>) => void
     deleteGoal: (id: string) => void
     addGoalPhoto: (id: string, photo: string) => void
+    collapsedGoalReports: Record<string, boolean>
+    setGoalReportsCollapsed: (goalId: string, collapsed: boolean) => void
     addTaskPhoto: (id: string, photo: string) => void
 
     addTaskGroup: (title: string, color: string) => void
@@ -2356,7 +2358,7 @@ export const silentRefreshGoogleToken = async (): Promise<string | null> => {
 const NON_DATA_KEYS = new Set<string>([
     'isSyncingCloud', 'syncError', 'lastCloudSync', 'lastCloudSyncAt', 'lastSyncedMd5',
     'timer', 'googleUser', 'googleSessionExpired', 'toast', 'priorityReminderSettings',
-    'downloadingBlocks'
+    'downloadingBlocks', 'collapsedGoalReports'
 ]);
 
 /** Marca de fin de sync: texto para la UI + número para cooldown/comparaciones (nunca Date.parse(toLocaleString)). */
@@ -3130,6 +3132,14 @@ export const useStore = create<AppState>()(
 
                 addGoalPhoto: (id, photo) => set((state) => ({
                     goals: state.goals.map(g => g.id === id ? { ...g, photos: [...g.photos, photo], lastUpdated: Date.now() } : g)
+                })),
+
+                collapsedGoalReports: {},
+                setGoalReportsCollapsed: (goalId, collapsed) => set((state) => ({
+                    collapsedGoalReports: {
+                        ...(state.collapsedGoalReports || {}),
+                        [goalId]: collapsed,
+                    }
                 })),
 
                 addTaskPhoto: (id, photo) => {

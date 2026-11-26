@@ -4,7 +4,7 @@ import { LocalImage } from "@/components/ui/local-image"
 
 import { Goal, GoalObjective, useStore, computeNetBalance, computeGoalProgress } from "@/lib/store"
 import { motion, AnimatePresence } from "framer-motion"
-import { Trash2, Camera, Target, Plus, Check, X, FileText, Pin, RotateCcw, Pencil, ChevronDown } from "lucide-react"
+import { Trash2, Camera, Target, Plus, Check, X, FileText, Pin, RotateCcw, Pencil, ChevronDown, MoreVertical } from "lucide-react"
 import { useState, useEffect, useRef, useMemo, memo } from "react"
 import { createPortal } from "react-dom"
 import { useShallow } from "zustand/react/shallow"
@@ -104,8 +104,26 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
     // Budget and progress states
     const [amountToAdd, setAmountToAdd] = useState("")
     const [isReportsOpen, setIsReportsOpen] = useState(false)
-    const [isTimelineCollapsed, setIsTimelineCollapsed] = useState(false)
+    const isTimelineCollapsed = useStore(state => Boolean(state.collapsedGoalReports?.[goal.id]))
+    const setGoalReportsCollapsed = useStore(state => state.setGoalReportsCollapsed)
+    const [isMenuOpen, setIsMenuOpen] = useState(false)
+    const menuRef = useRef<HTMLDivElement | null>(null)
     const [reportDate, setReportDate] = useState("")
+
+    useEffect(() => {
+        if (!isMenuOpen) return
+        const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setIsMenuOpen(false)
+            }
+        }
+        document.addEventListener("mousedown", handleOutsideClick)
+        document.addEventListener("touchstart", handleOutsideClick, { passive: true })
+        return () => {
+            document.removeEventListener("mousedown", handleOutsideClick)
+            document.removeEventListener("touchstart", handleOutsideClick)
+        }
+    }, [isMenuOpen])
     const [reportNote, setReportNote] = useState("")
 
     const openEditModal = () => {
@@ -407,56 +425,74 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                         <Target className="w-4 h-4 text-primary shrink-0" />
                         <h3 className="text-xl font-bold text-foreground break-words">{goal.title}</h3>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                        <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => {
-                                const nextPinned = !goal.pinned
-                                updateGoal(goal.id, { pinned: nextPinned })
-                                showToast(
-                                    pick(language, {
-                                        es: nextPinned ? "Meta fijada en Hoy" : "Meta desfijada",
-                                        en: nextPinned ? "Goal pinned to Today" : "Goal unpinned",
-                                        zh: nextPinned ? "目标已固定到今天" : "已取消固定目标"
-                                    }),
-                                    "success"
-                                )
-                            }}
-                            className={`p-2 rounded-full transition-all ${goal.pinned
-                                    ? "text-primary bg-primary/10 hover:bg-primary/20"
-                                    : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                }`}
-                            title={
-                                pick(language, {
-                                    es: goal.pinned ? "Desfijar meta" : "Fijar meta en Hoy",
-                                    en: goal.pinned ? "Unpin goal" : "Pin goal to Today",
-                                    zh: goal.pinned ? "取消固定目标" : "固定目标到今天"
-                                })
-                            }
+                    <div className="relative shrink-0" ref={menuRef}>
+                        <button
+                            type="button"
+                            onClick={() => setIsMenuOpen(prev => !prev)}
+                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+                            title={pick(language, { es: "Opciones", en: "Options", zh: "选项" })}
                         >
-                            <Pin className={`w-4 h-4 ${goal.pinned ? "fill-primary" : ""}`} />
-                        </motion.button>
+                            <MoreVertical className="w-4 h-4" />
+                        </button>
 
-                        <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={openEditModal}
-                            className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all"
-                            title={pick(language, { es: "Editar meta", en: "Edit goal", zh: "编辑目标" })}
-                        >
-                            <Pencil className="w-4 h-4" />
-                        </motion.button>
+                        {isMenuOpen && (
+                            <div className="absolute right-0 top-full mt-1.5 z-40 min-w-[180px] rounded-2xl bg-white dark:bg-zinc-900 border border-black/10 dark:border-white/15 shadow-xl p-1.5 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const nextPinned = !goal.pinned
+                                        updateGoal(goal.id, { pinned: nextPinned })
+                                        setIsMenuOpen(false)
+                                        showToast(
+                                            pick(language, {
+                                                es: nextPinned ? "Meta fijada en Hoy" : "Meta desfijada",
+                                                en: nextPinned ? "Goal pinned to Today" : "Goal unpinned",
+                                                zh: nextPinned ? "目标已固定到今天" : "已取消固定目标"
+                                            }),
+                                            "success"
+                                        )
+                                    }}
+                                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${
+                                        goal.pinned
+                                            ? "text-primary bg-primary/10 hover:bg-primary/15"
+                                            : "text-foreground hover:bg-black/5 dark:hover:bg-white/10"
+                                    }`}
+                                >
+                                    <Pin className={`w-3.5 h-3.5 shrink-0 ${goal.pinned ? "fill-primary" : ""}`} />
+                                    <span>
+                                        {pick(language, {
+                                            es: goal.pinned ? "Desfijar meta" : "Fijar meta en Hoy",
+                                            en: goal.pinned ? "Unpin goal" : "Pin goal to Today",
+                                            zh: goal.pinned ? "取消固定目标" : "固定目标到今天"
+                                        })}
+                                    </span>
+                                </button>
 
-                        <motion.button
-                            whileHover={{ scale: 1.1, rotate: 5 }}
-                            whileTap={{ scale: 0.9, rotate: -3 }}
-                            onClick={() => setIsDeleting(true)}
-                            className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded-full transition-all"
-                            title={lt(language, "Eliminar meta", "Delete goal")}
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </motion.button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsMenuOpen(false)
+                                        openEditModal()
+                                    }}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-foreground hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-left cursor-pointer"
+                                >
+                                    <Pencil className="w-3.5 h-3.5 shrink-0" />
+                                    <span>{pick(language, { es: "Editar meta", en: "Edit goal", zh: "编辑目标" })}</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsMenuOpen(false)
+                                        setIsDeleting(true)
+                                    }}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-500 hover:bg-red-500/10 transition-colors text-left cursor-pointer"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                    <span>{pick(language, { es: "Eliminar meta", en: "Delete goal", zh: "删除目标" })}</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
                 {goal.description && (
@@ -760,7 +796,7 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                 <div className={`flex justify-between items-center ${isTimelineCollapsed && !isReportsOpen ? 'mb-0' : 'mb-4'}`}>
                     <button
                         type="button"
-                        onClick={() => setIsTimelineCollapsed(prev => !prev)}
+                        onClick={() => setGoalReportsCollapsed(goal.id, !isTimelineCollapsed)}
                         className="flex items-center gap-2 text-left cursor-pointer group"
                     >
                         <Target className="w-4 h-4 text-primary" />
@@ -770,7 +806,7 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                     <div className="flex items-center gap-1">
                         <button
                             type="button"
-                            onClick={() => setIsTimelineCollapsed(prev => !prev)}
+                            onClick={() => setGoalReportsCollapsed(goal.id, !isTimelineCollapsed)}
                             className="p-2 text-muted-foreground hover:text-foreground rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
                             title={isTimelineCollapsed
                                 ? pick(language, { es: "Expandir bitácora", en: "Expand log", zh: "展开日志" })
@@ -784,7 +820,7 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                             onClick={() => {
                                 const nextOpen = !isReportsOpen
                                 setIsReportsOpen(nextOpen)
-                                if (nextOpen && isTimelineCollapsed) setIsTimelineCollapsed(false)
+                                if (nextOpen && isTimelineCollapsed) setGoalReportsCollapsed(goal.id, false)
                             }}
                             className="flex items-center gap-1.5 px-2.5 py-2 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 text-primary font-bold text-xs rounded-xl transition-colors cursor-pointer"
                             title={lt(language, "Añadir Avance / Reporte", "Add Progress Report")}
