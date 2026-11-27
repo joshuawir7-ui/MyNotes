@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { getLocalImageSrc } from "@/lib/image-utils"
 import { useLocalUrl } from "@/hooks/use-local-url"
@@ -64,7 +64,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         });
     }, [storeNote]);
 
-    // â”€â”€â”€ Undo / Redo History Stack â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â”€â”€─ Undo / Redo History Stack â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
     const historyRef = useRef<{ title: string; blocks: NoteBlock[] }[]>([
         { title: note.title || '', blocks: JSON.parse(JSON.stringify(note.blocks || [])) }
     ])
@@ -433,7 +433,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
         if (isNoteEmpty(titleRef.current, blocksRef.current) && !initialHadContent) {
             skipSaveRef.current = true
             deleteNote(note.id)
-            showToast(lt(language, "Nota vacÃ­a eliminada", "Empty note deleted"), "info")
+            showToast(lt(language, "Nota vacía eliminada", "Empty note deleted"), "info")
         }
         onClose()
     }
@@ -762,7 +762,7 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
 
                     {blocks.length === 0 && (
                         <div className="text-center text-muted-foreground mt-20 italic">
-                            {lt(language, "Comienza aÃ±adiendo un bloque desde la barra superior.", "Start by adding a block from the toolbar above.")}
+                            {lt(language, "Comienza añadiendo un bloque desde la barra superior.", "Start by adding a block from the toolbar above.")}
                         </div>
                     )}
                     <div className="space-y-2 w-full">
@@ -796,8 +796,8 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                     showToast(lt(language, "Nota eliminada", "Note deleted"), "info")
                     onClose()
                 }}
-                title={lt(language, 'Â¿Eliminar esta nota?', 'Delete this note?')}
-                message={lt(language, 'Esta nota se eliminarÃ¡ permanentemente.', 'This note will be permanently deleted.')}
+                title={lt(language, '¿Eliminar esta nota?', 'Delete this note?')}
+                message={lt(language, 'Esta nota se eliminará permanentemente.', 'This note will be permanently deleted.')}
             />
             <ConfirmationDialog
                 isOpen={blockToDelete !== null}
@@ -808,8 +808,8 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                         setBlockToDelete(null)
                     }
                 }}
-                title={lt(language, 'Â¿Eliminar esta secciÃ³n?', 'Delete this section?')}
-                message={lt(language, 'Esta secciÃ³n se eliminarÃ¡ de la nota.', 'This section will be removed from the note.')}
+                title={lt(language, '¿Eliminar esta sección?', 'Delete this section?')}
+                message={lt(language, 'Esta sección se eliminará de la nota.', 'This section will be removed from the note.')}
             />
 
             {/* Keyboard Floating Toolbar */}
@@ -950,8 +950,8 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                             <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
 
                             {/* Lists Group */}
-                            <FormatButton icon={List} label="ViÃ±etas" onClick={() => applyFormat('insertUnorderedList')} active={formatStates.insertUnorderedList} />
-                            <FormatButton icon={ListOrdered} label="NumeraciÃ³n" onClick={() => applyFormat('insertOrderedList')} active={formatStates.insertOrderedList} />
+                            <FormatButton icon={List} label="Viñetas" onClick={() => applyFormat('insertUnorderedList')} active={formatStates.insertUnorderedList} />
+                            <FormatButton icon={ListOrdered} label="Numeración" onClick={() => applyFormat('insertOrderedList')} active={formatStates.insertOrderedList} />
 
                             <div className="w-[1px] h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
 
@@ -1100,7 +1100,7 @@ function ToolbarButton({ icon: Icon, label, onClick, disabled, animDirection }: 
 }
 
 /**
- * InlineImageButton â€” inserts an image at cursor in a contenteditable text block.
+ * InlineImageButton — inserts an image at cursor in a contenteditable text block.
 /**
  * Helper to hide virtual soft keyboard on Web / Mobile Web / WebView
  */
@@ -1152,7 +1152,7 @@ export async function persistAndBuildMediaHtml(file: File, isVideo: boolean): Pr
 }
 
 /**
- * InlineImageButton â€” inserts an image at cursor in a contenteditable text block.
+ * InlineImageButton — inserts an image at cursor in a contenteditable text block.
  * Default styling: inline-block with 48% width so images sit side-by-side natively!
  * Icon: black in light mode, white in dark mode.
  */
@@ -1242,7 +1242,7 @@ export async function resolveInlineImages(container: HTMLElement | null) {
 
         if (!localUri) continue;
 
-        // Already resolved to a usable URL â€” skip
+        // Already resolved to a usable URL — skip
         if (currentSrc.startsWith('blob:') || currentSrc.startsWith('data:') ||
             currentSrc.startsWith('http://') || currentSrc.startsWith('https://') ||
             (currentSrc.startsWith('capacitor://') || currentSrc.startsWith('ionic://'))) {
@@ -1263,7 +1263,7 @@ export async function resolveInlineImages(container: HTMLElement | null) {
         }
     }
     const duration = (performance.now() - t0).toFixed(2);
-    console.log(`[PERF][resolveInlineImages] ${imgElements.length} imÃ¡genes procesadas en ${duration} ms`);
+    console.log(`[PERF][resolveInlineImages] ${imgElements.length} imágenes procesadas en ${duration} ms`);
 }
 
 /**
@@ -1346,7 +1346,7 @@ export async function resolveInlineVideos(container: HTMLElement | null) {
 }
 
 /**
- * InlineVideoButton â€” inserts a video inside text block.
+ * InlineVideoButton — inserts a video inside text block.
  */
 function InlineVideoButton({ language }: { language: string }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1413,7 +1413,7 @@ function InlineVideoButton({ language }: { language: string }) {
 }
 
 /**
- * InlineFileButton â€” inserts a document or audio file chip inside text block.
+ * InlineFileButton — inserts a document or audio file chip inside text block.
  * Supports Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), PDF (.pdf), Audio (.mp3, .wav, etc.).
  */
 function InlineFileButton({ language }: { language: string }) {
@@ -1486,7 +1486,7 @@ function InlineFileButton({ language }: { language: string }) {
 }
 
 /**
- * InlineTableButton â€” inserts a table inside active text block.
+ * InlineTableButton — inserts a table inside active text block.
  */
 function InlineTableButton({ language, onInsertBlock }: { language: string; onInsertBlock?: () => void }) {
     return (
@@ -1510,7 +1510,7 @@ function InlineTableButton({ language, onInsertBlock }: { language: string; onIn
 }
 
 /**
- * InlineTaskButton â€” inserts an interactive checkbox task item inside text block.
+ * InlineTaskButton — inserts an interactive checkbox task item inside text block.
  */
 function InlineTaskButton({ language }: { language: string }) {
     const savedRangeRef = useRef<Range | null>(null);
@@ -1573,7 +1573,7 @@ function InlineTaskButton({ language }: { language: string }) {
 }
 
 /**
- * InlineSeparatorButton â€” inserts a horizontal line separator inside text block.
+ * InlineSeparatorButton — inserts a horizontal line separator inside text block.
  */
 function InlineSeparatorButton({ language }: { language: string }) {
     const savedRangeRef = useRef<Range | null>(null);
@@ -1615,11 +1615,11 @@ function InlineSeparatorButton({ language }: { language: string }) {
 }
 
 /**
- * InlineMediaOverlay â€” floating overlay for selected inline image or video element.
+ * InlineMediaOverlay — floating overlay for selected inline image or video element.
  * Features:
  * - Sleek small gray handles (14px diameter) & gray border outline (NO black/purple)
  * - Alignment toolbar (Align Left, Center, Align Right, Side-by-side)
- * - Prominent Delete button ðŸ—‘ï¸
+ * - Prominent Delete button 🗑️
  * - 2D free relative offset drag positioning & corner/side resizing for both images and videos!
  */
 function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTriggerSave, initialPointer }: {
@@ -1947,7 +1947,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTrigg
                     if (src && onImageClick) onImageClick(src);
                 }}
             >
-                {/* Selection border â€” sleek medium gray */}
+                {/* Selection border — sleek medium gray */}
                 <div style={{
                     position: 'absolute', inset: 0,
                     border: `1.5px solid ${borderCol}`,
@@ -1956,7 +1956,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTrigg
                     boxShadow: '0 0 0 1px rgba(113,113,122,0.2)',
                 }} />
 
-                {/* Corner bracket indicators (matching user's sketch: â”Œ â” â”” â”˜) */}
+                {/* Corner bracket indicators (matching user's sketch: ┌ ┐ └ ┘) */}
                 <div style={{
                     position: 'absolute', top: -2, left: -2, width: 22, height: 22,
                     borderTop: `3.5px solid ${isDark ? '#ffffff' : '#18181b'}`,
@@ -2031,7 +2031,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTrigg
                         style={{ padding: '2px 6px', borderRadius: 6, fontSize: 11, fontWeight: 700, color: isDark ? '#e4e4e7' : '#27272a' }}
                         title="Lado a lado (Inline)"
                     >
-                        â‡„
+                        ⇄
                     </button>
 
                     {onImageClick && (
@@ -2070,7 +2070,7 @@ function InlineMediaOverlay({ mediaEl, onClose, editorRef, onImageClick, onTrigg
                     </button>
                 </div>
 
-                {/* Move badge â€” center indicator */}
+                {/* Move badge — center indicator */}
                 <div
                     onPointerDown={handleMoveStart}
                     style={{
@@ -2302,7 +2302,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                         </div>
 
                         <div className="p-3 border-t border-zinc-100 dark:border-white/10 bg-zinc-50/50 dark:bg-zinc-800/50">
-                            {/* Hidden file input â€” use onClick (not onMouseDown+preventDefault) so Android WebView opens the native file picker */}
+                            {/* Hidden file input — use onClick (not onMouseDown+preventDefault) so Android WebView opens the native file picker */}
                             <input
                                 type="file"
                                 ref={fontInputRef}
@@ -2318,7 +2318,7 @@ function FontDropdown({ language, applyFormat }: { language: string, applyFormat
                                 className="w-full flex items-center justify-center gap-2 p-2.5 bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black rounded-xl font-bold transition-all text-xs cursor-pointer shadow-md shadow-zinc-900/10 dark:shadow-black/40 active:scale-95"
                             >
                                 <Plus className="w-4 h-4" />
-                                <span>{lt(language, "AÃ±adir fuente desde almacenamiento", "Add font from storage")}</span>
+                                <span>{lt(language, "Añadir fuente desde almacenamiento", "Add font from storage")}</span>
                             </button>
                             <p className="text-center text-[10px] text-muted-foreground mt-1.5 opacity-70">
                                 {lt(language, "Formatos admitidos: TTF, OTF, WOFF, WOFF2", "Supported formats: TTF, OTF, WOFF, WOFF2")}
@@ -2411,7 +2411,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
         void runDownload(true);
     }, [runDownload]);
 
-    // Auto-intentar descarga 1 sola vez por bloque y sesiÃ³n al abrir la nota si falta copia local o da error de carga
+    // Auto-intentar descarga 1 sola vez por bloque y sesión al abrir la nota si falta copia local o da error de carga
     useEffect(() => {
         if (!block.driveFileId || isDownloading || downloadedUri) return;
         if (!isNeedsRemoteFetch && !imageError) return;
@@ -2628,7 +2628,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                                 {/* Sleek selection outline */}
                                 <div className="absolute inset-0 rounded-2xl border-2 border-zinc-400 dark:border-zinc-300 pointer-events-none z-10" />
 
-                                {/* Corner brackets (â”Œ â” â”” â”˜) */}
+                                {/* Corner brackets (┌ ┐ └ ┘) */}
                                 <div className="absolute -top-0.5 -left-0.5 w-5 h-5 border-t-[3.5px] border-l-[3.5px] border-zinc-900 dark:border-white rounded-tl-lg pointer-events-none z-20" />
                                 <div className="absolute -top-0.5 -right-0.5 w-5 h-5 border-t-[3.5px] border-r-[3.5px] border-zinc-900 dark:border-white rounded-tr-lg pointer-events-none z-20" />
                                 <div className="absolute -bottom-0.5 -left-0.5 w-5 h-5 border-b-[3.5px] border-l-[3.5px] border-zinc-900 dark:border-white rounded-bl-lg pointer-events-none z-20" />
@@ -2665,7 +2665,7 @@ function ImageBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                 ) : (
                     <div className="text-center">
                         <ImageIcon className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground mb-4">{block.lt(language, 'Subir imagen', 'Upload an image')}</p>
+                        <p className="text-sm text-muted-foreground mb-4">{lt(language, 'Subir imagen', 'Upload an image')}</p>
                         <input
                             type="file"
                             accept="image/*"
@@ -2787,8 +2787,8 @@ async function uploadAttachmentToDrive(
     }
 
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // LARGE FILES (â‰¥4 MB): resumable upload (bypasses 5MB limit)
-    // Step 1 â€“ Initiate session, get upload URL
+    // LARGE FILES (≥4 MB): resumable upload (bypasses 5MB limit)
+    // Step 1 – Initiate session, get upload URL
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     console.log(`[Upload] Archivo grande (${fileSizeMB.toFixed(1)} MB), usando Resumable Upload...`);
 
@@ -2816,7 +2816,7 @@ async function uploadAttachmentToDrive(
         throw new Error('Drive resumable: no Location header returned from initiation.');
     }
 
-    // Step 2 â€“ Upload the binary content
+    // Step 2 – Upload the binary content
     const uploadRes = await fetch(uploadUrl, {
         method: 'PUT',
         headers: {
@@ -2887,7 +2887,7 @@ export async function openFileHelper(fileUrl: string, fileName: string, driveFil
         return;
     }
     if (!fileUrl) {
-        useStore.getState().showToast("El archivo no contiene un enlace vÃ¡lido", "error");
+        useStore.getState().showToast("El archivo no contiene un enlace válido", "error");
         return;
     }
 
@@ -3003,7 +3003,7 @@ export async function openFileHelper(fileUrl: string, fileName: string, driveFil
         if (driveFileId) {
             window.open(`https://drive.google.com/file/d/${driveFileId}/view`, '_blank');
         } else {
-            useStore.getState().showToast("Este archivo se guardÃ³ localmente en la app mÃ³vil.", "info");
+            useStore.getState().showToast("Este archivo se guardó localmente en la app móvil.", "info");
         }
         return;
     }
@@ -3055,7 +3055,7 @@ function FileBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBlock
                 });
                 if (!res.ok && res.reason === 'too-large') {
                     const confirmDownload = typeof window !== 'undefined' && window.confirm(
-                        lt(language, 'Este archivo supera los 50 MB. Â¿Deseas descargarlo en este dispositivo?', 'This file is over 50 MB. Download it to this device?')
+                        lt(language, 'Este archivo supera los 50 MB. ¿Deseas descargarlo en este dispositivo?', 'This file is over 50 MB. Download it to this device?')
                     );
                     if (confirmDownload) {
                         res = await ensureAttachment({
@@ -3273,7 +3273,7 @@ function VideoPlaceholder({ name, noteId, blockId, driveFileId }: {
             });
             if (!res.ok && res.reason === 'too-large') {
                 const confirmDownload = typeof window !== 'undefined' && window.confirm(
-                    lt(useStore.getState().language, 'Este video supera los 50 MB. Â¿Deseas descargarlo en este dispositivo?', 'This video is over 50 MB. Download it to this device?')
+                    lt(useStore.getState().language, 'Este video supera los 50 MB. ¿Deseas descargarlo en este dispositivo?', 'This video is over 50 MB. Download it to this device?')
                 );
                 if (confirmDownload) {
                     res = await ensureAttachment({
@@ -3316,7 +3316,7 @@ function VideoPlaceholder({ name, noteId, blockId, driveFileId }: {
                 </button>
             )}
             {!canDownload && !isDownloading && (
-                <span className="text-[10px] mt-1 opacity-40">Toca â–¶ para reproducir</span>
+                <span className="text-[10px] mt-1 opacity-40">Toca ▶ para reproducir</span>
             )}
             {isDownloading && (
                 <span className="text-[10px] opacity-60">Descargando...</span>
@@ -3329,7 +3329,7 @@ function VideoThumbnailWeb({ src, name, noteId, blockId, driveFileId }: { src: s
     const thumbVideoRef = useRef<HTMLVideoElement>(null);
     const [hasError, setHasError] = useState(false);
 
-    // Skip the video element entirely for non-playable URLs to avoid "Error de previsualizaciÃ³n"
+    // Skip the video element entirely for non-playable URLs to avoid "Error de previsualización"
     if (!isPlayableVideoUrl(src)) {
         return <VideoPlaceholder name={name} noteId={noteId} blockId={blockId} driveFileId={driveFileId} />;
     }
@@ -3360,9 +3360,9 @@ function VideoThumbnailWeb({ src, name, noteId, blockId, driveFileId }: { src: s
         video.addEventListener('seeked', handleSeeked);
         video.addEventListener('error', handleError);
 
-        // 8s timeout â€“ if metadata doesn't arrive, show placeholder instead of spinner forever
+        // 8s timeout – if metadata doesn't arrive, show placeholder instead of spinner forever
         timeoutId = setTimeout(() => {
-            console.warn('[VIDEO] Timeout loadedmetadata â€” switching to placeholder:', src);
+            console.warn('[VIDEO] Timeout loadedmetadata — switching to placeholder:', src);
             setHasError(true);
         }, 8000);
 
@@ -3458,13 +3458,13 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
             }
         }
 
-        console.log('[VIDEO] Â¿Archivo local existe?', localExists);
+        console.log('[VIDEO] ¿Archivo local existe?', localExists);
 
         if (needsDownload) {
             if (!block.driveFileId) {
-                console.error('[VIDEO] No hay localPath vÃ¡lido NI driveFileId â€” video sin fuente');
+                console.error('[VIDEO] No hay localPath válido NI driveFileId — video sin fuente');
                 import('@/lib/store').then(({ useStore }) => {
-                    useStore.getState().showToast('Este video no estÃ¡ disponible.', 'error');
+                    useStore.getState().showToast('Este video no está disponible.', 'error');
                 });
                 return;
             }
@@ -3486,7 +3486,7 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                 });
                 if (!res.ok && res.reason === 'too-large') {
                     const confirmDownload = typeof window !== 'undefined' && window.confirm(
-                        lt(useStore.getState().language, 'Este video supera los 50 MB. Â¿Deseas descargarlo en este dispositivo?', 'This video is over 50 MB. Download it to this device?')
+                        lt(useStore.getState().language, 'Este video supera los 50 MB. ¿Deseas descargarlo en este dispositivo?', 'This video is over 50 MB. Download it to this device?')
                     );
                     if (confirmDownload) {
                         res = await ensureAttachment({
@@ -3512,7 +3512,7 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                 }
             } catch (err) {
                 setIsDownloadingState(false);
-                console.error('[VIDEO] FALLÃ“ la descarga:', err);
+                console.error('[VIDEO] FALLÓ la descarga:', err);
                 const { useStore } = await import('@/lib/store');
                 useStore.getState().showToast('No se pudo descargar el video.', 'error');
                 return;
@@ -3530,7 +3530,7 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
         // 100MB limit
         if (file.size > 100 * 1024 * 1024) {
             import('@/lib/store').then(({ useStore }) => {
-                useStore.getState().showToast("El video es demasiado grande. El lÃ­mite es 100MB.", "error");
+                useStore.getState().showToast("El video es demasiado grande. El límite es 100MB.", "error");
             });
             return;
         }
@@ -3548,7 +3548,7 @@ function VideoBlockRenderer({ block, idx, isFirst, isLast, moveBlock, removeBloc
                 let thumbUri = null;
                 console.log('[VIDEO] Generando miniatura...');
                 thumbUri = await generateVideoThumbnail(uri, file).catch((err) => {
-                    console.error('[VIDEO] FALLÃ“ la generaciÃ³n de miniatura:', err);
+                    console.error('[VIDEO] FALLÓ la generación de miniatura:', err);
                     return null;
                 });
                 console.log('[VIDEO] Resultado de miniatura:', thumbUri);
@@ -3807,7 +3807,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                     <RichTaskTitle
                         content={title}
                         onChange={updateTitle}
-                        placeholder={lt(language, "TÃ­tulo de la lista (opcional)...", "List title (optional)...")}
+                        placeholder={lt(language, "Título de la lista (opcional)...", "List title (optional)...")}
                         onFocus={onFocus}
                         onBlur={onBlur}
                     />
@@ -3831,7 +3831,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                                     onFocus={onFocus}
                                     onBlur={onBlur}
                                 />
-                                <button onClick={() => insertItemAfter(item.id)} className="text-primary hover:text-primary/70 transition-colors mr-1" title={lt(language, "AÃ±adir debajo", "Add item below")}>
+                                <button onClick={() => insertItemAfter(item.id)} className="text-primary hover:text-primary/70 transition-colors mr-1" title={lt(language, "Añadir debajo", "Add item below")}>
                                     <Plus className="w-5 h-5" />
                                 </button>
                                 <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-red-500">
@@ -3841,7 +3841,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                         );
                     })}
                     <button onClick={addItem} className="text-sm text-primary hover:underline pl-8">
-                        {lt(language, "+ AÃ±adir elemento", "+ Add Item")}
+                        {lt(language, "+ Añadir elemento", "+ Add Item")}
                     </button>
                 </div>
             )
@@ -3927,7 +3927,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-all active:scale-95 cursor-pointer"
                         >
                             <Plus className="w-3.5 h-3.5" />
-                            <span>{lt(language, "AÃ±adir Fila", "Add Row")}</span>
+                            <span>{lt(language, "Añadir Fila", "Add Row")}</span>
                         </button>
                         <button
                             type="button"
@@ -3935,7 +3935,7 @@ const BlockRenderer = React.memo(function BlockRenderer({
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-all active:scale-95 cursor-pointer"
                         >
                             <Plus className="w-3.5 h-3.5" />
-                            <span>{lt(language, "AÃ±adir Columna", "Add Column")}</span>
+                            <span>{lt(language, "Añadir Columna", "Add Column")}</span>
                         </button>
                         {rows.length > 1 && (
                             <button
@@ -4414,7 +4414,7 @@ const RichTaskTitle = React.memo(function RichTaskTitle({ content, onChange, onF
                 }
                 if (onBlur) onBlur();
             }}
-            {...({ placeholder: placeholder || "TÃ­tulo..." } as any)}
+            {...({ placeholder: placeholder || "Título..." } as any)}
             className="w-full bg-transparent border-none outline-none font-bold text-lg mb-2 text-foreground min-h-[1.75rem] empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 empty:before:block empty:before:pointer-events-none rich-text-editor rich-task-title"
         />
     );
@@ -4455,7 +4455,7 @@ const RichTaskItem = React.memo(function RichTaskItem({ content, onChange, onEnt
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            // Cancel debounce â€“ we handle everything synchronously here
+            // Cancel debounce – we handle everything synchronously here
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             const currentHTML = editorRef.current ? editorRef.current.innerHTML : '';
             // Pass current HTML to onEnter so it can be saved atomically with the insertion
@@ -4601,7 +4601,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             const newContent = editorRef.current.innerHTML;
             const durationInner = (performance.now() - tInner0).toFixed(2);
 
-            console.log(`[PERF][handleInput] Tecla pulsada â€” resolveInline: ${durationResolvers} ms | innerHTML read: ${durationInner} ms (${(newContent.length / 1024).toFixed(2)} KB)`);
+            console.log(`[PERF][handleInput] Tecla pulsada — resolveInline: ${durationResolvers} ms | innerHTML read: ${durationInner} ms (${(newContent.length / 1024).toFixed(2)} KB)`);
 
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             timeoutRef.current = setTimeout(() => {
@@ -4720,7 +4720,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
             return;
         }
 
-        // Click elsewhere â€” deselect overlay only if click wasn't on the overlay itself and wasn't part of the same tap that selected the media
+        // Click elsewhere — deselect overlay only if click wasn't on the overlay itself and wasn't part of the same tap that selected the media
         if (
             Date.now() - lastMediaSelectTimeRef.current > 350 &&
             !target.closest('.note-image-overlay-box') &&
@@ -4826,7 +4826,7 @@ const RichTextEditor = React.memo(function RichTextEditor({ content, onChange, a
                         setSelectedMedia(media);
                     }
                 }}
-                {...({ placeholder: "Escribe algo aquÃ­..." } as any)}
+                {...({ placeholder: "Escribe algo aquí..." } as any)}
                 className="rich-text-editor w-full min-h-[30px] bg-transparent border-none outline-none text-base text-foreground relative empty:before:content-[attr(placeholder)] empty:before:text-muted-foreground/30 dark:empty:before:text-white/40 before:absolute before:pointer-events-none"
             />
             {selectedMedia && typeof document !== 'undefined' && (
