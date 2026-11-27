@@ -19,6 +19,14 @@ import { useRouter } from "next/navigation"
 import { timerEngine } from '@/lib/timer-engine'
 import { useDeferredBlur } from "@/hooks/use-deferred-blur"
 import { lt, pick } from "@/lib/i18n-inline"
+import {
+    initTextZoom,
+    setTextZoomPreference,
+    getTextZoomSnapshot,
+    TEXT_ZOOM_STEPS,
+    TextZoomMode,
+    TextZoomState,
+} from "@/lib/text-zoom"
 
 function SettingsCloudSyncControls({
     googleUser,
@@ -180,6 +188,12 @@ export function SettingsDialog() {
     const philosophicalQuotesEnabled = useStore(state => state.philosophicalQuotesEnabled ?? true)
     const setPhilosophicalQuotesEnabled = useStore(state => state.setPhilosophicalQuotesEnabled)
     const [osNotifPermission, setOsNotifPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown')
+    const [textZoomState, setTextZoomState] = useState<TextZoomState>(() => getTextZoomSnapshot())
+
+    const handleTextZoomModeChange = async (mode: TextZoomMode, customPercent?: number) => {
+        const next = await setTextZoomPreference(mode, customPercent)
+        setTextZoomState(next)
+    }
 
     const refreshOsNotifPermission = async () => {
         try {
@@ -197,6 +211,7 @@ export function SettingsDialog() {
     useEffect(() => {
         if (isOpen) {
             refreshOsNotifPermission()
+            initTextZoom().then(setTextZoomState).catch(() => {})
         }
     }, [isOpen])
     const focusEffectEnabled = useStore(state => state.focusEffectEnabled)
@@ -1492,6 +1507,129 @@ export function SettingsDialog() {
                                                     <span className="w-4 h-4 rounded-full bg-black dark:bg-white border border-white/20 shadow-sm shrink-0" />
                                                     <span>{lt(language, "Negro", "Black")}</span>
                                                 </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Tamaño de texto (Local del dispositivo) */}
+                                        <div className="flex flex-col gap-3 p-4 glass-card rounded-2xl">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <Type className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider truncate">
+                                                        {pick(language, {
+                                                            es: "Tamaño de texto",
+                                                            en: "Text Size",
+                                                            zh: "文字大小",
+                                                        })}
+                                                    </p>
+                                                </div>
+                                                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-600/10 text-purple-600 dark:text-purple-400 shrink-0">
+                                                    {textZoomState.appliedZoom}%
+                                                </span>
+                                            </div>
+
+                                            <div className="flex flex-col gap-1.5">
+                                                {[
+                                                    {
+                                                        id: "standard" as TextZoomMode,
+                                                        title: pick(language, {
+                                                            es: "Estándar (recomendado)",
+                                                            en: "Standard (recommended)",
+                                                            zh: "标准（推荐）",
+                                                        }),
+                                                        desc: "100%",
+                                                    },
+                                                    {
+                                                        id: "system" as TextZoomMode,
+                                                        title: pick(language, {
+                                                            es: "Seguir el sistema",
+                                                            en: "Follow system",
+                                                            zh: "跟随系统",
+                                                        }),
+                                                        desc: textZoomState.systemFontScale !== null
+                                                            ? `${Math.round(textZoomState.systemFontScale * 100)}% (máx. ${Math.round(textZoomState.maxSystemScale * 100)}%)`
+                                                            : pick(language, {
+                                                                es: `Tope ${Math.round(textZoomState.maxSystemScale * 100)}% (solo Android)`,
+                                                                en: `Cap ${Math.round(textZoomState.maxSystemScale * 100)}% (Android only)`,
+                                                                zh: `上限 ${Math.round(textZoomState.maxSystemScale * 100)}%（仅 Android）`,
+                                                            }),
+                                                    },
+                                                    {
+                                                        id: "custom" as TextZoomMode,
+                                                        title: pick(language, {
+                                                            es: "Personalizado",
+                                                            en: "Custom",
+                                                            zh: "自定义",
+                                                        }),
+                                                        desc: `${textZoomState.customPercent}%`,
+                                                    },
+                                                ].map((opt) => {
+                                                    const active = textZoomState.mode === opt.id
+                                                    return (
+                                                        <button
+                                                            key={opt.id}
+                                                            type="button"
+                                                            onClick={() => handleTextZoomModeChange(opt.id)}
+                                                            className={`w-full min-h-[44px] px-3 py-2 rounded-xl border text-left flex items-center justify-between gap-2 transition-all cursor-pointer ${
+                                                                active
+                                                                    ? "bg-purple-600/10 border-purple-600 text-purple-600 dark:text-purple-400 shadow-sm ring-1 ring-purple-600/30"
+                                                                    : "bg-black/5 dark:bg-white/5 border-transparent text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10"
+                                                            }`}
+                                                        >
+                                                            <span className="text-xs font-semibold leading-tight">{opt.title}</span>
+                                                            <span className="text-[11px] font-bold opacity-80 shrink-0">{opt.desc}</span>
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+
+                                            {textZoomState.mode === "custom" && (
+                                                <div className="grid grid-cols-5 gap-1.5 pt-0.5">
+                                                    {TEXT_ZOOM_STEPS.map((step) => {
+                                                        const active = textZoomState.customPercent === step
+                                                        return (
+                                                            <button
+                                                                key={step}
+                                                                type="button"
+                                                                onClick={() => handleTextZoomModeChange("custom", step)}
+                                                                className={`min-h-[44px] rounded-xl border text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                                                                    active
+                                                                        ? "bg-black text-white dark:bg-white dark:text-black border-transparent shadow-sm"
+                                                                        : "bg-black/5 dark:bg-white/5 border-transparent text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10"
+                                                                }`}
+                                                            >
+                                                                {step}%
+                                                            </button>
+                                                        )
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            {/* Vista previa del tamaño elegido */}
+                                            <div className="rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 p-3 flex flex-col gap-1">
+                                                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                                    {pick(language, { es: "Vista previa", en: "Preview", zh: "预览" })}
+                                                </span>
+                                                <p
+                                                    className="font-bold text-foreground leading-snug"
+                                                    style={{ fontSize: `${Math.round(14 * textZoomState.appliedZoom / 100)}px` }}
+                                                >
+                                                    {pick(language, {
+                                                        es: "Título de nota de ejemplo",
+                                                        en: "Sample note title",
+                                                        zh: "示例笔记标题",
+                                                    })}
+                                                </p>
+                                                <p
+                                                    className="text-muted-foreground leading-snug"
+                                                    style={{ fontSize: `${Math.round(12 * textZoomState.appliedZoom / 100)}px` }}
+                                                >
+                                                    {pick(language, {
+                                                        es: "Así se verá el texto en tus listas, notas y tarjetas.",
+                                                        en: "This is how text will look in your lists, notes, and cards.",
+                                                        zh: "列表、笔记和卡片中的文字将按此大小显示。",
+                                                    })}
+                                                </p>
                                             </div>
                                         </div>
 

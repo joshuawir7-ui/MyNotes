@@ -17,6 +17,10 @@
 }
 
 /* Mobile performance, touch responsiveness & smooth rendering */
+html {
+  font-size: calc(100% * var(--text-scale, 1));
+}
+
 html, body {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;

@@ -21,6 +21,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(WidgetSyncPlugin.class);
         registerPlugin(CloudAuthPlugin.class);
         registerPlugin(TimerPlugin.class);
+        registerPlugin(TextZoomPlugin.class);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             getWindow().getAttributes().layoutInDisplayCutoutMode =
@@ -45,11 +46,12 @@ public class MainActivity extends BridgeActivity {
             return windowInsets;
         });
 
-        // Enable pinch-to-zoom controls
+        // Enable pinch-to-zoom controls & apply persisted textZoom before UI renders
         if (bridge != null && bridge.getWebView() != null) {
             bridge.getWebView().getSettings().setSupportZoom(true);
             bridge.getWebView().getSettings().setBuiltInZoomControls(true);
             bridge.getWebView().getSettings().setDisplayZoomControls(false);
+            TextZoomPlugin.applySavedTextZoom(this, bridge.getWebView());
         }
     }
 
@@ -70,6 +72,9 @@ public class MainActivity extends BridgeActivity {
         handleIntent(getIntent());
         ViewCompat.requestApplyInsets(getWindow().getDecorView());
         applyInsetsToWebView();
+        if (bridge != null && bridge.getWebView() != null) {
+            TextZoomPlugin.applySavedTextZoom(this, bridge.getWebView());
+        }
     }
 
     @Override

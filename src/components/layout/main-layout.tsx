@@ -38,6 +38,7 @@ import { useIsMobileLandscape } from "@/lib/use-mobile-landscape"
 import { isIdle, whenIdle } from "@/lib/interaction-gate"
 import { timerEngine } from "@/lib/timer-engine"
 import { lt } from "@/lib/i18n-inline"
+import { initTextZoom } from "@/lib/text-zoom"
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -263,6 +264,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         setMounted(true)
+        initTextZoom().catch(() => {})
     }, [])
     const quoteTimerRef = useRef<NodeJS.Timeout | null>(null)
 

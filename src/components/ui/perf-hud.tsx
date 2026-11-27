@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { getHudStats, getStartupTimeline } from "@/lib/perf-debug"
+import { getTextZoomSnapshot } from "@/lib/text-zoom"
 
 /**
  * Perf HUD — solo se monta con developerMode activo (ver main-layout).
@@ -101,9 +102,12 @@ export function PerfHud() {
                 .join("\n")
 
             const buildId = process.env.NEXT_PUBLIC_BUILD_ID || "dev-local"
+            const tz = getTextZoomSnapshot()
+            const sysScaleStr = tz.systemFontScale !== null ? `${tz.systemFontScale.toFixed(2)}x (tope ${tz.maxSystemScale.toFixed(1)}x)` : "n/a (web)"
             const text =
                 `build: ${buildId}\n` +
                 `ruta: ${route}\n` +
+                `texto: ${tz.mode} | zoom: ${tz.appliedZoom}% | sysFont: ${sysScaleStr}\n` +
                 `FPS(5s): ${fps.toFixed(0)}  peor: ${worst.toFixed(0)}ms  p95: ${p95.toFixed(0)}ms  >25ms: ${dropped}\n` +
                 `longtasks(10s): ${longTasks.length} (${ltTotal.toFixed(0)}ms) ${hasLoaf ? "[LoAF]" : "[longtask]"}\n` +
                 (ltLines ? ltLines + "\n" : "") +
