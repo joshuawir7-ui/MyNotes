@@ -27,6 +27,307 @@ import {
     TextZoomMode,
     TextZoomState,
 } from "@/lib/text-zoom"
+import {
+    usePerfTier,
+    setPerfTierMode,
+    setEffectOverrides,
+    resolveEffectiveAttributes,
+    runCpuShortProbe,
+    DEFAULT_EFFECT_OVERRIDES,
+    Tier,
+    TierMode,
+    EffectOverrides,
+} from "@/lib/perf-tier"
+import { CPU_FACTOR_CAP_LOW, CPU_FACTOR_CAP_MEDIUM } from "@/lib/perf-tier.config"
+
+function VisualEffectsSettingsSection({ language }: { language: string }) {
+    const perf = usePerfTier()
+    const attrs = resolveEffectiveAttributes(perf)
+    const [advancedOpen, setAdvancedOpen] = useState(false)
+    const [confirmHighOpen, setConfirmHighOpen] = useState(false)
+    const [testing, setTesting] = useState(false)
+    const [testResult, setTestResult] = useState<{
+        fps: number
+        p95: number
+        cpuFactor: number
+        probeMs: number
+        recommended: Tier
+    } | null>(null)
+
+    const tierLabel = (tier: Tier) =>
+        tier === "high"
+            ? pick(language, { es: "Alto", en: "High", zh: "高" })
+            : tier === "medium"
+                ? pick(language, { es: "Medio", en: "Medium", zh: "中" })
+                : pick(language, { es: "Bajo", en: "Low", zh: "低" })
+
+    const handleSelectMode = (nextMode: TierMode) => {
+        if (nextMode === "high" && perf.staticEstimate?.tier === "low" && perf.mode !== "high") {
+            setConfirmHighOpen(true)
+            return
+        }
+        setConfirmHighOpen(false)
+        void setPerfTierMode(nextMode)
+    }
+
+    const handleRunPerfTest = async () => {
+        if (testing) return
+        setTesting(true)
+        setTestResult(null)
+        try {
+            const { probeMs, cpuFactor } = runCpuShortProbe()
+            const scrollEl =
+                document.querySelector<HTMLElement>("[data-settings-scroll]") ||
+                document.scrollingElement as HTMLElement | null
+
+            const deltas: number[] = []
+            let last = performance.now()
+            const start = last
+            let dir = 1
+            const prevTop = scrollEl ? scrollEl.scrollTop : 0
+
+            await new Promise<void>((resolve) => {
+                const tick = (now: number) => {
+                    deltas.push(now - last)
+                    last = now
+                    if (scrollEl) {
+                        const maxScroll = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight)
+                        if (maxScroll > 10) {
+                            scrollEl.scrollTop += dir * 6
+                            if (scrollEl.scrollTop >= maxScroll - 2) dir = -1
+                            else if (scrollEl.scrollTop <= 2) dir = 1
+                        }
+                    }
+                    if (now - start >= 4000) {
+                        resolve()
+                        return
+                    }
+                    requestAnimationFrame(tick)
+                }
+                requestAnimationFrame(tick)
+            })
+
+            if (scrollEl) scrollEl.scrollTop = prevTop
+
+            const sorted = deltas.slice(1).sort((a, b) => a - b)
+            const p95 = sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] : 16.7
+            const avg = sorted.length ? sorted.reduce((a, b) => a + b, 0) / sorted.length : 16.7
+            const fps = avg > 0 ? 1000 / avg : 60
+
+            let recommended: Tier = "high"
+            if (cpuFactor >= CPU_FACTOR_CAP_LOW || p95 >= 33) recommended = "low"
+            else if (cpuFactor >= CPU_FACTOR_CAP_MEDIUM || p95 >= 22) recommended = "medium"
+
+            setTestResult({ fps, p95, cpuFactor, probeMs, recommended })
+        } finally {
+            setTesting(false)
+        }
+    }
+
+    const hasCustomOverrides =
+        perf.overrides.glassBlur !== "auto" ||
+        perf.overrides.shadows !== "auto" ||
+        perf.overrides.motion !== "auto" ||
+        perf.overrides.decorativeBg !== "auto"
+
+    return (
+        <div className="p-4 glass-card rounded-2xl space-y-3">
+            <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500 shrink-0">
+                        <Zap className="w-4 h-4" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                        <span className="font-semibold text-sm">
+                            {pick(language, { es: "Efectos visuales", en: "Visual effects", zh: "视觉效果" })}
+                        </span>
+                        <span className="text-xs text-muted-foreground leading-snug">
+                            {pick(language, {
+                                es: `Actual: ${tierLabel(perf.effectiveTier)} — ${perf.reason}`,
+                                en: `Current: ${tierLabel(perf.effectiveTier)} — ${perf.reason}`,
+                                zh: `当前：${tierLabel(perf.effectiveTier)} — ${perf.reason}`,
+                            })}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-4 gap-1.5">
+                {([
+                    { id: "auto", label: pick(language, { es: "Auto", en: "Auto", zh: "自动" }) },
+                    { id: "high", label: tierLabel("high") },
+                    { id: "medium", label: tierLabel("medium") },
+                    { id: "low", label: tierLabel("low") },
+                ] as { id: TierMode; label: string }[]).map((opt) => {
+                    const active = perf.mode === opt.id
+                    return (
+                        <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => handleSelectMode(opt.id)}
+                            className={`px-2 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                                active
+                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                    : "bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10"
+                            }`}
+                        >
+                            {opt.label}
+                        </button>
+                    )
+                })}
+            </div>
+
+            {confirmHighOpen && (
+                <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-xs space-y-2">
+                    <p className="font-medium text-amber-700 dark:text-amber-300">
+                        {pick(language, {
+                            es: "Este dispositivo parece limitado para el nivel Alto y podría tener tirones. ¿Seguro que quieres activarlo?",
+                            en: "This device looks limited for High effects and may stutter. Continue anyway?",
+                            zh: "此设备启用高效果可能会卡顿，确定要继续吗？",
+                        })}
+                    </p>
+                    <div className="flex gap-2 justify-end">
+                        <button
+                            type="button"
+                            onClick={() => setConfirmHighOpen(false)}
+                            className="px-2.5 py-1 rounded-lg bg-black/10 dark:bg-white/10 font-medium cursor-pointer"
+                        >
+                            {pick(language, { es: "Cancelar", en: "Cancel", zh: "取消" })}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setConfirmHighOpen(false)
+                                void setPerfTierMode("high", "elección manual (confirmada)")
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-amber-500 text-black font-semibold cursor-pointer"
+                        >
+                            {pick(language, { es: "Usar Alto", en: "Use High", zh: "使用高" })}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <button
+                    type="button"
+                    onClick={handleRunPerfTest}
+                    disabled={testing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 disabled:opacity-60 cursor-pointer"
+                >
+                    {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Gauge className="w-3.5 h-3.5" />}
+                    <span>
+                        {testing
+                            ? pick(language, { es: "No toques la pantalla...", en: "Do not touch screen...", zh: "请勿触碰屏幕..." })
+                            : pick(language, { es: "Probar rendimiento", en: "Test performance", zh: "测试性能" })}
+                    </span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setAdvancedOpen((v) => !v)}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                    <span>{pick(language, { es: "Avanzado", en: "Advanced", zh: "高级" })}</span>
+                    {advancedOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+            </div>
+
+            {testResult && (
+                <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-xs flex items-center justify-between gap-2">
+                    <div className="space-y-0.5">
+                        <div className="font-semibold">
+                            {pick(language, {
+                                es: `Recomendado: ${tierLabel(testResult.recommended)}`,
+                                en: `Recommended: ${tierLabel(testResult.recommended)}`,
+                                zh: `推荐：${tierLabel(testResult.recommended)}`,
+                            })}
+                        </div>
+                        <div className="text-muted-foreground">
+                            {`${testResult.fps.toFixed(0)} FPS · p95 ${testResult.p95.toFixed(1)}ms · CPU ${testResult.cpuFactor.toFixed(2)}x`}
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => void setPerfTierMode(testResult.recommended, "prueba manual")}
+                        className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground font-semibold shrink-0 cursor-pointer"
+                    >
+                        {pick(language, { es: "Aplicar", en: "Apply", zh: "应用" })}
+                    </button>
+                </div>
+            )}
+
+            {advancedOpen && (
+                <div className="pt-2 border-t border-black/10 dark:border-white/10 space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">
+                            {pick(language, {
+                                es: `Efectivo: blur=${attrs.fxBlur}, sombras=${attrs.fxShadow}, anim=${attrs.fxMotion}, bg=${attrs.fxBg}`,
+                                en: `Effective: blur=${attrs.fxBlur}, shadows=${attrs.fxShadow}, motion=${attrs.fxMotion}, bg=${attrs.fxBg}`,
+                                zh: `当前：blur=${attrs.fxBlur}, shadows=${attrs.fxShadow}, motion=${attrs.fxMotion}, bg=${attrs.fxBg}`,
+                            })}
+                        </span>
+                        {hasCustomOverrides && (
+                            <button
+                                type="button"
+                                onClick={() => void setEffectOverrides(DEFAULT_EFFECT_OVERRIDES)}
+                                className="text-primary font-semibold cursor-pointer"
+                            >
+                                {pick(language, { es: "Restablecer", en: "Reset", zh: "重置" })}
+                            </button>
+                        )}
+                    </div>
+
+                    {([
+                        {
+                            key: "glassBlur" as const,
+                            label: pick(language, { es: "Desenfoque vidrio", en: "Glass blur", zh: "玻璃模糊" }),
+                            options: ["auto", "on", "off"],
+                        },
+                        {
+                            key: "shadows" as const,
+                            label: pick(language, { es: "Sombras", en: "Shadows", zh: "阴影" }),
+                            options: ["auto", "full", "simple"],
+                        },
+                        {
+                            key: "motion" as const,
+                            label: pick(language, { es: "Animaciones", en: "Animations", zh: "动画" }),
+                            options: ["auto", "full", "reduced", "minimal"],
+                        },
+                        {
+                            key: "decorativeBg" as const,
+                            label: pick(language, { es: "Fondos decorativos", en: "Decorative bg", zh: "装饰背景" }),
+                            options: ["auto", "on", "off"],
+                        },
+                    ] as const).map((row) => (
+                        <div key={row.key} className="flex items-center justify-between gap-2">
+                            <span className="font-medium">{row.label}</span>
+                            <div className="flex gap-1">
+                                {row.options.map((opt) => {
+                                    const active = perf.overrides[row.key] === opt
+                                    return (
+                                        <button
+                                            key={opt}
+                                            type="button"
+                                            onClick={() => void setEffectOverrides({ [row.key]: opt } as Partial<EffectOverrides>)}
+                                            className={`px-2 py-1 rounded-lg capitalize cursor-pointer ${
+                                                active
+                                                    ? "bg-primary text-primary-foreground font-semibold"
+                                                    : "bg-black/5 dark:bg-white/5"
+                                            }`}
+                                        >
+                                            {opt}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
 
 function SettingsCloudSyncControls({
     googleUser,
@@ -1218,44 +1519,7 @@ export function SettingsDialog() {
                                             </button>
                                         </motion.div>
 
-                                        {/* Performance Mode (Modo Rendimiento) */}
-                                        <motion.div 
-                                            onClick={() => {
-                                                if (setPerformanceMode) setPerformanceMode(!performanceMode);
-                                            }}
-                                            whileHover="hover"
-                                            whileTap="tap"
-                                            className="flex items-center justify-between p-4 glass-card rounded-2xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <motion.div 
-                                                    animate={performanceMode ? "active" : "inactive"}
-                                                    whileHover="hover"
-                                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-300 ${
-                                                        performanceMode 
-                                                            ? "bg-amber-500/25 text-amber-500 dark:text-amber-400" 
-                                                            : "bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400"
-                                                    }`}
-                                                >
-                                                    <Gauge className="w-5 h-5" />
-                                                </motion.div>
-                                                <div>
-                                                    <p className="font-bold text-sm">{lt(language, "Modo Rendimiento", "Performance Mode")}</p>
-                                                    <p className="text-xs text-muted-foreground">{lt(language, "Desactiva animaciones pesadas", "Disable heavy animations")}</p>
-                                                </div>
-                                            </div>
-
-                                            <button
-                                                tabIndex={-1}
-                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 pointer-events-none ${
-                                                    performanceMode ? 'bg-black dark:bg-white' : 'bg-zinc-300 dark:bg-zinc-700'
-                                                }`}
-                                            >
-                                                <span className={`inline-block h-4 w-4 transform rounded-full ${
-                                                    performanceMode ? 'bg-white dark:bg-zinc-900 translate-x-6' : 'bg-white translate-x-1'
-                                                } transition-transform duration-300`} />
-                                            </button>
-                                        </motion.div>
+                                        <VisualEffectsSettingsSection language={language} />
 
                                         {/* Developer Mode (Modo Desarrollador) */}
                                         <motion.div 

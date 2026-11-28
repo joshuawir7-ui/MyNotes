@@ -8,6 +8,13 @@ import {
     setNativeSafeInsetsOverrideZero,
     NativeSafeInsetsMetrics,
 } from "@/lib/safe-insets"
+import {
+    getPerfTierSnapshot,
+    resolveEffectiveAttributes,
+    setSessionOverrideTier,
+    usePerfTier,
+    Tier,
+} from "@/lib/perf-tier"
 
 /**
  * Perf HUD — solo se monta con developerMode activo (ver main-layout).
@@ -28,6 +35,7 @@ export function PerfHud() {
     const [overrideZero, setOverrideZero] = useState(false)
     const [benchStatus, setBenchStatus] = useState<string | null>(null)
     const [benchSummary, setBenchSummary] = useState<string>("")
+    const perfTier = usePerfTier()
 
     useEffect(() => {
         if (typeof window === "undefined") return
@@ -140,10 +148,28 @@ export function PerfHud() {
                   `solape:${nm.overlapPx}px (${nm.overlapDp}dp)  eff:${nm.effectiveBottomDp}dp`
                 : `nativo: web/PC (sin puente Android)`
 
+            const tierSnap = getPerfTierSnapshot()
+            const tierAttrs = resolveEffectiveAttributes(tierSnap)
+            const winLines = tierSnap.windows
+                .slice(-5)
+                .map((w) => `p95:${w.p95Ms.toFixed(1)}ms bad:${(w.badShare * 100).toFixed(0)}% smp:${w.samplerAvgCostMs.toFixed(2)}ms`)
+                .join(" | ")
+            const logLines = tierSnap.decisionLog
+                .slice(-20)
+                .map((l) => `  ${l}`)
+                .join("\n")
+
             const text =
                 `build: ${buildId} (${branchName})\n` +
                 `ruta: ${route}\n` +
                 (nm?.deviceModel ? `dev: ${nm.deviceModel} WV:${nm.webViewVersion ?? "?"}\n` : "") +
+                `tier: ${tierSnap.effectiveTier} (modo:${tierSnap.mode}${tierSnap.sessionOverrideTier ? ` sesOvr:${tierSnap.sessionOverrideTier}` : ""}) | ${tierSnap.reason}\n` +
+                `fx: blur=${tierAttrs.fxBlur} sh=${tierAttrs.fxShadow} mot=${tierAttrs.fxMotion} bg=${tierAttrs.fxBg}\n` +
+                `estático: ${tierSnap.staticEstimate?.tier ?? "?"} (${tierSnap.staticEstimate?.reasons.join("; ") || "—"})\n` +
+                `gpu: ${tierSnap.gpuRenderer || "desconocida"}${tierSnap.unknownGpu ? ` [GPU desconocida: ${tierSnap.unknownGpu}]` : ""}\n` +
+                `probe: ${tierSnap.probeMs !== null ? `${tierSnap.probeMs.toFixed(1)}ms (cpuFactor:${tierSnap.cpuFactor?.toFixed(2) ?? "?"}x)` : "pendiente"}\n` +
+                `caps: pSave=${tierSnap.powerSaveActive ? 1 : 0} therm=${tierSnap.thermalStatus}${tierSnap.thermalCapped ? "(cap)" : ""} redMot=${tierSnap.prefersReducedMotion ? 1 : 0}\n` +
+                (winLines ? `ventanas(5): ${winLines}\n` : "") +
                 `texto: ${tz.mode} | zoom: ${tz.appliedZoom}% | sysFont: ${sysScaleStr}\n` +
                 `nav.bottom: ${navBottomCss} | gapViewport: ${navGapViewport}\n` +
                 `env(sab): ${envSab} | --sab: ${capSab} | --app-b: ${appInset}\n` +
@@ -161,6 +187,7 @@ export function PerfHud() {
                 `UA: ${navigator.userAgent}\n` +
                 `cores: ${(navigator as any).hardwareConcurrency ?? "?"}  mem: ${(navigator as any).deviceMemory ?? "?"}GB  dpr: ${window.devicePixelRatio || 1}  viewport: ${window.innerWidth}x${window.innerHeight}\n` +
                 text +
+                (logLines ? "\ndecisionLog(20):\n" + logLines : "") +
                 (longTasks.length ? "\nlongtasks completas:\n" + longTasks.map((l) => `  ${l.dur.toFixed(0)}ms ${l.name}`).join("\n") : "") +
                 (benchReportRef.current ? "\n\n" + benchReportRef.current : "")
             if (textRef.current) textRef.current.textContent = text
@@ -291,6 +318,31 @@ export function PerfHud() {
                     >
                         Copiar informe
                     </button>
+                </div>
+            </div>
+            <div className="flex items-center justify-between gap-1 px-2 py-1 border-b border-white/10">
+                <span className="text-[9px] text-white/70">Forzar nivel (sesión):</span>
+                <div className="flex items-center gap-1">
+                    {([
+                        { id: null, label: "Auto" },
+                        { id: "high", label: "Alto" },
+                        { id: "medium", label: "Medio" },
+                        { id: "low", label: "Bajo" },
+                    ] as { id: Tier | null; label: string }[]).map((opt) => {
+                        const active = perfTier.sessionOverrideTier === opt.id
+                        return (
+                            <button
+                                key={opt.label}
+                                onClick={() => setSessionOverrideTier(opt.id)}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                className={`px-1.5 py-0.5 rounded text-[9px] active:scale-95 ${
+                                    active ? "bg-emerald-500 text-black font-bold" : "bg-white/10 text-white"
+                                }`}
+                            >
+                                {opt.label}
+                            </button>
+                        )
+                    })}
                 </div>
             </div>
             <pre ref={textRef} className="px-2 py-1 whitespace-pre-wrap break-words m-0" />
