@@ -574,10 +574,10 @@ html.dark[data-tier="low"] .glass .tint,
 html.dark[data-fx-blur="off"] .glass .tint,
 .dark .glass[data-animating="true"] .tint { background: rgba(14, 14, 14, .94); }
 
-/* Override explícito blur=off (también simplifica barra inferior) */
-html[data-fx-blur="off"] .nav-glass .bl { display: none; }
-html[data-fx-blur="off"] .nav-glass .tint { background: rgba(255, 255, 255, .92); }
-html.dark[data-fx-blur="off"] .nav-glass .tint { background: rgba(14, 14, 14, .94); }
+/* Override explícito blur=off (en Alto/Medio también apaga barra inferior; en Bajo conserva 1 capa de 12px) */
+html[data-fx-blur="off"]:not([data-tier="low"]) .nav-glass .bl { display: none; }
+html[data-fx-blur="off"]:not([data-tier="low"]) .nav-glass .tint { background: rgba(255, 255, 255, .92); }
+html.dark[data-fx-blur="off"]:not([data-tier="low"]) .nav-glass .tint { background: rgba(14, 14, 14, .94); }
 
 /* Sombras simplificadas a 1 capa (Medio, Bajo u override simple) */
 html[data-fx-shadow="simple"] .nav-shell {
