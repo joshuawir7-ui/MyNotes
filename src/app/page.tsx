@@ -29,7 +29,7 @@ export default function Home() {
   const router = useRouter();
   const language = useStore(state => state.language);
   const currency = useStore(state => state.currency) || (language === 'zh' ? '¥' : '$');
-  const appColor = useStore(state => state.appColor ?? 'purple');
+  const appColor = useStore(state => state.appColor ?? 'black');
   const addNote = useStore(state => state.addNote);
   // Atomic selectors: tasks and goals use shallow to prevent re-render cascades
   const tasks = useStore(useShallow((state) => state.tasks));

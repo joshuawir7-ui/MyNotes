@@ -115,7 +115,7 @@ function NotePreviewRenderer({ note, isPinned = false }: { note: Note; isPinned?
 
 export function DashboardWidgets({ onOpenNote }: { onOpenNote: (note: Note) => void }) {
     const language = useStore(state => state.language);
-    const appColor = useStore(state => state.appColor ?? 'purple');
+    const appColor = useStore(state => state.appColor ?? 'black');
     const pinnedNoteId = useStore(state => state.pinnedNoteId);
     // For the pinned note and recent note we need full Note objects, but use shallow to avoid
     // re-renders when unrelated notes change their lastUpdated or internal state

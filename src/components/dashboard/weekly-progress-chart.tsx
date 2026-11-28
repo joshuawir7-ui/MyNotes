@@ -91,7 +91,7 @@ const CustomTooltip = ({ active, payload, language, viewMode }: any) => {
 
 export function WeeklyProgressChart() {
     const language = useStore(state => state.language)
-    const appColor = useStore(state => state.appColor ?? 'purple')
+    const appColor = useStore(state => state.appColor ?? 'black')
     const dailySnapshots = useStore(state => state.dailySnapshots)
     const timerIsActive = useTimerStore(s => s.status === 'running')
     const isFloating = useTimerStore(s => s.isFloating)

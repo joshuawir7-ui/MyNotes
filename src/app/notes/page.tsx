@@ -29,7 +29,7 @@ export default function NotesPage() {
     const loadAllNotes = useStore(state => state.loadAllNotes)
     const unloadNotes = useStore(state => state.unloadNotes)
     const language = useStore(state => state.language)
-    const appColor = useStore(state => state.appColor ?? 'purple')
+    const appColor = useStore(state => state.appColor ?? 'black')
     const showToast = useStore(state => state.showToast)
     const t = translations[language].pages.notes
     const common = translations[language].common

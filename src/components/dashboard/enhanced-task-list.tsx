@@ -12,7 +12,7 @@ export function EnhancedTaskList() {
     const updateTask = useStore(state => state.updateTask)
     const language = useStore(state => state.language)
     const showToast = useStore(state => state.showToast)
-    const appColor = useStore(state => state.appColor ?? 'purple')
+    const appColor = useStore(state => state.appColor ?? 'black')
     const t = translations[language].common
 
     const takenShortcutKeys = useMemo(() => {

@@ -26,7 +26,7 @@ export function StatsCards() {
     )
     const toggleTask = useStore(state => state.toggleTask)
     const language = useStore(state => state.language)
-    const appColor = useStore(state => state.appColor ?? 'purple')
+    const appColor = useStore(state => state.appColor ?? 'black')
     const [mounted, setMounted] = useState(false)
     const [activeModal, setActiveModal] = useState<'completed' | 'focus' | 'streak' | null>(null)
     const modalBlur = useDeferredBlur(Boolean(activeModal))

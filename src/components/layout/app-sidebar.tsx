@@ -266,7 +266,7 @@ export function AppSidebar() {
     const projects = useStore(state => state.projects)
     const addProject = useStore(state => state.addProject)
     const language = useStore(state => state.language)
-    const appColor = useStore(state => state.appColor ?? 'purple')
+    const appColor = useStore(state => state.appColor ?? 'black')
     const shortcutKeyStr = useStore(state => {
         const today = new Date().toISOString().split('T')[0]
         const out: string[] = []

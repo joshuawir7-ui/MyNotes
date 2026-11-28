@@ -11,7 +11,7 @@ export function DashboardHero() {
     const tasks = useStore(state => state.tasks)
     const language = useStore(state => state.language)
     const [mounted, setMounted] = useState(false)
-    const appColor = useStore(state => state.appColor ?? 'purple')
+    const appColor = useStore(state => state.appColor ?? 'black')
     const t = (translations[language]?.dashboard || translations['en'].dashboard) as any
     const common = (translations[language]?.common || translations['en'].common) as any
 

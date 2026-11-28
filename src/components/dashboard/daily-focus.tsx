@@ -16,7 +16,7 @@ export function DailyFocusWidget() {
     )
     const tasks = useStore(useShallow(state => state.tasks))
     const language = useStore(state => state.language)
-    const appColor = useStore(state => state.appColor ?? 'purple')
+    const appColor = useStore(state => state.appColor ?? 'black')
     const t = translations[language].dashboard
 
     const today = getLocalDateString()

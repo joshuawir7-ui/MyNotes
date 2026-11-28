@@ -183,7 +183,7 @@ export function SettingsDialog() {
     const router = useRouter()
     const language = useStore(state => state.language)
     const setLanguage = useStore(state => state.setLanguage)
-    const appColor = useStore(state => state.appColor ?? 'purple')
+    const appColor = useStore(state => state.appColor ?? 'black')
     const setAppColor = useStore(state => state.setAppColor)
     const noteFontFamily = useStore(state => state.noteFontFamily ?? 'default')
     const customFonts = useStore(state => state.customFonts || [])
@@ -1492,7 +1492,7 @@ export function SettingsDialog() {
                                                     type="button"
                                                     onClick={() => setAppColor('purple')}
                                                     className={`flex-1 flex items-center justify-center gap-2.5 py-2.5 px-3 rounded-xl border transition-all duration-300 font-bold text-xs cursor-pointer ${
-                                                        (appColor === 'purple' || !appColor)
+                                                        appColor === 'purple'
                                                             ? "bg-purple-600/10 border-purple-600 text-purple-600 dark:text-purple-400 shadow-sm ring-1 ring-purple-600/30"
                                                             : "bg-black/5 dark:bg-white/5 border-transparent text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10"
                                                     }`}
@@ -1506,7 +1506,7 @@ export function SettingsDialog() {
                                                     type="button"
                                                     onClick={() => setAppColor('black')}
                                                     className={`flex-1 flex items-center justify-center gap-2.5 py-2.5 px-3 rounded-xl border transition-all duration-300 font-bold text-xs cursor-pointer ${
-                                                        appColor === 'black'
+                                                        (appColor === 'black' || !appColor)
                                                             ? "bg-black/15 dark:bg-white/15 border-black dark:border-white text-black dark:text-white shadow-sm ring-1 ring-black/20 dark:ring-white/20"
                                                             : "bg-black/5 dark:bg-white/5 border-transparent text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10"
                                                     }`}

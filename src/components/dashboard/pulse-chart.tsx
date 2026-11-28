@@ -29,7 +29,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 export function PulseChart() {
     const language = useStore(state => state.language)
     const tasks = useStore(useShallow(state => state.tasks))
-    const appColor = useStore(state => state.appColor ?? 'purple')
+    const appColor = useStore(state => state.appColor ?? 'black')
     const t = translations[language].dashboard.charts
 
     const [mounted, setMounted] = useState(false)

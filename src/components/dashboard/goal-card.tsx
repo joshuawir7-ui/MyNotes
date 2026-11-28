@@ -24,7 +24,7 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
     const transactions = Array.isArray(rawTransactions) ? rawTransactions : []
     const language = useStore(state => state.language)
     const currency = useStore(state => state.currency) || (language === 'zh' ? '¥' : '$')
-    const appColor = useStore(state => state.appColor ?? 'purple')
+    const appColor = useStore(state => state.appColor ?? 'black')
     const showToast = useStore(state => state.showToast)
     const [isDeleting, setIsDeleting] = useState(false)
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)

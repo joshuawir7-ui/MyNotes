@@ -20,7 +20,7 @@ import { lt } from "@/lib/i18n-inline"
 export default function GoalsPage() {
     const language = useStore(state => state.language)
     const currency = useStore(state => state.currency) || (language === 'zh' ? '¥' : '$')
-    const appColor = useStore(state => state.appColor ?? 'purple')
+    const appColor = useStore(state => state.appColor ?? 'black')
     const goals = useStore(state => state.goals)
     const addGoal = useStore(state => state.addGoal)
     const showToast = useStore(state => state.showToast)

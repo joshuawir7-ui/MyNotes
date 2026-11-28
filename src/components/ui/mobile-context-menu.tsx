@@ -17,7 +17,7 @@ interface MobileContextMenuProps {
 }
 
 export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, children, title }: MobileContextMenuProps) {
-    const appColor = useStore(state => state.appColor ?? 'purple')
+    const appColor = useStore(state => state.appColor ?? 'black')
     const performanceMode = useStore(state => state.performanceMode ?? false)
     const [isOpen, setIsOpen] = useState(false)
     const [isBlurSettled, setIsBlurSettled] = useState(false)

@@ -2467,7 +2467,7 @@ export const useStore = create<AppState>()(
                     });
                     syncWidgetData(undefined, undefined, undefined, undefined, true).catch(console.error);
                 },
-                appColor: 'purple',
+                appColor: 'black',
                 setAppColor: (color) => {
                     set({ appColor: color });
                     if (typeof document !== 'undefined') {
