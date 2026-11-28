@@ -24,6 +24,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(TimerPlugin.class);
         registerPlugin(TextZoomPlugin.class);
         registerPlugin(SafeInsetsPlugin.class);
+        registerPlugin(DeviceProfilePlugin.class);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             getWindow().getAttributes().layoutInDisplayCutoutMode =

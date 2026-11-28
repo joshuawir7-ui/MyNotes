@@ -216,12 +216,15 @@ const AnimatedWallet = ({ isActive, appColor }: { isActive: boolean; appColor?: 
     )
 }
 
+import { usePerfTier, resolveEffectiveAttributes } from "@/lib/perf-tier"
+
 function RotatingLogo() {
     const [logoType, setLogoType] = useState<'text' | 'image'>('text')
-    const performanceMode = useStore(state => state.performanceMode)
+    const tierState = usePerfTier()
+    const isMinimalMotion = resolveEffectiveAttributes(tierState).fxMotion === 'minimal'
 
     useEffect(() => {
-        if (performanceMode) {
+        if (isMinimalMotion) {
             setLogoType('text')
             return
         }
@@ -231,7 +234,7 @@ function RotatingLogo() {
             }
         }, 8000)
         return () => clearInterval(interval)
-    }, [performanceMode])
+    }, [isMinimalMotion])
 
     return (
         <div className="w-24 h-24 flex items-center justify-center mb-2 animate-float relative group-hover:scale-105 active:scale-95 transition-transform">
@@ -368,9 +371,6 @@ export function AppSidebar() {
         }
     }
 
-    const lite = typeof navigator !== "undefined" &&
-        (((navigator as any).deviceMemory ?? 8) <= 2 || (navigator.hardwareConcurrency ?? 8) <= 4);
-
     if (!isMounted) return null;
 
     return (
@@ -383,8 +383,8 @@ export function AppSidebar() {
                         left: 'calc(var(--sal, 0px) + 12px)',
                         top: 'calc(var(--sat, 0px) + 12px)',
                         bottom: 'calc(12px + var(--app-inset-bottom, 0px))',
-                        WebkitBackdropFilter: lite ? 'blur(12px) saturate(140%)' : 'blur(24px) saturate(165%)',
-                        backdropFilter: lite ? 'blur(12px) saturate(140%)' : 'blur(24px) saturate(165%)',
+                        WebkitBackdropFilter: 'blur(24px) saturate(165%)',
+                        backdropFilter: 'blur(24px) saturate(165%)',
                     }}
                 >
                     <nav className="flex flex-col items-center justify-around flex-1 w-full gap-1 py-1">
@@ -570,7 +570,7 @@ export function AppSidebar() {
             {/* Mobile Bottom Navigation Portal (Only in Portrait) */}
             {!isMobileLandscape && createPortal(
                 <nav className="nav-shell md:hidden" aria-label="Navegación">
-                    <div className="nav-glass" data-lite={lite ? "true" : "false"} aria-hidden="true">
+                    <div className="nav-glass" aria-hidden="true">
                         <i className="bl bl1" /><i className="bl bl2" /><i className="bl bl3" /><i className="bl bl4" />
                         <i className="tint" />
                         <i className="rim" />

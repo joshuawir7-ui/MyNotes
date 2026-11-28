@@ -1,22 +1,16 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useStore } from "@/lib/store"
-
-function isLowEndDevice(): boolean {
-    if (typeof navigator === "undefined") return false
-    const nav = navigator as any
-    const lowCores = typeof nav.hardwareConcurrency === "number" && nav.hardwareConcurrency <= 4
-    const lowMem = typeof nav.deviceMemory === "number" && nav.deviceMemory <= 2
-    return lowCores || lowMem
-}
+import { usePerfTier, resolveEffectiveAttributes } from "@/lib/perf-tier"
 
 export function useDeferredBlur(isOpen: boolean, delayMs = 260): boolean {
-    const performanceMode = useStore(state => state.performanceMode)
+    const tierState = usePerfTier()
+    const attrs = resolveEffectiveAttributes(tierState)
+    const allowBlur = attrs.tier === "high" && attrs.fxBlur === "on"
     const [blurActive, setBlurActive] = useState(false)
 
     useEffect(() => {
-        if (!isOpen || performanceMode || isLowEndDevice()) {
+        if (!isOpen || !allowBlur) {
             setBlurActive(false)
             return
         }
@@ -27,7 +21,7 @@ export function useDeferredBlur(isOpen: boolean, delayMs = 260): boolean {
             window.clearTimeout(timer)
             setBlurActive(false)
         }
-    }, [isOpen, delayMs, performanceMode])
+    }, [isOpen, delayMs, allowBlur])
 
     return blurActive
 }

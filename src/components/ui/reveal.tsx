@@ -3,6 +3,7 @@
 import React, { ReactNode, useEffect, useRef, useState } from "react"
 import { usePathname } from "next/navigation"
 import { getPerfFlags, subscribePerfDebug } from "@/lib/perf-debug"
+import { getPerfTierSnapshot, resolveEffectiveAttributes } from "@/lib/perf-tier"
 
 interface RevealProps {
     children: ReactNode
@@ -13,7 +14,6 @@ interface RevealProps {
     className?: string
 }
 
-// Track visited routes in this browser session
 const visitedRoutesInSession = new Set<string>();
 
 export const Reveal = ({ children, delay = 0, width = "100%", duration = 0.25, className }: RevealProps) => {
@@ -21,13 +21,14 @@ export const Reveal = ({ children, delay = 0, width = "100%", duration = 0.25, c
     const [perfFlags, setPerfFlags] = useState(getPerfFlags())
     const domRef = useRef<HTMLDivElement>(null)
 
-    // Evaluate animation decision ONCE per mount pass so re-renders do NOT swap node structures
+    const attrs = resolveEffectiveAttributes(getPerfTierSnapshot())
+    const motion = attrs.fxMotion
+
     const shouldAnimateRef = useRef<boolean | null>(null)
     if (shouldAnimateRef.current === null) {
-        const isLowEnd = typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency || 4) <= 4 : false
         const isFirstVisit = !visitedRoutesInSession.has(pathname)
         const isNoReveal = getPerfFlags().perfNoReveal
-        shouldAnimateRef.current = !isNoReveal && !isLowEnd && isFirstVisit
+        shouldAnimateRef.current = !isNoReveal && motion !== "minimal" && isFirstVisit
     }
 
     useEffect(() => {
@@ -38,9 +39,10 @@ export const Reveal = ({ children, delay = 0, width = "100%", duration = 0.25, c
         return () => { unsub() }
     }, [pathname])
 
-    const shouldAnimate = shouldAnimateRef.current && !perfFlags.perfNoReveal
-    const actualDuration = Math.min(duration ?? 0.25, 0.3)
-    const actualDelay = Math.min(delay ?? 0, 0.1)
+    const shouldAnimate = shouldAnimateRef.current && !perfFlags.perfNoReveal && motion !== "minimal"
+    const scale = motion === "reduced" ? 0.6 : 1
+    const actualDuration = +(Math.min(duration ?? 0.25, 0.3) * scale).toFixed(2)
+    const actualDelay = motion === "full" ? Math.min(delay ?? 0, 0.1) : 0
 
     return (
         <div
@@ -57,5 +59,3 @@ export const Reveal = ({ children, delay = 0, width = "100%", duration = 0.25, c
         </div>
     )
 }
-
-

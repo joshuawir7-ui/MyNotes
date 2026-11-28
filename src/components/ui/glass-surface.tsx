@@ -1,12 +1,7 @@
 "use client";
 
 import React, { ReactNode, ElementType, useEffect } from "react";
-import { useStore } from "@/lib/store";
-
-export function useGlassLite() {
-  return typeof navigator !== "undefined" &&
-    (((navigator as any).deviceMemory ?? 8) <= 2 || (navigator.hardwareConcurrency ?? 8) <= 4);
-}
+import { markAnimationWindow } from "@/lib/frame-sampler";
 
 type Props = {
   variant: "sheet" | "sheet-action" | "bar-top";
@@ -25,14 +20,13 @@ export function GlassSurface({
   children,
   ...rest
 }: Props) {
-  const lite = useGlassLite();
-  const perf = useStore((s: any) => !!s.performanceMode);
-
   useEffect(() => {
     if (variant === "sheet" || variant === "sheet-action") {
+      markAnimationWindow(450);
       const prev = parseInt(document.body.dataset.modalOpen || "0", 10);
       document.body.dataset.modalOpen = String(prev + 1);
       return () => {
+        markAnimationWindow(450);
         const cur = parseInt(document.body.dataset.modalOpen || "1", 10) - 1;
         if (cur <= 0) {
           delete document.body.dataset.modalOpen;
@@ -47,8 +41,6 @@ export function GlassSurface({
     <Tag
       className={`glass glass--${variant} ${className}`}
       style={style}
-      data-lite={lite ? "true" : "false"}
-      data-perf={perf ? "true" : "false"}
       {...rest}
     >
       <div className="glass-layers" aria-hidden="true">
@@ -62,4 +54,3 @@ export function GlassSurface({
     </Tag>
   );
 }
-

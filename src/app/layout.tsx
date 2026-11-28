@@ -34,6 +34,8 @@ export const viewport: Viewport = {
 
 import MainLayout from "@/components/layout/main-layout";
 
+const PRE_HYDRATION_TIER_SCRIPT = `(function(){try{var d=document.documentElement;var raw=localStorage.getItem('mynotes_perf_tier_mirror_v1');if(raw){var m=JSON.parse(raw);if(m&&m.tier){d.setAttribute('data-tier',m.tier);d.setAttribute('data-fx-blur',m.fxBlur||(m.tier==='low'?'off':'on'));d.setAttribute('data-fx-shadow',m.fxShadow||(m.tier==='high'?'full':'simple'));d.setAttribute('data-fx-motion',m.fxMotion||(m.tier==='high'?'full':m.tier==='medium'?'reduced':'minimal'));d.setAttribute('data-fx-bg',m.fxBg||(m.tier==='low'?'off':'on'));return;}}var leg=localStorage.getItem('notes-storage');if(leg){var lp=JSON.parse(leg);if(lp&&lp.state&&lp.state.performanceMode){d.setAttribute('data-tier','low');d.setAttribute('data-fx-blur','off');d.setAttribute('data-fx-shadow','simple');d.setAttribute('data-fx-motion','minimal');d.setAttribute('data-fx-bg','off');return;}}d.setAttribute('data-tier','medium');d.setAttribute('data-fx-blur','on');d.setAttribute('data-fx-shadow','simple');d.setAttribute('data-fx-motion','reduced');d.setAttribute('data-fx-bg','on');}catch(e){}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -45,6 +47,7 @@ export default function RootLayout({
         <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <meta httpEquiv="Pragma" content="no-cache" />
         <meta httpEquiv="Expires" content="0" />
+        <script dangerouslySetInnerHTML={{ __html: PRE_HYDRATION_TIER_SCRIPT }} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${dancingScript.variable} antialiased`}

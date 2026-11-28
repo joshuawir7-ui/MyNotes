@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Trash2, Edit2, Pin } from "lucide-react"
 import { GlassSurface } from "@/components/ui/glass-surface"
 import { useStore } from "@/lib/store"
+import { usePerfTier, resolveEffectiveAttributes } from "@/lib/perf-tier"
 
 interface MobileContextMenuProps {
     onEdit?: () => void
@@ -18,7 +19,9 @@ interface MobileContextMenuProps {
 
 export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, children, title }: MobileContextMenuProps) {
     const appColor = useStore(state => state.appColor ?? 'black')
-    const performanceMode = useStore(state => state.performanceMode ?? false)
+    const tierState = usePerfTier()
+    const attrs = resolveEffectiveAttributes(tierState)
+    const disableBlur = attrs.fxBlur === "off" || attrs.tier === "low"
     const [isOpen, setIsOpen] = useState(false)
     const [isBlurSettled, setIsBlurSettled] = useState(false)
     const longPressTimer = useRef<NodeJS.Timeout | null>(null)
@@ -117,13 +120,13 @@ export function MobileContextMenu({ onEdit, onDelete, onTogglePin, isPinned, chi
                             <GlassSurface
                                 as={motion.div}
                                 variant="sheet-action"
-                                data-animating={!isBlurSettled || performanceMode ? "true" : "false"}
+                                data-animating={!isBlurSettled || disableBlur ? "true" : "false"}
                                 initial={{ y: "100%" }}
                                 animate={{ y: 0 }}
                                 exit={{ y: "100%" }}
                                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
                                 onAnimationComplete={() => {
-                                    if (isOpen && !performanceMode) {
+                                    if (isOpen && !disableBlur) {
                                         setIsBlurSettled(true)
                                     }
                                 }}

@@ -41,6 +41,9 @@ import { lt } from "@/lib/i18n-inline"
 import { initTextZoom } from "@/lib/text-zoom"
 import { syncSafeInsets } from "@/lib/safe-insets"
 import { importSharedPayload } from "@/lib/share-package"
+import { initPerfTier, registerAutoDowngradeToastHandler } from "@/lib/perf-tier"
+import { startFrameSampler, markAnimationWindow } from "@/lib/frame-sampler"
+import { useMotionTier } from "@/hooks/use-motion-tier"
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -156,9 +159,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const noteFontFamily = useStore(state => state.noteFontFamily ?? 'default');
     const customFonts = useStore(state => state.customFonts || []);
 
-    const performanceMode = useStore(state => state.performanceMode ?? false)
     const developerMode = useStore(state => state.developerMode ?? false)
     const isMobileLandscape = useIsMobileLandscape()
+    const { motionTier } = useMotionTier()
 
     useEffect(() => {
         if (typeof document !== 'undefined') {
@@ -169,16 +172,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             }
         }
     }, [appColor]);
-
-    useEffect(() => {
-        if (typeof document !== 'undefined') {
-            if (performanceMode) {
-                document.documentElement.classList.add('performance-mode');
-            } else {
-                document.documentElement.classList.remove('performance-mode');
-            }
-        }
-    }, [performanceMode]);
 
     useEffect(() => {
         if (typeof document === 'undefined') return;
@@ -247,6 +240,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         markNavEnd()
+        markAnimationWindow(400)
     }, [pathname])
 
     useEffect(() => {
@@ -305,6 +299,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         setMounted(true)
         initTextZoom().catch(() => {})
         syncSafeInsets().catch(() => {})
+        initPerfTier().catch(() => {})
+        registerAutoDowngradeToastHandler((msg) => {
+            useStore.getState().showToast(msg, "info")
+        })
+        const stopSampler = startFrameSampler()
+        return () => {
+            stopSampler()
+        }
     }, [])
     const quoteTimerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -846,6 +848,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }, []);
 
     return (
+        <MotionConfig reducedMotion={motionTier === "minimal" ? "always" : "user"}>
         <div className="flex flex-col min-h-screen" suppressHydrationWarning>
             {mounted && tourStep === null && !tourCompleted && (
                 <button
@@ -992,5 +995,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {/* Perf HUD: solo con Modo Desarrollador (coste cero si está apagado: ni se descarga el chunk) */}
             {developerMode && <PerfHud />}
         </div>
+        </MotionConfig>
     )
 }
