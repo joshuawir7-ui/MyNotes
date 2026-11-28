@@ -1,24 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import Script from "next/script"
-import { Capacitor } from "@capacitor/core"
-
+/**
+ * Retirado: la web ya no carga https://accounts.google.com/gsi/client ni usa popups GIS.
+ * El inicio de sesión web usa redirección OAuth (/api/google/start) con cookie httpOnly en servidor.
+ */
 export function GoogleGsiLoader() {
-    const [shouldLoad, setShouldLoad] = useState(false)
-
-    useEffect(() => {
-        if (!Capacitor.isNativePlatform()) {
-            setShouldLoad(true)
-        }
-    }, [])
-
-    if (!shouldLoad) return null
-
-    return (
-        <Script
-            src="https://accounts.google.com/gsi/client"
-            strategy="afterInteractive"
-        />
-    )
+    return null
 }

@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Dancing_Script } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { GoogleGsiLoader } from "@/components/ui/google-gsi-loader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -59,7 +58,6 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <GoogleGsiLoader />
           <MainLayout>
             {children}
           </MainLayout>

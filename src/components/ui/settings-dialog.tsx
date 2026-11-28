@@ -39,6 +39,7 @@ import {
     EffectOverrides,
 } from "@/lib/perf-tier"
 import { CPU_FACTOR_CAP_LOW, CPU_FACTOR_CAP_MEDIUM } from "@/lib/perf-tier.config"
+import { login as loginWebGoogle, logout as logoutWebGoogle, isWebReauthRequired } from "@/lib/web-auth"
 
 function VisualEffectsSettingsSection({ language }: { language: string }) {
     const perf = usePerfTier()
@@ -701,60 +702,11 @@ export function SettingsDialog() {
     }, [])
 
     // ──────────────────────────────────────────────────────
-    // WEB LOGIN: uses Google Identity Services (GSI) directly
-    // Avoids the Capacitor native plugin on browsers
+    // WEB LOGIN: redirección a /api/google/start (código + PKCE + cookie httpOnly en servidor, sin popup)
     // ──────────────────────────────────────────────────────
-    const handleGoogleLoginWeb = (): Promise<void> => {
-        return new Promise((resolve, reject) => {
-            const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '309899943436-gp6o1oaqpij5qq6sal77f6dr15lh61fp.apps.googleusercontent.com';
-            const gsi = (window as any).google?.accounts?.oauth2;
-            if (!gsi) {
-                reject(new Error('Google Identity Services not loaded'));
-                return;
-            }
-            const client = gsi.initTokenClient({
-                client_id: clientId,
-                scope: [
-                    'https://www.googleapis.com/auth/userinfo.profile',
-                    'https://www.googleapis.com/auth/userinfo.email',
-                    'https://www.googleapis.com/auth/drive.file'
-                ].join(' '),
-                callback: async (tokenResponse: any) => {
-                    if (tokenResponse.error) {
-                        reject(new Error(tokenResponse.error));
-                        return;
-                    }
-                    try {
-                        // Fetch user profile with the access token
-                        const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                            headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-                        });
-                        const profile = await profileRes.json();
-                        setGoogleUser({
-                            name: profile.name || '',
-                            email: profile.email || '',
-                            imageUrl: profile.picture || '',
-                            accessToken: tokenResponse.access_token,
-                            isDemo: false
-                        });
-                        showNotif(
-                            lt(language, "Sesión Iniciada", "Logged In"),
-                            pick(language, { es: `Bienvenido, ${profile.name}`, en: `Welcome, ${profile.name}`, zh: `欢迎，${profile.name}` }),
-                            "success"
-                        );
-                        setTimeout(() => {
-                            import('@/lib/store').then(({ triggerBackgroundSync }) => triggerBackgroundSync());
-                        }, 500);
-                        resolve();
-                    } catch (e) {
-                        reject(e);
-                    }
-                },
-                // Force account chooser every time
-                prompt: 'select_account',
-            });
-            client.requestAccessToken();
-        });
+    const handleGoogleLoginWeb = async (): Promise<void> => {
+        const reconnect = Boolean(googleSessionExpired || isWebReauthRequired() || !googleUser);
+        loginWebGoogle({ reconnect });
     };
 
     // ──────────────────────────────────────────────────────
@@ -839,13 +791,16 @@ export function SettingsDialog() {
     };
 
     const handleGoogleLogout = async () => {
-        // 1. Sign out from Google SDK
-        try {
-            const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
-            await GoogleAuth.signOut().catch(() => { });
-        } catch (e) { }
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+                await GoogleAuth.signOut().catch(() => { });
+            } catch (e) { }
+        } else {
+            await logoutWebGoogle().catch(() => { });
+        }
 
-        // 3. Clear only the Google account from state (data stays in local storage)
+        // Clear only the Google account from state (data stays in local storage)
         setGoogleUser(null);
         showNotif(
             lt(language, "Sesión Cerrada", "Logged Out"),
@@ -2221,10 +2176,10 @@ export function SettingsDialog() {
                                                         <div className="flex flex-col gap-2">
                                                             <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
                                                                 <p className="text-xs font-semibold text-red-600 dark:text-red-400">
-                                                                    {lt(language, "Sesión de Google expirada", "Google session expired")}
+                                                                    {lt(language, "Reconecta tu cuenta", "Reconnect your account")}
                                                                 </p>
                                                                 <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
-                                                                    {lt(language, "Por favor, re-conéctate para reanudar la sincronización en la nube.", "Please re-connect to resume cloud synchronization.")}
+                                                                    {lt(language, "Tu acceso a Google caducó o fue revocado. Reconecta tu cuenta para reanudar la sincronización.", "Your Google access expired or was revoked. Reconnect your account to resume cloud sync.")}
                                                                 </p>
                                                             </div>
                                                             <motion.button

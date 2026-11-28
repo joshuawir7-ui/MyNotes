@@ -205,8 +205,8 @@ const defaultDeps: AttachmentStoreDeps = {
                 registeredBridge.markSessionExpired();
                 return;
             }
-            import('./store').then(({ useStore }) => {
-                useStore.setState({ googleSessionExpired: true });
+            import('./store').then(({ useStore, shouldMarkGoogleSessionExpired }) => {
+                if (shouldMarkGoogleSessionExpired()) useStore.setState({ googleSessionExpired: true });
             }).catch(() => {});
         } catch {}
     },

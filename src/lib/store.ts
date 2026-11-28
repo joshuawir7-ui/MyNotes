@@ -11,6 +11,13 @@ import { App } from '@capacitor/app'
 import { BackgroundTask } from '@capawesome/capacitor-background-task'
 
 const isNative = Capacitor.isNativePlatform();
+import {
+    getAccessToken as getWebAccessToken,
+    getValidAccessToken as getValidWebAccessToken,
+    isWebLinked,
+    isWebReauthRequired,
+    refresh as refreshWebSession,
+} from './web-auth';
 
 import { isIdle, whenIdle } from './interaction-gate';
 import { recordSyncMetric, getPerfFlags, perfStamp, hudRecordSet, hudRecordPersistSend, hudRecordSerialized, hudRecordHydration, hudRecordNotesDiskWrite } from './perf-debug';
@@ -2352,6 +2359,19 @@ export const triggerBackgroundSync = async () => {
  * Actualiza el store con el nuevo token y devuelve el token renovado, o null si falla.
  */
 export const silentRefreshGoogleToken = async (): Promise<string | null> => {
+    // WEB: renovación por la sesión de servidor (/api/google/token), sin popup. Android: sin cambios.
+    if (!isNative) {
+        const r = await refreshWebSession({ force: true });
+        if (!r.ok) return null;
+        const currentUser = useStore.getState().googleUser;
+        if (currentUser) {
+            useStore.setState({
+                googleUser: { ...currentUser, accessToken: r.token },
+                googleSessionExpired: false
+            });
+        }
+        return r.token;
+    }
     try {
         const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
         const result = await GoogleAuth.refresh();
@@ -2373,6 +2393,37 @@ export const silentRefreshGoogleToken = async (): Promise<string | null> => {
         console.warn('[Auth] No se pudo renovar el token silenciosamente:', err);
         return null;
     }
+};
+
+/**
+ * ¿Debe marcarse la sesión de Google como expirada tras fallar la renovación?
+ * - Android: sí (comportamiento previo, sin cambios).
+ * - Web vinculada a la sesión de servidor: SOLO si el servidor respondió reauth_required
+ *   (un error de red o 503 nunca cierra la sesión).
+ * - Web con sesión GIS antigua (sin vincular): sí, para pedir reconectar UNA vez con el flujo nuevo.
+ */
+export const shouldMarkGoogleSessionExpired = (): boolean => {
+    if (isNative) return true;
+    if (!isWebLinked()) return true;
+    return isWebReauthRequired();
+};
+
+/**
+ * Obtiene un accessToken válido:
+ * - Web vinculada: vive SOLO en memoria (`web-auth.ts`), renovándolo en segundo plano si falta o expira pronto.
+ * - Web con sesión GIS heredada (no vinculada aún) o Android: lee `googleUser.accessToken`.
+ */
+const resolveGoogleAccessToken = async (): Promise<string | null> => {
+    const st = useStore.getState();
+    if (!st.googleUser || st.googleSessionExpired) return null;
+    if (!isNative && isWebLinked()) {
+        const tok = await getValidWebAccessToken();
+        if (tok && st.googleUser.accessToken !== tok) {
+            useStore.setState({ googleUser: { ...st.googleUser, accessToken: tok } });
+        }
+        return tok;
+    }
+    return st.googleUser.accessToken || null;
 };
 
 /**
@@ -3945,7 +3996,8 @@ export const useStore = create<AppState>()(
                     if (!conflict) return;
 
                     const user = get().googleUser;
-                    if (!user || !user.accessToken) {
+                    const conflictToken = user?.isDemo ? 'demo-token' : await resolveGoogleAccessToken();
+                    if (!user || !conflictToken) {
                         set({ syncConflict: null });
                         return;
                     }
@@ -3987,7 +4039,7 @@ export const useStore = create<AppState>()(
                             {
                                 method: 'PATCH',
                                 headers: {
-                                    Authorization: `Bearer ${user.accessToken}`,
+                                    Authorization: `Bearer ${conflictToken}`,
                                     'Content-Type': 'application/json'
                                 },
                                 body: JSON.stringify(dataToUpload)
@@ -4068,14 +4120,24 @@ export const useStore = create<AppState>()(
                     set({ isSyncingCloud: true, syncError: null });
 
                     try {
-                        const token = user.accessToken;
-                        if (!token) throw new Error("No access token");
+                        let token = await resolveGoogleAccessToken();
+                        if (!token) throw new Error("auth_error: no access token");
 
                         console.log('[Restore] Buscando respaldo mynotes_backup.json en Google Drive...');
-                        const searchRes = await fetchWithTimeout(
+                        let searchRes = await fetchWithTimeout(
                             `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false&fields=files(id,appProperties,md5Checksum,parents)`,
                             { headers: { Authorization: `Bearer ${token}` } }
                         );
+                        if (searchRes.status === 401) {
+                            const refreshed = await silentRefreshGoogleToken();
+                            if (refreshed) {
+                                token = refreshed;
+                                searchRes = await fetchWithTimeout(
+                                    `https://www.googleapis.com/drive/v3/files?q=name='mynotes_backup.json' and trashed=false&fields=files(id,appProperties,md5Checksum,parents)`,
+                                    { headers: { Authorization: `Bearer ${token}` } }
+                                );
+                            }
+                        }
                         if (!searchRes.ok) {
                             const errBody = await searchRes.text().catch(() => "Unknown error");
                             throw new Error(`Search failed (${searchRes.status}): ${errBody}`);
@@ -4175,7 +4237,16 @@ export const useStore = create<AppState>()(
                         return true;
                     } catch (err: any) {
                         console.error("[Restore] Error al restaurar desde Google Drive:", err);
-                        set({ isSyncingCloud: false, syncError: err?.message || String(err) });
+                        const msg = String(err).toLowerCase();
+                        if (msg.includes("401") || msg.includes("auth_error")) {
+                            if (shouldMarkGoogleSessionExpired()) {
+                                set({ googleSessionExpired: true, isSyncingCloud: false, syncError: err?.message || String(err) });
+                            } else {
+                                set({ isSyncingCloud: false, syncError: get().language === 'es' ? "Sin conexión con Google. Inténtalo de nuevo." : "Can't reach Google. Please try again." });
+                            }
+                        } else {
+                            set({ isSyncingCloud: false, syncError: err?.message || String(err) });
+                        }
                         return false;
                     } finally {
                         isSyncing = false;
@@ -4248,8 +4319,8 @@ export const useStore = create<AppState>()(
                     }
 
                     try {
-                        const token = user.accessToken;
-                        if (!token) throw new Error("No access token");
+                        const token = await resolveGoogleAccessToken();
+                        if (!token) throw new Error("auth_error: no access token");
                         await uploadMissingAttachments(token, get().notes);
                         await uploadMissingGoalAndTaskImages(token);
 
@@ -4590,6 +4661,18 @@ export const useStore = create<AppState>()(
                                 set({ isSyncingCloud: false });
                                 return get().syncCycle(force, true);
                             }
+                            if (!shouldMarkGoogleSessionExpired()) {
+                                // Web: fallo transitorio (sin red / 503). No se cierra la sesión; se reintenta luego.
+                                set({
+                                    isSyncingCloud: false,
+                                    syncError: get().language === 'es'
+                                        ? "Sin conexión con Google. Se reintentará automáticamente."
+                                        : get().language === 'zh'
+                                            ? "无法连接 Google，稍后将自动重试。"
+                                            : "Can't reach Google. Will retry automatically."
+                                });
+                                return false;
+                            }
                             const errMsg = get().language === 'es'
                                 ? "Sesión de Google expirada. Por favor, inicia sesión nuevamente."
                                 : get().language === 'zh'
@@ -4748,6 +4831,12 @@ export const useStore = create<AppState>()(
                     areNotesLoaded: true,
                     areTasksLoaded: true
                 };
+                // WEB vinculada a la sesión de servidor: el access token vive SOLO en memoria.
+                // (Las sesiones GIS antiguas sin vincular conservan su token hasta que caduque.)
+                if (!isNative && result.googleUser?.accessToken && isWebLinked()) {
+                    const { accessToken: _omit, ...userWithoutToken } = result.googleUser;
+                    result.googleUser = userWithoutToken;
+                }
                 return result;
             }
         }
@@ -4921,10 +5010,13 @@ import('./attachment-store').then(({ registerAttachmentStoreBridge }) => {
         getAccessToken: () => {
             const st = useStore.getState();
             if (st.googleSessionExpired) return null;
+            if (!isNative && isWebLinked()) {
+                return getWebAccessToken() || st.googleUser?.accessToken || null;
+            }
             return st.googleUser?.accessToken || null;
         },
         refreshAccessToken: () => silentRefreshGoogleToken(),
-        markSessionExpired: () => useStore.setState({ googleSessionExpired: true }),
+        markSessionExpired: () => { if (shouldMarkGoogleSessionExpired()) useStore.setState({ googleSessionExpired: true }); },
         applyBlockUri: (noteId, blockId, driveFileId, uri) => applyDownloadedAttachmentToStore(noteId, blockId, driveFileId, uri),
         getAttachmentManifest: () => getAttachmentManifest(),
         upsertManifestEntry: (entry) => upsertManifestEntry(entry)
@@ -5079,7 +5171,7 @@ export const checkAndEnqueueMissingImages = async (onlyDriveIds?: Set<string>) =
  */
 export const recoverImagesFromDriveRevisions = async (): Promise<{ recovered: number; failed: number; message: string }> => {
     const state = useStore.getState();
-    let token = state.googleUser?.accessToken;
+    let token = await resolveGoogleAccessToken();
 
     if (!token) {
         return {
@@ -5112,7 +5204,7 @@ export const recoverImagesFromDriveRevisions = async (): Promise<{ recovered: nu
             if (newToken) {
                 res = await makeRequest(newToken);
             } else {
-                useStore.setState({ googleSessionExpired: true });
+                if (shouldMarkGoogleSessionExpired()) useStore.setState({ googleSessionExpired: true });
                 throw new Error(useStore.getState().language === 'es'
                     ? "Sesión de Google expirada. Por favor, re-conecta tu cuenta de Google."
                     : useStore.getState().language === 'zh'

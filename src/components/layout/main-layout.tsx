@@ -44,6 +44,7 @@ import { importSharedPayload } from "@/lib/share-package"
 import { initPerfTier, registerAutoDowngradeToastHandler } from "@/lib/perf-tier"
 import { startFrameSampler, markAnimationWindow } from "@/lib/frame-sampler"
 import { useMotionTier } from "@/hooks/use-motion-tier"
+import { initWebAuth } from "@/lib/web-auth"
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -829,6 +830,87 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             clearTimeout(debounceTimeout);
             unsubscribe();
         };
+    }, []);
+
+    // Sesión de Google persistente en web (sin popup; refresh silencioso contra /api/google/token)
+    useEffect(() => {
+        if (Capacitor.isNativePlatform()) return;
+        const whenStoreHydrated = (fn: () => void) => {
+            if (useStore.getState().isHydrated) {
+                fn();
+                return;
+            }
+            const unsub = useStore.subscribe((s) => {
+                if (s.isHydrated) {
+                    unsub();
+                    fn();
+                }
+            });
+        };
+        initWebAuth({
+            onToken: (token, user, { justConnected }) => {
+                whenStoreHydrated(() => {
+                    const st = useStore.getState();
+                    const prev = st.googleUser;
+                    if (prev?.isDemo) return;
+                    const nextUser = {
+                        name: user?.name || prev?.name || "",
+                        email: user?.email || prev?.email || "",
+                        imageUrl: user?.imageUrl || prev?.imageUrl || "",
+                        accessToken: token,
+                        isDemo: false,
+                    };
+                    useStore.setState({ googleUser: nextUser, googleSessionExpired: false, syncError: null });
+                    if (justConnected) {
+                        st.showToast(
+                            lt(
+                                st.language,
+                                `Cuenta conectada: ${nextUser.email || nextUser.name}`,
+                                `Account connected: ${nextUser.email || nextUser.name}`
+                            ),
+                            "success"
+                        );
+                        setTimeout(() => {
+                            useStore.getState().syncCycle(true).catch(console.error);
+                        }, 400);
+                    } else if (prev && st.syncError) {
+                        import("../../lib/store").then(({ triggerBackgroundSync }) => triggerBackgroundSync());
+                    }
+                });
+            },
+            onReauthRequired: () => {
+                whenStoreHydrated(() => {
+                    const st = useStore.getState();
+                    if (!st.googleUser || st.googleUser.isDemo) return;
+                    const errMsg = st.language === "es"
+                        ? "Reconecta tu cuenta para reanudar la sincronización."
+                        : st.language === "zh"
+                            ? "请重新连接您的账号以恢复云同步。"
+                            : "Reconnect your account to resume cloud sync.";
+                    useStore.setState({ googleSessionExpired: true, isSyncingCloud: false, syncError: errMsg });
+                });
+            },
+            onLoggedOut: () => {
+                whenStoreHydrated(() => {
+                    const st = useStore.getState();
+                    if (st.googleUser && !st.googleUser.isDemo) {
+                        useStore.setState({ googleUser: null, googleSessionExpired: false });
+                    }
+                });
+            },
+            onLoginError: (reason) => {
+                if (reason === "denied") return;
+                const st = useStore.getState();
+                st.showToast(
+                    lt(
+                        st.language,
+                        "No se pudo conectar con Google. Inténtalo de nuevo.",
+                        "Could not connect with Google. Please try again."
+                    ),
+                    "error"
+                );
+            },
+        });
     }, []);
 
     // Instant sync when closing/leaving tab on web
