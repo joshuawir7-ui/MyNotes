@@ -2079,7 +2079,7 @@ const uploadSingleLocalImageToDrive = async (
     token: string,
     targetUrl: string,
     folders: Awaited<ReturnType<typeof getOrCreateBackupFolderStructure>> | null,
-    meta: { ownerKind: '__goal__' | '__task__'; ownerId: string }
+    meta: { ownerKind: '__goal__' | '__task__' | '__expense__'; ownerId: string }
 ): Promise<string | null> => {
     if (!targetUrl || typeof targetUrl !== 'string') return null;
     if (targetUrl.startsWith('drive://') || targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
@@ -2203,6 +2203,7 @@ export const uploadMissingGoalAndTaskImages = async (token: string): Promise<voi
     const st = useStore.getState();
     const currentGoals = st.goals || [];
     const currentTasks = await readAllTasksFromDisk(st.tasks || []);
+    const currentExpenseNotes = st.expenseNotes || [];
 
     const hasCandidateInGoals = currentGoals.some(g =>
         (g.photos || []).some(p => p && !p.startsWith('drive://') && !p.startsWith('http')) ||
@@ -2211,12 +2212,16 @@ export const uploadMissingGoalAndTaskImages = async (token: string): Promise<voi
     const hasCandidateInTasks = currentTasks.some(t =>
         (t.photos || []).some(p => p && !p.startsWith('drive://') && !p.startsWith('http'))
     );
+    const hasCandidateInExpenses = currentExpenseNotes.some(e =>
+        e?.imageBlock && !e.imageBlock.driveFileId && Boolean(e.imageBlock.localPath || e.imageBlock.thumbnailPath)
+    );
 
-    if (!hasCandidateInGoals && !hasCandidateInTasks) return;
+    if (!hasCandidateInGoals && !hasCandidateInTasks && !hasCandidateInExpenses) return;
 
     const folders = await getOrCreateBackupFolderStructure(token).catch(() => null);
     let goalsChanged = false;
     let tasksChanged = false;
+    let expensesChanged = false;
     const nowTs = Date.now();
 
     const updatedGoals = await Promise.all(currentGoals.map(async (goal) => {
@@ -2263,13 +2268,34 @@ export const uploadMissingGoalAndTaskImages = async (token: string): Promise<voi
         return thisTaskChanged ? { ...task, photos: newPhotos, lastUpdated: nowTs } : task;
     }));
 
+    const updatedExpenseNotes = await Promise.all(currentExpenseNotes.map(async (exp) => {
+        if (!exp?.imageBlock || exp.imageBlock.driveFileId) return exp;
+        const localSrc = exp.imageBlock.localPath || exp.imageBlock.thumbnailPath;
+        if (!localSrc || localSrc.startsWith('drive://') || localSrc.startsWith('http')) return exp;
+        const uploaded = await uploadSingleLocalImageToDrive(token, localSrc, folders, { ownerKind: '__expense__', ownerId: exp.id });
+        if (uploaded && uploaded.startsWith('drive://')) {
+            const driveFileId = uploaded.replace('drive://', '').trim();
+            expensesChanged = true;
+            return {
+                ...exp,
+                imageBlock: {
+                    ...exp.imageBlock,
+                    driveFileId,
+                },
+                lastUpdated: nowTs,
+            };
+        }
+        return exp;
+    }));
+
     if (tasksChanged) {
         await saveAllTasksToDisk(updatedTasks);
     }
-    if (goalsChanged || tasksChanged) {
+    if (goalsChanged || tasksChanged || expensesChanged) {
         useStore.setState({
             ...(goalsChanged ? { goals: updatedGoals } : {}),
             ...(tasksChanged ? { tasks: updatedTasks } : {}),
+            ...(expensesChanged ? { expenseNotes: updatedExpenseNotes } : {}),
             lastUpdated: nowTs,
         });
     }
@@ -4980,6 +5006,13 @@ export const checkAndEnqueueMissingImages = async (onlyDriveIds?: Set<string>) =
     }
     for (const task of state.tasks || []) {
         for (const p of task.photos || []) await enqueueStandaloneDriveUri(p);
+    }
+    for (const exp of state.expenseNotes || []) {
+        if (exp?.imageBlock?.driveFileId) {
+            await enqueueStandaloneDriveUri(`drive://${exp.imageBlock.driveFileId}`);
+        } else if (exp?.imageBlock?.localPath?.startsWith('drive://')) {
+            await enqueueStandaloneDriveUri(exp.imageBlock.localPath);
+        }
     }
 
     if (pendingItems.length === 0) return;

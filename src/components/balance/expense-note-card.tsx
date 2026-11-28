@@ -11,7 +11,9 @@ interface ExpenseNoteCardProps {
 
 export const ExpenseNoteCard = React.memo(({ note, currencySymbol }: ExpenseNoteCardProps) => {
     const deleteExpenseNote = useStore(state => state.deleteExpenseNote);
-    const imageSrc = note.imageBlock?.localPath || note.imageBlock?.thumbnailPath;
+    const imageSrc = note.imageBlock?.localPath
+        || (note.imageBlock?.driveFileId ? `drive://${note.imageBlock.driveFileId}` : undefined)
+        || note.imageBlock?.thumbnailPath;
 
     return (
         <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 mb-3 flex gap-4 transition-all hover:bg-white/10">

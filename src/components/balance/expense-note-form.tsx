@@ -85,14 +85,20 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                     if (savedPath) {
                         localPath = savedPath;
                     }
+                } else {
+                    const { saveBase64ImageToFile } = await import('@/lib/image-utils');
+                    const savedUri = await saveBase64ImageToFile(base64);
+                    if (savedUri) {
+                        localPath = savedUri;
+                    }
                 }
 
                 const thumbnailPath = await getOrCreateThumbnail(localPath);
 
                 handleUpdateItem(id, { 
                     imageBlock: {
-                        localPath: Capacitor.isNativePlatform() ? localPath : base64,
-                        thumbnailPath: thumbnailPath
+                        localPath,
+                        thumbnailPath
                     }
                 });
             } catch (err) {
@@ -209,10 +215,15 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                             />
 
                             {/* 4. Input "Imagen del producto" */}
+                            {(() => {
+                                const imgSrc = item.imageBlock?.localPath
+                                    || (item.imageBlock?.driveFileId ? `drive://${item.imageBlock.driveFileId}` : undefined)
+                                    || item.imageBlock?.thumbnailPath;
+                                return (
                             <div className="mb-[20px] flex">
-                                {(item.imageBlock?.localPath || item.imageBlock?.thumbnailPath) ? (
+                                {imgSrc ? (
                                     <div className="relative w-[180px] h-[140px] rounded-[12px] overflow-hidden border border-[#e5e7eb] dark:border-zinc-800 bg-[#f9fafb] dark:bg-zinc-800/50 group/img shrink-0">
-                                        <LocalImage src={item.imageBlock.localPath || item.imageBlock.thumbnailPath} alt="Product" className="w-full h-full object-contain" />
+                                        <LocalImage src={imgSrc} alt="Product" className="w-full h-full object-contain" />
                                         {!item.confirmado && (
                                             <button
                                                 type="button"
@@ -237,6 +248,8 @@ export function ExpenseNoteForm({ onClose }: { onClose: () => void }) {
                                     </label>
                                 )}
                             </div>
+                                );
+                            })()}
 
                             {/* 5. Fila inferior (Botón AGREGAR OTRO GASTO + Línea punteada + Botón GASTO) */}
                             <div className="flex items-center justify-between gap-2 sm:gap-[16px] mb-[32px] w-full">

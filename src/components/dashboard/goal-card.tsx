@@ -764,9 +764,9 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                                                         e.stopPropagation();
                                                         setActiveOverlayImage(obj.image || null);
                                                     }}
-                                                    className="w-8 h-8 rounded overflow-hidden border border-white/10 shrink-0 cursor-zoom-in hover:scale-105 transition-all"
+                                                    className="w-10 h-10 rounded-lg bg-black/5 dark:bg-white/5 shrink-0 cursor-zoom-in hover:scale-105 transition-all flex items-center justify-center p-0.5"
                                                 >
-                                                    <LocalImage src={obj.image} alt="" className="w-full h-full object-cover" />
+                                                    <LocalImage src={obj.image} alt="" className="w-full h-full object-contain rounded-md" />
                                                 </div>
                                             )}
 
