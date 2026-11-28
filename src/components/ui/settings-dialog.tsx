@@ -163,6 +163,13 @@ export function SettingsDialog() {
     const handleVersionClick = () => {
         setVersionClickCount(prev => {
             const next = prev + 1;
+            if (next === 5 && !developerMode && setDeveloperMode) {
+                setDeveloperMode(true);
+                showToast(
+                    lt(language, "Modo desarrollador activado (HUD visible)", "Developer mode enabled (HUD visible)"),
+                    "success"
+                );
+            }
             if (next >= 7) {
                 setIsPerfDebugOpen(true);
                 return 0;

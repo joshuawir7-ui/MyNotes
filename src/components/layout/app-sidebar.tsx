@@ -382,7 +382,7 @@ export function AppSidebar() {
                     style={{
                         left: 'calc(var(--sal, 0px) + 12px)',
                         top: 'calc(var(--sat, 0px) + 12px)',
-                        bottom: 'calc(var(--sab, 0px) + 12px)',
+                        bottom: 'calc(12px + var(--app-inset-bottom, 0px))',
                         WebkitBackdropFilter: lite ? 'blur(12px) saturate(140%)' : 'blur(24px) saturate(165%)',
                         backdropFilter: lite ? 'blur(12px) saturate(140%)' : 'blur(24px) saturate(165%)',
                     }}

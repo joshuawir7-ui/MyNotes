@@ -39,6 +39,7 @@ import { isIdle, whenIdle } from "@/lib/interaction-gate"
 import { timerEngine } from "@/lib/timer-engine"
 import { lt } from "@/lib/i18n-inline"
 import { initTextZoom } from "@/lib/text-zoom"
+import { syncSafeInsets } from "@/lib/safe-insets"
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -265,6 +266,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         setMounted(true)
         initTextZoom().catch(() => {})
+        syncSafeInsets().catch(() => {})
     }, [])
     const quoteTimerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -935,7 +937,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {developerMode && (lastNavDuration !== null || Object.values(perfFlags).some(Boolean)) && (
                 <button
                     onClick={() => setIsPerfModalOpen(true)}
-                    className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-[9990] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/90 dark:bg-zinc-900/95 text-white border border-white/20 shadow-xl md:backdrop-blur-md text-[11px] font-mono hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                    className="fixed bottom-[calc(80px+var(--app-inset-bottom,0px))] right-4 md:bottom-6 md:right-6 z-[9990] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/90 dark:bg-zinc-900/95 text-white border border-white/20 shadow-xl md:backdrop-blur-md text-[11px] font-mono hover:scale-105 active:scale-95 transition-all cursor-pointer"
                     title="Abrir Debug de Rendimiento"
                 >
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />

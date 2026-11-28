@@ -1,8 +1,13 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { getHudStats, getStartupTimeline } from "@/lib/perf-debug"
 import { getTextZoomSnapshot } from "@/lib/text-zoom"
+import {
+    getNativeSafeInsetsMetrics,
+    setNativeSafeInsetsOverrideZero,
+    NativeSafeInsetsMetrics,
+} from "@/lib/safe-insets"
 
 /**
  * Perf HUD — solo se monta con developerMode activo (ver main-layout).
@@ -18,6 +23,8 @@ export function PerfHud() {
     const boxRef = useRef<HTMLDivElement>(null)
     const textRef = useRef<HTMLPreElement>(null)
     const reportRef = useRef<string>("")
+    const nativeMetricsRef = useRef<NativeSafeInsetsMetrics | null>(null)
+    const [overrideZero, setOverrideZero] = useState(false)
 
     useEffect(() => {
         if (typeof window === "undefined") return
@@ -74,9 +81,18 @@ export function PerfHud() {
             }
         } catch { /* WebView sin soporte */ }
 
+        // Probe oculto para leer env(safe-area-inset-bottom) real sin polling extra
+        const envProbe = document.createElement("div")
+        envProbe.style.cssText =
+            "position:fixed;bottom:0;left:0;width:0;height:0;padding-bottom:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none;"
+        document.body.appendChild(envProbe)
+
         // ── Pintado 1 vez/s por ref ───────────────────────────────────
         const fmt = (v: number | null | undefined, d = 1) => (v === null || v === undefined ? "—" : v.toFixed(d))
         const paint = () => {
+            getNativeSafeInsetsMetrics().then((m) => {
+                if (m) nativeMetricsRef.current = m
+            }).catch(() => {})
             const now = performance.now()
             while (longTasks.length && now - longTasks[0].t > LONGTASK_WINDOW_MS) longTasks.shift()
 
@@ -104,10 +120,29 @@ export function PerfHud() {
             const buildId = process.env.NEXT_PUBLIC_BUILD_ID || "dev-local"
             const tz = getTextZoomSnapshot()
             const sysScaleStr = tz.systemFontScale !== null ? `${tz.systemFontScale.toFixed(2)}x (tope ${tz.maxSystemScale.toFixed(1)}x)` : "n/a (web)"
+
+            const rootStyle = getComputedStyle(document.documentElement)
+            const navEl = document.querySelector<HTMLElement>(".nav-shell")
+            const navBottomCss = navEl ? getComputedStyle(navEl).bottom : "—"
+            const navGapViewport = navEl ? `${(window.innerHeight - navEl.getBoundingClientRect().bottom).toFixed(1)}dp` : "—"
+            const envSab = getComputedStyle(envProbe).paddingBottom || "0px"
+            const capSab = rootStyle.getPropertyValue("--safe-area-inset-bottom").trim() || "0px"
+            const appInset = rootStyle.getPropertyValue("--app-inset-bottom").trim() || "0px"
+            const nm = nativeMetricsRef.current
+            const nativeBlock = nm
+                ? `SDK:${nm.sdkInt} nav:${nm.navMode} d:${nm.density} ovr0:${nm.overrideZero ? "ON" : "OFF"}\n` +
+                  `winH:${nm.windowHeightPx}px  WV top:${nm.webViewTopPx} h:${nm.webViewHeightPx} bot:${nm.webViewBottomPx}\n` +
+                  `navBars.b:${nm.navBarBottomPx}px (${nm.navBarBottomDp}dp)  ime.b:${nm.imeBottomPx}px (${nm.imeVisible ? "vis" : "hid"})\n` +
+                  `solape:${nm.overlapPx}px (${nm.overlapDp}dp)  eff:${nm.effectiveBottomDp}dp`
+                : `nativo: web/PC (sin puente Android)`
+
             const text =
                 `build: ${buildId}\n` +
                 `ruta: ${route}\n` +
                 `texto: ${tz.mode} | zoom: ${tz.appliedZoom}% | sysFont: ${sysScaleStr}\n` +
+                `nav.bottom: ${navBottomCss} | gapViewport: ${navGapViewport}\n` +
+                `env(sab): ${envSab} | --sab: ${capSab} | --app-b: ${appInset}\n` +
+                `${nativeBlock}\n` +
                 `FPS(5s): ${fps.toFixed(0)}  peor: ${worst.toFixed(0)}ms  p95: ${p95.toFixed(0)}ms  >25ms: ${dropped}\n` +
                 `longtasks(10s): ${longTasks.length} (${ltTotal.toFixed(0)}ms) ${hasLoaf ? "[LoAF]" : "[longtask]"}\n` +
                 (ltLines ? ltLines + "\n" : "") +
@@ -131,6 +166,7 @@ export function PerfHud() {
             cancelAnimationFrame(rafId)
             clearInterval(iv)
             observers.forEach((o) => o.disconnect())
+            envProbe.remove()
         }
     }, [])
 
@@ -188,22 +224,43 @@ export function PerfHud() {
         }
     }
 
+    const toggleOverrideZero = async () => {
+        const next = !overrideZero
+        setOverrideZero(next)
+        const updated = await setNativeSafeInsetsOverrideZero(next)
+        if (updated) nativeMetricsRef.current = updated
+        if (typeof document !== "undefined" && !updated) {
+            // En web/PC también permite simular el override a 0
+            document.documentElement.style.setProperty("--app-inset-bottom", next ? "0px" : "")
+        }
+    }
+
     return (
         <div
             ref={boxRef}
-            className="fixed top-16 left-2 z-[9995] w-[268px] rounded-xl bg-black/85 text-[10px] leading-[1.35] text-emerald-300 font-mono shadow-lg border border-white/15 select-none"
+            className="fixed top-16 left-2 z-[9995] w-[288px] rounded-xl bg-black/85 text-[10px] leading-[1.35] text-emerald-300 font-mono shadow-lg border border-white/15 select-none"
             style={{ contain: "layout paint" }}
         >
-            <div data-hud-handle className="flex items-center justify-between px-2 py-1 border-b border-white/10 cursor-move touch-none">
+            <div data-hud-handle className="flex items-center justify-between gap-1 px-2 py-1 border-b border-white/10 cursor-move touch-none">
                 <span className="text-white/80 font-bold">PERF HUD</span>
-                <button
-                    data-hud-copy
-                    onClick={copyReport}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    className="px-2 py-0.5 rounded bg-white/15 text-white active:scale-95"
-                >
-                    Copiar informe
-                </button>
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={toggleOverrideZero}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className={`px-1.5 py-0.5 rounded text-[9px] active:scale-95 ${overrideZero ? "bg-amber-500 text-black font-bold" : "bg-white/15 text-white"}`}
+                        title="Override --app-inset-bottom = 0dp"
+                    >
+                        {overrideZero ? "Ovr:0" : "Ovr:Auto"}
+                    </button>
+                    <button
+                        data-hud-copy
+                        onClick={copyReport}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className="px-2 py-0.5 rounded bg-white/15 text-white active:scale-95"
+                    >
+                        Copiar informe
+                    </button>
+                </div>
             </div>
             <pre ref={textRef} className="px-2 py-1 whitespace-pre-wrap break-words m-0" />
         </div>

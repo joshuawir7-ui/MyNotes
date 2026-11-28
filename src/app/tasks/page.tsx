@@ -2087,7 +2087,7 @@ export default function TasksPage() {
                                 nextTourStep()
                             }
                         }}
-                        className="fixed bottom-[84px] md:bottom-10 left-4 right-4 md:left-auto md:right-10 mx-auto md:mx-0 w-[92%] max-w-sm z-[100] cursor-pointer bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-600 hover:to-indigo-700 text-white p-5 rounded-3xl shadow-[0_15px_40px_rgba(124,58,237,0.4)] border border-purple-500/20 flex flex-col gap-2 select-none will-change-[transform,opacity,filter]"
+                        className="fixed bottom-[calc(84px+var(--app-inset-bottom,0px))] md:bottom-10 left-4 right-4 md:left-auto md:right-10 mx-auto md:mx-0 w-[92%] max-w-sm z-[100] cursor-pointer bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-600 hover:to-indigo-700 text-white p-5 rounded-3xl shadow-[0_15px_40px_rgba(124,58,237,0.4)] border border-purple-500/20 flex flex-col gap-2 select-none will-change-[transform,opacity,filter]"
                     >
                         <p className="text-sm font-semibold leading-relaxed text-center px-2 py-1">
                             {tourStep === 8 && (

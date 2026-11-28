@@ -120,7 +120,7 @@ export function ProjectClientPage({ id }: { id: string }) {
             </div>
 
             {/* Floating Action Button */}
-            <div className="fixed bottom-8 right-8 left-8 max-w-4xl mx-auto flex justify-end pointer-events-none z-50">
+            <div className="fixed bottom-[calc(32px+var(--app-inset-bottom,0px))] right-8 left-8 max-w-4xl mx-auto flex justify-end pointer-events-none z-50">
                 <button className="pointer-events-auto bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full shadow-[0_0_20px_rgba(127,13,242,0.4)] flex items-center gap-3 font-bold transition-all hover:scale-105 active:scale-95 group">
                     <Play className="w-5 h-5 fill-current group-hover:translate-x-0.5 transition-transform" />
                     Start Focus Session

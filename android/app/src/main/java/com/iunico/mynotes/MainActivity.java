@@ -3,18 +3,15 @@ package com.iunico.mynotes;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
+import android.view.ViewTreeObserver;
 import android.view.WindowManager;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
-import com.getcapacitor.JSObject;
 
 public class MainActivity extends BridgeActivity {
-    private int lastTopDp = 0;
-    private int lastRightDp = 0;
-    private int lastBottomDp = 0;
-    private int lastLeftDp = 0;
+    private View.OnLayoutChangeListener webViewLayoutListener;
+    private ViewTreeObserver.OnGlobalLayoutListener webViewGlobalLayoutListener;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -22,6 +19,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(CloudAuthPlugin.class);
         registerPlugin(TimerPlugin.class);
         registerPlugin(TextZoomPlugin.class);
+        registerPlugin(SafeInsetsPlugin.class);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             getWindow().getAttributes().layoutInDisplayCutoutMode =
@@ -30,38 +28,30 @@ public class MainActivity extends BridgeActivity {
 
         super.onCreate(savedInstanceState);
 
-        // Safe Area insets listener for display cutout & system bars
-        ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), (v, windowInsets) -> {
-            Insets insets = windowInsets.getInsets(
-                WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()
-            );
-
-            float density = getResources().getDisplayMetrics().density;
-            lastTopDp = Math.round(insets.top / density);
-            lastRightDp = Math.round(insets.right / density);
-            lastBottomDp = Math.round(insets.bottom / density);
-            lastLeftDp = Math.round(insets.left / density);
-
-            applyInsetsToWebView();
-            return windowInsets;
-        });
-
-        // Enable pinch-to-zoom controls & apply persisted textZoom before UI renders
+        // Enable pinch-to-zoom controls, apply persisted textZoom, and attach layout-only
+        // inset measurement (WITHOUT setOnApplyWindowInsetsListener so Capacitor SystemBars keeps working).
         if (bridge != null && bridge.getWebView() != null) {
-            bridge.getWebView().getSettings().setSupportZoom(true);
-            bridge.getWebView().getSettings().setBuiltInZoomControls(true);
-            bridge.getWebView().getSettings().setDisplayZoomControls(false);
-            TextZoomPlugin.applySavedTextZoom(this, bridge.getWebView());
+            WebView webView = bridge.getWebView();
+            webView.getSettings().setSupportZoom(true);
+            webView.getSettings().setBuiltInZoomControls(true);
+            webView.getSettings().setDisplayZoomControls(false);
+            TextZoomPlugin.applySavedTextZoom(this, webView);
+
+            webViewLayoutListener = (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                SafeInsetsPlugin.computeAndPublish(this, getWindow().getDecorView(), webView, false);
+            };
+            webView.addOnLayoutChangeListener(webViewLayoutListener);
+
+            webViewGlobalLayoutListener = () -> {
+                SafeInsetsPlugin.computeAndPublish(this, getWindow().getDecorView(), webView, false);
+            };
+            webView.getViewTreeObserver().addOnGlobalLayoutListener(webViewGlobalLayoutListener);
         }
     }
 
-    private void applyInsetsToWebView() {
+    private void syncEffectiveInsets(boolean force) {
         if (bridge != null && bridge.getWebView() != null) {
-            String js = "document.documentElement.style.setProperty('--safe-area-inset-top','" + lastTopDp + "px');" +
-                "document.documentElement.style.setProperty('--safe-area-inset-right','" + lastRightDp + "px');" +
-                "document.documentElement.style.setProperty('--safe-area-inset-bottom','" + lastBottomDp + "px');" +
-                "document.documentElement.style.setProperty('--safe-area-inset-left','" + lastLeftDp + "px');";
-            bridge.getWebView().post(() -> bridge.getWebView().evaluateJavascript(js, null));
+            SafeInsetsPlugin.computeAndPublish(this, getWindow().getDecorView(), bridge.getWebView(), force);
         }
     }
 
@@ -70,11 +60,24 @@ public class MainActivity extends BridgeActivity {
         super.onResume();
         TimerBubbleManager.getInstance(this).onAppForeground();
         handleIntent(getIntent());
-        ViewCompat.requestApplyInsets(getWindow().getDecorView());
-        applyInsetsToWebView();
+        syncEffectiveInsets(true);
         if (bridge != null && bridge.getWebView() != null) {
             TextZoomPlugin.applySavedTextZoom(this, bridge.getWebView());
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        if (bridge != null && bridge.getWebView() != null) {
+            WebView webView = bridge.getWebView();
+            if (webViewLayoutListener != null) {
+                webView.removeOnLayoutChangeListener(webViewLayoutListener);
+            }
+            if (webViewGlobalLayoutListener != null) {
+                webView.getViewTreeObserver().removeOnGlobalLayoutListener(webViewGlobalLayoutListener);
+            }
+        }
+        super.onDestroy();
     }
 
     @Override
