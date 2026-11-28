@@ -1,6 +1,6 @@
-# Detección de Gama Baja y Niveles de Rendimiento (Propuesta — Sin Activar)
+# Niveles de Rendimiento y Detección Automática (Implementado)
 
-> **Estado:** Documento de diseño para aprobación. **No está activado** en esta fase de medición.
+> **Estado:** Implementado en rama `feat/perf-tiers`. Todos los umbrales de `src/lib/perf-tier.config.ts` son **valores iniciales conservadores** pendientes de calibración real con el HUD del **POCO X6 Pro** y **Samsung Galaxy A13**.
 
 ---
 
@@ -48,3 +48,25 @@ En Ajustes: selector **Auto (recomendado) / Alto / Medio / Bajo**, persistido so
 | **Animaciones de entrada (`Reveal` / Framer)** | Springs completos + blur | Transición rápida `transform/opacity` (120 ms, sin blur) | Instantáneo o `opacity` simple (80 ms) | Según medición |
 | **Animaciones infinitas en reposo** | Activas | Pausadas fuera de foco | Desactivadas (`float`, `pulse` decorativos) | Según medición |
 | **Virtualización / diferido** | Estándar | `DeferredSection` agresivo | Render mínimo + sin filtros en tarjetas | Según medición |
+
+
+---
+
+## 4. Implementación Real y Verificación (Rama `feat/perf-tiers`)
+
+### Arquitectura
+- **Fuente única de verdad:** `src/lib/perf-tier.ts` + `src/lib/perf-tier.config.ts` (fuera de Zustand, Drive sync y backup).
+- **Atributos en `<html>`:** `data-tier="high|medium|low"`, `data-fx-blur`, `data-fx-shadow`, `data-fx-motion`, `data-fx-bg` aplicados antes de hidratación por el script en `<head>` de `src/app/layout.tsx` desde el espejo de `localStorage` (`mynotes_perf_tier_mirror_v1`), reconciliado luego con `@capacitor/preferences` (`mynotes_perf_tier_v1`).
+- **Perfil nativo Android:** `DeviceProfilePlugin.java` registrado en `MainActivity.java` (RAM total, `isLowRamDevice`, `SDK_INT`, `socModel`, `densityDpi`, `refreshRate`, `isPowerSaveMode`, `thermalStatus` y listeners nativos).
+- **Muestreo pasivo:** `src/lib/frame-sampler.ts` (`Float32Array` circular sin asignaciones por frame) + prueba corta de CPU en `requestIdleCallback` (`REFERENCE_CPU_MS = 35` inicial).
+
+### Resultados verificados en PC (Playwright + Chromium headless, `verify-tiers-visual.mjs`)
+
+| Métrica | `high` (Alto) | `medium` (Medio) | `low` (Bajo) |
+|---|---|---|---|
+| **Pre-hidratación `<html data-tier>`** | `high` | `medium` | `low` |
+| **Capas `backdrop-filter` en `.nav-glass`** | **4** | **2** | **1** (`blur(12px)`, sin máscara) |
+| **Total elementos con `backdrop-filter` (Hoy)** | 5 | 3 | 2 |
+| **Scroll 6x CPU PC (FPS / p95)** | 55.7 FPS / 16.9 ms | 37.6 FPS / 33.4 ms | 44.1 FPS / 16.8 ms |
+
+> **Nota importante:** La auditoría de Playwright en PC limita CPU (6x), pero **no** reproduce el coste real de GPU móvil (compositor de `backdrop-filter` y máscaras en Mali-G52 del Galaxy A13). La calibración final requiere capturar el informe del HUD en POCO X6 Pro y Galaxy A13.
