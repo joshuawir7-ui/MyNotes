@@ -18,12 +18,23 @@ function getBuildId() {
   }
 }
 
+/**
+ * Dos builds desde el mismo código:
+ * - Android/APK (por defecto): `output: "export"` estático en `out/`, SIN rutas de servidor.
+ * - Web con servidor (Vercel, o `npm run dev:web|build:web|start:web`): sin export, y con la extensión
+ *   extra `server.ts`, de modo que solo aquí existen los Route Handlers `src/app/api/** /route.server.ts`.
+ */
+const lifecycle = process.env.npm_lifecycle_event || "";
+const isWebServerBuild =
+  process.env.MYNOTES_WEB_SERVER === "1" || process.env.VERCEL === "1" || /:web$/.test(lifecycle);
+
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_GIT_BRANCH: process.env.NEXT_PUBLIC_GIT_BRANCH || getGitBranch(),
     NEXT_PUBLIC_BUILD_ID: getBuildId(),
   },
-  output: "export",
+  ...(isWebServerBuild ? {} : { output: "export" as const }),
+  pageExtensions: isWebServerBuild ? ["tsx", "ts", "jsx", "js", "server.ts"] : ["tsx", "ts", "jsx", "js"],
   images: {
     unoptimized: true,
   },
