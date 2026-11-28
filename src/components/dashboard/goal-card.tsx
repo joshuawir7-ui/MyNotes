@@ -4,7 +4,8 @@ import { LocalImage } from "@/components/ui/local-image"
 
 import { Goal, GoalObjective, useStore, computeNetBalance, computeGoalProgress } from "@/lib/store"
 import { motion, AnimatePresence } from "framer-motion"
-import { Trash2, Camera, Target, Plus, Check, X, FileText, Pin, RotateCcw, Pencil, ChevronDown, MoreVertical } from "lucide-react"
+import { Trash2, Camera, Target, Plus, Check, X, FileText, Pin, RotateCcw, Pencil, ChevronDown, MoreVertical, Share2 } from "lucide-react"
+import { shareGoalAsFile } from "@/lib/share-package"
 import { useState, useEffect, useRef, useMemo, memo } from "react"
 import { createPortal } from "react-dom"
 import { useShallow } from "zustand/react/shallow"
@@ -478,6 +479,22 @@ export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
                                 >
                                     <Pencil className="w-3.5 h-3.5 shrink-0" />
                                     <span>{pick(language, { es: "Editar meta", en: "Edit goal", zh: "编辑目标" })}</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        setIsMenuOpen(false)
+                                        try {
+                                            await shareGoalAsFile(goal, language)
+                                        } catch {
+                                            showToast(lt(language, "No se pudo compartir la meta", "Could not share goal"), "error")
+                                        }
+                                    }}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-foreground hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-left cursor-pointer"
+                                >
+                                    <Share2 className="w-3.5 h-3.5 shrink-0" />
+                                    <span>{pick(language, { es: "Compartir meta", en: "Share goal", zh: "分享目标" })}</span>
                                 </button>
 
                                 <button

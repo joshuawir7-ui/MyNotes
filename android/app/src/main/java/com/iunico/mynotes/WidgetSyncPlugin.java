@@ -39,6 +39,7 @@ public class WidgetSyncPlugin extends Plugin {
 
     private static WidgetSyncPlugin instance;
     private static String pendingOpenNoteId = null;
+    private static String pendingSharedContent = null;
 
     private BroadcastReceiver imageDownloadReceiver = new BroadcastReceiver() {
         @Override
@@ -82,6 +83,24 @@ public class WidgetSyncPlugin extends Plugin {
         if (instance != null) {
             instance.notifyListeners("noteOpenRequested", data);
         }
+    }
+
+    public static void notifySharedFile(String jsonContent) {
+        if (jsonContent == null || jsonContent.isEmpty()) return;
+        pendingSharedContent = jsonContent;
+        if (instance != null) {
+            JSObject data = new JSObject();
+            data.put("content", jsonContent);
+            instance.notifyListeners("sharedFileReceived", data);
+        }
+    }
+
+    @PluginMethod
+    public void getPendingSharedFile(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("content", pendingSharedContent);
+        pendingSharedContent = null;
+        call.resolve(ret);
     }
 
     public static void notifyTasksChanged() {

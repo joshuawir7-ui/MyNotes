@@ -7,6 +7,7 @@ import { getFileIcon } from "@/lib/file-icons"
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { useStore, Note, NoteBlock, BlockType } from "@/lib/store"
+import { shareNoteAsFile, shareNoteAsJpg } from "@/lib/share-package"
 import { translations } from "@/lib/translations"
 import { motion, AnimatePresence } from "framer-motion"
 import { App as CapacitorApp } from "@capacitor/app"
@@ -147,6 +148,8 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
     const [isSaving, setIsSaving] = useState(false)
     const [lastSaved, setLastSaved] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [showShareModal, setShowShareModal] = useState(false)
+    const [isSharing, setIsSharing] = useState(false)
     const [isKeyboardToolbarVisible, setIsKeyboardToolbarVisible] = useState(false)
     const [activeBlockId, setActiveBlockId] = useState<string | null>(null)
     const [viewportOffset, setViewportOffset] = useState(0)
@@ -677,7 +680,12 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                 >
                                     <span>{isSaving ? '...' : lastSaved ? (lt(language, 'Guardado', 'Saved')) : (lt(language, 'Guardar', 'Save'))}</span>
                                 </button>
-                                <button className="p-1.5 rounded-full bg-white/5 text-muted-foreground hover:bg-white/10 transition-all border border-white/10 active:scale-95">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowShareModal(true)}
+                                    className="p-1.5 rounded-full bg-white/5 text-muted-foreground hover:bg-white/10 transition-all border border-white/10 active:scale-95"
+                                    title={lt(language, "Compartir nota", "Share note")}
+                                >
                                     <Share2 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
@@ -717,7 +725,12 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                                         <span className="hidden xs:inline">{isSaving ? langSection.common.saving : lastSaved ? langSection.common.saved : langSection.common.save}</span>
                                         <span className="xs:hidden inline">{isSaving ? '...' : langSection.common.save}</span>
                                     </button>
-                                    <button className="p-1.5 md:p-2.5 rounded-full bg-white/5 text-muted-foreground hover:bg-white/10 transition-all border border-white/10 active:scale-95">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowShareModal(true)}
+                                        className="p-1.5 md:p-2.5 rounded-full bg-white/5 text-muted-foreground hover:bg-white/10 transition-all border border-white/10 active:scale-95"
+                                        title={lt(language, "Compartir nota", "Share note")}
+                                    >
                                         <Share2 className="w-4 h-4 md:w-5 md:h-5" />
                                     </button>
                                     <button
@@ -799,6 +812,94 @@ export function NoteEditor({ note, onClose }: NoteEditorProps) {
                 title={lt(language, '¿Eliminar esta nota?', 'Delete this note?')}
                 message={lt(language, 'Esta nota se eliminará permanentemente.', 'This note will be permanently deleted.')}
             />
+
+            {showShareModal && (
+                <div
+                    className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50"
+                    onClick={() => !isSharing && setShowShareModal(false)}
+                >
+                    <div
+                        className="w-full max-w-sm rounded-3xl bg-white dark:bg-zinc-900 border border-black/10 dark:border-white/15 shadow-2xl p-5 flex flex-col gap-3"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-foreground">
+                                {lt(language, "Compartir nota", "Share note")}
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowShareModal(false)}
+                                className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <button
+                            type="button"
+                            disabled={isSharing}
+                            onClick={async () => {
+                                setIsSharing(true)
+                                try {
+                                    if (typeof window !== "undefined") {
+                                        window.dispatchEvent(new CustomEvent("mynotes:flush-active-editor"))
+                                    }
+                                    await shareNoteAsFile(
+                                        { title, blocks, tags: note.tags },
+                                        language
+                                    )
+                                    setShowShareModal(false)
+                                } catch {
+                                    showToast(lt(language, "Error al compartir archivo", "Error sharing file"), "error")
+                                } finally {
+                                    setIsSharing(false)
+                                }
+                            }}
+                            className="w-full min-h-[52px] p-3.5 rounded-2xl border border-black/15 dark:border-white/15 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-left flex items-center gap-3 transition-all active:scale-[0.98]"
+                        >
+                            <Paperclip className="w-5 h-5 shrink-0 text-foreground" />
+                            <div className="flex flex-col">
+                                <span className="text-xs font-bold text-foreground">
+                                    {lt(language, "Archivo MyNotes (.mynotes) — Recomendado", "MyNotes File (.mynotes) — Recommended")}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground">
+                                    {lt(language, "Al tocarlo se abre y guarda directo en MyNotes.", "Tapping it opens and saves directly in MyNotes.")}
+                                </span>
+                            </div>
+                        </button>
+
+                        <button
+                            type="button"
+                            disabled={isSharing}
+                            onClick={async () => {
+                                setIsSharing(true)
+                                try {
+                                    if (typeof window !== "undefined") {
+                                        window.dispatchEvent(new CustomEvent("mynotes:flush-active-editor"))
+                                    }
+                                    await shareNoteAsJpg({ title, blocks }, language)
+                                    setShowShareModal(false)
+                                } catch {
+                                    showToast(lt(language, "Error al generar imagen JPG", "Error generating JPG image"), "error")
+                                } finally {
+                                    setIsSharing(false)
+                                }
+                            }}
+                            className="w-full min-h-[52px] p-3.5 rounded-2xl border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.07] dark:hover:bg-white/[0.07] text-left flex items-center gap-3 transition-all active:scale-[0.98]"
+                        >
+                            <ImageIcon className="w-5 h-5 shrink-0 text-foreground" />
+                            <div className="flex flex-col">
+                                <span className="text-xs font-bold text-foreground">
+                                    {lt(language, "Imagen / Foto (.jpg)", "Image / Photo (.jpg)")}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground">
+                                    {lt(language, "Ideal si la otra persona no tiene MyNotes instalado.", "Best if the recipient does not have MyNotes installed.")}
+                                </span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            )}
             <ConfirmationDialog
                 isOpen={blockToDelete !== null}
                 onClose={() => setBlockToDelete(null)}

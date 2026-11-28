@@ -40,6 +40,7 @@ import { timerEngine } from "@/lib/timer-engine"
 import { lt } from "@/lib/i18n-inline"
 import { initTextZoom } from "@/lib/text-zoom"
 import { syncSafeInsets } from "@/lib/safe-insets"
+import { importSharedPayload } from "@/lib/share-package"
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -254,9 +255,46 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             const t = setTimeout(() => {
                 checkAndRunAutoBackup2Days().catch(console.error)
             }, 3000)
-            return () => clearTimeout(t)
+
+            const handleSharedContent = (content: string | null | undefined) => {
+                if (!content) return
+                const res = importSharedPayload(content)
+                if (!res) return
+                const st = useStore.getState()
+                if (res.kind === "note") {
+                    st.showToast(
+                        lt(st.language, "Nota compartida guardada", "Shared note saved"),
+                        "success"
+                    )
+                    router.push(`/notes?noteId=${encodeURIComponent(res.id)}`)
+                } else {
+                    st.showToast(
+                        lt(st.language, "Meta compartida guardada", "Shared goal saved"),
+                        "success"
+                    )
+                    router.push("/goals")
+                }
+            }
+
+            let listenerHandle: { remove: () => Promise<void> } | null = null
+            const wsAny = WidgetSync as any
+            if (isNative && wsAny) {
+                wsAny.getPendingSharedFile?.()
+                    .then((res: any) => handleSharedContent(res?.content))
+                    .catch(() => {})
+                wsAny.addListener?.("sharedFileReceived", (data: any) => {
+                    handleSharedContent(data?.content)
+                }).then((h: any) => {
+                    listenerHandle = h
+                }).catch(() => {})
+            }
+
+            return () => {
+                clearTimeout(t)
+                listenerHandle?.remove().catch(() => {})
+            }
         }
-    }, [isHydrated])
+    }, [isHydrated, router])
 
 
     const [showQuote, setShowQuote] = useState(true)

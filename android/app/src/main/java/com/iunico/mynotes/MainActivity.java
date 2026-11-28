@@ -1,6 +1,7 @@
 package com.iunico.mynotes;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -8,6 +9,9 @@ import android.view.ViewTreeObserver;
 import android.view.WindowManager;
 import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends BridgeActivity {
     private View.OnLayoutChangeListener webViewLayoutListener;
@@ -106,6 +110,26 @@ public class MainActivity extends BridgeActivity {
                 
                 intent.removeExtra("noteId");
                 intent.removeExtra("open_note_id");
+            }
+
+            if (Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
+                Uri uri = intent.getData();
+                intent.setData(null);
+                try (InputStream is = getContentResolver().openInputStream(uri)) {
+                    if (is != null) {
+                        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                        byte[] buf = new byte[8192];
+                        int n;
+                        int total = 0;
+                        while ((n = is.read(buf)) > 0 && total < 10 * 1024 * 1024) {
+                            bos.write(buf, 0, n);
+                            total += n;
+                        }
+                        String content = new String(bos.toByteArray(), StandardCharsets.UTF_8);
+                        WidgetSyncPlugin.notifySharedFile(content);
+                    }
+                } catch (Throwable ignored) {
+                }
             }
         }
     }
