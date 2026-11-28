@@ -1284,11 +1284,12 @@ export function SettingsDialog() {
                                 animate={{ scale: 1, y: 0 }}
                                 exit={{ scale: 0.95, y: 20 }}
                                 transition={{ type: "spring", damping: 26, stiffness: 360, mass: 0.7 }}
-                                className="relative w-full max-w-sm md:max-w-3xl rounded-[2rem]"
+                                className="relative w-full max-w-sm md:max-w-4xl rounded-[2rem]"
                                 style={{ contain: 'layout paint' }}
                             >
                                 <div
-                                    className="p-6 md:p-8 overflow-y-auto max-h-[90vh] no-scrollbar overscroll-contain"
+                                    data-settings-scroll
+                                    className="p-6 md:p-8 overflow-y-auto max-h-[90vh] no-scrollbar overscroll-contain space-y-5"
                                     style={{ transform: 'translateZ(0)', WebkitOverflowScrolling: 'touch' }}
                                 >
                                 <button
@@ -1298,15 +1299,279 @@ export function SettingsDialog() {
                                     <X className="w-5 h-5" />
                                 </button>
 
-                                <div className="mb-6 flex justify-center w-full">
+                                <div className="mb-2 flex justify-center w-full">
                                     <Settings 
                                         className="w-8 h-8 text-black dark:text-white animate-spin" 
                                         style={{ animationDuration: '10s' }}
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                                    {/* Left Column: General & Data Management */}
+                                {/* 1. Arriba: Cuenta y Sincronización + Gestión de Datos */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                                    {/* Cuenta y Sincronización (Google Cloud Sync) */}
+                                    <div className="flex flex-col gap-2 p-4 glass-card rounded-2xl">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                                                {t.cloudSync || "Cloud Sync"}
+                                            </p>
+                                            <Cloud className="w-4 h-4 text-black dark:text-white" />
+                                        </div>
+
+                                        {!googleUser ? (
+                                            <div className="flex flex-col gap-2 w-full mt-1">
+                                                <motion.button
+                                                    onClick={handleGoogleLogin}
+                                                    whileHover={{ scale: 1.02 }}
+                                                    whileTap={{ scale: 0.98 }}
+                                                    className="w-full flex items-center justify-center gap-3 p-3 bg-white dark:bg-zinc-800 hover:bg-black/5 dark:hover:bg-white/5 text-foreground rounded-xl border border-black/10 dark:border-white/10 font-bold transition-all text-sm shadow-sm cursor-pointer"
+                                                >
+                                                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                                                        <path
+                                                            fill="#4285F4"
+                                                            d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.9h6.69c-.29 1.5-.1.14-.9 3.03l2.84 2.2c1.66-1.53 2.61-3.79 2.61-6.06z"
+                                                        />
+                                                        <path
+                                                            fill="#34A853"
+                                                            d="M12 24c3.24 0 5.97-1.08 7.96-2.93l-3.84-2.98c-1.07.72-2.44 1.15-4.12 1.15-3.17 0-5.85-2.14-6.81-5.03L2.25 16.4C4.23 20.33 8.3 22.92 12 24z"
+                                                        />
+                                                        <path
+                                                            fill="#FBBC05"
+                                                            d="M5.19 14.21c-.24-.72-.38-1.49-.38-2.28s.14-1.56.38-2.28L2.25 7.55c-.78 1.55-1.22 3.29-1.22 5.09s.44 3.54 1.22 5.09l3.94-3.52z"
+                                                        />
+                                                        <path
+                                                            fill="#EA4335"
+                                                            d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.43-3.43C17.96 1.19 15.24 0 12 0 8.3 0 4.23 2.59 2.25 6.52l3.94 3.52c.96-2.89 3.64-5.03 6.81-5.03z"
+                                                        />
+                                                    </svg>
+                                                    {t.googleLogin || "Sign in with Google"}
+                                                </motion.button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col gap-3 w-full mt-1">
+                                                <div className="flex items-center justify-between p-3 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-xl">
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <img
+                                                            src={googleUser.imageUrl}
+                                                            alt="Profile"
+                                                            referrerPolicy="no-referrer"
+                                                            className="w-9 h-9 rounded-full shrink-0"
+                                                        />
+                                                        <div className="min-w-0">
+                                                            <p className="font-bold text-xs truncate leading-tight">{googleUser.name}</p>
+                                                            <p className="text-[10px] text-muted-foreground truncate leading-none mt-0.5">{googleUser.email}</p>
+                                                        </div>
+                                                    </div>
+                                                    <motion.button
+                                                        onClick={handleGoogleLogout}
+                                                        whileHover={{ scale: 1.1, backgroundColor: "rgba(239, 68, 68, 0.1)" }}
+                                                        whileTap={{ scale: 0.9 }}
+                                                        className="p-2 text-zinc-500 hover:text-red-500 rounded-lg transition-all shrink-0 cursor-pointer"
+                                                        title={t.googleLogout || "Sign out"}
+                                                    >
+                                                        <LogOut className="w-4 h-4" />
+                                                    </motion.button>
+                                                </div>
+                                                {googleSessionExpired ? (
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+                                                            <p className="text-xs font-semibold text-red-600 dark:text-red-400">
+                                                                {lt(language, "Reconecta tu cuenta", "Reconnect your account")}
+                                                            </p>
+                                                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
+                                                                {lt(language, "Tu acceso a Google caducó o fue revocado. Reconecta tu cuenta para reanudar la sincronización.", "Your Google access expired or was revoked. Reconnect your account to resume cloud sync.")}
+                                                            </p>
+                                                        </div>
+                                                        <motion.button
+                                                            onClick={handleGoogleLogin}
+                                                            whileHover={{ scale: 1.02 }}
+                                                            whileTap={{ scale: 0.98 }}
+                                                            className="w-full flex items-center justify-center gap-2 p-3 bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black rounded-xl font-bold transition-all text-xs shadow-lg shadow-black/20 dark:shadow-white/10 cursor-pointer"
+                                                        >
+                                                            <RefreshCw className="w-3.5 h-3.5" />
+                                                            {lt(language, "Re-conectar cuenta", "Re-connect account")}
+                                                        </motion.button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col gap-2">
+                                                        <SettingsCloudSyncControls
+                                                            googleUser={googleUser}
+                                                            localSyncing={localSyncing}
+                                                            localRestoring={localRestoring}
+                                                            isRecovering={isRecovering}
+                                                            recoveryMessage={recoveryMessage}
+                                                            handleCloudSync={handleCloudSync}
+                                                            handleCloudRestore={handleCloudRestore}
+                                                            handleRecoverImages={handleRecoverImages}
+                                                            language={language}
+                                                            t={t}
+                                                        />
+
+                                                        {lastCloudSync && (
+                                                            <p className="text-[10px] text-muted-foreground text-center mt-1">
+                                                                {(t.lastSync || "Last backup: {date}").replace('{date}', lastCloudSync)}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Gestión de Datos */}
+                                    <div className="flex flex-col gap-2 p-4 glass-card rounded-2xl">
+                                        <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">
+                                            {lt(language, "Gestión de Datos", "Data Management")}
+                                        </p>
+                                        <div className="flex flex-col gap-2 w-full">
+                                            <div className="flex gap-3 w-full">
+                                                <motion.button
+                                                    onClick={() => {
+                                                        setExportAnimate(true);
+                                                        setTimeout(() => setExportAnimate(false), 500);
+                                                        handleExport();
+                                                    }}
+                                                    whileHover="hover"
+                                                    whileTap="tap"
+                                                    className="flex-1 flex items-center justify-center gap-2 p-3 bg-black/10 hover:bg-black/20 text-black dark:bg-white/10 dark:hover:bg-white/20 dark:text-white rounded-xl font-bold transition-all text-sm cursor-pointer"
+                                                >
+                                                    <motion.div
+                                                        variants={exportVariants}
+                                                        animate={exportAnimate ? { y: [0, 8, -4, 2, 0], scaleY: [1, 0.75, 1.15, 0.9, 1] } : "normal"}
+                                                        transition={exportAnimate ? { type: "spring", stiffness: 350, damping: 8 } : undefined}
+                                                    >
+                                                        <Download className="w-4 h-4" />
+                                                    </motion.div>
+                                                    {lt(language, "Exportar", "Export")}
+                                                </motion.button>
+                                                <input 
+                                                    type="file" 
+                                                    ref={fileInputRef} 
+                                                    accept=".json" 
+                                                    className="hidden" 
+                                                    onChange={handleImport} 
+                                                />
+                                                <motion.button 
+                                                    onClick={() => {
+                                                        setImportAnimate(true);
+                                                        setTimeout(() => setImportAnimate(false), 500);
+                                                        fileInputRef.current?.click();
+                                                    }}
+                                                    whileHover="hover"
+                                                    whileTap="tap"
+                                                    className="flex-1 flex items-center justify-center gap-2 p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-xl font-bold transition-all text-sm cursor-pointer"
+                                                >
+                                                    <motion.div
+                                                        variants={importVariants}
+                                                        animate={importAnimate ? { y: [0, -8, 4, -2, 0], scaleY: [1, 0.75, 1.15, 0.9, 1] } : "normal"}
+                                                        transition={importAnimate ? { type: "spring", stiffness: 350, damping: 8 } : undefined}
+                                                    >
+                                                        <Upload className="w-4 h-4" />
+                                                    </motion.div>
+                                                    {lt(language, "Importar", "Import")}
+                                                </motion.button>
+                                            </div>
+                                            <motion.button
+                                                onClick={() => {
+                                                    setDownloadBackupAnimate(true);
+                                                    setTimeout(() => setDownloadBackupAnimate(false), 500);
+                                                    handleSaveToDocuments();
+                                                }}
+                                                whileHover="hover"
+                                                whileTap="tap"
+                                                className="w-full flex items-center justify-center gap-2 p-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold transition-all text-sm cursor-pointer"
+                                            >
+                                                <motion.div
+                                                    variants={downloadBackupVariants}
+                                                    animate={downloadBackupAnimate ? { y: [0, 8, -4, 2, 0], scaleY: [1, 0.75, 1.15, 0.9, 1] } : "normal"}
+                                                    transition={downloadBackupAnimate ? { type: "spring", stiffness: 350, damping: 8 } : undefined}
+                                                >
+                                                    <Download className="w-4 h-4 text-emerald-500" />
+                                                </motion.div>
+                                                {lt(language, "Descargar datos de respaldo", "Download Backup Data")}
+                                            </motion.button>
+                                            <motion.button
+                                                onClick={() => {
+                                                    setSmartImportAnimate(true);
+                                                    setTimeout(() => setSmartImportAnimate(false), 600);
+                                                    handleSmartImport();
+                                                }}
+                                                whileHover="hover"
+                                                whileTap="tap"
+                                                className="w-full flex items-center justify-center gap-2 p-3 bg-black/10 hover:bg-black/20 text-black dark:bg-white/10 dark:hover:bg-white/20 dark:text-white rounded-xl font-bold transition-all text-sm cursor-pointer"
+                                            >
+                                                <motion.div
+                                                    variants={smartImportVariants}
+                                                    animate={smartImportAnimate ? { rotate: [0, 360], scale: [1, 1.4, 0.85, 1.15, 1] } : "normal"}
+                                                    transition={smartImportAnimate ? { type: "spring", stiffness: 250, damping: 10 } : undefined}
+                                                >
+                                                    <Zap className="w-4 h-4 text-black dark:text-white" />
+                                                </motion.div>
+                                                {lt(language, "Importe Inteligente", "Smart Import")}
+                                            </motion.button>
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground/70 text-center mt-1 leading-tight">
+                                            {lt(language, "Exporta tus notas, hábitos y metas para tener un respaldo y recupéralos importando el archivo generado de forma manual o inteligente.", "Export your notes, habits and goals for a backup and restore them by importing the generated file manually or smartly.")}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* 2. Tema, Idioma y Colores de la App lado a lado */}
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 glass-card rounded-2xl items-center">
+                                    <div className="flex flex-col justify-center items-center gap-2 border-r border-black/10 dark:border-white/10 pr-3">
+                                        <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t.theme || "Theme"}</p>
+                                        <div className="scale-125">
+                                            <ModeToggle />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col justify-center items-center gap-2 md:border-r md:border-black/10 dark:md:border-white/10 md:pr-3">
+                                        <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t.language || "Language"}</p>
+                                        <div className="scale-110">
+                                            <LanguageToggle />
+                                        </div>
+                                    </div>
+                                    <div className="col-span-2 md:col-span-1 flex flex-col gap-2 pt-3 border-t border-black/10 dark:border-white/10 md:pt-0 md:border-t-0">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                                                {lt(language, "Colores de la App", "App Colors")}
+                                            </p>
+                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                                {appColor === 'black' 
+                                                    ? (lt(language, "Negro", "Black"))
+                                                    : (lt(language, "Morado", "Purple"))}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setAppColor('purple')}
+                                                className={`flex-1 flex items-center justify-center gap-2 py-2 px-2.5 rounded-xl border transition-all duration-300 font-bold text-xs cursor-pointer ${
+                                                    appColor === 'purple'
+                                                        ? "bg-purple-600/10 border-purple-600 text-purple-600 dark:text-purple-400 shadow-sm ring-1 ring-purple-600/30"
+                                                        : "bg-black/5 dark:bg-white/5 border-transparent text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10"
+                                                }`}
+                                            >
+                                                <span className="w-3.5 h-3.5 rounded-full bg-[#7f0df2] border border-white/20 shadow-sm shrink-0" />
+                                                <span>{lt(language, "Morado", "Purple")}</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAppColor('black')}
+                                                className={`flex-1 flex items-center justify-center gap-2 py-2 px-2.5 rounded-xl border transition-all duration-300 font-bold text-xs cursor-pointer ${
+                                                    (appColor === 'black' || !appColor)
+                                                        ? "bg-black/15 dark:bg-white/15 border-black dark:border-white text-black dark:text-white shadow-sm ring-1 ring-black/20 dark:ring-white/20"
+                                                        : "bg-black/5 dark:bg-white/5 border-transparent text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10"
+                                                }`}
+                                            >
+                                                <span className="w-3.5 h-3.5 rounded-full bg-black dark:bg-white border border-white/20 shadow-sm shrink-0" />
+                                                <span>{lt(language, "Negro", "Black")}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 3. Preferencias y Apariencia */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                                    {/* Columna Izquierda: Notificaciones, Frases, Burbuja */}
                                     <div className="space-y-4">
                                         <motion.div 
                                             onClick={() => {
@@ -1344,52 +1609,57 @@ export function SettingsDialog() {
                                             </button>
                                         </motion.div>
 
-                                        {/* Verificar aviso y permisos de notificaciones */}
-                                        <div className="p-4 glass-card rounded-2xl flex flex-col gap-3">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <div className="flex items-center gap-2.5 min-w-0">
-                                                    <div className={`p-2 rounded-xl ${osNotifPermission === 'granted' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-amber-500/15 text-amber-500'}`}>
-                                                        {osNotifPermission === 'granted' ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <h4 className="font-semibold text-xs truncate">
-                                                            {lt(language, 'Estado y aviso de notificaciones', 'Notification status & prompt')}
-                                                        </h4>
-                                                        <p className="text-[11px] text-muted-foreground">
-                                                            {lt(language, 'Permiso del sistema: ', 'System permission: ')}
-                                                            <span className={`font-semibold ${osNotifPermission === 'granted' ? 'text-emerald-500' : osNotifPermission === 'denied' ? 'text-rose-500' : 'text-amber-500'}`}>
-                                                                {osNotifPermission === 'granted'
-                                                                    ? (lt(language, 'Permitidas', 'Granted'))
-                                                                    : osNotifPermission === 'denied'
-                                                                        ? (lt(language, 'Denegadas', 'Denied'))
-                                                                        : (lt(language, 'Pendiente', 'Pending'))}
-                                                            </span>
-                                                        </p>
+                                        {/* Estado y aviso de notificaciones: se despliega al activar Notificaciones o Modo Desarrollador */}
+                                        {(notificationsEnabled || developerMode) && (
+                                            <div className="p-4 glass-card rounded-2xl flex flex-col gap-3">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <div className={`p-2 rounded-xl ${osNotifPermission === 'granted' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-amber-500/15 text-amber-500'}`}>
+                                                            {osNotifPermission === 'granted' ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <h4 className="font-semibold text-xs truncate">
+                                                                {lt(language, 'Estado y aviso de notificaciones', 'Notification status & prompt')}
+                                                            </h4>
+                                                            <p className="text-[11px] text-muted-foreground">
+                                                                {lt(language, 'Permiso del sistema: ', 'System permission: ')}
+                                                                <span className={`font-semibold ${osNotifPermission === 'granted' ? 'text-emerald-500' : osNotifPermission === 'denied' ? 'text-rose-500' : 'text-amber-500'}`}>
+                                                                    {osNotifPermission === 'granted'
+                                                                        ? (lt(language, 'Permitidas', 'Granted'))
+                                                                        : osNotifPermission === 'denied'
+                                                                            ? (lt(language, 'Denegadas', 'Denied'))
+                                                                            : (lt(language, 'Pendiente', 'Pending'))}
+                                                                </span>
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setIsOpen(false);
+                                                            setTimeout(() => {
+                                                                window.dispatchEvent(new CustomEvent('mynotes:show-notification-prompt'));
+                                                            }, 180);
+                                                        }}
+                                                        className="flex-1 py-2 px-3 rounded-xl bg-black text-white dark:bg-white dark:text-black text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer"
+                                                    >
+                                                        {lt(language, 'Activar / Probar aviso', 'Show notification prompt')}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={refreshOsNotifPermission}
+                                                        className="py-2 px-3 rounded-xl bg-black/5 dark:bg-white/10 text-xs font-medium hover:bg-black/10 dark:hover:bg-white/15 active:scale-[0.98] transition-all cursor-pointer"
+                                                    >
+                                                        {lt(language, 'Verificar', 'Verify')}
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setIsOpen(false);
-                                                        setTimeout(() => {
-                                                            window.dispatchEvent(new CustomEvent('mynotes:show-notification-prompt'));
-                                                        }, 180);
-                                                    }}
-                                                    className="flex-1 py-2 px-3 rounded-xl bg-black text-white dark:bg-white dark:text-black text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
-                                                >
-                                                    {lt(language, 'Activar / Probar aviso', 'Show notification prompt')}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={refreshOsNotifPermission}
-                                                    className="py-2 px-3 rounded-xl bg-black/5 dark:bg-white/10 text-xs font-medium hover:bg-black/10 dark:hover:bg-white/15 active:scale-[0.98] transition-all"
-                                                >
-                                                    {lt(language, 'Verificar', 'Verify')}
-                                                </button>
-                                            </div>
-                                        </div>
+                                        )}
+
+                                        {/* Priority task reminder time slots */}
+                                        <PriorityReminderSettings />
 
                                         {/* Frases filosóficas de disciplina */}
                                         <div
@@ -1415,7 +1685,7 @@ export function SettingsDialog() {
                                                                 e.stopPropagation();
                                                                 window.dispatchEvent(new CustomEvent('mynotes:show-philosophical-quote'));
                                                             }}
-                                                            className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/15 hover:opacity-80"
+                                                            className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/15 hover:opacity-80 cursor-pointer"
                                                         >
                                                             {lt(language, 'Ver frase', 'Preview')}
                                                         </button>
@@ -1434,86 +1704,6 @@ export function SettingsDialog() {
                                                 <span className={`inline-block h-4 w-4 transform rounded-full ${philosophicalQuotesEnabled ? 'bg-white dark:bg-zinc-900 translate-x-6' : 'bg-white translate-x-1'} transition-transform duration-300`} />
                                             </button>
                                         </div>
-
-                                        {/* Priority task reminder time slots */}
-                                        <PriorityReminderSettings />
-
-                                        <motion.div 
-                                            onClick={() => {
-                                                setFocusEffectEnabled(!focusEffectEnabled);
-                                            }}
-                                            whileHover="hover"
-                                            whileTap="tap"
-                                            className="flex items-center justify-between p-4 glass-card rounded-2xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <motion.div 
-                                                    variants={zapVariants}
-                                                    animate={focusEffectEnabled ? "active" : "inactive"}
-                                                    whileHover="hover"
-                                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-300 ${
-                                                        focusEffectEnabled 
-                                                            ? "bg-yellow-500/25 text-yellow-500 dark:text-yellow-400" 
-                                                            : "bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400"
-                                                    }`}
-                                                >
-                                                    <Zap className="w-5 h-5" />
-                                                </motion.div>
-                                                <div>
-                                                    <p className="font-bold text-sm">{lt(language, "Efecto de Enfoque", "Focus Effect")}</p>
-                                                    <p className="text-xs text-muted-foreground">{lt(language, "Efecto visual al completar tareas", "Visual effect on completing tasks")}</p>
-                                                </div>
-                                            </div>
-
-                                            <button
-                                                tabIndex={-1}
-                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 pointer-events-none ${focusEffectEnabled ? 'bg-black dark:bg-white' : 'bg-zinc-300 dark:bg-zinc-700'
-                                                    }`}
-                                            >
-                                                <span className={`inline-block h-4 w-4 transform rounded-full ${focusEffectEnabled ? 'bg-white dark:bg-zinc-900 translate-x-6' : 'bg-white translate-x-1'} transition-transform duration-300`} />
-                                            </button>
-                                        </motion.div>
-
-                                        <VisualEffectsSettingsSection language={language} />
-
-                                        {/* Developer Mode (Modo Desarrollador) */}
-                                        <motion.div 
-                                            onClick={() => {
-                                                if (setDeveloperMode) setDeveloperMode(!developerMode);
-                                            }}
-                                            whileHover="hover"
-                                            whileTap="tap"
-                                            className="flex items-center justify-between p-4 glass-card rounded-2xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <motion.div 
-                                                    animate={developerMode ? "active" : "inactive"}
-                                                    whileHover="hover"
-                                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-300 ${
-                                                        developerMode 
-                                                            ? "bg-purple-500/25 text-purple-500 dark:text-purple-400" 
-                                                            : "bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400"
-                                                    }`}
-                                                >
-                                                    <Code className="w-5 h-5" />
-                                                </motion.div>
-                                                <div>
-                                                    <p className="font-bold text-sm">{lt(language, "Modo Desarrollador", "Developer Mode")}</p>
-                                                    <p className="text-xs text-muted-foreground">{lt(language, "Muestra el contador de navegación en tiempo real", "Show real-time navigation counter")}</p>
-                                                </div>
-                                            </div>
-
-                                            <button
-                                                tabIndex={-1}
-                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 pointer-events-none ${
-                                                    developerMode ? 'bg-black dark:bg-white' : 'bg-zinc-300 dark:bg-zinc-700'
-                                                }`}
-                                            >
-                                                <span className={`inline-block h-4 w-4 transform rounded-full ${
-                                                    developerMode ? 'bg-white dark:bg-zinc-900 translate-x-6' : 'bg-white translate-x-1'
-                                                } transition-transform duration-300`} />
-                                            </button>
-                                        </motion.div>
 
                                         {/* Floating Timer Bubble Overlay (Fase 1C) */}
                                         <div className="flex flex-col gap-3 p-4 glass-card rounded-2xl border border-black/5 dark:border-white/10">
@@ -1545,7 +1735,6 @@ export function SettingsDialog() {
                                                 )}
                                             </div>
 
-                                            {/* Permission request alert banner if not granted */}
                                             {!bubbleSettings.hasPermission && (
                                                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
                                                     <span className="text-amber-700 dark:text-amber-300 font-medium leading-relaxed">
@@ -1561,7 +1750,6 @@ export function SettingsDialog() {
                                                 </div>
                                             )}
 
-                                            {/* Mode Selector */}
                                             <div className="flex flex-col gap-1.5 mt-1">
                                                 <span className="text-xs font-semibold text-muted-foreground">
                                                     {lt(language, "Modo de visualización:", "Display Mode:")}
@@ -1603,7 +1791,6 @@ export function SettingsDialog() {
                                                 </div>
                                             </div>
 
-                                            {/* Xiaomi / HyperOS / MIUI Guide */}
                                             <div className="border-t border-black/5 dark:border-white/10 pt-2.5 mt-1">
                                                 <button
                                                     type="button"
@@ -1653,12 +1840,15 @@ export function SettingsDialog() {
                                                 </AnimatePresence>
                                             </div>
                                         </div>
+                                    </div>
 
-                                        {/* Welcome Notes Test Button */}
+                                    {/* Columna Derecha: Efectos, Enfoque, Tamaño de texto y Fuentes */}
+                                    <div className="space-y-4">
+                                        <VisualEffectsSettingsSection language={language} />
+
                                         <motion.div 
                                             onClick={() => {
-                                                window.dispatchEvent(new Event('openWelcomeNotesModal'));
-                                                setIsOpen(false);
+                                                setFocusEffectEnabled(!focusEffectEnabled);
                                             }}
                                             whileHover="hover"
                                             whileTap="tap"
@@ -1666,75 +1856,31 @@ export function SettingsDialog() {
                                         >
                                             <div className="flex items-center gap-3">
                                                 <motion.div 
-                                                    className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-500/25 text-blue-500 dark:text-blue-400"
+                                                    variants={zapVariants}
+                                                    animate={focusEffectEnabled ? "active" : "inactive"}
+                                                    whileHover="hover"
+                                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-300 ${
+                                                        focusEffectEnabled 
+                                                            ? "bg-yellow-500/25 text-yellow-500 dark:text-yellow-400" 
+                                                            : "bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400"
+                                                    }`}
                                                 >
                                                     <Zap className="w-5 h-5" />
                                                 </motion.div>
                                                 <div>
-                                                    <p className="font-bold text-sm">Test Mensaje Bienvenida Notas</p>
-                                                    <p className="text-xs text-muted-foreground">Probar modal de MyNotes</p>
+                                                    <p className="font-bold text-sm">{lt(language, "Efecto de Enfoque", "Focus Effect")}</p>
+                                                    <p className="text-xs text-muted-foreground">{lt(language, "Efecto visual al completar tareas", "Visual effect on completing tasks")}</p>
                                                 </div>
                                             </div>
+
+                                            <button
+                                                tabIndex={-1}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 pointer-events-none ${focusEffectEnabled ? 'bg-black dark:bg-white' : 'bg-zinc-300 dark:bg-zinc-700'
+                                                    }`}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full ${focusEffectEnabled ? 'bg-white dark:bg-zinc-900 translate-x-6' : 'bg-white translate-x-1'} transition-transform duration-300`} />
+                                            </button>
                                         </motion.div>
-
-                                        {/* Theme & Language Toggles */}
-                                        <div className="flex items-center justify-between gap-4 p-4 glass-card rounded-2xl">
-                                            <div className="flex-1 flex flex-col justify-center items-center gap-2 border-r border-black/10 dark:border-white/10 pr-4">
-                                                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t.theme || "Theme"}</p>
-                                                <div className="scale-125">
-                                                    <ModeToggle />
-                                                </div>
-                                            </div>
-                                            <div className="flex-1 flex flex-col justify-center items-center gap-2 pl-4">
-                                                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t.language || "Language"}</p>
-                                                <div className="scale-110">
-                                                    <LanguageToggle />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* App Colors Selector */}
-                                        <div className="flex flex-col gap-3 p-4 glass-card rounded-2xl">
-                                            <div className="flex items-center justify-between">
-                                                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
-                                                    {lt(language, "Colores de la App", "App Colors")}
-                                                </p>
-                                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                                    {appColor === 'black' 
-                                                        ? (lt(language, "Negro", "Black"))
-                                                        : (lt(language, "Morado", "Purple"))}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                {/* Morado Button */}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setAppColor('purple')}
-                                                    className={`flex-1 flex items-center justify-center gap-2.5 py-2.5 px-3 rounded-xl border transition-all duration-300 font-bold text-xs cursor-pointer ${
-                                                        appColor === 'purple'
-                                                            ? "bg-purple-600/10 border-purple-600 text-purple-600 dark:text-purple-400 shadow-sm ring-1 ring-purple-600/30"
-                                                            : "bg-black/5 dark:bg-white/5 border-transparent text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10"
-                                                    }`}
-                                                >
-                                                    <span className="w-4 h-4 rounded-full bg-[#7f0df2] border border-white/20 shadow-sm shrink-0" />
-                                                    <span>{lt(language, "Morado", "Purple")}</span>
-                                                </button>
-
-                                                {/* Negro Button */}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setAppColor('black')}
-                                                    className={`flex-1 flex items-center justify-center gap-2.5 py-2.5 px-3 rounded-xl border transition-all duration-300 font-bold text-xs cursor-pointer ${
-                                                        (appColor === 'black' || !appColor)
-                                                            ? "bg-black/15 dark:bg-white/15 border-black dark:border-white text-black dark:text-white shadow-sm ring-1 ring-black/20 dark:ring-white/20"
-                                                            : "bg-black/5 dark:bg-white/5 border-transparent text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10"
-                                                    }`}
-                                                >
-                                                    <span className="w-4 h-4 rounded-full bg-black dark:bg-white border border-white/20 shadow-sm shrink-0" />
-                                                    <span>{lt(language, "Negro", "Black")}</span>
-                                                </button>
-                                            </div>
-                                        </div>
 
                                         {/* Tamaño de texto (Local del dispositivo) */}
                                         <div className="flex flex-col gap-3 p-4 glass-card rounded-2xl">
@@ -1831,7 +1977,6 @@ export function SettingsDialog() {
                                                 </div>
                                             )}
 
-                                            {/* Vista previa del tamaño elegido */}
                                             <div className="rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 p-3 flex flex-col gap-1">
                                                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                                     {pick(language, { es: "Vista previa", en: "Preview", zh: "预览" })}
@@ -1875,7 +2020,6 @@ export function SettingsDialog() {
                                                 </span>
                                             </div>
 
-                                            {/* Font Presets Grid */}
                                             <div className="grid grid-cols-2 gap-2">
                                                 <button
                                                     type="button"
@@ -1930,7 +2074,6 @@ export function SettingsDialog() {
                                                 </button>
                                             </div>
 
-                                            {/* Custom Uploaded Fonts List */}
                                             {customFonts.length > 0 && (
                                                 <div className="flex flex-col gap-1.5 mt-1">
                                                     <p className="text-[11px] text-muted-foreground font-semibold">
@@ -1973,7 +2116,6 @@ export function SettingsDialog() {
                                                 </div>
                                             )}
 
-                                            {/* Upload Custom Font Button */}
                                             <input
                                                 type="file"
                                                 ref={fontInputRef}
@@ -1990,251 +2132,108 @@ export function SettingsDialog() {
                                                 <span>{lt(language, "Añadir fuente desde almacenamiento", "Add font from storage")}</span>
                                             </button>
                                         </div>
+                                    </div>
+                                </div>
 
-                                        {/* Guided Onboarding Replay */}
-                                        <div className="flex flex-col gap-2 p-4 glass-card rounded-2xl">
-                                            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">
-                                                {lt(language, "Guía de bienvenida", "Welcome Guide")}
-                                            </p>
-                                            <button
-                                                onClick={() => {
-                                                    setIsOpen(false);
-                                                    router.push('/');
-                                                    startTourManually();
-                                                }}
-                                                className="w-full flex items-center justify-center gap-2 p-3 bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black rounded-xl font-bold transition-all text-sm hover:scale-105 active:scale-95 shadow-lg shadow-black/20 dark:shadow-white/10 cursor-pointer"
+                                {/* 4. Modo Desarrollador (despliega funciones de prueba, guía y estado de notificaciones) */}
+                                <div className="space-y-3">
+                                    <motion.div 
+                                        onClick={() => {
+                                            if (setDeveloperMode) setDeveloperMode(!developerMode);
+                                        }}
+                                        whileHover="hover"
+                                        whileTap="tap"
+                                        className="flex items-center justify-between p-4 glass-card rounded-2xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <motion.div 
+                                                animate={developerMode ? "active" : "inactive"}
+                                                whileHover="hover"
+                                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-300 ${
+                                                    developerMode 
+                                                        ? "bg-purple-500/25 text-purple-500 dark:text-purple-400" 
+                                                        : "bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400"
+                                                }`}
                                             >
-                                                <CircleHelp className="w-4 h-4 text-white dark:text-black animate-pulse" />
-                                                {lt(language, "Iniciar guía interactiva", "Start interactive guide")}
-                                            </button>
+                                                <Code className="w-5 h-5" />
+                                            </motion.div>
+                                            <div>
+                                                <p className="font-bold text-sm">{lt(language, "Modo Desarrollador", "Developer Mode")}</p>
+                                                <p className="text-xs text-muted-foreground">{lt(language, "Muestra herramientas de prueba y diagnóstico", "Show testing & diagnostic tools")}</p>
+                                            </div>
                                         </div>
 
-                                        {/* Data Management */}
-                                        <div className="flex flex-col gap-2 p-4 glass-card rounded-2xl">
-                                            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-2">
-                                                {lt(language, "Gestión de Datos", "Data Management")}
-                                            </p>
-                                            <div className="flex flex-col gap-2 w-full">
-                                                <div className="flex gap-3 w-full">
-                                                    <motion.button
-                                                        onClick={() => {
-                                                            setExportAnimate(true);
-                                                            setTimeout(() => setExportAnimate(false), 500);
-                                                            handleExport();
-                                                        }}
-                                                        whileHover="hover"
-                                                        whileTap="tap"
-                                                        className="flex-1 flex items-center justify-center gap-2 p-3 bg-black/10 hover:bg-black/20 text-black dark:bg-white/10 dark:hover:bg-white/20 dark:text-white rounded-xl font-bold transition-all text-sm"
-                                                    >
-                                                        <motion.div
-                                                            variants={exportVariants}
-                                                            animate={exportAnimate ? { y: [0, 8, -4, 2, 0], scaleY: [1, 0.75, 1.15, 0.9, 1] } : "normal"}
-                                                            transition={exportAnimate ? { type: "spring", stiffness: 350, damping: 8 } : undefined}
-                                                        >
-                                                            <Download className="w-4 h-4" />
-                                                        </motion.div>
-                                                        {lt(language, "Exportar", "Export")}
-                                                    </motion.button>
-                                                    <input 
-                                                        type="file" 
-                                                        ref={fileInputRef} 
-                                                        accept=".json" 
-                                                        className="hidden" 
-                                                        onChange={handleImport} 
-                                                    />
-                                                    <motion.button 
-                                                        onClick={() => {
-                                                            setImportAnimate(true);
-                                                            setTimeout(() => setImportAnimate(false), 500);
-                                                            fileInputRef.current?.click();
-                                                        }}
-                                                        whileHover="hover"
-                                                        whileTap="tap"
-                                                        className="flex-1 flex items-center justify-center gap-2 p-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-xl font-bold transition-all text-sm"
-                                                    >
-                                                        <motion.div
-                                                            variants={importVariants}
-                                                            animate={importAnimate ? { y: [0, -8, 4, -2, 0], scaleY: [1, 0.75, 1.15, 0.9, 1] } : "normal"}
-                                                            transition={importAnimate ? { type: "spring", stiffness: 350, damping: 8 } : undefined}
-                                                        >
-                                                            <Upload className="w-4 h-4" />
-                                                        </motion.div>
-                                                        {lt(language, "Importar", "Import")}
-                                                    </motion.button>
-                                                </div>
-                                                <motion.button
-                                                    onClick={() => {
-                                                        setDownloadBackupAnimate(true);
-                                                        setTimeout(() => setDownloadBackupAnimate(false), 500);
-                                                        handleSaveToDocuments();
-                                                    }}
-                                                    whileHover="hover"
-                                                    whileTap="tap"
-                                                    className="w-full flex items-center justify-center gap-2 p-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold transition-all text-sm"
-                                                >
-                                                    <motion.div
-                                                        variants={downloadBackupVariants}
-                                                        animate={downloadBackupAnimate ? { y: [0, 8, -4, 2, 0], scaleY: [1, 0.75, 1.15, 0.9, 1] } : "normal"}
-                                                        transition={downloadBackupAnimate ? { type: "spring", stiffness: 350, damping: 8 } : undefined}
-                                                    >
-                                                        <Download className="w-4 h-4 text-emerald-500" />
-                                                    </motion.div>
-                                                    {lt(language, "Descargar datos de respaldo", "Download Backup Data")}
-                                                </motion.button>
-                                                <motion.button
-                                                    onClick={() => {
-                                                        setSmartImportAnimate(true);
-                                                        setTimeout(() => setSmartImportAnimate(false), 600);
-                                                        handleSmartImport();
-                                                    }}
-                                                    whileHover="hover"
-                                                    whileTap="tap"
-                                                    className="w-full flex items-center justify-center gap-2 p-3 bg-black/10 hover:bg-black/20 text-black dark:bg-white/10 dark:hover:bg-white/20 dark:text-white rounded-xl font-bold transition-all text-sm"
-                                                >
-                                                    <motion.div
-                                                        variants={smartImportVariants}
-                                                        animate={smartImportAnimate ? { rotate: [0, 360], scale: [1, 1.4, 0.85, 1.15, 1] } : "normal"}
-                                                        transition={smartImportAnimate ? { type: "spring", stiffness: 250, damping: 10 } : undefined}
-                                                    >
-                                                        <Zap className="w-4 h-4 text-black dark:text-white" />
-                                                    </motion.div>
-                                                    {lt(language, "Importe Inteligente", "Smart Import")}
-                                                </motion.button>
-                                            </div>
-                                            <p className="text-[10px] text-muted-foreground/70 text-center mt-2 leading-tight">
-                                                {lt(language, "Exporta tus notas, hábitos y metas para tener un respaldo y recupéralos importando el archivo generado de forma manual o inteligente.", "Export your notes, habits and goals for a backup and restore them by importing the generated file manually or smartly.")}
-                                            </p>
-                                        </div>
-                                    </div>
+                                        <button
+                                            tabIndex={-1}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 pointer-events-none ${
+                                                developerMode ? 'bg-black dark:bg-white' : 'bg-zinc-300 dark:bg-zinc-700'
+                                            }`}
+                                        >
+                                            <span className={`inline-block h-4 w-4 transform rounded-full ${
+                                                developerMode ? 'bg-white dark:bg-zinc-900 translate-x-6' : 'bg-white translate-x-1'
+                                            } transition-transform duration-300`} />
+                                        </button>
+                                    </motion.div>
 
-                                    {/* Right Column: Google Cloud Sync */}
-                                    <div className="space-y-4">
-                                        {/* Cloud Sync with Google */}
-                                        <div className="flex flex-col gap-2 p-4 glass-card rounded-2xl">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
-                                                    {t.cloudSync || "Cloud Sync"}
-                                                </p>
-                                                <Cloud className="w-4 h-4 text-black dark:text-white" />
-                                            </div>
-
-                                            {!googleUser ? (
-                                                <div className="flex flex-col gap-2 w-full mt-1">
-                                                    <motion.button
-                                                        onClick={handleGoogleLogin}
-                                                        whileHover={{ scale: 1.02 }}
-                                                        whileTap={{ scale: 0.98 }}
-                                                        className="w-full flex items-center justify-center gap-3 p-3 bg-white dark:bg-zinc-800 hover:bg-black/5 dark:hover:bg-white/5 text-foreground rounded-xl border border-black/10 dark:border-white/10 font-bold transition-all text-sm shadow-sm"
-                                                    >
-                                                        <svg className="w-4 h-4" viewBox="0 0 24 24">
-                                                            <path
-                                                                fill="#4285F4"
-                                                                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.9h6.69c-.29 1.5-.1.14-.9 3.03l2.84 2.2c1.66-1.53 2.61-3.79 2.61-6.06z"
-                                                            />
-                                                            <path
-                                                                fill="#34A853"
-                                                                d="M12 24c3.24 0 5.97-1.08 7.96-2.93l-3.84-2.98c-1.07.72-2.44 1.15-4.12 1.15-3.17 0-5.85-2.14-6.81-5.03L2.25 16.4C4.23 20.33 8.3 22.92 12 24z"
-                                                            />
-                                                            <path
-                                                                fill="#FBBC05"
-                                                                d="M5.19 14.21c-.24-.72-.38-1.49-.38-2.28s.14-1.56.38-2.28L2.25 7.55c-.78 1.55-1.22 3.29-1.22 5.09s.44 3.54 1.22 5.09l3.94-3.52z"
-                                                            />
-                                                            <path
-                                                                fill="#EA4335"
-                                                                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.43-3.43C17.96 1.19 15.24 0 12 0 8.3 0 4.23 2.59 2.25 6.52l3.94 3.52c.96-2.89 3.64-5.03 6.81-5.03z"
-                                                            />
-                                                        </svg>
-                                                        {t.googleLogin || "Sign in with Google"}
-                                                    </motion.button>
-                                                </div>
-                                            ) : (
-                                                <div className="flex flex-col gap-3 w-full mt-1">
-                                                    <div className="flex items-center justify-between p-3 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-xl">
-                                                        <div className="flex items-center gap-3">
-                                                            <img
-                                                                src={googleUser.imageUrl}
-                                                                alt="Profile"
-                                                                referrerPolicy="no-referrer"
-                                                                className="w-9 h-9 rounded-full"
-                                                            />
-                                                            <div className="max-w-[160px]">
-                                                                <p className="font-bold text-xs truncate leading-tight">{googleUser.name}</p>
-                                                                <p className="text-[10px] text-muted-foreground truncate leading-none mt-0.5">{googleUser.email}</p>
-                                                            </div>
-                                                        </div>
-                                                        <motion.button
-                                                            onClick={handleGoogleLogout}
-                                                            whileHover={{ scale: 1.1, backgroundColor: "rgba(239, 68, 68, 0.1)" }}
-                                                            whileTap={{ scale: 0.9 }}
-                                                            className="p-2 text-zinc-500 hover:text-red-500 rounded-lg transition-all"
-                                                            title={t.googleLogout || "Sign out"}
-                                                        >
-                                                            <LogOut className="w-4 h-4" />
-                                                        </motion.button>
+                                    {developerMode && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {/* Test Mensaje Bienvenida Notas */}
+                                            <motion.div 
+                                                onClick={() => {
+                                                    window.dispatchEvent(new Event('openWelcomeNotesModal'));
+                                                    setIsOpen(false);
+                                                }}
+                                                whileHover="hover"
+                                                whileTap="tap"
+                                                className="flex items-center justify-between p-4 glass-card rounded-2xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-500/25 text-blue-500 dark:text-blue-400">
+                                                        <Zap className="w-5 h-5" />
                                                     </div>
-                                                    {googleSessionExpired ? (
-                                                        <div className="flex flex-col gap-2">
-                                                            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
-                                                                <p className="text-xs font-semibold text-red-600 dark:text-red-400">
-                                                                    {lt(language, "Reconecta tu cuenta", "Reconnect your account")}
-                                                                </p>
-                                                                <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
-                                                                    {lt(language, "Tu acceso a Google caducó o fue revocado. Reconecta tu cuenta para reanudar la sincronización.", "Your Google access expired or was revoked. Reconnect your account to resume cloud sync.")}
-                                                                </p>
-                                                            </div>
-                                                            <motion.button
-                                                                onClick={handleGoogleLogin}
-                                                                whileHover={{ scale: 1.02 }}
-                                                                whileTap={{ scale: 0.98 }}
-                                                                className="w-full flex items-center justify-center gap-2 p-3 bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black rounded-xl font-bold transition-all text-xs shadow-lg shadow-black/20 dark:shadow-white/10"
-                                                            >
-                                                                <RefreshCw className="w-3.5 h-3.5" />
-                                                                {lt(language, "Re-conectar cuenta", "Re-connect account")}
-                                                            </motion.button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex flex-col gap-2">
-                                                            <SettingsCloudSyncControls
-                                                                googleUser={googleUser}
-                                                                localSyncing={localSyncing}
-                                                                localRestoring={localRestoring}
-                                                                isRecovering={isRecovering}
-                                                                recoveryMessage={recoveryMessage}
-                                                                handleCloudSync={handleCloudSync}
-                                                                handleCloudRestore={handleCloudRestore}
-                                                                handleRecoverImages={handleRecoverImages}
-                                                                language={language}
-                                                                t={t}
-                                                            />
-
-                                                            {lastCloudSync && (
-                                                                <p className="text-[10px] text-muted-foreground text-center mt-1">
-                                                                    {(t.lastSync || "Last backup: {date}").replace('{date}', lastCloudSync)}
-                                                                </p>
-                                                            )}
-
-                                                            {/* Version & Hidden Debug Trigger */}
-                                                            <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/5 flex flex-col items-center justify-center gap-1">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={handleVersionClick}
-                                                                    className="text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors select-none py-1 px-3 rounded-full hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 flex items-center gap-1.5 cursor-pointer"
-                                                                >
-                                                                    <Gauge className="w-3.5 h-3.5 opacity-60 text-primary" />
-                                                                    <span>MyNotes v1.0.0 {versionClickCount > 0 ? `(${7 - versionClickCount})` : ''}</span>
-                                                                </button>
-                                                                {developerMode && (
-                                                                    <span className="text-[10px] font-mono text-muted-foreground/80 select-text text-center">
-                                                                        {process.env.NEXT_PUBLIC_BUILD_ID || "dev-local"}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                                    <div>
+                                                        <p className="font-bold text-sm">Test Mensaje Bienvenida Notas</p>
+                                                        <p className="text-xs text-muted-foreground">Probar modal de MyNotes</p>
+                                                    </div>
                                                 </div>
-                                            )}
+                                            </motion.div>
+
+                                            {/* Guía de bienvenida */}
+                                            <div className="flex flex-col gap-2 p-4 glass-card rounded-2xl">
+                                                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">
+                                                    {lt(language, "Guía de bienvenida", "Welcome Guide")}
+                                                </p>
+                                                <button
+                                                    onClick={() => {
+                                                        setIsOpen(false);
+                                                        router.push('/');
+                                                        startTourManually();
+                                                    }}
+                                                    className="w-full flex items-center justify-center gap-2 p-3 bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black rounded-xl font-bold transition-all text-sm hover:scale-[1.02] active:scale-95 shadow-lg shadow-black/20 dark:shadow-white/10 cursor-pointer"
+                                                >
+                                                    <CircleHelp className="w-4 h-4 text-white dark:text-black animate-pulse" />
+                                                    {lt(language, "Iniciar guía interactiva", "Start interactive guide")}
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
+                                </div>
+
+                                {/* Versión y activador oculto de Modo Desarrollador */}
+                                <div className="pt-3 border-t border-black/5 dark:border-white/5 flex flex-col items-center justify-center gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={handleVersionClick}
+                                        className="text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors select-none py-1 px-3 rounded-full hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                                    >
+                                        <Gauge className="w-3.5 h-3.5 opacity-60 text-primary" />
+                                        <span>MyNotes v1.0.0 {versionClickCount > 0 ? `(${7 - versionClickCount})` : ''}</span>
+                                    </button>
+                                    {developerMode && (
+                                        <span className="text-[10px] font-mono text-muted-foreground/80 select-text text-center">
+                                            {process.env.NEXT_PUBLIC_BUILD_ID || "dev-local"}
+                                        </span>
+                                    )}
                                 </div>
                                 </div>
                             </GlassSurface>
