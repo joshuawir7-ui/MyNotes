@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence, Variants } from "framer-motion"
-import { Settings, Bell, X, Download, Upload, Zap, Cloud, LogOut, RefreshCw, Loader2, Sparkles, Type, Plus, Trash2, FolderPlus, Gauge, Code, ExternalLink, Smartphone, ShieldCheck, ShieldAlert, ChevronDown, ChevronUp, CircleHelp } from "lucide-react"
+import { Settings, Bell, X, Download, Upload, Zap, Cloud, LogOut, RefreshCw, Loader2, Sparkles, Type, Plus, Trash2, FolderPlus, Gauge, Code, ExternalLink, Smartphone, ShieldCheck, ShieldAlert, ChevronDown, ChevronUp, CircleHelp, Layers, Crosshair } from "lucide-react"
 import { useStore, readAllNotesFromDisk, readAllTasksFromDisk, markCloudSyncDirty, readAutoBackup2DaysFromDisk, applyBackupDataToStore, AUTO_BACKUP_2DAYS_FILENAME } from "@/lib/store"
 import { translations } from "@/lib/translations"
 import { ModeToggle } from "@/components/ui/mode-toggle"
@@ -135,8 +135,8 @@ function VisualEffectsSettingsSection({ language }: { language: string }) {
         <div className="p-4 glass-card rounded-2xl space-y-3">
             <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3 min-w-0">
-                    <div className="text-amber-500 shrink-0">
-                        <Zap className="w-5 h-5" />
+                    <div className="text-foreground shrink-0">
+                        <Layers className="w-5 h-5" />
                     </div>
                     <div className="flex flex-col min-w-0">
                         <span className="font-semibold text-sm">
@@ -1861,11 +1861,11 @@ export function SettingsDialog() {
                                                     whileHover="hover"
                                                     className={`shrink-0 transition-colors duration-300 ${
                                                         focusEffectEnabled 
-                                                            ? "text-yellow-500 dark:text-yellow-400" 
+                                                            ? "text-foreground" 
                                                             : "text-zinc-500 dark:text-zinc-400"
                                                     }`}
                                                 >
-                                                    <Zap className="w-5 h-5" />
+                                                    <Crosshair className="w-5 h-5" />
                                                 </motion.div>
                                                 <div>
                                                     <p className="font-bold text-sm">{lt(language, "Efecto de Enfoque", "Focus Effect")}</p>
