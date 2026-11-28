@@ -24,7 +24,10 @@ export function PerfHud() {
     const textRef = useRef<HTMLPreElement>(null)
     const reportRef = useRef<string>("")
     const nativeMetricsRef = useRef<NativeSafeInsetsMetrics | null>(null)
+    const benchReportRef = useRef<string>("")
     const [overrideZero, setOverrideZero] = useState(false)
+    const [benchStatus, setBenchStatus] = useState<string | null>(null)
+    const [benchSummary, setBenchSummary] = useState<string>("")
 
     useEffect(() => {
         if (typeof window === "undefined") return
@@ -118,6 +121,7 @@ export function PerfHud() {
                 .join("\n")
 
             const buildId = process.env.NEXT_PUBLIC_BUILD_ID || "dev-local"
+            const branchName = process.env.NEXT_PUBLIC_GIT_BRANCH || "unknown"
             const tz = getTextZoomSnapshot()
             const sysScaleStr = tz.systemFontScale !== null ? `${tz.systemFontScale.toFixed(2)}x (tope ${tz.maxSystemScale.toFixed(1)}x)` : "n/a (web)"
 
@@ -137,8 +141,9 @@ export function PerfHud() {
                 : `nativo: web/PC (sin puente Android)`
 
             const text =
-                `build: ${buildId}\n` +
+                `build: ${buildId} (${branchName})\n` +
                 `ruta: ${route}\n` +
+                (nm?.deviceModel ? `dev: ${nm.deviceModel} WV:${nm.webViewVersion ?? "?"}\n` : "") +
                 `texto: ${tz.mode} | zoom: ${tz.appliedZoom}% | sysFont: ${sysScaleStr}\n` +
                 `nav.bottom: ${navBottomCss} | gapViewport: ${navGapViewport}\n` +
                 `env(sab): ${envSab} | --sab: ${capSab} | --app-b: ${appInset}\n` +
@@ -154,9 +159,10 @@ export function PerfHud() {
             reportRef.current =
                 `MyNotes Perf HUD — ${new Date().toISOString()}\n` +
                 `UA: ${navigator.userAgent}\n` +
-                `cores: ${(navigator as any).hardwareConcurrency ?? "?"}  mem: ${(navigator as any).deviceMemory ?? "?"}GB  viewport: ${window.innerWidth}x${window.innerHeight}\n` +
+                `cores: ${(navigator as any).hardwareConcurrency ?? "?"}  mem: ${(navigator as any).deviceMemory ?? "?"}GB  dpr: ${window.devicePixelRatio || 1}  viewport: ${window.innerWidth}x${window.innerHeight}\n` +
                 text +
-                (longTasks.length ? "\nlongtasks completas:\n" + longTasks.map((l) => `  ${l.dur.toFixed(0)}ms ${l.name}`).join("\n") : "")
+                (longTasks.length ? "\nlongtasks completas:\n" + longTasks.map((l) => `  ${l.dur.toFixed(0)}ms ${l.name}`).join("\n") : "") +
+                (benchReportRef.current ? "\n\n" + benchReportRef.current : "")
             if (textRef.current) textRef.current.textContent = text
         }
         paint()
@@ -235,15 +241,40 @@ export function PerfHud() {
         }
     }
 
+    const runBenchmark = async () => {
+        if (benchStatus) return
+        setBenchStatus("Iniciando...")
+        try {
+            const { runDeviceBenchmark } = await import("@/lib/device-benchmark")
+            const res = await runDeviceBenchmark((msg) => setBenchStatus(msg))
+            benchReportRef.current = res.fullReportText
+            setBenchSummary(res.summaryText)
+            setBenchStatus(null)
+        } catch (err) {
+            setBenchSummary(`Error benchmark: ${err instanceof Error ? err.message : String(err)}`)
+            setBenchStatus(null)
+        }
+    }
+
     return (
         <div
             ref={boxRef}
-            className="fixed top-16 left-2 z-[9995] w-[288px] rounded-xl bg-black/85 text-[10px] leading-[1.35] text-emerald-300 font-mono shadow-lg border border-white/15 select-none"
+            data-hud-root="true"
+            className="fixed top-16 left-2 z-[9995] w-[296px] max-h-[75vh] overflow-y-auto rounded-xl bg-black/85 text-[10px] leading-[1.35] text-emerald-300 font-mono shadow-lg border border-white/15 select-none"
             style={{ contain: "layout paint" }}
         >
             <div data-hud-handle className="flex items-center justify-between gap-1 px-2 py-1 border-b border-white/10 cursor-move touch-none">
                 <span className="text-white/80 font-bold">PERF HUD</span>
                 <div className="flex items-center gap-1">
+                    <button
+                        onClick={runBenchmark}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        disabled={Boolean(benchStatus)}
+                        className="px-1.5 py-0.5 rounded text-[9px] bg-sky-500/80 text-white font-bold active:scale-95 disabled:opacity-60"
+                        title="Ejecutar Benchmark en este dispositivo"
+                    >
+                        {benchStatus ? benchStatus : "Benchmark"}
+                    </button>
                     <button
                         onClick={toggleOverrideZero}
                         onPointerDown={(e) => e.stopPropagation()}
@@ -263,6 +294,11 @@ export function PerfHud() {
                 </div>
             </div>
             <pre ref={textRef} className="px-2 py-1 whitespace-pre-wrap break-words m-0" />
+            {benchSummary && (
+                <pre className="px-2 py-1 border-t border-white/10 text-sky-300 whitespace-pre-wrap break-words m-0">
+                    {benchSummary}
+                </pre>
+            )}
         </div>
     )
 }

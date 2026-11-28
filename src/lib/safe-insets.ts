@@ -2,6 +2,8 @@ import { Capacitor, registerPlugin } from "@capacitor/core"
 
 export interface NativeSafeInsetsMetrics {
     sdkInt: number
+    deviceModel?: string
+    webViewVersion?: string
     density: number
     navMode: "3-button" | "2-button" | "gesture" | "unknown"
     windowHeightPx: number

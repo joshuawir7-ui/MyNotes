@@ -1,7 +1,28 @@
 import type { NextConfig } from "next";
-import path from "path";
+import { execSync } from "node:child_process";
+
+function getGitBranch() {
+  try {
+    return execSync("git rev-parse --abbrev-ref HEAD", { encoding: "utf8" }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
+function getBuildId() {
+  if (process.env.NEXT_PUBLIC_BUILD_ID) return process.env.NEXT_PUBLIC_BUILD_ID;
+  try {
+    return execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
+  } catch {
+    return "dev-local";
+  }
+}
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_GIT_BRANCH: process.env.NEXT_PUBLIC_GIT_BRANCH || getGitBranch(),
+    NEXT_PUBLIC_BUILD_ID: getBuildId(),
+  },
   output: "export",
   images: {
     unoptimized: true,

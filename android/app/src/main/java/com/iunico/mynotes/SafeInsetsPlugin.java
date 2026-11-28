@@ -6,6 +6,7 @@ import android.os.Build;
 import android.provider.Settings;
 import android.view.View;
 import android.webkit.WebView;
+import android.content.pm.PackageInfo;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -93,6 +94,17 @@ public class SafeInsetsPlugin extends Plugin {
         int leftDp = Math.round(sysAndCutout.left / density);
 
         m.put("sdkInt", Build.VERSION.SDK_INT);
+        m.put("deviceModel", Build.MANUFACTURER + " " + Build.MODEL);
+        String wvVersion = "unknown";
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                PackageInfo pkg = WebView.getCurrentWebViewPackage();
+                if (pkg != null && pkg.versionName != null) {
+                    wvVersion = pkg.versionName;
+                }
+            }
+        } catch (Throwable ignored) {}
+        m.put("webViewVersion", wvVersion);
         m.put("density", Math.round(density * 100f) / 100.0);
         m.put("navMode", detectNavigationMode(context));
         m.put("windowHeightPx", windowHeightPx);
