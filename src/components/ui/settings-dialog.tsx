@@ -135,8 +135,8 @@ function VisualEffectsSettingsSection({ language }: { language: string }) {
         <div className="p-4 glass-card rounded-2xl space-y-3">
             <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500 shrink-0">
-                        <Zap className="w-4 h-4" />
+                    <div className="text-amber-500 shrink-0">
+                        <Zap className="w-5 h-5" />
                     </div>
                     <div className="flex flex-col min-w-0">
                         <span className="font-semibold text-sm">
@@ -1586,10 +1586,10 @@ export function SettingsDialog() {
                                                     variants={bellVariants}
                                                     animate={notificationsEnabled ? "active" : "inactive"}
                                                     whileHover="hover"
-                                                    className={`p-2 rounded-xl transition-colors duration-300 ${
+                                                    className={`shrink-0 transition-colors duration-300 ${
                                                         notificationsEnabled 
-                                                            ? "bg-black/10 text-black dark:bg-white/20 dark:text-white" 
-                                                            : "bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400"
+                                                            ? "text-black dark:text-white" 
+                                                            : "text-zinc-500 dark:text-zinc-400"
                                                     }`}
                                                 >
                                                     <Bell className="w-5 h-5" />
@@ -1614,7 +1614,7 @@ export function SettingsDialog() {
                                             <div className="p-4 glass-card rounded-2xl flex flex-col gap-3">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <div className="flex items-center gap-2.5 min-w-0">
-                                                        <div className={`p-2 rounded-xl ${osNotifPermission === 'granted' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-amber-500/15 text-amber-500'}`}>
+                                                        <div className={`shrink-0 ${osNotifPermission === 'granted' ? 'text-emerald-500' : 'text-amber-500'}`}>
                                                             {osNotifPermission === 'granted' ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
                                                         </div>
                                                         <div className="min-w-0">
@@ -1667,10 +1667,10 @@ export function SettingsDialog() {
                                             className="flex items-center justify-between p-4 glass-card rounded-2xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
                                         >
                                             <div className="flex items-center gap-3 min-w-0 pr-2">
-                                                <div className={`p-2 rounded-xl transition-colors duration-300 ${
+                                                <div className={`shrink-0 transition-colors duration-300 ${
                                                     philosophicalQuotesEnabled
-                                                        ? "bg-black/10 text-black dark:bg-white/20 dark:text-white"
-                                                        : "bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400"
+                                                        ? "text-black dark:text-white"
+                                                        : "text-zinc-500 dark:text-zinc-400"
                                                 }`}>
                                                     <Sparkles className="w-5 h-5" />
                                                 </div>
@@ -1709,7 +1709,7 @@ export function SettingsDialog() {
                                         <div className="flex flex-col gap-3 p-4 glass-card rounded-2xl border border-black/5 dark:border-white/10">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/20 text-primary">
+                                                    <div className="shrink-0 text-primary">
                                                         <ExternalLink className="w-5 h-5" />
                                                     </div>
                                                     <div>
@@ -1859,10 +1859,10 @@ export function SettingsDialog() {
                                                     variants={zapVariants}
                                                     animate={focusEffectEnabled ? "active" : "inactive"}
                                                     whileHover="hover"
-                                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-300 ${
+                                                    className={`shrink-0 transition-colors duration-300 ${
                                                         focusEffectEnabled 
-                                                            ? "bg-yellow-500/25 text-yellow-500 dark:text-yellow-400" 
-                                                            : "bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400"
+                                                            ? "text-yellow-500 dark:text-yellow-400" 
+                                                            : "text-zinc-500 dark:text-zinc-400"
                                                     }`}
                                                 >
                                                     <Zap className="w-5 h-5" />
@@ -2126,7 +2126,7 @@ export function SettingsDialog() {
                                             <button
                                                 type="button"
                                                 onClick={() => fontInputRef.current?.click()}
-                                                className="w-full flex items-center justify-center gap-2 p-2.5 bg-black/10 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/15 text-black dark:text-white rounded-xl font-bold transition-all text-xs cursor-pointer mt-1"
+                                                className="w-full flex items-center justify-center gap-2 p-2.5 bg-transparent border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white rounded-xl font-bold transition-all text-xs cursor-pointer mt-1"
                                             >
                                                 <Plus className="w-3.5 h-3.5" />
                                                 <span>{lt(language, "Añadir fuente desde almacenamiento", "Add font from storage")}</span>
@@ -2149,10 +2149,10 @@ export function SettingsDialog() {
                                             <motion.div 
                                                 animate={developerMode ? "active" : "inactive"}
                                                 whileHover="hover"
-                                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-300 ${
+                                                className={`shrink-0 transition-colors duration-300 ${
                                                     developerMode 
-                                                        ? "bg-purple-500/25 text-purple-500 dark:text-purple-400" 
-                                                        : "bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400"
+                                                        ? "text-purple-500 dark:text-purple-400" 
+                                                        : "text-zinc-500 dark:text-zinc-400"
                                                 }`}
                                             >
                                                 <Code className="w-5 h-5" />
@@ -2188,7 +2188,7 @@ export function SettingsDialog() {
                                                 className="flex items-center justify-between p-4 glass-card rounded-2xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all duration-300"
                                             >
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-500/25 text-blue-500 dark:text-blue-400">
+                                                    <div className="shrink-0 text-blue-500 dark:text-blue-400">
                                                         <Zap className="w-5 h-5" />
                                                     </div>
                                                     <div>

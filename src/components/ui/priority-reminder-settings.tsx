@@ -389,12 +389,12 @@ export function PriorityReminderSettings() {
                     className="flex items-center justify-between cursor-pointer"
                 >
                     <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-xl transition-colors duration-300 ${
+                        <div className={`shrink-0 transition-colors duration-300 ${
                             enabled
-                                ? "bg-black/10 text-black dark:bg-white/20 dark:text-white"
-                                : "bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400"
+                                ? "text-black dark:text-white"
+                                : "text-zinc-500 dark:text-zinc-400"
                         }`}>
-                            <Bell className="w-4 h-4" />
+                            <Bell className="w-5 h-5" />
                         </div>
                         <div>
                             <p className="font-bold text-sm">
